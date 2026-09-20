@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+root=$(cd "$(dirname "$0")" && pwd)
+cd "$root"
+
+cargo test --manifest-path native/grit/Cargo.toml
+./native/grit/build
+java --enable-native-access=ALL-UNNAMED -cp .build/grit/attune-grit.jar attune.grit.AttuneGritTest
+flix test

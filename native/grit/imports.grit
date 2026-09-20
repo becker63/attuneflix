@@ -1,0 +1,10 @@
+engine marzano(0.1)
+language js(typescript)
+
+// Static module dependencies. Resolution remains above Grit.
+or {
+  `import $source`,
+  `require($source)`
+} as $import where {
+  log(message="import", variable=$source)
+}

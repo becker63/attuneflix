@@ -1,0 +1,9 @@
+engine marzano(0.1)
+language js(typescript)
+
+// Calls between source-level callables. Constructors and module loading are
+// deliberately excluded; target resolution remains above Grit.
+`$callee($...)` as $call where {
+  $callee <: not r"^(import|require)$",
+  log(message="call", variable=$callee)
+}

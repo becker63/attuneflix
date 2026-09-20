@@ -1,0 +1,15 @@
+id = "flix"
+name = "Flix"
+description = "Flix syntax highlighting and the compiler's native language server"
+version = "0.2.0"
+schema_version = 1
+authors = ["Attune"]
+repository = "https://github.com/attunehq/attuneflix"
+
+[language_servers.flix]
+name = "Flix Language Server"
+languages = ["Flix"]
+
+[grammars.flix]
+repository = "https://github.com/omarjatoi/tree-sitter-flix"
+rev = "78cff149b2e9897456f94844872353b5ee0ca93b"

@@ -1,0 +1,38 @@
+[package]
+name = "attune-grit-abi"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lib]
+path = "lib.rs"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[dependencies.marzano-core]
+git = "https://github.com/getgrit/gritql.git"
+rev = "c80b3026471b229f41b279c3eb0c162dcdacfdb1"
+package = "marzano-core"
+default-features = false
+features = ["grit-parser", "non_wasm"]
+
+[dependencies.marzano-language]
+git = "https://github.com/getgrit/gritql.git"
+rev = "c80b3026471b229f41b279c3eb0c162dcdacfdb1"
+package = "marzano-language"
+default-features = false
+features = [
+  "builtin-parser",
+  "grit-parser",
+  "tree-sitter-gritql",
+  "tree-sitter-javascript",
+  "tree-sitter-typescript",
+]
+
+[dependencies.marzano-util]
+git = "https://github.com/getgrit/gritql.git"
+rev = "c80b3026471b229f41b279c3eb0c162dcdacfdb1"
+package = "marzano-util"

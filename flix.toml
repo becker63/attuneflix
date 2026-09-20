@@ -1,0 +1,9 @@
+[package]
+name        = "attuneflix"
+description = "A small native Flix explanation of Attune Radii"
+version     = "0.1.0"
+flix        = "0.76.0"
+authors     = ["Attune"]
+
+[jar-dependencies]
+"attune-grit.jar" = "url:file:.build/grit/attune-grit.jar"

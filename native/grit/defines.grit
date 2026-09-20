@@ -1,0 +1,51 @@
+engine marzano(0.1)
+language js(typescript)
+
+// Named callable definitions. Constructors and anonymous unbound functions
+// are deliberately excluded; identity allocation remains above Grit.
+or {
+  function_declaration(
+    name = $name
+  ),
+
+  method_definition(
+    name = $name
+  ) where {
+    $name <: not r"^constructor$"
+  },
+
+  variable_declarator(
+    name = $name,
+    value = arrow_function()
+  ),
+
+  public_field_definition(
+    name = $name,
+    value = arrow_function()
+  ),
+
+  pair(
+    key = $name,
+    value = arrow_function()
+  ),
+
+  `function $name($...) { $... }`,
+
+  variable_declarator(
+    name = $name,
+    value = $value
+  ) where {
+    $value <: or {
+      `function ($...) { $... }`,
+      `function ($...): $_ { $... }`,
+      `async function ($...) { $... }`,
+      `async function ($...): $_ { $... }`,
+      `function $_($...) { $... }`,
+      `function $_($...): $_ { $... }`,
+      `async function $_($...) { $... }`,
+      `async function $_($...): $_ { $... }`
+    }
+  }
+} as $definition where {
+  log(message="definition", variable=$name)
+}

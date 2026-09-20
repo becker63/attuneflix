@@ -1,0 +1,11 @@
+artifact/
+.build/
+build/
+lib/
+native/grit/target/
+zed/target/
+zed/extension.wasm
+zed/grammars/
+*.fpkg
+*.jar
+crash_report_*.txt
