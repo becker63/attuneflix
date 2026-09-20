@@ -10,6 +10,9 @@ import java.nio.charset.StandardCharsets;
 
 /** Package-private ownership adapter over generated FFM bindings. */
 final class AttuneGritNative {
+    private static final int ABI_OK = 0;
+    private static final int ABI_HOST_ERROR = 1;
+
     private record Input(MemorySegment data, long length) {}
 
     private AttuneGritNative() {}
@@ -30,7 +33,7 @@ final class AttuneGritNative {
             MemorySegment outData = arena.allocate(ValueLayout.ADDRESS);
             MemorySegment outLength = arena.allocate(ValueLayout.JAVA_LONG);
 
-            attune_grit_run(
+            int status = attune_grit_run(
                     lang.data(), lang.length(),
                     grit.data(), grit.length(),
                     name.data(), name.length(),
@@ -39,12 +42,28 @@ final class AttuneGritNative {
 
             MemorySegment data = outData.get(ValueLayout.ADDRESS, 0);
             long length = outLength.get(ValueLayout.JAVA_LONG, 0);
+            byte[] owned;
             try {
-                byte[] owned = data.reinterpret(length).toArray(ValueLayout.JAVA_BYTE);
-                return new String(owned, StandardCharsets.UTF_8);
+                if (length < 0 || (data.address() == 0 && length != 0)) {
+                    throw new IllegalStateException("invalid Attune Grit output buffer");
+                }
+                owned = data.reinterpret(length).toArray(ValueLayout.JAVA_BYTE);
             } finally {
-                attune_grit_buffer_free(data, length);
+                if (data.address() != 0) attune_grit_buffer_free(data, length);
             }
+
+            // Rust classifies normal compile/language failures in the envelope.
+            // ABI_HOST_ERROR likewise carries a stable host-error envelope.
+            if (status != ABI_OK && status != ABI_HOST_ERROR) {
+                throw new IllegalStateException("unknown Attune Grit ABI status: " + status);
+            }
+            if (status == ABI_HOST_ERROR && owned.length == 0) {
+                throw new IllegalStateException("Attune Grit host failure returned no envelope");
+            }
+
+            // Decode only after Rust-owned memory has been released. Any Java
+            // exception from here onward therefore cannot leak a native buffer.
+            return new String(owned, StandardCharsets.UTF_8);
         }
     }
 }

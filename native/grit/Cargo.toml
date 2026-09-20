@@ -25,7 +25,6 @@ rev = "c80b3026471b229f41b279c3eb0c162dcdacfdb1"
 package = "marzano-language"
 default-features = false
 features = [
-  "builtin-parser",
   "grit-parser",
   "tree-sitter-gritql",
   "tree-sitter-javascript",

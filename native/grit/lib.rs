@@ -1,9 +1,8 @@
 use std::{
-    cell::RefCell,
     collections::{BTreeMap, HashMap},
     panic::{AssertUnwindSafe, catch_unwind},
-    ptr,
-    slice,
+    ptr, slice,
+    sync::{LazyLock, Mutex, MutexGuard},
 };
 
 use marzano_core::{
@@ -18,10 +17,28 @@ use serde::Serialize;
 const ABI_OK: i32 = 0;
 const ABI_HOST_ERROR: i32 = 1;
 
-thread_local! {
-    static PROBLEMS: RefCell<HashMap<(String, Vec<u8>), Problem>> =
-        RefCell::new(HashMap::new());
+type ProgramKey = (String, Vec<u8>);
+
+static PROBLEMS: LazyLock<Mutex<HashMap<ProgramKey, Problem>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+
+#[cfg(test)]
+static COMPILE_COUNTS: LazyLock<Mutex<HashMap<ProgramKey, usize>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+
+fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
+    mutex
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
 }
+
+#[cfg(test)]
+fn record_compile(key: &ProgramKey) {
+    *lock(&COMPILE_COUNTS).entry(key.clone()).or_insert(0) += 1;
+}
+
+#[cfg(not(test))]
+fn record_compile(_key: &ProgramKey) {}
 
 #[derive(Serialize)]
 struct Span {
@@ -66,7 +83,9 @@ fn failure(kind: &'static str, message: impl Into<String>) -> Vec<u8> {
             message: message.into(),
         },
     })
-    .unwrap_or_else(|_| br#"{"version":1,"error":{"kind":"host","message":"JSON encoding failed"}}"#.to_vec())
+    .unwrap_or_else(|_| {
+        br#"{"version":1,"error":{"kind":"host","message":"JSON encoding failed"}}"#.to_vec()
+    })
 }
 
 fn text(bytes: &[u8], name: &str) -> Result<String, Vec<u8>> {
@@ -79,8 +98,7 @@ fn target(language: &str) -> Result<TargetLanguage, Vec<u8>> {
         "typescript" => PatternLanguage::TypeScript,
         _ => return Err(failure("unsupported-language", language)),
     };
-    TargetLanguage::try_from(pattern)
-        .map_err(|error| failure("host", error.to_string()))
+    TargetLanguage::try_from(pattern).map_err(|error| failure("host", error.to_string()))
 }
 
 fn compile(language: &str, program: &[u8]) -> Result<Problem, Vec<u8>> {
@@ -145,8 +163,7 @@ fn execute(problem: &Problem, path: String, source: String) -> Vec<u8> {
         }
     }
 
-    serde_json::to_vec(&evaluation)
-        .unwrap_or_else(|error| failure("host", error.to_string()))
+    serde_json::to_vec(&evaluation).unwrap_or_else(|error| failure("host", error.to_string()))
 }
 
 fn run(language: &[u8], program: &[u8], path: &[u8], source: &[u8]) -> Vec<u8> {
@@ -164,20 +181,19 @@ fn run(language: &[u8], program: &[u8], path: &[u8], source: &[u8]) -> Vec<u8> {
     };
     let key = (language.clone(), program.to_vec());
 
-    PROBLEMS.with(|problems| {
-        if !problems.borrow().contains_key(&key) {
-            let problem = match compile(&language, program) {
-                Ok(value) => value,
-                Err(error) => return error,
-            };
-            problems.borrow_mut().insert(key.clone(), problem);
-        }
-        let borrowed = problems.borrow();
-        match borrowed.get(&key) {
-            Some(problem) => execute(problem, path, source),
-            None => failure("host", "compiled Grit program disappeared"),
-        }
-    })
+    let mut problems = lock(&PROBLEMS);
+    if !problems.contains_key(&key) {
+        let problem = match compile(&language, program) {
+            Ok(value) => value,
+            Err(error) => return error,
+        };
+        problems.insert(key.clone(), problem);
+        record_compile(&key);
+    }
+    match problems.get(&key) {
+        Some(problem) => execute(problem, path, source),
+        None => failure("host", "compiled Grit program disappeared"),
+    }
 }
 
 unsafe fn input<'a>(data: *const u8, len: usize) -> Result<&'a [u8], Vec<u8>> {
@@ -232,7 +248,10 @@ pub unsafe extern "C" fn attune_grit_run(
     let (status, bytes) = match outcome {
         Ok(Ok(bytes)) => (ABI_OK, bytes),
         Ok(Err(bytes)) => (ABI_HOST_ERROR, bytes),
-        Err(_) => (ABI_HOST_ERROR, failure("host", "native panic caught at ABI boundary")),
+        Err(_) => (
+            ABI_HOST_ERROR,
+            failure("host", "native panic caught at ABI boundary"),
+        ),
     };
     unsafe { publish(bytes, out_data, out_len) };
     status
@@ -261,13 +280,50 @@ language js(typescript)
 }
 "#;
 
+    fn through_abi(language: &[u8], program: &[u8], path: &[u8], source: &[u8]) -> (i32, Vec<u8>) {
+        let mut data = ptr::null_mut();
+        let mut len = 0;
+        let status = unsafe {
+            attune_grit_run(
+                language.as_ptr(),
+                language.len(),
+                program.as_ptr(),
+                program.len(),
+                path.as_ptr(),
+                path.len(),
+                source.as_ptr(),
+                source.len(),
+                &mut data,
+                &mut len,
+            )
+        };
+        assert!(!data.is_null());
+        let owned = unsafe { slice::from_raw_parts(data, len) }.to_vec();
+        unsafe { attune_grit_buffer_free(data, len) };
+        (status, owned)
+    }
+
     #[test]
     fn repeated_program_is_stable_and_compiled_once() {
-        PROBLEMS.with(|problems| problems.borrow_mut().clear());
-        let first = run(b"typescript", PROGRAM, b"src/example.ts", b"Boolean(verify(name));");
-        let second = run(b"typescript", PROGRAM, b"src/example.ts", b"Boolean(verify(name));");
+        let cache_program = [PROGRAM, b"\n"].concat();
+        let key = ("typescript".to_string(), cache_program.clone());
+        lock(&PROBLEMS).remove(&key);
+        lock(&COMPILE_COUNTS).remove(&key);
+        let first = run(
+            b"typescript",
+            &cache_program,
+            b"src/example.ts",
+            b"Boolean(verify(name));",
+        );
+        let second = run(
+            b"typescript",
+            &cache_program,
+            b"src/example.ts",
+            b"Boolean(verify(name));",
+        );
         assert_eq!(first, second);
-        PROBLEMS.with(|problems| assert_eq!(problems.borrow().len(), 1));
+        assert!(lock(&PROBLEMS).contains_key(&key));
+        assert_eq!(lock(&COMPILE_COUNTS).get(&key), Some(&1));
         let value: serde_json::Value = serde_json::from_slice(&first).unwrap();
         assert_eq!(value["matched"], true);
         assert_eq!(value["matches"].as_array().unwrap().len(), 2);
@@ -292,5 +348,41 @@ language js(typescript)
         let value: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
         assert_eq!(value["matched"], false);
         assert_eq!(value["matches"].as_array().unwrap().len(), 0);
+    }
+
+    #[test]
+    fn abi_preserves_nul_bytes_and_releases_every_output() {
+        let source = b"const value = 'a\0b';\nverify(name);";
+        for _ in 0..100 {
+            let (status, bytes) = through_abi(b"typescript", PROGRAM, b"nul.ts", source);
+            assert_eq!(status, ABI_OK);
+            let value: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+            assert_eq!(value["version"], 1);
+        }
+    }
+
+    #[test]
+    fn abi_classifies_bad_inputs_without_unwinding() {
+        let mut data = ptr::null_mut();
+        let mut len = 0;
+        let status = unsafe {
+            attune_grit_run(
+                ptr::null(),
+                1,
+                PROGRAM.as_ptr(),
+                PROGRAM.len(),
+                b"x.ts".as_ptr(),
+                4,
+                ptr::null(),
+                0,
+                &mut data,
+                &mut len,
+            )
+        };
+        assert_eq!(status, ABI_HOST_ERROR);
+        let bytes = unsafe { slice::from_raw_parts(data, len) }.to_vec();
+        unsafe { attune_grit_buffer_free(data, len) };
+        let value: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(value["error"]["kind"], "host");
     }
 }

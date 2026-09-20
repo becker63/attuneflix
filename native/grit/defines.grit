@@ -1,36 +1,160 @@
 engine marzano(0.1)
 language js(typescript)
 
-// Named callable definitions. Constructors and anonymous unbound functions
-// are deliberately excluded; identity allocation remains above Grit.
+// @syntax structural Callable shapes use TypeScript parser nodes; function-expression values use a small source-shaped check.
+//
+// Named callable definitions.
+//
+// All of these define symbols:
+//
+//   export function verify(name: string): boolean {
+//     return name.length > 0;
+//   }
+//
+//   export function identity<T>(value: T): T {
+//     return value;
+//   }
+//
+//   class Client {
+//     verify(name: string): boolean {
+//       return true;
+//     }
+//
+//     static create(): Client {
+//       return new Client();
+//     }
+//
+//     identity<T>(value: T): T {
+//       return value;
+//     }
+//
+//     check = (name: string): boolean => {
+//       return true;
+//     };
+//   }
+//
+//   const client = {
+//     verify(name: string): boolean {
+//       return true;
+//     },
+//
+//     check: (name: string): boolean => {
+//       return true;
+//     },
+//   };
+//
+//   const verify = (name: string): boolean => {
+//     return true;
+//   };
+//
+//   const parse = function (value: string): string {
+//     return value;
+//   };
+//
+//   const parseNamed = function implementation(value: string): string {
+//     return value;
+//   };
+//
+// Grit matches the whole definition and logs its source name:
+//
+//   verify
+//   identity
+//   create
+//   check
+//   parse
+//   parseNamed
+//
+// TypeScript overload declarations without bodies are not separate symbols:
+//
+//   function parse(value: string): string;
+//   function parse(value: number): number;
+//
+//   function parse(value: string | number): string | number {
+//     return value;
+//   }
+//
+// Only the implementation above is matched.
+//
+// Constructors are deliberately excluded:
+//
+//   class Client {
+//     constructor(name: string) {}
+//   }
+//
+// We do not currently model:
+//
+//   new Client()
+//
+// as a call edge, so constructors are left out of the symbol relation too.
+//
+// Anonymous functions without a binding have no stable repository name:
+//
+//   consume(function (value) {
+//     return value;
+//   });
+//
+// A bound function does:
+//
+//   const consumeValue = function (value) {
+//     return value;
+//   };
+//
+// Python later assigns FileId and SymbolId. Grit only finds the definition
+// span and the source name.
+//
+// @example A normal TypeScript function is a named callable definition.
+// export function verify(name: string): boolean {
+//   return name.length > 0;
+// }
+// @end
+
 or {
+  // export function verify() {}
+  // export function identity<T>(value: T): T {}
   function_declaration(
     name = $name
   ),
 
+  // class Client { verify() {} }
+  // class Client { static verify() {} }
+  // class Client { identity<T>(value: T): T {} }
+  // const client = { verify() {} }
   method_definition(
     name = $name
   ) where {
     $name <: not r"^constructor$"
   },
 
+  // const verify = () => true;
   variable_declarator(
     name = $name,
     value = arrow_function()
   ),
 
+  // class Client { verify = () => true; }
+  // class Client { static verify = () => true; }
   public_field_definition(
     name = $name,
     value = arrow_function()
   ),
 
+  // const client = { verify: () => true };
   pair(
     key = $name,
     value = arrow_function()
   ),
 
-  `function $name($...) { $... }`,
+  // module.exports = function verify() {}
+  // Client.prototype.verify = function verify() {}
+  assignment_expression(
+    right = $value
+  ) where {
+    $value <: `function $name($...) { $... }`
+  },
 
+  // const verify = function () {}
+  // let verify = async function () {}
+  // const verify = function implementation() {}
   variable_declarator(
     name = $name,
     value = $value

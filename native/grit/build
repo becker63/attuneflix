@@ -4,42 +4,14 @@ set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
 cd "$root"
 
-cargo build --manifest-path native/grit/Cargo.toml
-
-generated="$root/.build/grit/jextract"
-classes="$root/.build/grit/classes"
+package=$(nix build path:.#attune-grit-jar --no-link --print-out-paths)
+classes="$root/.build/grit/test-classes"
 jar_file="$root/.build/grit/attune-grit.jar"
-library=$(realpath native/grit/target/debug/libattune_grit_abi.so)
-libc_dev=${ATTUNE_GLIBC_DEV:?run this command inside `nix develop`}
 
-rm -rf "$generated" "$classes"
-mkdir -p "$generated" "$classes"
-
-jextract \
-  -I "$(clang -print-resource-dir)/include" \
-  -I "$libc_dev/include" \
-  --target-package attune.grit.ffi \
-  --header-class-name AttuneGritAbi \
-  --include-function attune_grit_run \
-  --include-function attune_grit_buffer_free \
-  --library ":$library" \
-  --output "$generated" \
-  native/grit/attune_grit.h
-
-javac \
-  --release 23 \
-  -d "$classes" \
-  $(find "$generated" -name '*.java' -print) \
-  native/grit/AttuneGritNative.java
-
-javac \
-  --release 21 \
-  -cp "$classes" \
-  -d "$classes" \
-  native/grit/AttuneGrit.java \
-  native/grit/AttuneGritTest.java
-
-jar --create --file "$jar_file" -C "$classes" .
+rm -rf "$classes"
+mkdir -p "$classes"
+install -Dm644 "$package/share/java/attune-grit.jar" "$jar_file"
+javac --release 21 -cp "$jar_file" -d "$classes" native/grit/AttuneGritTest.java
 
 # Flix caches URL JAR dependencies by name and does not notice that a local
 # build product changed. Keep its managed external copy byte-for-byte current.

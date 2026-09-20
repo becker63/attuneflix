@@ -62,3 +62,23 @@ world.py      5baf77a2dfb2875777b51e06157bfad0fa15603ad9a10a86b6cadabea8286da0
 test_algebra  c6ef844a9ef263b69c9173e90ad771838b083aec921d966474f7b645fffb1b6f
 test_atlas    40b6ca932db80aa44e5d10da6f21f8b3260f58d8957d47f31a31cf87272ded79
 ```
+
+Two later changes at reference working-copy commit `deb9b9bc6622` were adopted
+because direct PyO3 execution demonstrated that they repair the frozen fixture
+semantics rather than extend them:
+
+- `defines.grit` restricts the source-shaped named-function arm to assignment
+  expressions, preventing `function implementation` from becoming a second
+  definition beside its bound variable;
+- `calls.grit` expresses the `import` and `require` exclusions as two filters;
+  the frozen alternation caused the complete call-surface fixture to return no
+  matches under the pinned Marzano revision.
+
+No other post-snapshot reference changes were followed. The admitted program
+hashes after these two necessary fixes are:
+
+```text
+defines.grit  bba7b2aa5d958d3ea2369fae0b7025718d68fcd1ea10bdfc1351c676899552cb
+imports.grit  368c1c09ed1ba38437ddab45d1084710cb717adc8dc0c831e3b2e8c49f3ad14d
+calls.grit    de0e5436777fc93f96a517298386e5e728cd77fe5e46a027a5ae942287212147
+```

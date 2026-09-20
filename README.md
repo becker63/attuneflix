@@ -45,7 +45,9 @@ The canonical verification command is:
 nix develop --command ./verify
 ```
 
-That gate checks all twelve public structural names on five deterministic
+That gate first builds the Nix-owned native library and generated-FFM JAR,
+then runs the Rust ownership/cache tests, the Java façade lifetime and
+fresh-process tests, and the Flix suite. It checks all twelve public structural names on five deterministic
 repository worlds (180 atom/frontier comparisons), then exhaustively checks
 all 79 normalized, well-sorted policy expressions through cost four on the
 same worlds and three frontiers per source domain (1,185 complete-expression
@@ -56,3 +58,10 @@ The native seam is intentionally one sentence: Flix asks for Grit
 observations; a tiny Java facade calls generated FFM bindings over a tiny Rust
 C ABI; Rust owns Marzano and native lifetimes; everything returned to Flix is
 stable ordinary data.
+
+`nix build .#attune-grit-native` and `nix build .#attune-grit-jar` are the
+reproducible leaf builds. The latter embeds the immutable Nix-store identity of
+the former in generated `jextract` bindings; normal execution needs no ambient
+`LD_LIBRARY_PATH`. Generated bindings remain build output. Rust retains
+compiled Marzano problems in one private process-global cache keyed by exact
+language and program bytes.

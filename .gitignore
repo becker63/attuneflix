@@ -9,3 +9,4 @@ zed/grammars/
 *.fpkg
 *.jar
 crash_report_*.txt
+result

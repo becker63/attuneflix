@@ -109,3 +109,22 @@ and must pass the same Level-2 parity gate.
 - The synthesis AST remains intentionally enumerable. Because Flix 0.76 has no
   ergonomic GADT/opaque-constructor combination for this use, its dynamic
   enumerator retains the small explicit endpoint checker.
+
+## Native Grit packaging result
+
+Nix now builds the pinned Marzano adapter, runs its Rust tests, generates FFM
+bindings from Attune's small C header with `jextract`, and compiles the tiny
+Java façade with plain `javac`/`jar`. The generated downcall embeds the native
+library's Nix-store path, so runtime discovery does not depend on
+`LD_LIBRARY_PATH`. Only `Cargo.toml`, `Cargo.lock`, and `lib.rs` participate in
+the expensive native derivation identity; unrelated Flix, documentation, and
+editor changes cannot invalidate it.
+
+Marzano's individual Tree-sitter feature flags compile, but its native
+target-language constructors are still guarded by the coarse `builtin-parser`
+cfg; explicit parser injection is gated to `wasm32`. Following the frozen
+AttuneRadii Nix reference, the vendor derivation projects that cfg onto the
+selected JavaScript and TypeScript feature flags. The patch is three explicit
+module substitutions against the pinned revision. Local verification consumes
+the resulting Nix-built library rather than maintaining a second, ambient
+Cargo execution path.
