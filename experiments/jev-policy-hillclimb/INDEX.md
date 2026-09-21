@@ -32,6 +32,7 @@ protocols remain recorded by their reports and retained raw request envelopes.
 | 013 | Two-rollout deep planner vs replayed 012 | **0.201549** | **53.71%** | 0.341111 | **0.524766** | 767 | **promote** |
 | 014 | Delta-aware final expert comparison | 0.191951 | 50.11% | 0.314444 | 0.506429 | 767 | reject |
 | 015 | Flat learned oracle-route template library | 0.075687 | 6.46% | 0.227778 | 0.476153 | 782 | reject |
+| 016 | Pairwise learned-template tournament | 0.121302 | 23.58% | 0.338889 | **0.564661** | 962 | reject / Pareto efficiency |
 
 ## Synthesis after iteration 015
 

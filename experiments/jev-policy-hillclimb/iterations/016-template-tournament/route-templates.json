@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "source": "unique non-root structural-oracle paths from the frozen 15-case development set",
+  "case_keyed": false,
+  "templates": [
+    "callers>>defined_in>>imported_by>>imported_by>>defines>>callers>>calls",
+    "calls>>callers>>callers>>calls>>calls",
+    "calls>>callers>>defined_in>>imported_by>>defines>>calls>>calls",
+    "calls>>defined_in>>imports>>imported_by>>imports>>defines",
+    "defined_in>>defines>>calls>>calls>>defined_in>>defines>>calls",
+    "defined_in>>imported_by>>defines",
+    "defined_in>>imported_by>>imported_by>>imported_by>>imports>>defines",
+    "defined_in>>imports>>imported_by>>defines",
+    "defined_in>>imports>>imported_by>>defines>>callers>>callers>>calls",
+    "defined_in>>imports>>imported_by>>defines>>calls",
+    "defined_in>>imports>>imported_by>>imports>>imports>>defines>>calls",
+    "defined_in>>imports>>imported_by>>imports>>imports>>imports>>defines"
+  ]
+}

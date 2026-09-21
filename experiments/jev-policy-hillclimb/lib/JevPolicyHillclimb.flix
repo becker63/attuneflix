@@ -40,9 +40,14 @@ mod JevPolicyHillclimb {
         state = Radii.Evaluate.State
     }
 
-    def iteration(): String = "015-learned-route-templates"
+    type alias TemplateTournament = {
+        winner = TemplateCandidate,
+        observations = Vector[Decide.Observation]
+    }
 
-    def protocol(): String = "attune-jev-policy-hillclimb-015-learned-route-templates-v1"
+    def iteration(): String = "016-template-tournament"
+
+    def protocol(): String = "attune-jev-policy-hillclimb-016-template-tournament-v1"
 
     def bestProtocol(): String = "attune-jev-policy-hillclimb-012-pruned-planner-portfolio-v1"
 
@@ -75,8 +80,8 @@ mod JevPolicyHillclimb {
     def expertQuestion(): String =
         "Choose between two independently generated structural localization frontiers. Prefer the final symbol preview most likely to localize the reported issue. The expert labels carry no quality ordering."
 
-    def templateQuestion(): String =
-        "Choose the final structural localization frontier most likely to localize the reported issue. Candidates include the current search expert, the unchanged semantic prior, and a small repository-agnostic library of route templates learned on development data. Judge only the issue and visible terminal evidence; prefer relevance over frontier size."
+    def tournamentQuestion(): String =
+        "Compare exactly two structural localization frontiers and choose the one most likely to localize the reported issue. Judge only the issue and visible terminal evidence; prefer relevance over frontier size."
 
     /// Ordinary test runs are pure and network-free. Explicit modes reuse the
     /// frozen facts/prior and acquire or replay only this iteration's decisions.
@@ -185,7 +190,7 @@ mod JevPolicyHillclimb {
                 ) yield selected) {
                     case Err(error) => Err(error)
                     case Ok(best013) => {
-                        let runCandidate = () -> selectLearnedTemplates(
+                        let runCandidate = () -> selectTemplateTournament(
                             prepared, prior, computed, best013);
                         if (acquire) Decide.runWithAcquire(root(), runCandidate)
                         else Decide.runWithStoreReplay(root(), runCandidate)
@@ -271,33 +276,97 @@ mod JevPolicyHillclimb {
                     Localization.Tree.preview(world, prior, outcome#finalState)
             }))
 
-    def selectLearnedTemplates(
+    def selectTemplateTournament(
         prepared: Localization.Prepared,
         prior: Localization.Tree.Prior,
         computed: Localization.Tree.Computed,
         best: Localization.Tree.Outcome
     ): Result[Error, Localization.Tree.Outcome] \ Decide.Choice = forM (
-            candidates <- templateCandidates(best, computed);
-            alternatives <- templateAlternatives(prepared#world, prior, computed, candidates);
+            candidates <- templateCandidates(computed);
+            tournament <- templateTournamentRound(prepared, prior, computed,
+                candidates, 0, Vector.empty(), Vector.empty());
+            selected <- compareTemplateWinner(prepared, prior, computed,
+                best, tournament#winner, tournament#observations)
+        ) yield selected
+
+    def templateTournamentRound(
+        prepared: Localization.Prepared,
+        prior: Localization.Tree.Prior,
+        computed: Localization.Tree.Computed,
+        candidates: Vector[TemplateCandidate],
+        index: Int32,
+        next: Vector[TemplateCandidate],
+        observations: Vector[Decide.Observation]
+    ): Result[Error, TemplateTournament] \ Decide.Choice =
+        if (Vector.length(candidates) == 1 and Vector.isEmpty(next))
+            Ok({winner = Vector.get(0, candidates), observations = observations})
+        else if (index >= Vector.length(candidates))
+            templateTournamentRound(prepared, prior, computed,
+                next, 0, Vector.empty(), observations)
+        else if (index + 1 >= Vector.length(candidates))
+            templateTournamentRound(prepared, prior, computed,
+                candidates, index + 2,
+                Vector.append(next, Vector#{Vector.get(index, candidates)}), observations)
+        else {
+            let left = Vector.get(index, candidates);
+            let right = Vector.get(index + 1, candidates);
+            let pair = Vector#{left, right};
+            forM (
+                alternatives <- templateAlternatives(prepared#world, prior, computed, pair);
+                request0 <- Decide.requestWith(
+                    {protocol = protocol() + "-template-pair", question = tournamentQuestion()},
+                    Radii.Evaluate.stateId(computed#input),
+                    visibleState(prepared, prior, Vector.empty(), computed#input),
+                    alternatives
+                ) |> Result.mapErr(Error.Decide);
+                observation <- Decide.policy(request0) |> Result.mapErr(Error.Decide);
+                winner <- candidateForChoice(observation#choice, pair);
+                result <- templateTournamentRound(prepared, prior, computed,
+                    candidates, index + 2, Vector.append(next, Vector#{winner}),
+                    Vector.append(observations, Vector#{observation}))
+            ) yield result
+        }
+
+    def compareTemplateWinner(
+        prepared: Localization.Prepared,
+        prior: Localization.Tree.Prior,
+        computed: Localization.Tree.Computed,
+        best: Localization.Tree.Outcome,
+        learned: TemplateCandidate,
+        tournamentObservations: Vector[Decide.Observation]
+    ): Result[Error, Localization.Tree.Outcome] \ Decide.Choice = {
+        let bestCandidate = {label = "Search expert", path = best#path, state = best#finalState};
+        if (best#path == learned#path)
+            Ok(finish(prior, computed, best#path, best#finalState,
+                Vector.append(best#decisions, tournamentObservations)))
+        else forM (
+            alternatives <- templateAlternatives(prepared#world, prior, computed,
+                Vector#{bestCandidate, learned});
             request0 <- Decide.requestWith(
-                {protocol = protocol(), question = templateQuestion()},
+                {protocol = protocol() + "-final", question = expertQuestion()},
                 Radii.Evaluate.stateId(computed#input),
                 visibleState(prepared, prior, Vector.empty(), computed#input),
                 alternatives
             ) |> Result.mapErr(Error.Decide);
             observation <- Decide.policy(request0) |> Result.mapErr(Error.Decide);
-            selected <- match observation#choice {
-                case Decide.Action.Stop => Vector.find(candidate -> Vector.isEmpty(candidate#path), candidates)
-                    |> Option.toOk(Error.UnexpectedAction(observation#choice))
-                case Decide.Action.FollowPath(path) => Vector.find(candidate -> candidate#path == path, candidates)
-                    |> Option.toOk(Error.UnexpectedAction(observation#choice))
-                case Decide.Action.Follow(_) => Err(Error.UnexpectedAction(observation#choice))
-            };
-            allDecisions = Vector.append(best#decisions, Vector#{observation})
+            selected <- candidateForChoice(observation#choice, Vector#{bestCandidate, learned});
+            allDecisions = Vector.append(best#decisions,
+                Vector.append(tournamentObservations, Vector#{observation}))
         ) yield finish(prior, computed, selected#path, selected#state, allDecisions)
+    }
+
+    def candidateForChoice(
+        choice: Decide.Action,
+        candidates: Vector[TemplateCandidate]
+    ): Result[Error, TemplateCandidate] = match choice {
+        case Decide.Action.Stop => Vector.find(candidate -> Vector.isEmpty(candidate#path), candidates)
+            |> Option.toOk(Error.UnexpectedAction(choice))
+        case Decide.Action.FollowPath(path) => Vector.find(candidate -> candidate#path == path, candidates)
+            |> Option.toOk(Error.UnexpectedAction(choice))
+        case Decide.Action.Follow(_) => Err(Error.UnexpectedAction(choice))
+    }
 
     def templateCandidates(
-        best: Localization.Tree.Outcome,
         computed: Localization.Tree.Computed
     ): Result[Error, Vector[TemplateCandidate]] =
         learnedTemplates()
@@ -305,8 +374,7 @@ mod JevPolicyHillclimb {
             |> Result.mapErr(Error.Tree)
             |> Result.map(state -> {label = "Learned route template", path = path, state = state}))
         |> Result.map(templates -> uniqueTemplateCandidates(Vector.append(Vector#{
-            {label = "Semantic prior", path = Vector.empty(), state = computed#input},
-            {label = "Search expert", path = best#path, state = best#finalState}
+            {label = "Semantic prior", path = Vector.empty(), state = computed#input}
         }, templates), 0, Set.empty(), Vector.empty()))
 
     def uniqueTemplateCandidates(
