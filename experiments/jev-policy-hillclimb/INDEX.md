@@ -31,6 +31,18 @@ protocols remain recorded by their reports and retained raw request envelopes.
 | 012 | Exact-ancestor-revisit-pruned planner portfolio | **0.193444** | **50.67%** | **0.341111** | **0.504705** | 331 | **promote** |
 | 013 | Two-rollout deep planner vs replayed 012 | **0.201549** | **53.71%** | 0.341111 | **0.524766** | 767 | **promote** |
 | 014 | Delta-aware final expert comparison | 0.191951 | 50.11% | 0.314444 | 0.506429 | 767 | reject |
+| 015 | Flat learned oracle-route template library | 0.075687 | 6.46% | 0.227778 | 0.476153 | 782 | reject |
+
+## Synthesis after iteration 015
+
+Best remains iteration 013 at F1 `0.201549` and `53.71%` headroom capture.
+Three consecutive causal lessons now hold: exact recurrence pruning can expose
+a missing basin; deeper hierarchical rollout can add useful candidate
+coverage; and flat multiclass selection fails catastrophically even when the
+oracle route is explicitly present. Candidate coverage and decision structure
+must therefore be improved together. Next: hold the complete learned template
+library fixed and replace only flat selection with balanced pairwise
+elimination plus a final comparison against the replayed best.
 
 ## Synthesis after iteration 012
 

@@ -34,9 +34,15 @@ mod JevPolicyHillclimb {
         observations = Vector[Decide.Observation]
     }
 
-    def iteration(): String = "014-delta-expert-selector"
+    type alias TemplateCandidate = {
+        label = String,
+        path = Vector[Radii.Atom],
+        state = Radii.Evaluate.State
+    }
 
-    def protocol(): String = "attune-jev-policy-hillclimb-014-delta-expert-selector-v1"
+    def iteration(): String = "015-learned-route-templates"
+
+    def protocol(): String = "attune-jev-policy-hillclimb-015-learned-route-templates-v1"
 
     def bestProtocol(): String = "attune-jev-policy-hillclimb-012-pruned-planner-portfolio-v1"
 
@@ -69,8 +75,8 @@ mod JevPolicyHillclimb {
     def expertQuestion(): String =
         "Choose between two independently generated structural localization frontiers. Prefer the final symbol preview most likely to localize the reported issue. The expert labels carry no quality ordering."
 
-    def deltaExpertQuestion(): String =
-        "Choose between two independently generated structural localization frontiers. Use both the final previews and the symbols exclusive to each frontier. Prefer issue-relevant evidence over merely larger frontiers. The expert labels carry no quality ordering."
+    def templateQuestion(): String =
+        "Choose the final structural localization frontier most likely to localize the reported issue. Candidates include the current search expert, the unchanged semantic prior, and a small repository-agnostic library of route templates learned on development data. Judge only the issue and visible terminal evidence; prefer relevance over frontier size."
 
     /// Ordinary test runs are pure and network-free. Explicit modes reuse the
     /// frozen facts/prior and acquire or replay only this iteration's decisions.
@@ -173,12 +179,14 @@ mod JevPolicyHillclimb {
             case Ok(classic) => match Decide.runWithStoreReplay(bestRoot(), () ->
                 portfolio(bestProtocol(), 1, prepared, prior, computed, classic)) {
                 case Err(error) => Err(error)
-                case Ok(best) => match Decide.runWithStoreReplay(deepRoot(), () ->
-                    planningExpert(deepProtocol(), 2, prepared, prior, computed)) {
+                case Ok(best) => match Decide.runWithStoreReplay(deepRoot(), () -> forM (
+                    deep <- planningExpert(deepProtocol(), 2, prepared, prior, computed);
+                    selected <- selectExpert(deepProtocol(), prepared, prior, computed, best, deep)
+                ) yield selected) {
                     case Err(error) => Err(error)
-                    case Ok(deep) => {
-                        let runCandidate = () -> selectExpertDelta(
-                            prepared, prior, computed, best, deep);
+                    case Ok(best013) => {
+                        let runCandidate = () -> selectLearnedTemplates(
+                            prepared, prior, computed, best013);
                         if (acquire) Decide.runWithAcquire(root(), runCandidate)
                         else Decide.runWithStoreReplay(root(), runCandidate)
                     }
@@ -263,67 +271,96 @@ mod JevPolicyHillclimb {
                     Localization.Tree.preview(world, prior, outcome#finalState)
             }))
 
-    def selectExpertDelta(
+    def selectLearnedTemplates(
         prepared: Localization.Prepared,
         prior: Localization.Tree.Prior,
         computed: Localization.Tree.Computed,
-        best: Localization.Tree.Outcome,
-        deep: Localization.Tree.Outcome
-    ): Result[Error, Localization.Tree.Outcome] \ Decide.Choice =
-        if (best#path == deep#path) Ok(best)
-        else forM (
-            alternatives <- expertDeltaAlternatives(prepared#world, prior, computed, best, deep);
+        best: Localization.Tree.Outcome
+    ): Result[Error, Localization.Tree.Outcome] \ Decide.Choice = forM (
+            candidates <- templateCandidates(best, computed);
+            alternatives <- templateAlternatives(prepared#world, prior, computed, candidates);
             request0 <- Decide.requestWith(
-                {protocol = protocol(), question = deltaExpertQuestion()},
+                {protocol = protocol(), question = templateQuestion()},
                 Radii.Evaluate.stateId(computed#input),
                 visibleState(prepared, prior, Vector.empty(), computed#input),
                 alternatives
             ) |> Result.mapErr(Error.Decide);
             observation <- Decide.policy(request0) |> Result.mapErr(Error.Decide);
             selected <- match observation#choice {
-                case Decide.Action.FollowPath(path) if path == best#path => Ok(best)
-                case Decide.Action.FollowPath(path) if path == deep#path => Ok(deep)
+                case Decide.Action.Stop => Vector.find(candidate -> Vector.isEmpty(candidate#path), candidates)
+                    |> Option.toOk(Error.UnexpectedAction(observation#choice))
+                case Decide.Action.FollowPath(path) => Vector.find(candidate -> candidate#path == path, candidates)
+                    |> Option.toOk(Error.UnexpectedAction(observation#choice))
                 case Decide.Action.Follow(_) => Err(Error.UnexpectedAction(observation#choice))
-                case _ => Err(Error.UnexpectedAction(observation#choice))
             };
-            allDecisions = Vector.append(best#decisions,
-                Vector.append(deep#decisions, Vector#{observation}))
-        ) yield finish(prior, computed, selected#path, selected#finalState, allDecisions)
+            allDecisions = Vector.append(best#decisions, Vector#{observation})
+        ) yield finish(prior, computed, selected#path, selected#state, allDecisions)
 
-    def expertDeltaAlternatives(
+    def templateCandidates(
+        best: Localization.Tree.Outcome,
+        computed: Localization.Tree.Computed
+    ): Result[Error, Vector[TemplateCandidate]] =
+        learnedTemplates()
+        |> Vector.traverse(path -> Localization.Tree.stateAt(path, computed)
+            |> Result.mapErr(Error.Tree)
+            |> Result.map(state -> {label = "Learned route template", path = path, state = state}))
+        |> Result.map(templates -> uniqueTemplateCandidates(Vector.append(Vector#{
+            {label = "Semantic prior", path = Vector.empty(), state = computed#input},
+            {label = "Search expert", path = best#path, state = best#finalState}
+        }, templates), 0, Set.empty(), Vector.empty()))
+
+    def uniqueTemplateCandidates(
+        candidates: Vector[TemplateCandidate],
+        index: Int32,
+        seen: Set[Vector[Radii.Atom]],
+        result: Vector[TemplateCandidate]
+    ): Vector[TemplateCandidate] =
+        if (index >= Vector.length(candidates)) result
+        else {
+            let candidate = Vector.get(index, candidates);
+            if (Set.memberOf(candidate#path, seen))
+                uniqueTemplateCandidates(candidates, index + 1, seen, result)
+            else uniqueTemplateCandidates(candidates, index + 1,
+                Set.insert(candidate#path, seen), Vector.append(result, Vector#{candidate}))
+        }
+
+    def templateAlternatives(
         world: Repository.World,
         prior: Localization.Tree.Prior,
         computed: Localization.Tree.Computed,
-        best: Localization.Tree.Outcome,
-        deep: Localization.Tree.Outcome
+        candidates: Vector[TemplateCandidate]
     ): Result[Error, Vector[Decide.Alternative]] =
-        Vector#{("Expert A", best, deep), ("Expert B", deep, best)}
-        |> Vector.traverse(match (label, outcome, other) ->
-            Localization.Tree.routeAt(outcome#path, computed#tree)
+        Vector.traverse(candidate -> if (Vector.isEmpty(candidate#path)) Ok({
+            action = Decide.Action.Stop,
+            expression = None,
+            state = Radii.Evaluate.stateId(candidate#state),
+            criterion = "${candidate#label}. " + Localization.Tree.preview(world, prior, candidate#state)
+        }) else Localization.Tree.routeAt(candidate#path, computed#tree)
             |> Result.mapErr(Error.Tree)
             |> Result.map(route -> {
-                action = Decide.Action.FollowPath(outcome#path),
+                action = Decide.Action.FollowPath(candidate#path),
                 expression = Some(Radii.Evaluate.exprId(route#expression)),
-                state = Radii.Evaluate.stateId(outcome#finalState),
-                criterion = "${label}, path ${pathText(outcome#path)}. " +
-                    expertDelta(world, prior, outcome#finalState, other#finalState) +
-                    ". Final " + Localization.Tree.preview(world, prior, outcome#finalState)
-            }))
+                state = Radii.Evaluate.stateId(candidate#state),
+                criterion = "${candidate#label}, path ${pathText(candidate#path)}. Final " +
+                    Localization.Tree.preview(world, prior, candidate#state)
+            }), candidates)
 
-    def expertDelta(
-        world: Repository.World,
-        prior: Localization.Tree.Prior,
-        state: Radii.Evaluate.State,
-        other: Radii.Evaluate.State
-    ): String = match (state, other) {
-        case (Radii.Evaluate.State.Symbols(members), Radii.Evaluate.State.Symbols(otherMembers)) => {
-            let exclusive = Set.difference(members, otherMembers);
-            let missing = Set.difference(otherMembers, members);
-            "Exclusive_symbols=${Set.size(exclusive)}, missing_symbols=${Set.size(missing)}. " +
-                "Exclusive prior preview: " + Localization.Tree.preview(
-                    world, prior, Radii.Evaluate.State.Symbols(exclusive))
-        }
-        case _ => "Different-domain comparison"
+    /// Twelve unique non-root oracle paths learned from the frozen
+    /// development set. They are global policy parameters: every route is
+    /// evaluated for every issue, with no instance/repository lookup.
+    def learnedTemplates(): Vector[Vector[Radii.Atom]] = Vector#{
+        Vector#{Radii.Atom.Callers, Radii.Atom.DefinedIn, Radii.Atom.ImportedBy, Radii.Atom.ImportedBy, Radii.Atom.Defines, Radii.Atom.Callers, Radii.Atom.Calls},
+        Vector#{Radii.Atom.Calls, Radii.Atom.Callers, Radii.Atom.Callers, Radii.Atom.Calls, Radii.Atom.Calls},
+        Vector#{Radii.Atom.Calls, Radii.Atom.Callers, Radii.Atom.DefinedIn, Radii.Atom.ImportedBy, Radii.Atom.Defines, Radii.Atom.Calls, Radii.Atom.Calls},
+        Vector#{Radii.Atom.Calls, Radii.Atom.DefinedIn, Radii.Atom.Imports, Radii.Atom.ImportedBy, Radii.Atom.Imports, Radii.Atom.Defines},
+        Vector#{Radii.Atom.DefinedIn, Radii.Atom.Defines, Radii.Atom.Calls, Radii.Atom.Calls, Radii.Atom.DefinedIn, Radii.Atom.Defines, Radii.Atom.Calls},
+        Vector#{Radii.Atom.DefinedIn, Radii.Atom.ImportedBy, Radii.Atom.Defines},
+        Vector#{Radii.Atom.DefinedIn, Radii.Atom.ImportedBy, Radii.Atom.ImportedBy, Radii.Atom.ImportedBy, Radii.Atom.Imports, Radii.Atom.Defines},
+        Vector#{Radii.Atom.DefinedIn, Radii.Atom.Imports, Radii.Atom.ImportedBy, Radii.Atom.Defines},
+        Vector#{Radii.Atom.DefinedIn, Radii.Atom.Imports, Radii.Atom.ImportedBy, Radii.Atom.Defines, Radii.Atom.Callers, Radii.Atom.Callers, Radii.Atom.Calls},
+        Vector#{Radii.Atom.DefinedIn, Radii.Atom.Imports, Radii.Atom.ImportedBy, Radii.Atom.Defines, Radii.Atom.Calls},
+        Vector#{Radii.Atom.DefinedIn, Radii.Atom.Imports, Radii.Atom.ImportedBy, Radii.Atom.Imports, Radii.Atom.Imports, Radii.Atom.Defines, Radii.Atom.Calls},
+        Vector#{Radii.Atom.DefinedIn, Radii.Atom.Imports, Radii.Atom.ImportedBy, Radii.Atom.Imports, Radii.Atom.Imports, Radii.Atom.Imports, Radii.Atom.Defines}
     }
 
     def classicNavigate(
