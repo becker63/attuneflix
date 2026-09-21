@@ -26,6 +26,19 @@ protocols remain recorded by their reports and retained raw request envelopes.
 | 007 | Retrospective choice among visited checkpoints | 0.144274 | 32.21% | 0.261111 | 0.382407 | 70 | reject (tie, costlier) |
 | 008 | Balanced pairwise root tournament | 0.089326 | 11.58% | 0.277778 | 0.344419 | 342 | reject |
 | 009 | Hierarchical one-rollout root planning | **0.157611** | **37.21%** | 0.318889 | 0.455570 | 364 | **promote** |
+| 010 | Checkpoint selected short plan | 0.157079 | 37.02% | **0.352222** | **0.503680** | 379 | reject F1 / Pareto |
+
+## Synthesis after iteration 010
+
+Best primary policy: iteration 009, F1 `0.157611`, capturing `37.21%` of
+structural headroom. The successful change is hierarchical consequence
+visibility: branch-local rollouts followed by plan selection improve F1,
+precision, recall, HitFile, efficiency, noise, and nDCG together. Pairwise
+voting, absolute set deltas, exact-revisit pruning, root beams, and
+retrospective stopping did not improve the best. Iteration 010 shows a genuine
+secondary Pareto point (`0.352222` HitFile and `0.503680` context efficiency)
+but confirms that the dominant residual is wrong-plan selection. Next: test a
+two-expert final selector over the complementary 003 and 009 terminal states.
 
 ## Synthesis after diagnosis
 

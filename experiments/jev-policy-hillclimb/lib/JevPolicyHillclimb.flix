@@ -34,9 +34,20 @@ mod JevPolicyHillclimb {
         observations = Vector[Decide.Observation]
     }
 
-    def iteration(): String = "009-hierarchical-lookahead"
+    type alias CheckpointResult = {
+        path = Vector[Radii.Atom],
+        state = Radii.Evaluate.State,
+        observation = Decide.Observation
+    }
 
-    def protocol(): String = "attune-jev-policy-hillclimb-009-hierarchical-lookahead-v1"
+    def iteration(): String = "010-plan-checkpoint"
+
+    def protocol(): String = "attune-jev-policy-hillclimb-010-plan-checkpoint-v1"
+
+    def planningProtocol(): String = "attune-jev-policy-hillclimb-009-hierarchical-lookahead-v1"
+
+    def planningRoot(): String =
+        ".attune/experiments/jev-policy-hillclimb/009-hierarchical-lookahead"
 
     def root(): String = ".attune/experiments/jev-policy-hillclimb/${iteration()}"
 
@@ -50,6 +61,9 @@ mod JevPolicyHillclimb {
 
     def planQuestion(): String =
         "Choose the typed short-horizon plan whose final symbol preview is most likely to localize the reported issue. Each plan was constructed by first choosing a root continuation and then choosing its best available continuation. Prefer issue relevance over merely large frontiers."
+
+    def checkpointQuestion(): String =
+        "Choose the best localization checkpoint along the selected short-horizon plan. Earlier checkpoints may be better than the plan terminal. Prefer the checkpoint whose symbol preview is most likely to localize the reported issue."
 
     /// Ordinary test runs are pure and network-free. Explicit modes reuse the
     /// frozen facts/prior and acquire or replay only this iteration's decisions.
@@ -144,12 +158,87 @@ mod JevPolicyHillclimb {
         prior: Localization.Tree.Prior,
         computed: Localization.Tree.Computed,
         acquire: Bool
-    ): Result[Error, Localization.Tree.Outcome] \ {FileSystem, IO} = {
-        let runPolicy = () -> navigate(prepared, prior, computed,
-            Vector.empty(), computed#input, Vector.empty());
-        if (acquire) Decide.runWithAcquire(root(), runPolicy)
-        else Decide.runWithStoreReplay(root(), runPolicy)
-    }
+    ): Result[Error, Localization.Tree.Outcome] \ {FileSystem, IO} =
+        match continuations(Vector.empty(), computed) {
+            case Err(error) => Err(error)
+            case Ok(roots) => match Decide.runWithStoreReplay(planningRoot(), () ->
+                planRoot(prepared, prior, computed, computed#input,
+                    Vector.sortBy(item -> pathText(item#suffix), roots))) {
+                case Err(error) => Err(error)
+                case Ok(planning) => {
+                    let resume = () -> resumePlan(prepared, prior, computed, planning);
+                    if (acquire) Decide.runWithAcquire(root(), resume)
+                    else Decide.runWithStoreReplay(root(), resume)
+                }
+            }
+        }
+
+    def resumePlan(
+        prepared: Localization.Prepared,
+        prior: Localization.Tree.Prior,
+        computed: Localization.Tree.Computed,
+        planning: PlanningResult
+    ): Result[Error, Localization.Tree.Outcome] \ Decide.Choice = forM (
+        checkpoint <- chooseCheckpoint(prepared, prior, computed, planning#winner);
+        decisions = Vector.append(planning#observations, Vector#{checkpoint#observation});
+        outcome <- if (Vector.isEmpty(checkpoint#path))
+            Ok(finish(prior, computed, checkpoint#path, checkpoint#state, decisions))
+        else navigate(prepared, prior, computed, checkpoint#path, checkpoint#state, decisions)
+    ) yield outcome
+
+    def chooseCheckpoint(
+        prepared: Localization.Prepared,
+        prior: Localization.Tree.Prior,
+        computed: Localization.Tree.Computed,
+        plan: Continuation
+    ): Result[Error, CheckpointResult] \ Decide.Choice = forM (
+        alternatives <- checkpointAlternatives(prepared#world, prior, computed, plan#suffix);
+        request0 <- Decide.requestWith(
+            {protocol = protocol() + "-checkpoint", question = checkpointQuestion()},
+            Radii.Evaluate.stateId(plan#state),
+            visibleState(prepared, prior, plan#suffix, plan#state),
+            alternatives
+        ) |> Result.mapErr(Error.Decide);
+        observation <- Decide.policy(request0) |> Result.mapErr(Error.Decide);
+        selectedPath <- match observation#choice {
+            case Decide.Action.Stop => Ok(Vector.empty())
+            case Decide.Action.FollowPath(path) => Ok(path)
+            case Decide.Action.Follow(_) => Err(Error.UnexpectedAction(observation#choice))
+        };
+        selectedState <- if (Vector.isEmpty(selectedPath)) Ok(computed#input)
+            else Localization.Tree.stateAt(selectedPath, computed) |> Result.mapErr(Error.Tree)
+    ) yield {path = selectedPath, state = selectedState, observation = observation}
+
+    def checkpointAlternatives(
+        world: Repository.World,
+        prior: Localization.Tree.Prior,
+        computed: Localization.Tree.Computed,
+        path: Vector[Radii.Atom]
+    ): Result[Error, Vector[Decide.Alternative]] =
+        Vector.range(0, Vector.length(path) + 1)
+        |> Vector.traverse(depth -> {
+            let prefix = Vector.slice(start = 0, end = depth, path);
+            if (depth == 0) Ok(Some({
+                action = Decide.Action.Stop,
+                expression = None,
+                state = Radii.Evaluate.stateId(computed#input),
+                criterion = "Checkpoint root. " + Localization.Tree.preview(world, prior, computed#input)
+            }))
+            else forM (
+                state <- Localization.Tree.stateAt(prefix, computed) |> Result.mapErr(Error.Tree);
+                route <- Localization.Tree.routeAt(prefix, computed#tree) |> Result.mapErr(Error.Tree)
+            ) yield match state {
+                case Radii.Evaluate.State.Symbols(_) => Some({
+                    action = Decide.Action.FollowPath(prefix),
+                    expression = Some(Radii.Evaluate.exprId(route#expression)),
+                    state = Radii.Evaluate.stateId(state),
+                    criterion = "Checkpoint depth ${depth}, path ${pathText(prefix)}. " +
+                        Localization.Tree.preview(world, prior, state)
+                })
+                case _ => None
+            }
+        })
+        |> Result.map(Vector.filterMap(identity))
 
     def navigate(
         prepared: Localization.Prepared,
@@ -240,7 +329,7 @@ mod JevPolicyHillclimb {
             let unique = uniquePlans(plans, 0, Set.empty(), Vector.empty());
             forM (
                 request0 <- Decide.requestWith(
-                    {protocol = protocol() + "-root-plan", question = planQuestion()},
+                    {protocol = planningProtocol() + "-root-plan", question = planQuestion()},
                     Radii.Evaluate.stateId(current),
                     visibleState(prepared, prior, Vector.empty(), current),
                     continuationAlternatives(prepared#world, prior, unique)
@@ -262,7 +351,7 @@ mod JevPolicyHillclimb {
                         Vector.append(plans, Vector#{root0}), observations)
                 else forM (
                     request0 <- Decide.requestWith(
-                        {protocol = protocol() + "-rollout", question = question()},
+                        {protocol = planningProtocol() + "-rollout", question = question()},
                         Radii.Evaluate.stateId(root0#state),
                         visibleState(prepared, prior, root0#route#steps, root0#state),
                         continuationAlternatives(prepared#world, prior, children)
