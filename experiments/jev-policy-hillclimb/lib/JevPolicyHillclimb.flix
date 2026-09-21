@@ -29,14 +29,14 @@ mod JevPolicyHillclimb {
         outcome = Localization.Tree.Outcome
     }
 
-    type alias TournamentResult = {
+    type alias PlanningResult = {
         winner = Continuation,
         observations = Vector[Decide.Observation]
     }
 
-    def iteration(): String = "008-pairwise-root-tournament"
+    def iteration(): String = "009-hierarchical-lookahead"
 
-    def protocol(): String = "attune-jev-policy-hillclimb-008-pairwise-root-tournament-v1"
+    def protocol(): String = "attune-jev-policy-hillclimb-009-hierarchical-lookahead-v1"
 
     def root(): String = ".attune/experiments/jev-policy-hillclimb/${iteration()}"
 
@@ -48,8 +48,8 @@ mod JevPolicyHillclimb {
     def stopQuestion(): String =
         "Compare exactly two localization frontiers. Choose stop to retain the current frontier, or choose the proposed continuation only when its terminal preview is more likely to localize the reported issue."
 
-    def tournamentQuestion(): String =
-        "Compare exactly two typed repository-structure continuations. Choose the continuation whose terminal symbol preview is more likely to localize the reported issue. Prefer issue relevance over merely large frontiers."
+    def planQuestion(): String =
+        "Choose the typed short-horizon plan whose final symbol preview is most likely to localize the reported issue. Each plan was constructed by first choosing a root continuation and then choosing its best available continuation. Prefer issue relevance over merely large frontiers."
 
     /// Ordinary test runs are pure and network-free. Explicit modes reuse the
     /// frozen facts/prior and acquire or replay only this iteration's decisions.
@@ -167,12 +167,12 @@ mod JevPolicyHillclimb {
             outcome <- if (Vector.isEmpty(continuations))
                 Ok(finish(prior, computed, path, current, decisions))
             else if (depth == 0) forM (
-                tournament <- runTournament(prepared, prior, current,
+                planning <- planRoot(prepared, prior, computed, current,
                     Vector.sortBy(item -> pathText(item#suffix), continuations));
-                selected = tournament#winner;
+                selected = planning#winner;
                 next <- navigate(prepared, prior, computed,
                     selected#suffix, selected#state,
-                    Vector.append(decisions, tournament#observations))
+                    Vector.append(decisions, planning#observations))
             ) yield next
             else {
             let rankedAlternatives = continuationAlternatives(prepared#world, prior, continuations);
@@ -216,51 +216,84 @@ mod JevPolicyHillclimb {
         ) yield outcome
     }
 
-    def runTournament(
+    def planRoot(
         prepared: Localization.Prepared,
         prior: Localization.Tree.Prior,
+        computed: Localization.Tree.Computed,
         current: Radii.Evaluate.State,
-        candidates: Vector[Continuation]
-    ): Result[Error, TournamentResult] \ Decide.Choice =
-        tournamentRound(prepared, prior, current, candidates, 0, Vector.empty(), Vector.empty())
+        roots: Vector[Continuation]
+    ): Result[Error, PlanningResult] \ Decide.Choice =
+        proposePlans(prepared, prior, computed, current, roots, 0,
+            Vector.empty(), Vector.empty())
 
-    def tournamentRound(
+    def proposePlans(
         prepared: Localization.Prepared,
         prior: Localization.Tree.Prior,
+        computed: Localization.Tree.Computed,
         current: Radii.Evaluate.State,
-        candidates: Vector[Continuation],
+        roots: Vector[Continuation],
         index: Int32,
-        next: Vector[Continuation],
+        plans: Vector[Continuation],
         observations: Vector[Decide.Observation]
-    ): Result[Error, TournamentResult] \ Decide.Choice =
-        if (Vector.length(candidates) == 1 and Vector.isEmpty(next))
-            Ok({winner = Vector.get(0, candidates), observations = observations})
-        else if (index >= Vector.length(candidates))
-            tournamentRound(prepared, prior, current, next, 0, Vector.empty(), observations)
-        else if (index + 1 >= Vector.length(candidates))
-            tournamentRound(prepared, prior, current, candidates, index + 2,
-                Vector.append(next, Vector#{Vector.get(index, candidates)}), observations)
-        else {
-            let left = Vector.get(index, candidates);
-            let right = Vector.get(index + 1, candidates);
-            let pair = Vector#{left, right};
+    ): Result[Error, PlanningResult] \ Decide.Choice =
+        if (index >= Vector.length(roots)) {
+            let unique = uniquePlans(plans, 0, Set.empty(), Vector.empty());
             forM (
                 request0 <- Decide.requestWith(
-                    {protocol = protocol() + "-root-pair", question = tournamentQuestion()},
+                    {protocol = protocol() + "-root-plan", question = planQuestion()},
                     Radii.Evaluate.stateId(current),
                     visibleState(prepared, prior, Vector.empty(), current),
-                    continuationAlternatives(prepared#world, prior, pair)
+                    continuationAlternatives(prepared#world, prior, unique)
                 ) |> Result.mapErr(Error.Decide);
                 observation <- Decide.policy(request0) |> Result.mapErr(Error.Decide);
                 winner <- match observation#choice {
-                    case Decide.Action.FollowPath(suffix) => Vector.find(item -> item#suffix == suffix, pair)
+                    case Decide.Action.FollowPath(path) => Vector.find(item -> item#suffix == path, unique)
                         |> Option.toOk(Error.UnexpectedAction(observation#choice))
                     case _ => Err(Error.UnexpectedAction(observation#choice))
-                };
-                result <- tournamentRound(prepared, prior, current, candidates, index + 2,
-                    Vector.append(next, Vector#{winner}),
-                    Vector.append(observations, Vector#{observation}))
+                }
+            ) yield {winner = winner,
+                observations = Vector.append(observations, Vector#{observation})}
+        } else {
+            let root0 = Vector.get(index, roots);
+            forM (
+                children <- continuations(root0#route#steps, computed);
+                result <- if (Vector.isEmpty(children))
+                    proposePlans(prepared, prior, computed, current, roots, index + 1,
+                        Vector.append(plans, Vector#{root0}), observations)
+                else forM (
+                    request0 <- Decide.requestWith(
+                        {protocol = protocol() + "-rollout", question = question()},
+                        Radii.Evaluate.stateId(root0#state),
+                        visibleState(prepared, prior, root0#route#steps, root0#state),
+                        continuationAlternatives(prepared#world, prior, children)
+                    ) |> Result.mapErr(Error.Decide);
+                    observation <- Decide.policy(request0) |> Result.mapErr(Error.Decide);
+                    child <- match observation#choice {
+                        case Decide.Action.FollowPath(suffix) => Vector.find(item -> item#suffix == suffix, children)
+                            |> Option.toOk(Error.UnexpectedAction(observation#choice))
+                        case _ => Err(Error.UnexpectedAction(observation#choice))
+                    };
+                    plan = {suffix = child#route#steps, route = child#route, state = child#state};
+                    next <- proposePlans(prepared, prior, computed, current, roots, index + 1,
+                        Vector.append(plans, Vector#{plan}),
+                        Vector.append(observations, Vector#{observation}))
+                ) yield next
             ) yield result
+        }
+
+    def uniquePlans(
+        plans: Vector[Continuation],
+        index: Int32,
+        seen: Set[Vector[Radii.Atom]],
+        result: Vector[Continuation]
+    ): Vector[Continuation] =
+        if (index >= Vector.length(plans)) result
+        else {
+            let plan = Vector.get(index, plans);
+            if (Set.memberOf(plan#suffix, seen))
+                uniquePlans(plans, index + 1, seen, result)
+            else uniquePlans(plans, index + 1, Set.insert(plan#suffix, seen),
+                Vector.append(result, Vector#{plan}))
         }
 
     def continuations(
