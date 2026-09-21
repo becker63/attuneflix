@@ -7,6 +7,13 @@ Frozen reference points:
 - structural oracle F1: `0.3248306670`
 - Jev v1 headroom capture: `7.6572%`
 
+Reproducibility correction: the iteration reports, metrics, retained requests,
+and production seams for iterations 001--005 were checkpointed, but the shared
+experiment runner was accidentally matched by the repository-wide `lib/`
+ignore rule. The runner becomes tracked starting with iteration 006. Earlier
+checkpoints are preserved rather than rewritten; their exact model-visible
+protocols remain recorded by their reports and retained raw request envelopes.
+
 | Iter | Description | F1 | Headroom | HitFile | Context efficiency | Calls | Promote |
 |---:|---|---:|---:|---:|---:|---:|:---:|
 | 000 | Frozen Jev v1 baseline | 0.078887 | 7.66% | 0.205556 | 0.267742 | 78 | baseline |
@@ -15,6 +22,7 @@ Frozen reference points:
 | 003 | Force first ranked macro | 0.144274 | 32.21% | 0.261111 | 0.382407 | 55 | **promote** |
 | 004 | Prune exact semantic revisits | 0.144274 | 32.21% | 0.261111 | 0.382407 | 67 | reject (tie, costlier) |
 | 005 | Width-two root beam | 0.117612 | 22.20% | 0.272222 | 0.386456 | 127 | reject |
+| 006 | Parent-to-terminal set delta | 0.123474 | 24.40% | 0.261111 | 0.385122 | 59 | reject |
 
 ## Synthesis after diagnosis
 
