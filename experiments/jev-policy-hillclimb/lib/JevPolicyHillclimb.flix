@@ -34,16 +34,19 @@ mod JevPolicyHillclimb {
         observations = Vector[Decide.Observation]
     }
 
-    def iteration(): String = "012-pruned-planner-portfolio"
+    def iteration(): String = "013-deep-planner-portfolio"
 
-    def protocol(): String = "attune-jev-policy-hillclimb-012-pruned-planner-portfolio-v1"
+    def protocol(): String = "attune-jev-policy-hillclimb-013-deep-planner-portfolio-v1"
+
+    def bestProtocol(): String = "attune-jev-policy-hillclimb-012-pruned-planner-portfolio-v1"
+
+    def bestRoot(): String =
+        ".attune/experiments/jev-policy-hillclimb/012-pruned-planner-portfolio"
 
     def classicProtocol(): String = "attune-jev-policy-hillclimb-003-force-first-macro-v1"
 
     def classicRoot(): String =
         ".attune/experiments/jev-policy-hillclimb/003-force-first-macro"
-
-    def planningProtocol(): String = protocol()
 
     def root(): String = ".attune/experiments/jev-policy-hillclimb/${iteration()}"
 
@@ -159,17 +162,35 @@ mod JevPolicyHillclimb {
             classicNavigate(classicProtocol(), prepared, prior, computed,
                 Vector.empty(), computed#input, Vector.empty())) {
             case Err(error) => Err(error)
-            case Ok(classic) => {
-                let runCandidate = () -> forM (
-                    planned <- planningExpert(prepared, prior, computed);
-                    selected <- selectExpert(prepared, prior, computed, classic, planned)
-                ) yield selected;
-                if (acquire) Decide.runWithAcquire(root(), runCandidate)
-                else Decide.runWithStoreReplay(root(), runCandidate)
+            case Ok(classic) => match Decide.runWithStoreReplay(bestRoot(), () ->
+                portfolio(bestProtocol(), 1, prepared, prior, computed, classic)) {
+                case Err(error) => Err(error)
+                case Ok(best) => {
+                    let runCandidate = () -> forM (
+                        deep <- planningExpert(protocol(), 2, prepared, prior, computed);
+                        selected <- selectExpert(protocol(), prepared, prior, computed, best, deep)
+                    ) yield selected;
+                    if (acquire) Decide.runWithAcquire(root(), runCandidate)
+                    else Decide.runWithStoreReplay(root(), runCandidate)
+                }
             }
         }
 
+    def portfolio(
+        policyProtocol: String,
+        rolloutDepth: Int32,
+        prepared: Localization.Prepared,
+        prior: Localization.Tree.Prior,
+        computed: Localization.Tree.Computed,
+        classic: Localization.Tree.Outcome
+    ): Result[Error, Localization.Tree.Outcome] \ Decide.Choice = forM (
+        planned <- planningExpert(policyProtocol, rolloutDepth, prepared, prior, computed);
+        selected <- selectExpert(policyProtocol, prepared, prior, computed, classic, planned)
+    ) yield selected
+
     def planningExpert(
+        policyProtocol: String,
+        rolloutDepth: Int32,
         prepared: Localization.Prepared,
         prior: Localization.Tree.Prior,
         computed: Localization.Tree.Computed
@@ -177,14 +198,16 @@ mod JevPolicyHillclimb {
         match continuations(Vector.empty(), computed) {
             case Err(error) => Err(error)
             case Ok(roots) => forM (
-                planning <- planRoot(prepared, prior, computed, computed#input,
+                planning <- planRoot(policyProtocol, rolloutDepth,
+                    prepared, prior, computed, computed#input,
                     Vector.sortBy(item -> pathText(item#suffix), roots));
-                outcome <- classicNavigate(planningProtocol(), prepared, prior, computed,
+                outcome <- classicNavigate(policyProtocol, prepared, prior, computed,
                     planning#winner#suffix, planning#winner#state, planning#observations)
             ) yield outcome
         }
 
     def selectExpert(
+        policyProtocol: String,
         prepared: Localization.Prepared,
         prior: Localization.Tree.Prior,
         computed: Localization.Tree.Computed,
@@ -195,7 +218,7 @@ mod JevPolicyHillclimb {
         else forM (
         alternatives <- expertAlternatives(prepared#world, prior, computed, classic, planned);
         request0 <- Decide.requestWith(
-            {protocol = protocol(), question = expertQuestion()},
+            {protocol = policyProtocol, question = expertQuestion()},
             Radii.Evaluate.stateId(computed#input),
             visibleState(prepared, prior, Vector.empty(), computed#input),
             alternatives
@@ -292,16 +315,20 @@ mod JevPolicyHillclimb {
     }
 
     def planRoot(
+        policyProtocol: String,
+        rolloutDepth: Int32,
         prepared: Localization.Prepared,
         prior: Localization.Tree.Prior,
         computed: Localization.Tree.Computed,
         current: Radii.Evaluate.State,
         roots: Vector[Continuation]
     ): Result[Error, PlanningResult] \ Decide.Choice =
-        proposePlans(prepared, prior, computed, current, roots, 0,
+        proposePlans(policyProtocol, rolloutDepth, prepared, prior, computed, current, roots, 0,
             Vector.empty(), Vector.empty())
 
     def proposePlans(
+        policyProtocol: String,
+        rolloutDepth: Int32,
         prepared: Localization.Prepared,
         prior: Localization.Tree.Prior,
         computed: Localization.Tree.Computed,
@@ -315,7 +342,7 @@ mod JevPolicyHillclimb {
             let unique = uniquePlans(plans, 0, Set.empty(), Vector.empty());
             forM (
                 request0 <- Decide.requestWith(
-                    {protocol = planningProtocol() + "-root-plan", question = planQuestion()},
+                    {protocol = policyProtocol + "-root-plan", question = planQuestion()},
                     Radii.Evaluate.stateId(current),
                     visibleState(prepared, prior, Vector.empty(), current),
                     continuationAlternatives(prepared#world, prior, unique)
@@ -331,31 +358,55 @@ mod JevPolicyHillclimb {
         } else {
             let root0 = Vector.get(index, roots);
             forM (
-                children0 <- continuations(root0#route#steps, computed);
-                children <- pruneExactAncestorRevisits(root0#route#steps, children0, computed);
-                result <- if (Vector.isEmpty(children))
-                    proposePlans(prepared, prior, computed, current, roots, index + 1,
-                        Vector.append(plans, Vector#{root0}), observations)
-                else forM (
-                    request0 <- Decide.requestWith(
-                        {protocol = planningProtocol() + "-rollout", question = question()},
-                        Radii.Evaluate.stateId(root0#state),
-                        visibleState(prepared, prior, root0#route#steps, root0#state),
-                        continuationAlternatives(prepared#world, prior, children)
-                    ) |> Result.mapErr(Error.Decide);
-                    observation <- Decide.policy(request0) |> Result.mapErr(Error.Decide);
-                    child <- match observation#choice {
-                        case Decide.Action.FollowPath(suffix) => Vector.find(item -> item#suffix == suffix, children)
-                            |> Option.toOk(Error.UnexpectedAction(observation#choice))
-                        case _ => Err(Error.UnexpectedAction(observation#choice))
-                    };
-                    plan = {suffix = child#route#steps, route = child#route, state = child#state};
-                    next <- proposePlans(prepared, prior, computed, current, roots, index + 1,
-                        Vector.append(plans, Vector#{plan}),
-                        Vector.append(observations, Vector#{observation}))
-                ) yield next
+                deepened <- deepenPlan(policyProtocol, rolloutDepth, rolloutDepth,
+                    prepared, prior, computed, root0, Vector.empty());
+                result <- proposePlans(policyProtocol, rolloutDepth,
+                    prepared, prior, computed, current, roots, index + 1,
+                    Vector.append(plans, Vector#{deepened#winner}),
+                    Vector.append(observations, deepened#observations))
             ) yield result
         }
+
+    def deepenPlan(
+        policyProtocol: String,
+        totalRollouts: Int32,
+        remainingRollouts: Int32,
+        prepared: Localization.Prepared,
+        prior: Localization.Tree.Prior,
+        computed: Localization.Tree.Computed,
+        plan: Continuation,
+        observations: Vector[Decide.Observation]
+    ): Result[Error, PlanningResult] \ Decide.Choice =
+        if (remainingRollouts <= 0)
+            Ok({winner = plan, observations = observations})
+        else forM (
+            children0 <- continuations(plan#route#steps, computed);
+            children <- pruneExactAncestorRevisits(plan#route#steps, children0, computed);
+            result <- if (Vector.isEmpty(children))
+                Ok({winner = plan, observations = observations})
+            else forM (
+                request0 <- Decide.requestWith(
+                    {protocol = rolloutProtocol(policyProtocol, totalRollouts, remainingRollouts), question = question()},
+                    Radii.Evaluate.stateId(plan#state),
+                    visibleState(prepared, prior, plan#route#steps, plan#state),
+                    continuationAlternatives(prepared#world, prior, children)
+                ) |> Result.mapErr(Error.Decide);
+                observation <- Decide.policy(request0) |> Result.mapErr(Error.Decide);
+                child <- match observation#choice {
+                    case Decide.Action.FollowPath(suffix) => Vector.find(item -> item#suffix == suffix, children)
+                        |> Option.toOk(Error.UnexpectedAction(observation#choice))
+                    case _ => Err(Error.UnexpectedAction(observation#choice))
+                };
+                next = {suffix = child#route#steps, route = child#route, state = child#state};
+                deepened <- deepenPlan(policyProtocol, totalRollouts, remainingRollouts - 1,
+                    prepared, prior, computed, next,
+                    Vector.append(observations, Vector#{observation}))
+            ) yield deepened
+        ) yield result
+
+    def rolloutProtocol(policyProtocol: String, total: Int32, remaining: Int32): String =
+        if (total == 1) policyProtocol + "-rollout"
+        else policyProtocol + "-rollout-${total - remaining + 1}"
 
     def pruneExactAncestorRevisits(
         prefix: Vector[Radii.Atom],

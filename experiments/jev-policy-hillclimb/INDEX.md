@@ -29,6 +29,7 @@ protocols remain recorded by their reports and retained raw request envelopes.
 | 010 | Checkpoint selected short plan | 0.157079 | 37.02% | **0.352222** | **0.503680** | 379 | reject F1 / Pareto |
 | 011 | Terminal selector over experts 003 and 009 | **0.170048** | **41.88%** | 0.318889 | 0.479399 | 384 | **promote** |
 | 012 | Exact-ancestor-revisit-pruned planner portfolio | **0.193444** | **50.67%** | **0.341111** | **0.504705** | 331 | **promote** |
+| 013 | Two-rollout deep planner vs replayed 012 | **0.201549** | **53.71%** | 0.341111 | **0.524766** | 767 | **promote** |
 
 ## Synthesis after iteration 012
 
