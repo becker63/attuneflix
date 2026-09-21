@@ -29,14 +29,14 @@ mod JevPolicyHillclimb {
         outcome = Localization.Tree.Outcome
     }
 
-    def iteration(): String = "007-retrospective-checkpoint"
+    type alias TournamentResult = {
+        winner = Continuation,
+        observations = Vector[Decide.Observation]
+    }
 
-    def protocol(): String = "attune-jev-policy-hillclimb-007-retrospective-checkpoint-v1"
+    def iteration(): String = "008-pairwise-root-tournament"
 
-    def trajectoryProtocol(): String = "attune-jev-policy-hillclimb-003-force-first-macro-v1"
-
-    def trajectoryRoot(): String =
-        ".attune/experiments/jev-policy-hillclimb/003-force-first-macro"
+    def protocol(): String = "attune-jev-policy-hillclimb-008-pairwise-root-tournament-v1"
 
     def root(): String = ".attune/experiments/jev-policy-hillclimb/${iteration()}"
 
@@ -48,8 +48,8 @@ mod JevPolicyHillclimb {
     def stopQuestion(): String =
         "Compare exactly two localization frontiers. Choose stop to retain the current frontier, or choose the proposed continuation only when its terminal preview is more likely to localize the reported issue."
 
-    def checkpointQuestion(): String =
-        "Choose the best localization frontier among the checkpoints already traversed. Earlier checkpoints may be better than the final one. Prefer the checkpoint whose symbol preview is most likely to localize the reported issue."
+    def tournamentQuestion(): String =
+        "Compare exactly two typed repository-structure continuations. Choose the continuation whose terminal symbol preview is more likely to localize the reported issue. Prefer issue relevance over merely large frontiers."
 
     /// Ordinary test runs are pure and network-free. Explicit modes reuse the
     /// frozen facts/prior and acquire or replay only this iteration's decisions.
@@ -144,71 +144,12 @@ mod JevPolicyHillclimb {
         prior: Localization.Tree.Prior,
         computed: Localization.Tree.Computed,
         acquire: Bool
-    ): Result[Error, Localization.Tree.Outcome] \ {FileSystem, IO} =
-        match Decide.runWithStoreReplay(trajectoryRoot(), () ->
-            navigate(prepared, prior, computed, Vector.empty(), computed#input, Vector.empty())) {
-            case Err(error) => Err(error)
-            case Ok(trajectory) => {
-                let runCheckpoint = () -> selectCheckpoint(prepared, prior, computed, trajectory);
-                if (acquire) Decide.runWithAcquire(root(), runCheckpoint)
-                else Decide.runWithStoreReplay(root(), runCheckpoint)
-            }
-        }
-
-    def selectCheckpoint(
-        prepared: Localization.Prepared,
-        prior: Localization.Tree.Prior,
-        computed: Localization.Tree.Computed,
-        trajectory: Localization.Tree.Outcome
-    ): Result[Error, Localization.Tree.Outcome] \ Decide.Choice = forM (
-        alternatives <- checkpointAlternatives(prepared#world, prior, computed, trajectory#path);
-        request0 <- Decide.requestWith(
-            {protocol = protocol(), question = checkpointQuestion()},
-            Radii.Evaluate.stateId(trajectory#finalState),
-            visibleState(prepared, prior, trajectory#path, trajectory#finalState),
-            alternatives
-        ) |> Result.mapErr(Error.Decide);
-        observation <- Decide.policy(request0) |> Result.mapErr(Error.Decide);
-        selectedPath <- match observation#choice {
-            case Decide.Action.Stop => Ok(Vector.empty())
-            case Decide.Action.FollowPath(path) => Ok(path)
-            case Decide.Action.Follow(_) => Err(Error.UnexpectedAction(observation#choice))
-        };
-        selectedState <- if (Vector.isEmpty(selectedPath)) Ok(computed#input)
-            else Localization.Tree.stateAt(selectedPath, computed) |> Result.mapErr(Error.Tree)
-    ) yield finish(prior, computed, selectedPath, selectedState,
-        Vector.append(trajectory#decisions, Vector#{observation}))
-
-    def checkpointAlternatives(
-        world: Repository.World,
-        prior: Localization.Tree.Prior,
-        computed: Localization.Tree.Computed,
-        path: Vector[Radii.Atom]
-    ): Result[Error, Vector[Decide.Alternative]] =
-        Vector.range(0, Vector.length(path) + 1)
-        |> Vector.traverse(depth -> {
-            let prefix = Vector.slice(start = 0, end = depth, path);
-            if (depth == 0) Ok(Some({
-                action = Decide.Action.Stop,
-                expression = None,
-                state = Radii.Evaluate.stateId(computed#input),
-                criterion = "Checkpoint root. " + Localization.Tree.preview(world, prior, computed#input)
-            }))
-            else forM (
-                state <- Localization.Tree.stateAt(prefix, computed) |> Result.mapErr(Error.Tree);
-                route <- Localization.Tree.routeAt(prefix, computed#tree) |> Result.mapErr(Error.Tree)
-            ) yield match state {
-                case Radii.Evaluate.State.Symbols(_) => Some({
-                    action = Decide.Action.FollowPath(prefix),
-                    expression = Some(Radii.Evaluate.exprId(route#expression)),
-                    state = Radii.Evaluate.stateId(state),
-                    criterion = "Checkpoint depth ${depth}, path ${pathText(prefix)}. " +
-                        Localization.Tree.preview(world, prior, state)
-                })
-                case _ => None
-            }
-        })
-        |> Result.map(Vector.filterMap(identity))
+    ): Result[Error, Localization.Tree.Outcome] \ {FileSystem, IO} = {
+        let runPolicy = () -> navigate(prepared, prior, computed,
+            Vector.empty(), computed#input, Vector.empty());
+        if (acquire) Decide.runWithAcquire(root(), runPolicy)
+        else Decide.runWithStoreReplay(root(), runPolicy)
+    }
 
     def navigate(
         prepared: Localization.Prepared,
@@ -225,11 +166,19 @@ mod JevPolicyHillclimb {
             continuations <- continuations(path, computed);
             outcome <- if (Vector.isEmpty(continuations))
                 Ok(finish(prior, computed, path, current, decisions))
+            else if (depth == 0) forM (
+                tournament <- runTournament(prepared, prior, current,
+                    Vector.sortBy(item -> pathText(item#suffix), continuations));
+                selected = tournament#winner;
+                next <- navigate(prepared, prior, computed,
+                    selected#suffix, selected#state,
+                    Vector.append(decisions, tournament#observations))
+            ) yield next
             else {
             let rankedAlternatives = continuationAlternatives(prepared#world, prior, continuations);
             forM (
             rankRequest <- Decide.requestWith(
-                {protocol = trajectoryProtocol() + "-rank", question = question()},
+                {protocol = protocol() + "-rank", question = question()},
                 Radii.Evaluate.stateId(current),
                 visibleState(prepared, prior, path, current),
                 rankedAlternatives
@@ -240,15 +189,11 @@ mod JevPolicyHillclimb {
                     |> Option.toOk(Error.UnexpectedAction(rankObservation#choice))
                 case _ => Err(Error.UnexpectedAction(rankObservation#choice))
             };
-            outcome <- if (depth == 0)
-                navigate(prepared, prior, computed,
-                    Vector.append(path, proposed#suffix), proposed#state,
-                    Vector.append(decisions, Vector#{rankObservation}))
-            else {
+            outcome <- {
                 let comparison = comparisonAlternatives(prepared#world, prior, current, proposed);
                 forM (
                 stopRequest <- Decide.requestWith(
-                    {protocol = trajectoryProtocol() + "-stop", question = stopQuestion()},
+                    {protocol = protocol() + "-stop", question = stopQuestion()},
                     Radii.Evaluate.stateId(current),
                     visibleState(prepared, prior, path, current),
                     comparison
@@ -270,6 +215,53 @@ mod JevPolicyHillclimb {
             }
         ) yield outcome
     }
+
+    def runTournament(
+        prepared: Localization.Prepared,
+        prior: Localization.Tree.Prior,
+        current: Radii.Evaluate.State,
+        candidates: Vector[Continuation]
+    ): Result[Error, TournamentResult] \ Decide.Choice =
+        tournamentRound(prepared, prior, current, candidates, 0, Vector.empty(), Vector.empty())
+
+    def tournamentRound(
+        prepared: Localization.Prepared,
+        prior: Localization.Tree.Prior,
+        current: Radii.Evaluate.State,
+        candidates: Vector[Continuation],
+        index: Int32,
+        next: Vector[Continuation],
+        observations: Vector[Decide.Observation]
+    ): Result[Error, TournamentResult] \ Decide.Choice =
+        if (Vector.length(candidates) == 1 and Vector.isEmpty(next))
+            Ok({winner = Vector.get(0, candidates), observations = observations})
+        else if (index >= Vector.length(candidates))
+            tournamentRound(prepared, prior, current, next, 0, Vector.empty(), observations)
+        else if (index + 1 >= Vector.length(candidates))
+            tournamentRound(prepared, prior, current, candidates, index + 2,
+                Vector.append(next, Vector#{Vector.get(index, candidates)}), observations)
+        else {
+            let left = Vector.get(index, candidates);
+            let right = Vector.get(index + 1, candidates);
+            let pair = Vector#{left, right};
+            forM (
+                request0 <- Decide.requestWith(
+                    {protocol = protocol() + "-root-pair", question = tournamentQuestion()},
+                    Radii.Evaluate.stateId(current),
+                    visibleState(prepared, prior, Vector.empty(), current),
+                    continuationAlternatives(prepared#world, prior, pair)
+                ) |> Result.mapErr(Error.Decide);
+                observation <- Decide.policy(request0) |> Result.mapErr(Error.Decide);
+                winner <- match observation#choice {
+                    case Decide.Action.FollowPath(suffix) => Vector.find(item -> item#suffix == suffix, pair)
+                        |> Option.toOk(Error.UnexpectedAction(observation#choice))
+                    case _ => Err(Error.UnexpectedAction(observation#choice))
+                };
+                result <- tournamentRound(prepared, prior, current, candidates, index + 2,
+                    Vector.append(next, Vector#{winner}),
+                    Vector.append(observations, Vector#{observation}))
+            ) yield result
+        }
 
     def continuations(
         path: Vector[Radii.Atom],

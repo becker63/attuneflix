@@ -24,6 +24,7 @@ protocols remain recorded by their reports and retained raw request envelopes.
 | 005 | Width-two root beam | 0.117612 | 22.20% | 0.272222 | 0.386456 | 127 | reject |
 | 006 | Parent-to-terminal set delta | 0.123474 | 24.40% | 0.261111 | 0.385122 | 59 | reject |
 | 007 | Retrospective choice among visited checkpoints | 0.144274 | 32.21% | 0.261111 | 0.382407 | 70 | reject (tie, costlier) |
+| 008 | Balanced pairwise root tournament | 0.089326 | 11.58% | 0.277778 | 0.344419 | 342 | reject |
 
 ## Synthesis after diagnosis
 
