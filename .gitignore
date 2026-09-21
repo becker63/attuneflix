@@ -1,4 +1,7 @@
 artifact/
+.attune/
+.env
+.venv
 .build/
 build/
 lib/
@@ -10,3 +13,4 @@ zed/grammars/
 *.jar
 crash_report_*.txt
 result
+repomix-output.xml

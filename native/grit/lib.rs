@@ -96,6 +96,10 @@ fn text(bytes: &[u8], name: &str) -> Result<String, Vec<u8>> {
 fn target(language: &str) -> Result<TargetLanguage, Vec<u8>> {
     let pattern = match language {
         "typescript" => PatternLanguage::TypeScript,
+        // The frozen Python/PyO3 oracle selected JSX grammar in the Grit
+        // source while retaining Marzano's TypeScript target language.
+        // Preserve that observable contract exactly.
+        "tsx" => PatternLanguage::TypeScript,
         _ => return Err(failure("unsupported-language", language)),
     };
     TargetLanguage::try_from(pattern).map_err(|error| failure("host", error.to_string()))
@@ -103,6 +107,11 @@ fn target(language: &str) -> Result<TargetLanguage, Vec<u8>> {
 
 fn compile(language: &str, program: &[u8]) -> Result<Problem, Vec<u8>> {
     let source = text(program, "program")?;
+    let source = if language == "tsx" {
+        source.replacen("language js(typescript)", "language js(jsx)", 1)
+    } else {
+        source
+    };
     let language = target(language)?;
     match src_to_problem_libs(source, &BTreeMap::new(), language, None, None, None, None) {
         Ok(CompilationResult { problem, .. }) => Ok(problem),

@@ -5,7 +5,12 @@ root=$(cd "$(dirname "$0")" && pwd)
 cd "$root"
 
 ./native/grit/build
+./native/nix/build
+./native/embed/build
 java --enable-native-access=ALL-UNNAMED \
   -cp .build/grit/attune-grit.jar:.build/grit/test-classes \
   attune.grit.AttuneGritTest
+java --enable-native-access=ALL-UNNAMED \
+  -cp .build/nix/attune-nix.jar:.build/nix/test-classes \
+  attune.nix.AttuneNixTest
 flix test

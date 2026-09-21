@@ -1,4 +1,4 @@
-mod Grit {
+pub mod Repository.Grit {
     import attune.grit.AttuneGrit
 
     use Util.Json
@@ -6,7 +6,8 @@ mod Grit {
     use Util.Json.FromJson
 
     pub enum Language with Eq, Order, ToString, Hash {
-        case TypeScript
+        case TypeScript,
+        case Tsx
     }
 
     /// The admitted source-syntax vocabulary is closed and Nix-packaged.
@@ -76,6 +77,15 @@ mod Grit {
         }
 
     pub def json(wire: Wire): String = let Wire.Wire(value) = wire; value
+
+    /// Coarse, truthful identity for retained source observations. Bump this
+    /// value whenever the pinned Marzano implementation or a fixed Grit
+    /// program changes.
+    pub def observationIdentity(): String =
+        "marzano-c80b3026471b229f41b279c3eb0c162dcdacfdb1" +
+        ":defines-bba7b2aa5d958d3ea2369fae0b7025718d68fcd1ea10bdfc1351c676899552cb" +
+        ":imports-368c1c09ed1ba38437ddab45d1084710cb717adc8dc0c831e3b2e8c49f3ad14d" +
+        ":calls-de0e5436777fc93f96a517298386e5e728cd77fe5e46a027a5ae942287212147"
 
     /// Decode the stable native envelope without trusting its external data.
     pub def decode(wire: Wire): Result[Error, Evaluation] =
@@ -230,7 +240,10 @@ mod Grit {
         }
 
     def evaluateNative(language: Language, program: Program, path: String, source: String): Wire \ IO =
-        let name = match language { case Language.TypeScript => "typescript" };
+        let name = match language {
+            case Language.TypeScript => "typescript"
+            case Language.Tsx        => "tsx"
+        };
         let programName = match program {
             case Program.Defines => "defines"
             case Program.Imports => "imports"

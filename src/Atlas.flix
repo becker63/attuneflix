@@ -20,8 +20,8 @@ mod Atlas {
     }
 
     enum State with Eq, Hash {
-        case Files(Set[Structure.FileId])
-        case Symbols(Set[Structure.SymbolId])
+        case Files(Set[Repository.Structure.FileId])
+        case Symbols(Set[Repository.Structure.SymbolId])
     }
 
     pub type alias RepositoryCounts = {
@@ -42,6 +42,25 @@ mod Atlas {
         transitionReuses    = Int32
     }
 
+    /// Experimental file projection of the fixed Atlas grammar.
+    pub type alias FileEvidence = {
+        file        = Repository.Structure.FileId,
+        path        = String,
+        minimumDepth = Int32,
+        pathSupport = Int32
+    }
+
+    pub type alias FileRanking = {
+        evidence             = Vector[FileEvidence],
+        physicalTransitions  = Int32,
+        transitionReuses     = Int32
+    }
+
+    pub type alias NamedFileRanking = {
+        path    = String,
+        ranking = FileRanking
+    }
+
     type alias Memos[r: Region] = {
         transitions        = MutHashMap[(Atom, State), State, r],
         physicalTransitions = Ref[Int32, r],
@@ -53,11 +72,11 @@ mod Atlas {
 
     /// Execute the complete typed composition tree through one depth.
     /// The mutable transition table is region-local, so measurement is pure.
-    pub def measure(repository: Repository.World, seeds: Set[Structure.SymbolId], depth: Int32): Result[String, Signature] =
+    pub def measure(repository: Repository.World, seeds: Set[Repository.Structure.SymbolId], depth: Int32): Result[String, Signature] =
         if (depth < 1)
             Err("Atlas depth must be positive")
         else region rc {
-            let physical = Physical.fromBasis(
+            let physical = Repository.Physical.fromBasis(
                 repository#defines,
                 repository#imports,
                 repository#calls,
@@ -93,6 +112,136 @@ mod Atlas {
             })
         }
 
+    /// Rank files reached from one file by the unchanged six-atom Atlas.
+    /// Each syntactic typed path contributes at most one support count per file.
+    pub def rankFiles(repository: Repository.World, seed: Repository.Structure.FileId, depth: Int32): Result[String, Vector[FileEvidence]] =
+        rankFilesMeasured(repository, seed, depth)
+            |> Result.map(result -> result#evidence)
+
+    /// The same pure file ranking with physical-work telemetry exposed for science runs.
+    pub def rankFilesMeasured(repository: Repository.World, seed: Repository.Structure.FileId, depth: Int32): Result[String, FileRanking] =
+        if (depth < 1)
+            Err("Atlas depth must be positive")
+        else {
+            let physical = Repository.Physical.fromBasis(
+                repository#defines,
+                repository#imports,
+                repository#calls,
+                repository#parents
+            );
+            rankFilesWith(repository, physical, seed, depth)
+        }
+
+    /// Rank every file while constructing the physical indexes only once.
+    pub def rankAllFilesMeasured(repository: Repository.World, depth: Int32): Result[String, Vector[NamedFileRanking]] =
+        if (depth < 1)
+            Err("Atlas depth must be positive")
+        else {
+            let physical = Repository.Physical.fromBasis(
+                repository#defines,
+                repository#imports,
+                repository#calls,
+                repository#parents
+            );
+            let identities = Vector.mapWithIndex(
+                (index, path) -> (path, Repository.Structure.FileId.FileId(index)), repository#files);
+            rankFileBatches(repository, physical, identities, depth, 0, Vector.empty()) |> Ok
+        }
+
+    // Share semantic states across 64 seeds, then release the region. This keeps
+    // cross-seed DAG reuse while bounding repository-scale memo retention.
+    def rankFileBatches(
+        repository: Repository.World,
+        physical: Repository.Physical.World,
+        identities: Vector[(String, Repository.Structure.FileId)],
+        depth: Int32,
+        start: Int32,
+        accumulated: Vector[NamedFileRanking]
+    ): Vector[NamedFileRanking] =
+        if (start >= Vector.length(identities))
+            accumulated
+        else {
+            let finish = Int32.min(start + 64, Vector.length(identities));
+            let batch = rankFileBatch(
+                repository,
+                physical,
+                Vector.slice(start = start, end = finish, identities),
+                depth
+            );
+            rankFileBatches(repository, physical, identities, depth, finish,
+                Vector.append(accumulated, batch))
+        }
+
+    def rankFileBatch(
+        repository: Repository.World,
+        physical: Repository.Physical.World,
+        identities: Vector[(String, Repository.Structure.FileId)],
+        depth: Int32
+    ): Vector[NamedFileRanking] = region rc {
+        let memos: Memos[rc] = {
+            transitions = MutHashMap.empty(rc),
+            physicalTransitions = Ref.fresh(rc, 0),
+            transitionReuses = Ref.fresh(rc, 0)
+        };
+        Vector.map(match (path, file) -> {
+            path = path,
+            ranking = rankFileWithin(repository, physical, file, depth, memos)
+        }, identities)
+    }
+
+    def rankFilesWith(
+        repository: Repository.World,
+        physical: Repository.Physical.World,
+        seed: Repository.Structure.FileId,
+        depth: Int32
+    ): Result[String, FileRanking] = region rc {
+            let memos: Memos[rc] = {
+                transitions = MutHashMap.empty(rc),
+                physicalTransitions = Ref.fresh(rc, 0),
+                transitionReuses = Ref.fresh(rc, 0)
+            };
+            Ok(rankFileWithin(repository, physical, seed, depth, memos))
+        }
+
+    def rankFileWithin(
+        repository: Repository.World,
+        physical: Repository.Physical.World,
+        seed: Repository.Structure.FileId,
+        depth: Int32,
+        memos: Memos[r]
+    ): FileRanking \ r = {
+            let transitionsBefore = Ref.get(memos#physicalTransitions);
+            let reusesBefore = Ref.get(memos#transitionReuses);
+            let evidence = collectFileEvidence(
+                physical,
+                seed,
+                depth,
+                1,
+                Vector#{State.Files(Set.singleton(seed))},
+                Map.empty(),
+                memos
+            );
+            let projected = Vector.mapWithIndex((index, path) -> {
+                let file = Repository.Structure.FileId.FileId(index);
+                match Map.get(file, evidence) {
+                    case None => None
+                    case Some((minimumDepth, pathSupport)) => Some({
+                        file = file,
+                        path = path,
+                        minimumDepth = minimumDepth,
+                        pathSupport = pathSupport
+                    })
+                }
+            }, repository#files);
+            let ranked = Vector.filterMap(item -> item, projected)
+                |> Vector.sortBy(item -> (item#minimumDepth, -item#pathSupport, item#path));
+            {
+                evidence = ranked,
+                physicalTransitions = Ref.get(memos#physicalTransitions) - transitionsBefore,
+                transitionReuses = Ref.get(memos#transitionReuses) - reusesBefore
+            }
+        }
+
     def loop(remaining: Int32, symbols: Int32, files: Int32, logical: Int32, complete: Int32): Counts =
         if (remaining <= 0) {
             logical = logical,
@@ -111,7 +260,7 @@ mod Atlas {
         }
 
     def search(
-        world: Physical.World,
+        world: Repository.Physical.World,
         remaining: Int32,
         states: Vector[State],
         logical: Int32,
@@ -136,7 +285,42 @@ mod Atlas {
             )
         }
 
-    def expand(world: Physical.World, state: State, memos: Memos[r]): Vector[State] \ r = match state {
+    def collectFileEvidence(
+        world: Repository.Physical.World,
+        seed: Repository.Structure.FileId,
+        remaining: Int32,
+        currentDepth: Int32,
+        states: Vector[State],
+        evidence: Map[Repository.Structure.FileId, (Int32, Int32)],
+        memos: Memos[r]
+    ): Map[Repository.Structure.FileId, (Int32, Int32)] \ r =
+        if (remaining == 0)
+            evidence
+        else {
+            let next = Vector.flatMap(state -> expand(world, state, memos), states);
+            let updated = Vector.foldLeft((known, state) -> match state {
+                case State.Symbols(_) => known
+                case State.Files(files) => Set.foldLeft((result, file) ->
+                    if (file == seed)
+                        result
+                    else match Map.get(file, result) {
+                        case None => Map.insert(file, (currentDepth, 1), result)
+                        case Some((minimumDepth, support)) =>
+                            Map.insert(file, (minimumDepth, support + 1), result)
+                    }, known, files)
+            }, evidence, next);
+            collectFileEvidence(
+                world,
+                seed,
+                remaining - 1,
+                currentDepth + 1,
+                next,
+                updated,
+                memos
+            )
+        }
+
+    def expand(world: Repository.Physical.World, state: State, memos: Memos[r]): Vector[State] \ r = match state {
         case State.Files(_) => Vector#{
             transition(world, Atom.Defines, state, memos),
             transition(world, Atom.Imports, state, memos),
@@ -149,7 +333,7 @@ mod Atlas {
         }
     }
 
-    def transition(world: Physical.World, atom: Atom, state: State, memos: Memos[r]): State \ r =
+    def transition(world: Repository.Physical.World, atom: Atom, state: State, memos: Memos[r]): State \ r =
         match MutHashMap.get((atom, state), memos#transitions) {
             case Some(output) => {
                 Ref.transform(value -> value + 1, memos#transitionReuses);
@@ -163,19 +347,19 @@ mod Atlas {
             }
         }
 
-    def apply(world: Physical.World, atom: Atom, state: State): State = match (atom, state) {
+    def apply(world: Repository.Physical.World, atom: Atom, state: State): State = match (atom, state) {
         case (Atom.Defines, State.Files(frontier)) =>
-            State.Symbols(Physical.defines(world, frontier))
+            State.Symbols(Repository.Physical.defines(world, frontier))
         case (Atom.DefinedIn, State.Symbols(frontier)) =>
-            State.Files(Physical.definedIn(world, frontier))
+            State.Files(Repository.Physical.definedIn(world, frontier))
         case (Atom.Imports, State.Files(frontier)) =>
-            State.Files(Physical.imports(world, frontier))
+            State.Files(Repository.Physical.imports(world, frontier))
         case (Atom.ImportedBy, State.Files(frontier)) =>
-            State.Files(Physical.importedBy(world, frontier))
+            State.Files(Repository.Physical.importedBy(world, frontier))
         case (Atom.Calls, State.Symbols(frontier)) =>
-            State.Symbols(Physical.calls(world, frontier))
+            State.Symbols(Repository.Physical.calls(world, frontier))
         case (Atom.Callers, State.Symbols(frontier)) =>
-            State.Symbols(Physical.callers(world, frontier))
+            State.Symbols(Repository.Physical.callers(world, frontier))
         case _ => state
     }
 }

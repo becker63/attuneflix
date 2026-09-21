@@ -1,4 +1,4 @@
-mod Structure {
+pub mod Repository.Structure {
     /// Repository identities are nominal: the compiler rejects mixed domains.
     pub enum FileId(Int32) with Eq, Order, ToString, Hash
     pub enum SymbolId(Int32) with Eq, Order, ToString, Hash

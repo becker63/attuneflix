@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+root=$(cd "$(dirname "$0")/../.." && pwd)
+cd "$root"
+
+package=$(nix build path:.#attune-embed-jar --no-link --print-out-paths)
+jar_file="$root/.build/embed/attune-embed.jar"
+
+install -Dm644 "$package/share/java/attune-embed.jar" "$jar_file"
+install -Dm644 "$jar_file" lib/external/attune-embed.jar

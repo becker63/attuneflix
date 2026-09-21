@@ -1,4 +1,4 @@
-mod Policy {
+mod Radii {
     /// The three finite endpoint sorts admitted by the structural language.
     pub enum Domain with Eq, Order, ToString, Hash {
         case File,

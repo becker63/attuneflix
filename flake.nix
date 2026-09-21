@@ -14,6 +14,37 @@
         let
           pkgs = nixpkgs.legacyPackages.${system};
           flixJar = "${pkgs.flix}/share/java/flix/flix.jar";
+          nixComponents = pkgs.nixVersions.nixComponents_2_34;
+          nixUtilC = nixComponents."nix-util-c";
+          nixStoreC = nixComponents."nix-store-c";
+          nixExprC = nixComponents."nix-expr-c";
+          nixFetchersC = nixComponents."nix-fetchers-c";
+          nixFlakeC = nixComponents."nix-flake-c";
+          nixUtilCDev = pkgs.lib.getDev nixUtilC;
+          nixStoreCDev = pkgs.lib.getDev nixStoreC;
+          nixExprCDev = pkgs.lib.getDev nixExprC;
+          nixFetchersCDev = pkgs.lib.getDev nixFetchersC;
+          nixFlakeCDev = pkgs.lib.getDev nixFlakeC;
+          nixUtilCLib = pkgs.lib.getLib nixUtilC;
+          nixStoreCLib = pkgs.lib.getLib nixStoreC;
+          nixExprCLib = pkgs.lib.getLib nixExprC;
+          nixFetchersCLib = pkgs.lib.getLib nixFetchersC;
+          nixFlakeCLib = pkgs.lib.getLib nixFlakeC;
+          mavenArtifact = groupId: artifactId: version: hash:
+            pkgs.fetchMavenArtifact { inherit groupId artifactId version hash; };
+          langchainArtifacts = [
+            (mavenArtifact "dev.langchain4j" "langchain4j-open-ai" "1.18.1" "sha256-IAFZZkfR9w/uirH89g1m7ScCbbAYdDZQU+x1c8k8P88=")
+            (mavenArtifact "dev.langchain4j" "langchain4j-core" "1.18.1" "sha256-LQ1gVE11ez2F8mZx7Rrs6Aee/Ns8JVyMGelCYT2HYW8=")
+            (mavenArtifact "dev.langchain4j" "langchain4j-http-client" "1.18.1" "sha256-yIxhrzzinObzTbtAk0to04YU31nf2ft5xmSfLrs7UUI=")
+            (mavenArtifact "dev.langchain4j" "langchain4j-http-client-jdk" "1.18.1" "sha256-9u7LO19a8meJ7CvcnmVn0wf9BCq27I5mGj+Gophw1a0=")
+            (mavenArtifact "org.slf4j" "slf4j-api" "2.0.18" "sha256-RFCP0VdlAGiMeQsZCs3Rb+xPjHmj4LkAr9cFA88FX1U=")
+            (mavenArtifact "org.slf4j" "slf4j-nop" "2.0.18" "sha256-QOa+J9WD2IQYPKRmzSAgMRJpHyoHWmUOno1cLlGqX0k=")
+            (mavenArtifact "org.jspecify" "jspecify" "1.0.0" "sha256-H61ua+dVd4Hk0zcp1Jrhzcj92m/kd7sMxozjUer9+6s=")
+            (mavenArtifact "com.fasterxml.jackson.core" "jackson-annotations" "2.22" "sha256-Id21mIB9OlGodnBOuXnZKW4cam9Hqxgm/4jG1qEnotA=")
+            (mavenArtifact "com.fasterxml.jackson.core" "jackson-core" "2.22.1" "sha256-lB/wKbzbk+g9IJzlFsGn+4u6wH0KL6Ei9b8ZSyzXtPQ=")
+            (mavenArtifact "com.fasterxml.jackson.core" "jackson-databind" "2.22.1" "sha256-fc1+U77B9Wx60ni9HKCEC+vMWV1hzkTWqEOau3W5ZbI=")
+            (mavenArtifact "com.knuddels" "jtokkit" "1.1.0" "sha256-FQHOAlmriXxnRsz6+h0gis1AT7F+GsYuFXFy8meLEYM=")
+          ];
           gritRevision = "c80b3026471b229f41b279c3eb0c162dcdacfdb1";
           gritSource = pkgs.fetchFromGitHub {
             owner = "getgrit";
@@ -104,6 +135,101 @@
               -C "$classes" . \
               -C "$TMPDIR/resources" .
           '';
+          attuneNixJar = pkgs.runCommand "attune-nix-jar" {
+            nativeBuildInputs = [ pkgs.clang pkgs.jdk25 pkgs.jextract ];
+          } ''
+            generated="$TMPDIR/jextract"
+            classes="$TMPDIR/classes"
+            java_src="$TMPDIR/java"
+            mkdir -p "$generated" "$classes" "$java_src" "$out/share/java"
+            cp ${./native/nix/AttuneNix.java} "$java_src/AttuneNix.java"
+
+            jextract \
+              -I "$(clang -print-resource-dir)/include" \
+              -I ${pkgs.glibc.dev}/include \
+              -I ${nixUtilCDev}/include \
+              -I ${nixStoreCDev}/include \
+              -I ${nixExprCDev}/include \
+              -I ${nixFetchersCDev}/include \
+              -I ${nixFlakeCDev}/include \
+              --target-package attune.nix.ffi \
+              --header-class-name AttuneNixAbi \
+              --include-typedef nix_get_string_callback \
+              --include-constant NIX_TYPE_STRING \
+              --include-function nix_c_context_create \
+              --include-function nix_c_context_free \
+              --include-function nix_libutil_init \
+              --include-function nix_libstore_init \
+              --include-function nix_libexpr_init \
+              --include-function nix_store_open \
+              --include-function nix_store_free \
+              --include-function nix_store_real_path \
+              --include-function nix_flake_settings_new \
+              --include-function nix_flake_settings_free \
+              --include-function nix_eval_state_builder_new \
+              --include-function nix_eval_state_builder_free \
+              --include-function nix_flake_settings_add_to_eval_state_builder \
+              --include-function nix_eval_state_build \
+              --include-function nix_state_free \
+              --include-function nix_alloc_value \
+              --include-function nix_value_decref \
+              --include-function nix_expr_eval_from_string \
+              --include-function nix_value_force \
+              --include-function nix_get_type \
+              --include-function nix_string_realise \
+              --include-function nix_realised_string_get_buffer_start \
+              --include-function nix_realised_string_get_buffer_size \
+              --include-function nix_realised_string_get_store_path_count \
+              --include-function nix_realised_string_get_store_path \
+              --include-function nix_realised_string_free \
+              --include-function nix_err_info_msg \
+              -l :${nixUtilCLib}/lib/libnixutilc.so \
+              -l :${nixStoreCLib}/lib/libnixstorec.so \
+              -l :${nixExprCLib}/lib/libnixexprc.so \
+              -l :${nixFetchersCLib}/lib/libnixfetchersc.so \
+              -l :${nixFlakeCLib}/lib/libnixflakec.so \
+              --output "$generated" \
+              ${./native/nix/attune_nix.h}
+
+            javac \
+              --release 23 \
+              -d "$classes" \
+              $(find "$generated" -name '*.java' -print) \
+              "$java_src/AttuneNix.java"
+
+            jar --create \
+              --file "$out/share/java/attune-nix.jar" \
+              -C "$classes" .
+          '';
+          attuneEmbedJar = pkgs.stdenvNoCC.mkDerivation {
+            pname = "attune-embed-jar";
+            version = "0.1.0";
+            dontUnpack = true;
+            nativeBuildInputs = [ pkgs.jdk25 pkgs.setJavaClassPath pkgs.stripJavaArchivesHook ];
+            buildInputs = langchainArtifacts;
+            buildPhase = ''
+              runHook preBuild
+              mkdir -p classes source
+              cp ${./native/embed/AttuneEmbed.java} source/AttuneEmbed.java
+              cp ${./native/embed/AttuneDecision.java} source/AttuneDecision.java
+              javac --release 21 -cp "$CLASSPATH" -d classes source/*.java
+              runHook postBuild
+            '';
+            installPhase = ''
+              runHook preInstall
+              mkdir -p bundle "$out/share/java"
+              old_ifs="$IFS"
+              IFS=:
+              for dependency in $CLASSPATH; do
+                (cd bundle && jar --extract --file "$dependency")
+              done
+              IFS="$old_ifs"
+              rm -f bundle/META-INF/MANIFEST.MF bundle/META-INF/*.SF bundle/META-INF/*.RSA bundle/META-INF/*.DSA
+              cp -R classes/. bundle/
+              jar --create --file "$out/share/java/attune-embed.jar" -C bundle .
+              runHook postInstall
+            '';
+            };
           hoverProvider = pkgs.runCommand "attuneflix-hover-provider" {
             nativeBuildInputs = [ pkgs.jdk25 pkgs.scala_2_13 ];
           } ''
@@ -129,6 +255,8 @@
         in {
           attune-grit-native = attuneGritNative;
           attune-grit-jar = attuneGritJar;
+          attune-nix-jar = attuneNixJar;
+          attune-embed-jar = attuneEmbedJar;
           flix = flixJdk25;
           flix-hover-provider = hoverProvider;
           libc-dev = pkgs.glibc.dev;
