@@ -29,20 +29,27 @@ mod JevPolicyHillclimb {
         outcome = Localization.Tree.Outcome
     }
 
-    def iteration(): String = "006-parent-delta"
+    def iteration(): String = "007-retrospective-checkpoint"
 
-    def protocol(): String = "attune-jev-policy-hillclimb-006-parent-delta-v1"
+    def protocol(): String = "attune-jev-policy-hillclimb-007-retrospective-checkpoint-v1"
+
+    def trajectoryProtocol(): String = "attune-jev-policy-hillclimb-003-force-first-macro-v1"
+
+    def trajectoryRoot(): String =
+        ".attune/experiments/jev-policy-hillclimb/003-force-first-macro"
 
     def root(): String = ".attune/experiments/jev-policy-hillclimb/${iteration()}"
 
     def question(): String =
         "Choose the typed repository-structure continuation whose terminal symbol preview is most likely to localize the reported issue. " +
         "Each continuation contains one to three valid structural actions and is executed atomically. " +
-        "Use the explicit parent-to-terminal delta to distinguish useful new evidence from no-op or destructive movement. " +
         "Prefer issue-relevant symbols over merely large frontiers. You are ranking continuations only; stopping is decided separately."
 
     def stopQuestion(): String =
         "Compare exactly two localization frontiers. Choose stop to retain the current frontier, or choose the proposed continuation only when its terminal preview is more likely to localize the reported issue."
+
+    def checkpointQuestion(): String =
+        "Choose the best localization frontier among the checkpoints already traversed. Earlier checkpoints may be better than the final one. Prefer the checkpoint whose symbol preview is most likely to localize the reported issue."
 
     /// Ordinary test runs are pure and network-free. Explicit modes reuse the
     /// frozen facts/prior and acquire or replay only this iteration's decisions.
@@ -137,14 +144,71 @@ mod JevPolicyHillclimb {
         prior: Localization.Tree.Prior,
         computed: Localization.Tree.Computed,
         acquire: Bool
-    ): Result[Error, Localization.Tree.Outcome] \ {FileSystem, IO} = {
-        let runPolicy = () -> navigate(prepared, prior, computed,
-            Vector.empty(), computed#input, Vector.empty());
-        if (acquire)
-            Decide.runWithAcquire(root(), runPolicy)
-        else
-            Decide.runWithStoreReplay(root(), runPolicy)
-    }
+    ): Result[Error, Localization.Tree.Outcome] \ {FileSystem, IO} =
+        match Decide.runWithStoreReplay(trajectoryRoot(), () ->
+            navigate(prepared, prior, computed, Vector.empty(), computed#input, Vector.empty())) {
+            case Err(error) => Err(error)
+            case Ok(trajectory) => {
+                let runCheckpoint = () -> selectCheckpoint(prepared, prior, computed, trajectory);
+                if (acquire) Decide.runWithAcquire(root(), runCheckpoint)
+                else Decide.runWithStoreReplay(root(), runCheckpoint)
+            }
+        }
+
+    def selectCheckpoint(
+        prepared: Localization.Prepared,
+        prior: Localization.Tree.Prior,
+        computed: Localization.Tree.Computed,
+        trajectory: Localization.Tree.Outcome
+    ): Result[Error, Localization.Tree.Outcome] \ Decide.Choice = forM (
+        alternatives <- checkpointAlternatives(prepared#world, prior, computed, trajectory#path);
+        request0 <- Decide.requestWith(
+            {protocol = protocol(), question = checkpointQuestion()},
+            Radii.Evaluate.stateId(trajectory#finalState),
+            visibleState(prepared, prior, trajectory#path, trajectory#finalState),
+            alternatives
+        ) |> Result.mapErr(Error.Decide);
+        observation <- Decide.policy(request0) |> Result.mapErr(Error.Decide);
+        selectedPath <- match observation#choice {
+            case Decide.Action.Stop => Ok(Vector.empty())
+            case Decide.Action.FollowPath(path) => Ok(path)
+            case Decide.Action.Follow(_) => Err(Error.UnexpectedAction(observation#choice))
+        };
+        selectedState <- if (Vector.isEmpty(selectedPath)) Ok(computed#input)
+            else Localization.Tree.stateAt(selectedPath, computed) |> Result.mapErr(Error.Tree)
+    ) yield finish(prior, computed, selectedPath, selectedState,
+        Vector.append(trajectory#decisions, Vector#{observation}))
+
+    def checkpointAlternatives(
+        world: Repository.World,
+        prior: Localization.Tree.Prior,
+        computed: Localization.Tree.Computed,
+        path: Vector[Radii.Atom]
+    ): Result[Error, Vector[Decide.Alternative]] =
+        Vector.range(0, Vector.length(path) + 1)
+        |> Vector.traverse(depth -> {
+            let prefix = Vector.slice(start = 0, end = depth, path);
+            if (depth == 0) Ok(Some({
+                action = Decide.Action.Stop,
+                expression = None,
+                state = Radii.Evaluate.stateId(computed#input),
+                criterion = "Checkpoint root. " + Localization.Tree.preview(world, prior, computed#input)
+            }))
+            else forM (
+                state <- Localization.Tree.stateAt(prefix, computed) |> Result.mapErr(Error.Tree);
+                route <- Localization.Tree.routeAt(prefix, computed#tree) |> Result.mapErr(Error.Tree)
+            ) yield match state {
+                case Radii.Evaluate.State.Symbols(_) => Some({
+                    action = Decide.Action.FollowPath(prefix),
+                    expression = Some(Radii.Evaluate.exprId(route#expression)),
+                    state = Radii.Evaluate.stateId(state),
+                    criterion = "Checkpoint depth ${depth}, path ${pathText(prefix)}. " +
+                        Localization.Tree.preview(world, prior, state)
+                })
+                case _ => None
+            }
+        })
+        |> Result.map(Vector.filterMap(identity))
 
     def navigate(
         prepared: Localization.Prepared,
@@ -162,10 +226,10 @@ mod JevPolicyHillclimb {
             outcome <- if (Vector.isEmpty(continuations))
                 Ok(finish(prior, computed, path, current, decisions))
             else {
-            let rankedAlternatives = continuationAlternatives(prepared#world, prior, current, continuations);
+            let rankedAlternatives = continuationAlternatives(prepared#world, prior, continuations);
             forM (
             rankRequest <- Decide.requestWith(
-                {protocol = protocol() + "-rank", question = question()},
+                {protocol = trajectoryProtocol() + "-rank", question = question()},
                 Radii.Evaluate.stateId(current),
                 visibleState(prepared, prior, path, current),
                 rankedAlternatives
@@ -184,7 +248,7 @@ mod JevPolicyHillclimb {
                 let comparison = comparisonAlternatives(prepared#world, prior, current, proposed);
                 forM (
                 stopRequest <- Decide.requestWith(
-                    {protocol = protocol() + "-stop", question = stopQuestion()},
+                    {protocol = trajectoryProtocol() + "-stop", question = stopQuestion()},
                     Radii.Evaluate.stateId(current),
                     visibleState(prepared, prior, path, current),
                     comparison
@@ -227,35 +291,16 @@ mod JevPolicyHillclimb {
     def continuationAlternatives(
         world: Repository.World,
         prior: Localization.Tree.Prior,
-        current: Radii.Evaluate.State,
         continuations0: Vector[Continuation]
     ): Vector[Decide.Alternative] = {
         Vector.map(item -> {
             action = Decide.Action.FollowPath(item#suffix),
             expression = Some(Radii.Evaluate.exprId(item#route#expression)),
             state = Radii.Evaluate.stateId(item#state),
-            criterion = "Take continuation ${pathText(item#suffix)} (${Vector.length(item#suffix)} actions). " +
-                stateDelta(current, item#state) + ". Terminal " +
+            criterion = "Take continuation ${pathText(item#suffix)} (${Vector.length(item#suffix)} actions). Terminal " +
                 Localization.Tree.preview(world, prior, item#state)
         }, continuations0)
     }
-
-    def stateDelta(current: Radii.Evaluate.State, terminal: Radii.Evaluate.State): String =
-        match (current, terminal) {
-            case (Radii.Evaluate.State.Symbols(before), Radii.Evaluate.State.Symbols(after)) => {
-                let union0 = Set.union(before, after);
-                let overlap = if (Set.isEmpty(union0)) 1.0 else
-                    ratio(Set.size(Set.intersection(before, after)), Set.size(union0));
-                "Delta from current: added_symbols=${Set.size(Set.difference(after, before))} " +
-                "removed_symbols=${Set.size(Set.difference(before, after))} " +
-                "jaccard=${overlap} exact_revisit=${before == after}"
-            }
-            case _ => "Delta from current: different_domain=true exact_revisit=${current == terminal}"
-        }
-
-    def ratio(numerator: Int32, denominator: Int32): Float64 =
-        if (denominator == 0) 0.0 else
-            Int32.toFloat64(numerator) / Int32.toFloat64(denominator)
 
     def comparisonAlternatives(
         world: Repository.World,
@@ -273,8 +318,7 @@ mod JevPolicyHillclimb {
             action = Decide.Action.FollowPath(proposed#suffix),
             expression = Some(Radii.Evaluate.exprId(proposed#route#expression)),
             state = Radii.Evaluate.stateId(proposed#state),
-            criterion = "Take proposed continuation ${pathText(proposed#suffix)}. " +
-                stateDelta(current, proposed#state) + ". Terminal " +
+            criterion = "Take proposed continuation ${pathText(proposed#suffix)}. Terminal " +
                 Localization.Tree.preview(world, prior, proposed#state)
         }
     }
