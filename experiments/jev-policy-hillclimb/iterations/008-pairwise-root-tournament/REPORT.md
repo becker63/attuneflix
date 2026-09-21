@@ -136,3 +136,5 @@ holding the model and candidate roots fixed.
 - acquisition verification: 48 passed, 0 failed
 - exact replay verification: 342 retained observations, zero network
   capability, identical paths/rankings, 48 passed, 0 failed
+- exact replay verification: 342 retained observations, zero network
+  capability, identical paths/rankings, 48 passed, 0 failed
