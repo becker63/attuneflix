@@ -30,6 +30,7 @@ protocols remain recorded by their reports and retained raw request envelopes.
 | 011 | Terminal selector over experts 003 and 009 | **0.170048** | **41.88%** | 0.318889 | 0.479399 | 384 | **promote** |
 | 012 | Exact-ancestor-revisit-pruned planner portfolio | **0.193444** | **50.67%** | **0.341111** | **0.504705** | 331 | **promote** |
 | 013 | Two-rollout deep planner vs replayed 012 | **0.201549** | **53.71%** | 0.341111 | **0.524766** | 767 | **promote** |
+| 014 | Delta-aware final expert comparison | 0.191951 | 50.11% | 0.314444 | 0.506429 | 767 | reject |
 
 ## Synthesis after iteration 012
 

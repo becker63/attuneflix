@@ -34,14 +34,19 @@ mod JevPolicyHillclimb {
         observations = Vector[Decide.Observation]
     }
 
-    def iteration(): String = "013-deep-planner-portfolio"
+    def iteration(): String = "014-delta-expert-selector"
 
-    def protocol(): String = "attune-jev-policy-hillclimb-013-deep-planner-portfolio-v1"
+    def protocol(): String = "attune-jev-policy-hillclimb-014-delta-expert-selector-v1"
 
     def bestProtocol(): String = "attune-jev-policy-hillclimb-012-pruned-planner-portfolio-v1"
 
     def bestRoot(): String =
         ".attune/experiments/jev-policy-hillclimb/012-pruned-planner-portfolio"
+
+    def deepProtocol(): String = "attune-jev-policy-hillclimb-013-deep-planner-portfolio-v1"
+
+    def deepRoot(): String =
+        ".attune/experiments/jev-policy-hillclimb/013-deep-planner-portfolio"
 
     def classicProtocol(): String = "attune-jev-policy-hillclimb-003-force-first-macro-v1"
 
@@ -63,6 +68,9 @@ mod JevPolicyHillclimb {
 
     def expertQuestion(): String =
         "Choose between two independently generated structural localization frontiers. Prefer the final symbol preview most likely to localize the reported issue. The expert labels carry no quality ordering."
+
+    def deltaExpertQuestion(): String =
+        "Choose between two independently generated structural localization frontiers. Use both the final previews and the symbols exclusive to each frontier. Prefer issue-relevant evidence over merely larger frontiers. The expert labels carry no quality ordering."
 
     /// Ordinary test runs are pure and network-free. Explicit modes reuse the
     /// frozen facts/prior and acquire or replay only this iteration's decisions.
@@ -165,13 +173,15 @@ mod JevPolicyHillclimb {
             case Ok(classic) => match Decide.runWithStoreReplay(bestRoot(), () ->
                 portfolio(bestProtocol(), 1, prepared, prior, computed, classic)) {
                 case Err(error) => Err(error)
-                case Ok(best) => {
-                    let runCandidate = () -> forM (
-                        deep <- planningExpert(protocol(), 2, prepared, prior, computed);
-                        selected <- selectExpert(protocol(), prepared, prior, computed, best, deep)
-                    ) yield selected;
-                    if (acquire) Decide.runWithAcquire(root(), runCandidate)
-                    else Decide.runWithStoreReplay(root(), runCandidate)
+                case Ok(best) => match Decide.runWithStoreReplay(deepRoot(), () ->
+                    planningExpert(deepProtocol(), 2, prepared, prior, computed)) {
+                    case Err(error) => Err(error)
+                    case Ok(deep) => {
+                        let runCandidate = () -> selectExpertDelta(
+                            prepared, prior, computed, best, deep);
+                        if (acquire) Decide.runWithAcquire(root(), runCandidate)
+                        else Decide.runWithStoreReplay(root(), runCandidate)
+                    }
                 }
             }
         }
@@ -252,6 +262,69 @@ mod JevPolicyHillclimb {
                 criterion = "${label}, path ${pathText(outcome#path)}. Final " +
                     Localization.Tree.preview(world, prior, outcome#finalState)
             }))
+
+    def selectExpertDelta(
+        prepared: Localization.Prepared,
+        prior: Localization.Tree.Prior,
+        computed: Localization.Tree.Computed,
+        best: Localization.Tree.Outcome,
+        deep: Localization.Tree.Outcome
+    ): Result[Error, Localization.Tree.Outcome] \ Decide.Choice =
+        if (best#path == deep#path) Ok(best)
+        else forM (
+            alternatives <- expertDeltaAlternatives(prepared#world, prior, computed, best, deep);
+            request0 <- Decide.requestWith(
+                {protocol = protocol(), question = deltaExpertQuestion()},
+                Radii.Evaluate.stateId(computed#input),
+                visibleState(prepared, prior, Vector.empty(), computed#input),
+                alternatives
+            ) |> Result.mapErr(Error.Decide);
+            observation <- Decide.policy(request0) |> Result.mapErr(Error.Decide);
+            selected <- match observation#choice {
+                case Decide.Action.FollowPath(path) if path == best#path => Ok(best)
+                case Decide.Action.FollowPath(path) if path == deep#path => Ok(deep)
+                case Decide.Action.Follow(_) => Err(Error.UnexpectedAction(observation#choice))
+                case _ => Err(Error.UnexpectedAction(observation#choice))
+            };
+            allDecisions = Vector.append(best#decisions,
+                Vector.append(deep#decisions, Vector#{observation}))
+        ) yield finish(prior, computed, selected#path, selected#finalState, allDecisions)
+
+    def expertDeltaAlternatives(
+        world: Repository.World,
+        prior: Localization.Tree.Prior,
+        computed: Localization.Tree.Computed,
+        best: Localization.Tree.Outcome,
+        deep: Localization.Tree.Outcome
+    ): Result[Error, Vector[Decide.Alternative]] =
+        Vector#{("Expert A", best, deep), ("Expert B", deep, best)}
+        |> Vector.traverse(match (label, outcome, other) ->
+            Localization.Tree.routeAt(outcome#path, computed#tree)
+            |> Result.mapErr(Error.Tree)
+            |> Result.map(route -> {
+                action = Decide.Action.FollowPath(outcome#path),
+                expression = Some(Radii.Evaluate.exprId(route#expression)),
+                state = Radii.Evaluate.stateId(outcome#finalState),
+                criterion = "${label}, path ${pathText(outcome#path)}. " +
+                    expertDelta(world, prior, outcome#finalState, other#finalState) +
+                    ". Final " + Localization.Tree.preview(world, prior, outcome#finalState)
+            }))
+
+    def expertDelta(
+        world: Repository.World,
+        prior: Localization.Tree.Prior,
+        state: Radii.Evaluate.State,
+        other: Radii.Evaluate.State
+    ): String = match (state, other) {
+        case (Radii.Evaluate.State.Symbols(members), Radii.Evaluate.State.Symbols(otherMembers)) => {
+            let exclusive = Set.difference(members, otherMembers);
+            let missing = Set.difference(otherMembers, members);
+            "Exclusive_symbols=${Set.size(exclusive)}, missing_symbols=${Set.size(missing)}. " +
+                "Exclusive prior preview: " + Localization.Tree.preview(
+                    world, prior, Radii.Evaluate.State.Symbols(exclusive))
+        }
+        case _ => "Different-domain comparison"
+    }
 
     def classicNavigate(
         policyProtocol: String,
