@@ -34,15 +34,14 @@ mod JevPolicyHillclimb {
         observations = Vector[Decide.Observation]
     }
 
-    type alias CheckpointResult = {
-        path = Vector[Radii.Atom],
-        state = Radii.Evaluate.State,
-        observation = Decide.Observation
-    }
+    def iteration(): String = "011-two-expert-selector"
 
-    def iteration(): String = "010-plan-checkpoint"
+    def protocol(): String = "attune-jev-policy-hillclimb-011-two-expert-selector-v1"
 
-    def protocol(): String = "attune-jev-policy-hillclimb-010-plan-checkpoint-v1"
+    def classicProtocol(): String = "attune-jev-policy-hillclimb-003-force-first-macro-v1"
+
+    def classicRoot(): String =
+        ".attune/experiments/jev-policy-hillclimb/003-force-first-macro"
 
     def planningProtocol(): String = "attune-jev-policy-hillclimb-009-hierarchical-lookahead-v1"
 
@@ -62,8 +61,8 @@ mod JevPolicyHillclimb {
     def planQuestion(): String =
         "Choose the typed short-horizon plan whose final symbol preview is most likely to localize the reported issue. Each plan was constructed by first choosing a root continuation and then choosing its best available continuation. Prefer issue relevance over merely large frontiers."
 
-    def checkpointQuestion(): String =
-        "Choose the best localization checkpoint along the selected short-horizon plan. Earlier checkpoints may be better than the plan terminal. Prefer the checkpoint whose symbol preview is most likely to localize the reported issue."
+    def expertQuestion(): String =
+        "Choose between two independently generated structural localization frontiers. Prefer the final symbol preview most likely to localize the reported issue. The expert labels carry no quality ordering."
 
     /// Ordinary test runs are pure and network-free. Explicit modes reuse the
     /// frozen facts/prior and acquire or replay only this iteration's decisions.
@@ -159,88 +158,83 @@ mod JevPolicyHillclimb {
         computed: Localization.Tree.Computed,
         acquire: Bool
     ): Result[Error, Localization.Tree.Outcome] \ {FileSystem, IO} =
-        match continuations(Vector.empty(), computed) {
+        match Decide.runWithStoreReplay(classicRoot(), () ->
+            classicNavigate(classicProtocol(), prepared, prior, computed,
+                Vector.empty(), computed#input, Vector.empty())) {
             case Err(error) => Err(error)
-            case Ok(roots) => match Decide.runWithStoreReplay(planningRoot(), () ->
-                planRoot(prepared, prior, computed, computed#input,
-                    Vector.sortBy(item -> pathText(item#suffix), roots))) {
+            case Ok(classic) => match replayPlanningExpert(prepared, prior, computed) {
                 case Err(error) => Err(error)
-                case Ok(planning) => {
-                    let resume = () -> resumePlan(prepared, prior, computed, planning);
-                    if (acquire) Decide.runWithAcquire(root(), resume)
-                    else Decide.runWithStoreReplay(root(), resume)
+                case Ok(planned) => {
+                    let chooseExpert = () -> selectExpert(prepared, prior, computed, classic, planned);
+                    if (acquire) Decide.runWithAcquire(root(), chooseExpert)
+                    else Decide.runWithStoreReplay(root(), chooseExpert)
                 }
             }
         }
 
-    def resumePlan(
+    def replayPlanningExpert(
         prepared: Localization.Prepared,
         prior: Localization.Tree.Prior,
-        computed: Localization.Tree.Computed,
-        planning: PlanningResult
-    ): Result[Error, Localization.Tree.Outcome] \ Decide.Choice = forM (
-        checkpoint <- chooseCheckpoint(prepared, prior, computed, planning#winner);
-        decisions = Vector.append(planning#observations, Vector#{checkpoint#observation});
-        outcome <- if (Vector.isEmpty(checkpoint#path))
-            Ok(finish(prior, computed, checkpoint#path, checkpoint#state, decisions))
-        else navigate(prepared, prior, computed, checkpoint#path, checkpoint#state, decisions)
-    ) yield outcome
+        computed: Localization.Tree.Computed
+    ): Result[Error, Localization.Tree.Outcome] \ FileSystem =
+        match continuations(Vector.empty(), computed) {
+            case Err(error) => Err(error)
+            case Ok(roots) => Decide.runWithStoreReplay(planningRoot(), () -> forM (
+                planning <- planRoot(prepared, prior, computed, computed#input,
+                    Vector.sortBy(item -> pathText(item#suffix), roots));
+                outcome <- classicNavigate(planningProtocol(), prepared, prior, computed,
+                    planning#winner#suffix, planning#winner#state, planning#observations)
+            ) yield outcome)
+        }
 
-    def chooseCheckpoint(
+    def selectExpert(
         prepared: Localization.Prepared,
         prior: Localization.Tree.Prior,
         computed: Localization.Tree.Computed,
-        plan: Continuation
-    ): Result[Error, CheckpointResult] \ Decide.Choice = forM (
-        alternatives <- checkpointAlternatives(prepared#world, prior, computed, plan#suffix);
+        classic: Localization.Tree.Outcome,
+        planned: Localization.Tree.Outcome
+    ): Result[Error, Localization.Tree.Outcome] \ Decide.Choice =
+        if (classic#path == planned#path) Ok(classic)
+        else forM (
+        alternatives <- expertAlternatives(prepared#world, prior, computed, classic, planned);
         request0 <- Decide.requestWith(
-            {protocol = protocol() + "-checkpoint", question = checkpointQuestion()},
-            Radii.Evaluate.stateId(plan#state),
-            visibleState(prepared, prior, plan#suffix, plan#state),
+            {protocol = protocol(), question = expertQuestion()},
+            Radii.Evaluate.stateId(computed#input),
+            visibleState(prepared, prior, Vector.empty(), computed#input),
             alternatives
         ) |> Result.mapErr(Error.Decide);
         observation <- Decide.policy(request0) |> Result.mapErr(Error.Decide);
-        selectedPath <- match observation#choice {
-            case Decide.Action.Stop => Ok(Vector.empty())
-            case Decide.Action.FollowPath(path) => Ok(path)
+        selected <- match observation#choice {
+            case Decide.Action.FollowPath(path) if path == classic#path => Ok(classic)
+            case Decide.Action.FollowPath(path) if path == planned#path => Ok(planned)
             case Decide.Action.Follow(_) => Err(Error.UnexpectedAction(observation#choice))
+            case _ => Err(Error.UnexpectedAction(observation#choice))
         };
-        selectedState <- if (Vector.isEmpty(selectedPath)) Ok(computed#input)
-            else Localization.Tree.stateAt(selectedPath, computed) |> Result.mapErr(Error.Tree)
-    ) yield {path = selectedPath, state = selectedState, observation = observation}
+        allDecisions = Vector.append(classic#decisions,
+            Vector.append(planned#decisions, Vector#{observation}))
+    ) yield finish(prior, computed, selected#path, selected#finalState, allDecisions)
 
-    def checkpointAlternatives(
+    def expertAlternatives(
         world: Repository.World,
         prior: Localization.Tree.Prior,
         computed: Localization.Tree.Computed,
-        path: Vector[Radii.Atom]
+        classic: Localization.Tree.Outcome,
+        planned: Localization.Tree.Outcome
     ): Result[Error, Vector[Decide.Alternative]] =
-        Vector.range(0, Vector.length(path) + 1)
-        |> Vector.traverse(depth -> {
-            let prefix = Vector.slice(start = 0, end = depth, path);
-            if (depth == 0) Ok(Some({
-                action = Decide.Action.Stop,
-                expression = None,
-                state = Radii.Evaluate.stateId(computed#input),
-                criterion = "Checkpoint root. " + Localization.Tree.preview(world, prior, computed#input)
+        Vector#{("Expert A", classic), ("Expert B", planned)}
+        |> Vector.traverse(match (label, outcome) ->
+            Localization.Tree.routeAt(outcome#path, computed#tree)
+            |> Result.mapErr(Error.Tree)
+            |> Result.map(route -> {
+                action = Decide.Action.FollowPath(outcome#path),
+                expression = Some(Radii.Evaluate.exprId(route#expression)),
+                state = Radii.Evaluate.stateId(outcome#finalState),
+                criterion = "${label}, path ${pathText(outcome#path)}. Final " +
+                    Localization.Tree.preview(world, prior, outcome#finalState)
             }))
-            else forM (
-                state <- Localization.Tree.stateAt(prefix, computed) |> Result.mapErr(Error.Tree);
-                route <- Localization.Tree.routeAt(prefix, computed#tree) |> Result.mapErr(Error.Tree)
-            ) yield match state {
-                case Radii.Evaluate.State.Symbols(_) => Some({
-                    action = Decide.Action.FollowPath(prefix),
-                    expression = Some(Radii.Evaluate.exprId(route#expression)),
-                    state = Radii.Evaluate.stateId(state),
-                    criterion = "Checkpoint depth ${depth}, path ${pathText(prefix)}. " +
-                        Localization.Tree.preview(world, prior, state)
-                })
-                case _ => None
-            }
-        })
-        |> Result.map(Vector.filterMap(identity))
 
-    def navigate(
+    def classicNavigate(
+        policyProtocol: String,
         prepared: Localization.Prepared,
         prior: Localization.Tree.Prior,
         computed: Localization.Tree.Computed,
@@ -255,52 +249,47 @@ mod JevPolicyHillclimb {
             continuations <- continuations(path, computed);
             outcome <- if (Vector.isEmpty(continuations))
                 Ok(finish(prior, computed, path, current, decisions))
-            else if (depth == 0) forM (
-                planning <- planRoot(prepared, prior, computed, current,
-                    Vector.sortBy(item -> pathText(item#suffix), continuations));
-                selected = planning#winner;
-                next <- navigate(prepared, prior, computed,
-                    selected#suffix, selected#state,
-                    Vector.append(decisions, planning#observations))
-            ) yield next
             else {
-            let rankedAlternatives = continuationAlternatives(prepared#world, prior, continuations);
-            forM (
-            rankRequest <- Decide.requestWith(
-                {protocol = protocol() + "-rank", question = question()},
-                Radii.Evaluate.stateId(current),
-                visibleState(prepared, prior, path, current),
-                rankedAlternatives
-            ) |> Result.mapErr(Error.Decide);
-            rankObservation <- Decide.policy(rankRequest) |> Result.mapErr(Error.Decide);
-            proposed <- match rankObservation#choice {
-                case Decide.Action.FollowPath(suffix) => Vector.find(item -> item#suffix == suffix, continuations)
-                    |> Option.toOk(Error.UnexpectedAction(rankObservation#choice))
-                case _ => Err(Error.UnexpectedAction(rankObservation#choice))
-            };
-            outcome <- {
-                let comparison = comparisonAlternatives(prepared#world, prior, current, proposed);
                 forM (
-                stopRequest <- Decide.requestWith(
-                    {protocol = protocol() + "-stop", question = stopQuestion()},
+                rankRequest <- Decide.requestWith(
+                    {protocol = policyProtocol + "-rank", question = question()},
                     Radii.Evaluate.stateId(current),
                     visibleState(prepared, prior, path, current),
-                    comparison
+                    continuationAlternatives(prepared#world, prior, continuations)
                 ) |> Result.mapErr(Error.Decide);
-                stopObservation <- Decide.policy(stopRequest) |> Result.mapErr(Error.Decide);
-                nextDecisions = Vector.append(decisions, Vector#{rankObservation, stopObservation});
-                next <- match stopObservation#choice {
-                    case Decide.Action.Stop => Ok(finish(prior, computed, path, current, nextDecisions))
-                    case Decide.Action.FollowPath(suffix) => match Vector.find(item -> item#suffix == suffix, continuations) {
-                        case None => Err(Error.UnexpectedAction(stopObservation#choice))
-                        case Some(item) => navigate(prepared, prior, computed,
-                            Vector.append(path, suffix), item#state, nextDecisions)
-                    }
-                    case Decide.Action.Follow(_) => Err(Error.UnexpectedAction(stopObservation#choice))
+                rankObservation <- Decide.policy(rankRequest) |> Result.mapErr(Error.Decide);
+                proposed <- match rankObservation#choice {
+                    case Decide.Action.FollowPath(suffix) => Vector.find(item -> item#suffix == suffix, continuations)
+                        |> Option.toOk(Error.UnexpectedAction(rankObservation#choice))
+                    case _ => Err(Error.UnexpectedAction(rankObservation#choice))
+                };
+                next <- if (depth == 0)
+                    classicNavigate(policyProtocol, prepared, prior, computed,
+                        Vector.append(path, proposed#suffix), proposed#state,
+                        Vector.append(decisions, Vector#{rankObservation}))
+                else {
+                    let comparison = comparisonAlternatives(prepared#world, prior, current, proposed);
+                    forM (
+                        stopRequest <- Decide.requestWith(
+                            {protocol = policyProtocol + "-stop", question = stopQuestion()},
+                            Radii.Evaluate.stateId(current),
+                            visibleState(prepared, prior, path, current),
+                            comparison
+                        ) |> Result.mapErr(Error.Decide);
+                        stopObservation <- Decide.policy(stopRequest) |> Result.mapErr(Error.Decide);
+                        nextDecisions = Vector.append(decisions, Vector#{rankObservation, stopObservation});
+                        result <- match stopObservation#choice {
+                            case Decide.Action.Stop => Ok(finish(prior, computed, path, current, nextDecisions))
+                            case Decide.Action.FollowPath(suffix) => match Vector.find(item -> item#suffix == suffix, continuations) {
+                                case None => Err(Error.UnexpectedAction(stopObservation#choice))
+                                case Some(item) => classicNavigate(policyProtocol, prepared, prior, computed,
+                                    Vector.append(path, suffix), item#state, nextDecisions)
+                            }
+                            case Decide.Action.Follow(_) => Err(Error.UnexpectedAction(stopObservation#choice))
+                        }
+                    ) yield result
                 }
                 ) yield next
-            }
-            ) yield outcome
             }
         ) yield outcome
     }

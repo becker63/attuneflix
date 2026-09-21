@@ -27,6 +27,19 @@ protocols remain recorded by their reports and retained raw request envelopes.
 | 008 | Balanced pairwise root tournament | 0.089326 | 11.58% | 0.277778 | 0.344419 | 342 | reject |
 | 009 | Hierarchical one-rollout root planning | **0.157611** | **37.21%** | 0.318889 | 0.455570 | 364 | **promote** |
 | 010 | Checkpoint selected short plan | 0.157079 | 37.02% | **0.352222** | **0.503680** | 379 | reject F1 / Pareto |
+| 011 | Terminal selector over experts 003 and 009 | **0.170048** | **41.88%** | 0.318889 | 0.479399 | 384 | **promote** |
+
+## Synthesis after iteration 011
+
+Best primary policy: iteration 011, F1 `0.170048`, capturing `41.88%` of
+structural headroom. A neutral terminal comparison selected the better of the
+classic and hierarchical experts in every consequential disagreement, exactly
+realizing their post-hoc per-case maximum without gold at runtime. This is
+strong evidence that Jev can arbitrate concrete outcomes even when it cannot
+reliably generate the right path. The dominant residual is now candidate
+generation shared by both experts, especially the same-file attractor on
+Preact 3739. Next: prune exact revisits/no-op plans inside hierarchical rollout
+generation, then recombine with the unchanged classic expert.
 
 ## Synthesis after iteration 010
 
