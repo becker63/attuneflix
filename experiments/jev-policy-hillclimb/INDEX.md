@@ -1,5 +1,9 @@
 # Jev Policy Hill-Climb Index
 
+Final synthesis: [FINAL_REPORT.md](FINAL_REPORT.md). Best scientific checkpoint
+is iteration 013 (`uzsxzwwl`, commit `df2b8dd7`) at F1 `0.201549` and `53.71%`
+structural-headroom capture.
+
 Frozen reference points:
 
 - PRIOR F1: `0.0584933221`
