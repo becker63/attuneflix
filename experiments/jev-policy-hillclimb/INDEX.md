@@ -1,0 +1,21 @@
+# Jev Policy Hill-Climb Index
+
+Frozen reference points:
+
+- PRIOR F1: `0.0584933221`
+- Jev v1 F1: `0.0788873780`
+- structural oracle F1: `0.3248306670`
+- Jev v1 headroom capture: `7.6572%`
+
+| Iter | Description | F1 | Headroom | HitFile | Context efficiency | Calls | Promote |
+|---:|---|---:|---:|---:|---:|---:|:---:|
+| 000 | Frozen Jev v1 baseline | 0.078887 | 7.66% | 0.205556 | 0.267742 | 78 | baseline |
+
+## Synthesis after diagnosis
+
+The best policy is still v1. It loses recoverable value predominantly at depth
+zero or one. A one- or two-step oracle remains weak, while three-step lookahead
+reaches `0.239664` F1 (68.02% of headroom). Exact sibling top-eight preview
+aliasing is not the dominant defect. The first policy mutation therefore tests
+one factor: direct choice among valid one-to-three-action continuations using
+their terminal previews.
