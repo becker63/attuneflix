@@ -28,6 +28,19 @@ protocols remain recorded by their reports and retained raw request envelopes.
 | 009 | Hierarchical one-rollout root planning | **0.157611** | **37.21%** | 0.318889 | 0.455570 | 364 | **promote** |
 | 010 | Checkpoint selected short plan | 0.157079 | 37.02% | **0.352222** | **0.503680** | 379 | reject F1 / Pareto |
 | 011 | Terminal selector over experts 003 and 009 | **0.170048** | **41.88%** | 0.318889 | 0.479399 | 384 | **promote** |
+| 012 | Exact-ancestor-revisit-pruned planner portfolio | **0.193444** | **50.67%** | **0.341111** | **0.504705** | 331 | **promote** |
+
+## Synthesis after iteration 012
+
+Best primary policy: iteration 012, F1 `0.193444`, capturing `50.67%` of
+structural headroom. Exact ancestor-state pruning changes the largest complete
+miss, Preact 3739, from F1 `0` to `0.350943`, with no regressions because the
+classic expert and terminal selector preserve prior winners. This establishes
+a useful architecture: generate structurally diverse honest candidates, remove
+provable recurrence, then let Jev arbitrate concrete terminal consequences.
+Remaining error is candidate coverage on four large Preact gaps rather than
+portfolio arbitration. Next: add one genuinely diverse route generator while
+holding the successful terminal selector fixed.
 
 ## Synthesis after iteration 011
 

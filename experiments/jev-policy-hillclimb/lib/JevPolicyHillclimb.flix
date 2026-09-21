@@ -34,19 +34,16 @@ mod JevPolicyHillclimb {
         observations = Vector[Decide.Observation]
     }
 
-    def iteration(): String = "011-two-expert-selector"
+    def iteration(): String = "012-pruned-planner-portfolio"
 
-    def protocol(): String = "attune-jev-policy-hillclimb-011-two-expert-selector-v1"
+    def protocol(): String = "attune-jev-policy-hillclimb-012-pruned-planner-portfolio-v1"
 
     def classicProtocol(): String = "attune-jev-policy-hillclimb-003-force-first-macro-v1"
 
     def classicRoot(): String =
         ".attune/experiments/jev-policy-hillclimb/003-force-first-macro"
 
-    def planningProtocol(): String = "attune-jev-policy-hillclimb-009-hierarchical-lookahead-v1"
-
-    def planningRoot(): String =
-        ".attune/experiments/jev-policy-hillclimb/009-hierarchical-lookahead"
+    def planningProtocol(): String = protocol()
 
     def root(): String = ".attune/experiments/jev-policy-hillclimb/${iteration()}"
 
@@ -162,29 +159,29 @@ mod JevPolicyHillclimb {
             classicNavigate(classicProtocol(), prepared, prior, computed,
                 Vector.empty(), computed#input, Vector.empty())) {
             case Err(error) => Err(error)
-            case Ok(classic) => match replayPlanningExpert(prepared, prior, computed) {
-                case Err(error) => Err(error)
-                case Ok(planned) => {
-                    let chooseExpert = () -> selectExpert(prepared, prior, computed, classic, planned);
-                    if (acquire) Decide.runWithAcquire(root(), chooseExpert)
-                    else Decide.runWithStoreReplay(root(), chooseExpert)
-                }
+            case Ok(classic) => {
+                let runCandidate = () -> forM (
+                    planned <- planningExpert(prepared, prior, computed);
+                    selected <- selectExpert(prepared, prior, computed, classic, planned)
+                ) yield selected;
+                if (acquire) Decide.runWithAcquire(root(), runCandidate)
+                else Decide.runWithStoreReplay(root(), runCandidate)
             }
         }
 
-    def replayPlanningExpert(
+    def planningExpert(
         prepared: Localization.Prepared,
         prior: Localization.Tree.Prior,
         computed: Localization.Tree.Computed
-    ): Result[Error, Localization.Tree.Outcome] \ FileSystem =
+    ): Result[Error, Localization.Tree.Outcome] \ Decide.Choice =
         match continuations(Vector.empty(), computed) {
             case Err(error) => Err(error)
-            case Ok(roots) => Decide.runWithStoreReplay(planningRoot(), () -> forM (
+            case Ok(roots) => forM (
                 planning <- planRoot(prepared, prior, computed, computed#input,
                     Vector.sortBy(item -> pathText(item#suffix), roots));
                 outcome <- classicNavigate(planningProtocol(), prepared, prior, computed,
                     planning#winner#suffix, planning#winner#state, planning#observations)
-            ) yield outcome)
+            ) yield outcome
         }
 
     def selectExpert(
@@ -334,7 +331,8 @@ mod JevPolicyHillclimb {
         } else {
             let root0 = Vector.get(index, roots);
             forM (
-                children <- continuations(root0#route#steps, computed);
+                children0 <- continuations(root0#route#steps, computed);
+                children <- pruneExactAncestorRevisits(root0#route#steps, children0, computed);
                 result <- if (Vector.isEmpty(children))
                     proposePlans(prepared, prior, computed, current, roots, index + 1,
                         Vector.append(plans, Vector#{root0}), observations)
@@ -358,6 +356,18 @@ mod JevPolicyHillclimb {
                 ) yield next
             ) yield result
         }
+
+    def pruneExactAncestorRevisits(
+        prefix: Vector[Radii.Atom],
+        candidates: Vector[Continuation],
+        computed: Localization.Tree.Computed
+    ): Result[Error, Vector[Continuation]] =
+        Vector.range(0, Vector.length(prefix) + 1)
+        |> Vector.traverse(depth -> if (depth == 0) Ok(computed#input)
+            else Localization.Tree.stateAt(Vector.slice(start = 0, end = depth, prefix), computed)
+                |> Result.mapErr(Error.Tree))
+        |> Result.map(ancestors -> Vector.filter(candidate ->
+            not Vector.exists(state -> state == candidate#state, ancestors), candidates))
 
     def uniquePlans(
         plans: Vector[Continuation],
