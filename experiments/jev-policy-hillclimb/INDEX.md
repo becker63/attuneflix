@@ -12,6 +12,7 @@ Frozen reference points:
 | 000 | Frozen Jev v1 baseline | 0.078887 | 7.66% | 0.205556 | 0.267742 | 78 | baseline |
 | 001 | Three-step terminal-preview continuations | 0.063789 | 1.99% | 0.227778 | 0.398673 | 19 | reject |
 | 002 | Rank macro, then binary stop gate | 0.091550 | 12.41% | 0.274444 | 0.355615 | 50 | **promote** |
+| 003 | Force first ranked macro | 0.144274 | 32.21% | 0.261111 | 0.382407 | 55 | **promote** |
 
 ## Synthesis after diagnosis
 
