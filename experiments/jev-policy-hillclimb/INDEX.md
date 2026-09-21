@@ -14,6 +14,7 @@ Frozen reference points:
 | 002 | Rank macro, then binary stop gate | 0.091550 | 12.41% | 0.274444 | 0.355615 | 50 | **promote** |
 | 003 | Force first ranked macro | 0.144274 | 32.21% | 0.261111 | 0.382407 | 55 | **promote** |
 | 004 | Prune exact semantic revisits | 0.144274 | 32.21% | 0.261111 | 0.382407 | 67 | reject (tie, costlier) |
+| 005 | Width-two root beam | 0.117612 | 22.20% | 0.272222 | 0.386456 | 127 | reject |
 
 ## Synthesis after diagnosis
 
@@ -23,3 +24,14 @@ reaches `0.239664` F1 (68.02% of headroom). Exact sibling top-eight preview
 aliasing is not the dominant defect. The first policy mutation therefore tests
 one factor: direct choice among valid one-to-three-action continuations using
 their terminal previews.
+
+## Synthesis after iteration 005
+
+Best policy: iteration 003, F1 `0.144274`, capturing `32.21%` of structural
+headroom. Short macro visibility works only when root stopping is removed.
+Exact-revisit pruning changes trajectories but not quality. A width-two root
+beam improves recall and HitFile but regresses F1 because branch rollouts pass
+through useful states and the final selector sees only their endpoints. The
+dominant residual is now interpreting parent-to-child change and selecting the
+right stopping point, not lack of branching or exact recurrence. Next: add
+explicit delta telemetry to the best single-branch policy.
