@@ -134,13 +134,126 @@ def decideHandlersAreTypedAndExact(): Unit \ Assert = {
 @Test
 def gritFixtureHandlerEliminatesCapability(): Unit \ Assert = {
     let fixture = Grit.Wire.Wire("{\"version\":1,\"matched\":false}");
-    let wire = Grit.runWithFixture(fixture, () -> Grit.evaluate(Grit.Language.TypeScript, "", "example.ts", ""));
+    let wire = Grit.runWithFixture(fixture, () -> Grit.evaluate(Grit.Language.TypeScript, Grit.Program.Calls, "example.ts", ""));
     Assert.assertEq(expected = Grit.json(fixture), Grit.json(wire))
 }
 
 @Test
+def gritWireDecodingPreservesNestedUtf8ByteFacts(): Unit \ Assert = {
+    let source = "const π = 'é';\nBoolean(verify(name));";
+    let wire = Grit.Wire.Wire(
+        "{\"version\":1,\"matched\":true,\"matches\":[" +
+        "{\"path\":\"nested.ts\",\"start_byte\":17,\"end_byte\":38}," +
+        "{\"path\":\"nested.ts\",\"start_byte\":25,\"end_byte\":37}]," +
+        "\"logs\":[{\"message\":\"call\\n\",\"start_byte\":17,\"end_byte\":24}," +
+        "{\"message\":\"call\\n\",\"start_byte\":25,\"end_byte\":31}]," +
+        "\"diagnostics\":[]}"
+    );
+    match Grit.facts("nested.ts", source, wire) {
+        case Err(error) => Assert.fail(ToString.toString(error))
+        case Ok(facts) => {
+            Assert.assertEq(expected = 2, Vector.length(facts));
+            let outer = Vector.get(0, facts);
+            let inner = Vector.get(1, facts);
+            Assert.assertEq(expected = ("call", "nested.ts", 17, 38, "Boolean"),
+                (outer#kind, outer#path, outer#startByte, outer#endByte, outer#value));
+            Assert.assertEq(expected = ("call", "nested.ts", 25, 37, "verify"),
+                (inner#kind, inner#path, inner#startByte, inner#endByte, inner#value))
+        }
+    }
+}
+
+@Test
+def gritWireFailuresStayClassified(): Unit \ Assert = {
+    let native = Grit.Wire.Wire("{\"version\":1,\"error\":{\"kind\":\"compile\",\"message\":\"bad program\"}}");
+    let future = Grit.Wire.Wire("{\"version\":2,\"matched\":false,\"matches\":[],\"logs\":[],\"diagnostics\":[]}");
+    let outside = Grit.Wire.Wire(
+        "{\"version\":1,\"matched\":true,\"matches\":[]," +
+        "\"logs\":[{\"message\":\"call\",\"start_byte\":0,\"end_byte\":1}],\"diagnostics\":[]}"
+    );
+    match Grit.decode(native) {
+        case Err(Grit.Error.Native(kind, message)) =>
+            Assert.assertEq(expected = ("compile", "bad program"), (kind, message))
+        case _ => Assert.fail("native error lost its classification")
+    };
+    match Grit.decode(future) {
+        case Err(Grit.Error.UnsupportedVersion(version)) => Assert.assertEq(expected = 2, version)
+        case _ => Assert.fail("future wire version was accepted")
+    };
+    match Grit.facts("x.ts", "x", outside) {
+        case Err(Grit.Error.LogOutsideMatch(start, end)) => Assert.assertEq(expected = (0, 1), (start, end))
+        case _ => Assert.fail("orphan log was accepted")
+    }
+}
+
+@Test
 def gritNativeHandlerKeepsIoAtTheEdge(): Unit \ {Assert, IO} = {
-    let program = "engine marzano(0.1)\nlanguage js(typescript)\n`$callee($...)` as $call where { log(message=\"call\", variable=$callee) }";
-    let wire = Grit.runWithNative(() -> Grit.evaluate(Grit.Language.TypeScript, program, "example.ts", "verify(name);"));
+    let wire = Grit.runWithNative(() -> Grit.evaluate(Grit.Language.TypeScript, Grit.Program.Calls, "example.ts", "verify(name);"));
     Assert.assertTrue(String.isSubmatch(regex = "\\\"matched\\\":true", Grit.json(wire)))
+}
+
+@Test
+def nativeGritFactsAdmitTheFrozenAtlasWorld(): Unit \ {Assert, IO} = {
+    let auth =
+        "import { sign } from \"./tokens\";\n" +
+        "import \"./missing\";\n\n" +
+        "export function login(name: string): string {\n" +
+        "  duplicate();\n" +
+        "  return sign(name);\n" +
+        "}\n\n" +
+        "export function logout(): void {}\n";
+    let tokens =
+        "export function sign(value: string): string {\n" +
+        "  return value;\n" +
+        "}\n\n" +
+        "export function duplicate(): void {}\n" +
+        "export function duplicate(): void {}\n";
+    let sources = Vector#{
+        {path = "src/auth.ts", content = auth},
+        {path = "src/tokens.ts", content = tokens}
+    };
+    match Grit.runWithNative(() -> Repository.extract(sources)) {
+        case Err(error) => Assert.fail(ToString.toString(error))
+        case Ok(world) => {
+            Assert.assertEq(expected = Vector#{"src/auth.ts", "src/tokens.ts"}, world#files);
+            Assert.assertEq(expected = Vector#{"login", "logout", "sign", "duplicate", "duplicate"},
+                Vector.map(symbol -> symbol#name, world#symbols));
+            Assert.assertEq(expected = Set#{
+                (file(0), symbol(0)), (file(0), symbol(1)),
+                (file(1), symbol(2)), (file(1), symbol(3)), (file(1), symbol(4))
+            }, world#defines);
+            Assert.assertEq(expected = Set#{(file(0), file(1))}, world#imports);
+            Assert.assertEq(expected = Set#{(symbol(0), symbol(2))}, world#calls);
+            Assert.assertEq(expected = Set#{
+                (location(0), location(3)),
+                (location(1), location(3)),
+                (location(3), location(2))
+            }, world#parents);
+            Assert.assertEq(expected = (1, 1), (world#unresolvedImports, world#unresolvedCalls));
+
+            // Five symbols is below the frozen issue-blind seed limit of eight,
+            // so the Python policy and this complete seed set are identical.
+            let seeds = Repository.allSymbols(world);
+            let facts = Structure.repositoryFacts(world#defines, world#imports, world#calls, world#parents);
+            let sameFile = query facts, Structure.sameFileRules() select (x, y) from SameFile(x, y);
+            Assert.assertEq(expected = 13, Vector.length(sameFile));
+            match Atlas.measure(world, seeds, 7) {
+                case Err(error) => Assert.fail(error)
+                case Ok(signature) => {
+                    Assert.assertEq(expected =
+                        (2, 5, 5, 1, 1, 3),
+                        (signature#counts#files, signature#counts#symbols,
+                         signature#counts#defines, signature#counts#imports,
+                         signature#counts#calls, signature#counts#parent));
+                    Assert.assertEq(expected = (7, 3279, 1643),
+                        (signature#depth, signature#logicalPrograms, signature#symbolPrograms));
+                    Assert.assertEq(expected = (30, 3249),
+                        (signature#physicalTransitions, signature#transitionReuses));
+                    Assert.assertTrue(signature#physicalTransitions < signature#logicalPrograms);
+                    Assert.assertEq(expected = signature#logicalPrograms,
+                        signature#physicalTransitions + signature#transitionReuses)
+                }
+            }
+        }
+    }
 }

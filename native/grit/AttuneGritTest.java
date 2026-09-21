@@ -33,9 +33,12 @@ public final class AttuneGritTest {
     }
 
     public static void main(String[] args) throws Exception {
-        String calls = Files.readString(Path.of("native/grit/calls.grit"));
-        String defines = Files.readString(Path.of("native/grit/defines.grit"));
-        String imports = Files.readString(Path.of("native/grit/imports.grit"));
+        String calls = AttuneGrit.program("calls");
+        String defines = AttuneGrit.program("defines");
+        String imports = AttuneGrit.program("imports");
+        require(calls.equals(Files.readString(Path.of("native/grit/calls.grit"))), "packaged calls.grit differs");
+        require(defines.equals(Files.readString(Path.of("native/grit/defines.grit"))), "packaged defines.grit differs");
+        require(imports.equals(Files.readString(Path.of("native/grit/imports.grit"))), "packaged imports.grit differs");
         String nested = "Boolean(verify(name));";
 
         if (args.length == 1 && args[0].equals("--fresh-child")) {

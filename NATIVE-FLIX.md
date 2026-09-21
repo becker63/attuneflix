@@ -128,3 +128,29 @@ selected JavaScript and TypeScript feature flags. The patch is three explicit
 module substitutions against the pinned revision. Local verification consumes
 the resulting Nix-built library rather than maintaining a second, ambient
 Cargo execution path.
+
+The JAR also carries the exact three admitted Grit programs as resources.
+`Grit.Program` is a closed Flix enum, so application code cannot accidentally
+turn the source-syntax boundary into an arbitrary-program capability. The raw
+Java method remains available only at the low-level seam where invalid-program
+classification is tested.
+
+## First repository vertical slice
+
+`Grit.decode` uses Flix 0.76's pure `Util.Json` parser. It rejects unknown wire
+versions and malformed external shapes before admission. Fact projection uses
+`String.toBytes`, selects the smallest enclosing syntax match, and reconstructs
+values with `String.fromBytes`; Java UTF-16 indexes never enter the semantics.
+
+`Repository.extract` then follows the frozen Python rules for the initial
+TypeScript/JavaScript world: sorted dense identities, repository-relative
+imports only, innermost lexical call ownership, local-then-global unambiguous
+target resolution, and aligned file/directory locations. Missing imports and
+ambiguous calls remain counted rejections rather than guessed edges.
+
+On the frozen two-file fixture, native Grit produces five definitions, one
+admitted import, one admitted call, and three parent edges. The depth-7 Atlas
+walk executes all 3,279 typed prefixes and 1,643 Symbol-ending programs. Its
+region-local transition memo performs 30 physical transitions and reuses 3,249
+logical transitions. Datalog derives 13 same-file pairs from those same admitted
+facts before the physical traversal is checked.

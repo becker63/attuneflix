@@ -68,9 +68,13 @@
             generated="$TMPDIR/jextract"
             classes="$TMPDIR/classes"
             java_src="$TMPDIR/java"
-            mkdir -p "$generated" "$classes" "$java_src" "$out/share/java"
+            resources="$TMPDIR/resources/attune/grit/programs"
+            mkdir -p "$generated" "$classes" "$java_src" "$resources" "$out/share/java"
             cp ${./native/grit/AttuneGritNative.java} "$java_src/AttuneGritNative.java"
             cp ${./native/grit/AttuneGrit.java} "$java_src/AttuneGrit.java"
+            cp ${./native/grit/defines.grit} "$resources/defines.grit"
+            cp ${./native/grit/imports.grit} "$resources/imports.grit"
+            cp ${./native/grit/calls.grit} "$resources/calls.grit"
 
             jextract \
               -I "$(clang -print-resource-dir)/include" \
@@ -97,7 +101,8 @@
 
             jar --create \
               --file "$out/share/java/attune-grit.jar" \
-              -C "$classes" .
+              -C "$classes" . \
+              -C "$TMPDIR/resources" .
           '';
           hoverProvider = pkgs.runCommand "attuneflix-hover-provider" {
             nativeBuildInputs = [ pkgs.jdk25 pkgs.scala_2_13 ];

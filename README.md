@@ -39,6 +39,15 @@ escape their region. Grit and Decide substitution use ordinary Flix handlers.
 The compile-tested language experiments and rejected alternatives are recorded
 in [NATIVE-FLIX.md](NATIVE-FLIX.md).
 
+The first vertical slice is executable rather than schematic. `Grit.flix`
+strictly decodes the versioned native JSON and projects UTF-8 byte ranges into
+stable facts. `Repository.flix` conservatively admits definitions, relative
+imports, lexical call owners, unambiguous call targets, and file/directory
+parents. The frozen two-file Python fixture then passes through native Grit,
+typed Datalog rules, issue-blind seeds, and the complete depth-7 physical Atlas
+tree. Its 3,279 logical transitions collapse to 30 physical transitions and
+3,249 process-local reuses.
+
 The canonical verification command is:
 
 ```console
@@ -64,4 +73,6 @@ reproducible leaf builds. The latter embeds the immutable Nix-store identity of
 the former in generated `jextract` bindings; normal execution needs no ambient
 `LD_LIBRARY_PATH`. Generated bindings remain build output. Rust retains
 compiled Marzano problems in one private process-global cache keyed by exact
-language and program bytes.
+language and program bytes. The three admitted Grit programs are resources in
+that same Nix-built JAR; ordinary Flix code can select only `Defines`, `Imports`,
+or `Calls`, not inject arbitrary Grit source.
