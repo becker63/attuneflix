@@ -10,6 +10,7 @@ Frozen reference points:
 | Iter | Description | F1 | Headroom | HitFile | Context efficiency | Calls | Promote |
 |---:|---|---:|---:|---:|---:|---:|:---:|
 | 000 | Frozen Jev v1 baseline | 0.078887 | 7.66% | 0.205556 | 0.267742 | 78 | baseline |
+| 001 | Three-step terminal-preview continuations | 0.063789 | 1.99% | 0.227778 | 0.398673 | 19 | reject |
 
 ## Synthesis after diagnosis
 

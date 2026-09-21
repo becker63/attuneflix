@@ -9,7 +9,15 @@ mod Decide {
 
     pub enum Action with Eq, Order, ToString, Hash {
         case Stop,
-        case Follow(Radii.Atom)
+        case Follow(Radii.Atom),
+        /// Experiment policies may choose a typed continuation atomically.
+        /// The ordinary v1 path never constructs this case.
+        case FollowPath(Vector[Radii.Atom])
+    }
+
+    pub type alias Config = {
+        protocol = String,
+        question = String
     }
 
     pub type alias Alternative = {
@@ -79,6 +87,17 @@ mod Decide {
         current: Radii.Evaluate.StateId,
         state: String,
         alternatives: Vector[Alternative]
+    ): Result[Error, Request] = requestWith(
+        {protocol = protocol(), question = question()}, current, state, alternatives)
+
+    /// A policy experiment owns its model-visible protocol and question while
+    /// sharing the exact retained-observation boundary. The v1 wrapper above
+    /// preserves its byte-identical payload and identity.
+    pub def requestWith(
+        config: Config,
+        current: Radii.Evaluate.StateId,
+        state: String,
+        alternatives: Vector[Alternative]
     ): Result[Error, Request] = {
         let keys = Vector.map(alternative -> actionKey(alternative#action), alternatives);
         if (Vector.isEmpty(alternatives)) Err(Error.NoAlternatives)
@@ -94,12 +113,12 @@ mod Decide {
                 "questions" => JObject(Map#{
                     "next_action" => JObject(Map#{
                         "type" => JString("choice"),
-                        "instructions" => JString(question()),
+                        "instructions" => JString(config#question),
                         "criteria" => JObject(criteria)
                     })
                 })
             }));
-            let canonical = canonicalPart(protocol()) + canonicalPart(provider()) +
+            let canonical = canonicalPart(config#protocol) + canonicalPart(provider()) +
                 canonicalPart(endpoint()) + canonicalPart(model()) + canonicalPart(payload) +
                 canonicalPart(ToString.toString(current)) +
                 Vector.foldLeft((text, alternative) -> text + canonicalAlternative(alternative), "", alternatives);
@@ -169,6 +188,8 @@ mod Decide {
     pub def actionKey(action: Action): String = match action {
         case Action.Stop => "stop"
         case Action.Follow(atom) => atomName(atom)
+        case Action.FollowPath(atoms) => Vector.map(atomName, atoms)
+            |> Vector.toList |> List.intersperse(">>") |> List.fold
     }
 
     def fake(index: Int32, request0: Request): Result[Error, Observation] =

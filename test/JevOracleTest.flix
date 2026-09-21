@@ -89,6 +89,14 @@ mod JevOracleTest {
         oracleRegions = Vector[SourceRegion]
     }
 
+    type alias FrozenReference = {
+        prior = Score,
+        oracle = Score,
+        oraclePath = String,
+        priorRegions = Vector[SourceRegion],
+        oracleRegions = Vector[SourceRegion]
+    }
+
     type alias BudgetCoverage = {
         covered = Set[(String, Int32)],
         consumed = Int32
@@ -213,6 +221,10 @@ mod JevOracleTest {
         match Env.getVar("ATTUNE_JEV_EVALUATE") {
             case None => ()
             case Some("oracle") => match execute() {
+                case Ok(()) => ()
+                case Err(error) => Assert.fail(ToString.toString(error))
+            }
+            case Some("candidate") => match executeCandidate() {
                 case Ok(()) => ()
                 case Err(error) => Assert.fail(ToString.toString(error))
             }
@@ -1099,6 +1111,75 @@ mod JevOracleTest {
         _ <- writeResults(rows)
     ) yield printAggregate(rows)
 
+    /// Scores a frozen experiment outcome through the same official evaluator
+    /// without changing or validating against the immutable v1 aggregate.
+    /// Gold enters only this post-hoc process, never the candidate runner.
+    def executeCandidate(): Result[Error, Unit] \ {Env, FileSystem, IO} = forM (
+        outcomePath <- requiredEnv("ATTUNE_JEV_CANDIDATE_OUTCOMES");
+        outputPath <- requiredEnv("ATTUNE_JEV_CANDIDATE_EVALUATION");
+        candidateProtocol <- requiredEnv("ATTUNE_JEV_CANDIDATE_PROTOCOL");
+        priorPayload <- read(".attune/semantic-prior-v1/rankings.json");
+        outcomePayload <- read(outcomePath);
+        frozenPayload <- read("JEV_LOCALIZATION_RESULTS.json");
+        goldPayload <- Repository.Nix.runWithNative(() -> forM (
+            evidence <- Repository.Nix.evaluation() |> Result.mapErr(Error.Nix);
+            payload <- Repository.Nix.Acquire.readSource(Repository.Nix.path(evidence#goldFixture))
+                |> Result.mapErr(Error.Nix)
+        ) yield payload);
+        gold <- decodeGold(goldPayload);
+        rows <- evaluateCandidateCases(0, priorPayload, outcomePayload, frozenPayload,
+            gold, Vector.empty());
+        _ <- writeResultsAt(rows, outputPath, candidateProtocol)
+    ) yield printAggregate(rows)
+
+    def requiredEnv(name: String): Result[Error, String] \ Env =
+        Env.getVar(name) |> Option.toOk(Error.Wire("missing environment variable: ${name}"))
+
+    def evaluateCandidateCases(
+        index: Int32,
+        priorPayload: String,
+        outcomePayload: String,
+        frozenPayload: String,
+        gold: Vector[Gold],
+        rows: Vector[Row]
+    ): Result[Error, Vector[Row]] \ {FileSystem, IO} =
+        if (index >= 15) Ok(rows)
+        else match Repository.Grit.runWithNative(() -> Repository.Nix.runWithNative(() ->
+            Localization.prepareRetained(".attune/repository-facts-v1", index))) {
+            case Err(error) => Err(Error.Prepare(error))
+            case Ok(prepared) => {
+                let result = forM (
+                    prior <- Localization.Tree.decodePrior(prepared#instanceId, priorPayload)
+                        |> Result.mapErr(Error.Tree);
+                    fixture <- decodeOutcome(prepared#instanceId, outcomePayload);
+                    ranking <- reorder(prior#ranking, fixture#ranking);
+                    expected <- Vector.find(item -> item#instanceId == prepared#instanceId, gold)
+                        |> Option.toOk(Error.MissingGold(prepared#instanceId));
+                    frozen <- decodeFrozen(prepared#instanceId, frozenPayload);
+                    candidateRegions = regionsFor(prepared, ranking);
+                    candidateScore = score(candidateRegions, expected, prepared#sources)
+                ) yield {
+                    instanceId = prepared#instanceId,
+                    repository = prepared#repository,
+                    prior = frozen#prior,
+                    jev = candidateScore,
+                    oracle = frozen#oracle,
+                    oraclePath = frozen#oraclePath,
+                    priorRegions = frozen#priorRegions,
+                    jevRegions = candidateRegions,
+                    oracleRegions = frozen#oracleRegions
+                };
+                match result {
+                    case Err(error) => Err(error)
+                    case Ok(row) => {
+                        printRow(row);
+                        evaluateCandidateCases(index + 1, priorPayload, outcomePayload,
+                            frozenPayload, gold, Vector.append(rows, Vector#{row}))
+                    }
+                }
+            }
+        }
+
     def evaluateCases(
         index: Int32,
         priorPayload: String,
@@ -1580,6 +1661,75 @@ mod JevOracleTest {
             case Ok(_) => Err(Error.Wire("outcomes must be an object"))
         }
 
+    def decodeFrozen(instanceId: String, payload: String): Result[Error, FrozenReference] =
+        match Json.parse(payload) {
+            case Err(error) => Err(Error.Wire(ToString.toString(error)))
+            case Ok(JObject(fields)) => forM (
+                values <- arrayField("cases", fields);
+                row <- Vector.find(value -> caseId(value) == Some(instanceId), values)
+                    |> Option.toOk(Error.MissingOutcome(instanceId));
+                frozen <- decodeFrozenRow(row)
+            ) yield frozen
+            case Ok(_) => Err(Error.Wire("frozen evaluation must be an object"))
+        }
+
+    def decodeFrozenRow(value: Json): Result[Error, FrozenReference] = match value {
+        case JObject(fields) => forM (
+            oraclePath <- stringField("oracle_path", fields);
+            priorValue <- field("prior", fields);
+            prior <- decodeCondition(priorValue);
+            oracleValue <- field("structural_oracle", fields);
+            oracle <- decodeCondition(oracleValue)
+        ) yield {
+            prior = fst(prior),
+            oracle = fst(oracle),
+            oraclePath = oraclePath,
+            priorRegions = snd(prior),
+            oracleRegions = snd(oracle)
+        }
+        case _ => Err(Error.Wire("frozen evaluation case must be an object"))
+    }
+
+    def decodeCondition(value: Json): Result[Error, (Score, Vector[SourceRegion])] = match value {
+        case JObject(fields) => forM (
+            metricValue <- field("metrics", fields);
+            metrics <- decodeScore(metricValue);
+            regionValues <- arrayField("regions", fields);
+            regions <- Vector.traverse(decodeRegion, regionValues)
+        ) yield (metrics, regions)
+        case _ => Err(Error.Wire("evaluation condition must be an object"))
+    }
+
+    def decodeScore(value: Json): Result[Error, Score] = match value {
+        case JObject(fields) => forM (
+            precision <- floatField("precision", fields);
+            recall <- floatField("recall", fields);
+            f1 <- floatField("f1_score", fields);
+            hitFile <- floatField("hit_file_rate", fields);
+            noiseFile <- floatField("noise_file_rate", fields);
+            hitRegion <- floatField("hit_region_rate", fields);
+            noiseRegion <- floatField("noise_region_rate", fields);
+            weighted <- floatField("weighted_core_coverage", fields);
+            context <- floatField("context_efficiency", fields);
+            ndcg100 <- floatField("ndcg_at_100", fields);
+            ndcg300 <- floatField("ndcg_at_300", fields);
+            ndcg500 <- floatField("ndcg_at_500", fields);
+            recall100 <- floatField("recall_at_100", fields);
+            recall300 <- floatField("recall_at_300", fields);
+            recall500 <- floatField("recall_at_500", fields);
+            first <- floatField("first_useful_hit", fields)
+        ) yield {
+            precision = precision, recall = recall, f1 = f1,
+            hitFile = hitFile, noiseFile = noiseFile,
+            hitRegion = hitRegion, noiseRegion = noiseRegion,
+            weightedCoreCoverage = weighted, contextEfficiency = context,
+            ndcg100 = ndcg100, ndcg300 = ndcg300, ndcg500 = ndcg500,
+            recall100 = recall100, recall300 = recall300, recall500 = recall500,
+            firstUsefulHit = first
+        }
+        case _ => Err(Error.Wire("evaluation metrics must be an object"))
+    }
+
     def decodeOutcomeRow(value: Json): Result[Error, OutcomeFixture] = match value {
         case JObject(fields) => forM (
             path <- stringVectorField("path", fields);
@@ -1748,17 +1898,25 @@ mod JevOracleTest {
     }
 
     def writeResults(rows: Vector[Row]): Result[Error, Unit] \ FileSystem = {
+        writeResultsAt(rows, ".attune/jev-localization-v1/evaluation.json", Decide.protocol())
+    }
+
+    def writeResultsAt(
+        rows: Vector[Row],
+        outputPath: String,
+        resultProtocol: String
+    ): Result[Error, Unit] \ FileSystem = {
         let payload = Json.toCompactString(JObject(Map#{
             "version" => ToJson.toJson(1),
             "benchmark_revision" => JString("bdb0ae45d7c337d9e1dc3ebfe2a0af6bc7c1fbd9"),
             "evaluator_revision" => JString("5602f031f2d9562d0a805f83402b536e831a5a11"),
-            "protocol" => JString(Decide.protocol()),
+            "protocol" => JString(resultProtocol),
             "model" => JString(Decide.model()),
             "top_k" => ToJson.toJson(5),
             "cases" => JArray(Vector.map(rowJson, rows))
         }));
         let written = run {
-            FileSystem.write(str = payload, ".attune/jev-localization-v1/evaluation.json")
+            FileSystem.write(str = payload, outputPath)
         } with FileSystem.withMkParentDirs
           with FileSystem.withAtomicWrite;
         Result.mapErr(error -> Error.File(ToString.toString(error)), written)

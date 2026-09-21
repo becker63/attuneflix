@@ -152,6 +152,7 @@ pub mod Localization.Tree {
                         Vector.append(decisions, Vector#{observation})
                     )
                 }
+                case Decide.Action.FollowPath(_) => Err(Error.UnexpectedAction(observation#choice))
             }
         ) yield result
     }
@@ -238,7 +239,7 @@ pub mod Localization.Tree {
         "current: ${preview(prepared#world, prior, current)}"
     }
 
-    def preview(world: Repository.World, prior: Prior, state: Radii.Evaluate.State): String = match state {
+    pub def preview(world: Repository.World, prior: Prior, state: Radii.Evaluate.State): String = match state {
         case Radii.Evaluate.State.Symbols(symbols) => {
             let members = take(centerCount(), Vector.filter(item ->
                 Set.memberOf(symbolId(item#ordinal), symbols), prior#ranking));
@@ -334,9 +335,19 @@ pub mod Localization.Tree {
         case Radii.Domain.Location => Vector.empty()
     }
 
-    def routeAt(path: Vector[Radii.Atom], tree: Tree): Result[Error, Route] =
+    pub def routeAt(path: Vector[Radii.Atom], tree: Tree): Result[Error, Route] =
         Vector.find(route -> route#steps == path, tree#routes)
         |> Option.toOk(Error.MissingRoute(pathText(path)))
+
+    /// Read one already-computed route result. This performs no repository
+    /// work and is the narrow query seam used by policy experiments.
+    pub def stateAt(path: Vector[Radii.Atom], computed: Computed): Result[Error, Radii.Evaluate.State] =
+        routeAt(path, computed#tree)
+        |> Result.map(_ -> {
+            let index = routeIndex(path, computed#tree);
+            let id = Vector.get(index, computed#evaluation#outputs);
+            Radii.Compiled.state(computed#evaluation, id)
+        })
 
     def routeIndex(path: Vector[Radii.Atom], tree: Tree): Int32 =
         routeIndexFrom(path, tree#routes, 0)
