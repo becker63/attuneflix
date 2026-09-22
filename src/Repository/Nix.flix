@@ -88,6 +88,7 @@ pub mod Repository.Nix {
         def replication(caseIndex: Int32): Wire
         def localization(caseIndex: Int32): Wire
         def evaluation(): Wire
+        def scaleEvaluation(): Wire
         def population(): Wire
         def scaleCase(caseIndex: Int32): Wire
         def scaleIssues(): Wire
@@ -106,6 +107,9 @@ pub mod Repository.Nix {
     pub def evaluation(): Result[Error, EvaluationEvidence] \ Acquire =
         decodeEvaluation(Acquire.evaluation())
 
+    pub def scaleEvaluation(): Result[Error, EvaluationEvidence] \ Acquire =
+        decodeEvaluation(Acquire.scaleEvaluation())
+
     pub def population(): Result[Error, PopulationEvidence] \ Acquire =
         decodePopulation(Acquire.population())
 
@@ -121,6 +125,7 @@ pub mod Repository.Nix {
             def replication(caseIndex, k) = k(realiseReplication(caseIndex))
             def localization(caseIndex, k) = k(realiseLocalization(caseIndex))
             def evaluation(k) = k(realiseEvaluation())
+            def scaleEvaluation(k) = k(realiseScaleEvaluation())
             def population(k) = k(realisePopulation())
             def scaleCase(caseIndex, k) = k(realiseScaleCase(caseIndex))
             def scaleIssues(k) = k(realiseScaleIssues())
@@ -133,6 +138,7 @@ pub mod Repository.Nix {
             def replication(_, k) = k(fixture)
             def localization(_, k) = k(fixture)
             def evaluation(k) = k(fixture)
+            def scaleEvaluation(k) = k(fixture)
             def population(k) = k(fixture)
             def scaleCase(_, k) = k(fixture)
             def scaleIssues(k) = k(fixture)
@@ -559,6 +565,12 @@ pub mod Repository.Nix {
     def realiseEvaluation(): Wire \ IO =
         Wire.Wire(AttuneNix.realise(
             "import ./evaluation.nix",
+            System.getProperty("user.dir")
+        ))
+
+    def realiseScaleEvaluation(): Wire \ IO =
+        Wire.Wire(AttuneNix.realise(
+            "import ./scale-evaluation.nix {}",
             System.getProperty("user.dir")
         ))
 

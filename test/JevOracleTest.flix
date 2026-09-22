@@ -228,6 +228,10 @@ mod JevOracleTest {
                 case Ok(()) => ()
                 case Err(error) => Assert.fail(ToString.toString(error))
             }
+            case Some("scale") => match executeScale() {
+                case Ok(()) => ()
+                case Err(error) => Assert.fail(ToString.toString(error))
+            }
             case Some(value) => Assert.fail("unknown ATTUNE_JEV_EVALUATE: ${value}")
         }
 
@@ -1111,6 +1115,76 @@ mod JevOracleTest {
         _ <- writeResults(rows)
     ) yield printAggregate(rows)
 
+    /// Phase B gold opening. This entry point is not invoked until every new
+    /// PRIOR and frozen-013 prediction has been retained and replayed.
+    def executeScale(): Result[Error, Unit] \ {FileSystem, IO} =
+        Repository.Nix.runWithNative(() -> forM (
+            issues <- Repository.Nix.scaleIssues() |> Result.mapErr(Error.Nix);
+            issuePayload <- Repository.Nix.Acquire.readSource(
+                Repository.Nix.path(issues#issueFixture)) |> Result.mapErr(Error.Nix);
+            evidence <- Repository.Nix.scaleEvaluation() |> Result.mapErr(Error.Nix);
+            goldPayload <- Repository.Nix.Acquire.readSource(
+                Repository.Nix.path(evidence#goldFixture)) |> Result.mapErr(Error.Nix);
+            gold <- decodeGold(goldPayload);
+            tree = Localization.Tree.compile();
+            rows <- Repository.Grit.runWithNative(() -> evaluateScaleCases(
+                0, issuePayload, gold, tree, Vector.empty()));
+            _ <- writeResultsAt(
+                rows,
+                "experiments/swe-explore-js-ts-scale/PHASE_B_RESULTS.json",
+                "attune-jev-policy-hillclimb-013-deep-planner-portfolio-v1")
+        ) yield printScaleAggregate(rows))
+
+    def evaluateScaleCases(
+        index: Int32,
+        issuePayload: String,
+        gold: Vector[Gold],
+        tree: Localization.Tree.Tree,
+        rows: Vector[Row]
+    ): Result[Error, Vector[Row]] \ {FileSystem, IO, Repository.Grit.Eval, Repository.Nix.Acquire} =
+        if (index >= 78) Ok(rows)
+        else forM (
+            case0 <- Repository.Nix.scaleCase(index) |> Result.mapErr(Error.Nix);
+            next <- if (case0#population == "historical-development") Ok(rows)
+                else forM (
+                    prepared <- Localization.prepareScaleRetained(
+                        ".attune/repository-facts-js-ts-scale-v1",
+                        case0,
+                        issuePayload
+                    ) |> Result.mapErr(Error.Prepare);
+                    priorPayload <- read(
+                        ".attune/semantic-prior-js-ts-scale-v1/rankings/${case0#baseRevision}.json");
+                    outcomePayload <- read(
+                        ".attune/experiments/swe-explore-js-ts-scale/013-predictions/${case0#baseRevision}.json");
+                    prior <- Localization.Tree.decodePrior(prepared#instanceId, priorPayload)
+                        |> Result.mapErr(Error.Tree);
+                    fixture <- decodeScaleOutcome(prepared#instanceId, outcomePayload);
+                    ranking <- reorder(prior#ranking, fixture#ranking);
+                    expected <- Vector.find(item -> item#instanceId == prepared#instanceId, gold)
+                        |> Option.toOk(Error.MissingGold(prepared#instanceId));
+                    computed <- Localization.Tree.compute(prepared, prior, tree)
+                        |> Result.mapErr(Error.Tree);
+                    priorRegions = regionsFor(prepared, prior#ranking);
+                    selectedRegions = regionsFor(prepared, ranking);
+                    priorScore = score(priorRegions, expected, prepared#sources);
+                    selectedScore = score(selectedRegions, expected, prepared#sources);
+                    oracle = structuralOracle(prepared, prior, computed, expected);
+                    row = {
+                        instanceId = prepared#instanceId,
+                        repository = prepared#repository,
+                        prior = priorScore,
+                        jev = selectedScore,
+                        oracle = oracle#score,
+                        oraclePath = oracle#path,
+                        priorRegions = priorRegions,
+                        jevRegions = selectedRegions,
+                        oracleRegions = oracle#regions
+                    };
+                    _ = printRow(row)
+                ) yield Vector.append(rows, Vector#{row});
+            result <- evaluateScaleCases(index + 1, issuePayload, gold, tree, next)
+        ) yield result
+
     /// Scores a frozen experiment outcome through the same official evaluator
     /// without changing or validating against the immutable v1 aggregate.
     /// Gold enters only this post-hoc process, never the candidate runner.
@@ -1661,6 +1735,17 @@ mod JevOracleTest {
             case Ok(_) => Err(Error.Wire("outcomes must be an object"))
         }
 
+    def decodeScaleOutcome(instanceId: String, payload: String): Result[Error, OutcomeFixture] =
+        match Json.parse(payload) {
+            case Err(error) => Err(Error.Wire(ToString.toString(error)))
+            case Ok(JObject(fields)) => forM (
+                actual <- stringField("instance_id", fields);
+                _ <- if (actual == instanceId) Ok(()) else Err(Error.MissingOutcome(instanceId));
+                outcome <- decodeOutcomeRow(JObject(fields))
+            ) yield outcome
+            case Ok(_) => Err(Error.Wire("scale outcome must be an object"))
+        }
+
     def decodeFrozen(instanceId: String, payload: String): Result[Error, FrozenReference] =
         match Json.parse(payload) {
             case Err(error) => Err(Error.Wire(ToString.toString(error)))
@@ -1823,6 +1908,98 @@ mod JevOracleTest {
         printRepository("axios/axios", rows);
         printRepository("immutable-js/immutable-js", rows);
         printRepository("preactjs/preact", rows)
+    }
+
+    def printScaleAggregate(rows: Vector[Row]): Unit \ IO = {
+        let repositories = Vector#{
+            "NodeBB/NodeBB", "babel/babel", "element-hq/element-web",
+            "facebook/docusaurus", "mrdoob/three.js", "protonmail/webclients",
+            "tutao/tutanota", "vuejs/core"
+        };
+        let priorF1 = mean(rows, row -> row#prior#f1);
+        let selectedF1 = mean(rows, row -> row#jev#f1);
+        let oracleF1 = mean(rows, row -> row#oracle#f1);
+        let denominator = oracleF1 - priorF1;
+        println("SCALE_PHASE_B_AGGREGATE cases=${Vector.length(rows)}" +
+            " prior_precision=${mean(rows, row -> row#prior#precision)}" +
+            " selected_precision=${mean(rows, row -> row#jev#precision)}" +
+            " oracle_precision=${mean(rows, row -> row#oracle#precision)}" +
+            " prior_recall=${mean(rows, row -> row#prior#recall)}" +
+            " selected_recall=${mean(rows, row -> row#jev#recall)}" +
+            " oracle_recall=${mean(rows, row -> row#oracle#recall)}" +
+            " prior_f1=${priorF1} selected_f1=${selectedF1} oracle_f1=${oracleF1}" +
+            " prior_hit_file=${mean(rows, row -> row#prior#hitFile)}" +
+            " selected_hit_file=${mean(rows, row -> row#jev#hitFile)}" +
+            " oracle_hit_file=${mean(rows, row -> row#oracle#hitFile)}" +
+            " prior_hit_region=${mean(rows, row -> row#prior#hitRegion)}" +
+            " selected_hit_region=${mean(rows, row -> row#jev#hitRegion)}" +
+            " oracle_hit_region=${mean(rows, row -> row#oracle#hitRegion)}" +
+            " prior_context=${mean(rows, row -> row#prior#contextEfficiency)}" +
+            " selected_context=${mean(rows, row -> row#jev#contextEfficiency)}" +
+            " oracle_context=${mean(rows, row -> row#oracle#contextEfficiency)}" +
+            " prior_ndcg100=${mean(rows, row -> row#prior#ndcg100)}" +
+            " selected_ndcg100=${mean(rows, row -> row#jev#ndcg100)}" +
+            " oracle_ndcg100=${mean(rows, row -> row#oracle#ndcg100)}" +
+            " positive_headroom=${Vector.count(row -> row#oracle#f1 > row#prior#f1, rows)}" +
+            " improved=${Vector.count(row -> row#jev#f1 > row#prior#f1, rows)}" +
+            " tied=${Vector.count(row -> row#jev#f1 == row#prior#f1, rows)}" +
+            " regressed=${Vector.count(row -> row#jev#f1 < row#prior#f1, rows)}" +
+            " headroom_capture=${if (denominator <= 0.0) 0.0 else (selectedF1 - priorF1) / denominator}");
+        Vector.forEach(repository -> printScaleRepository(repository, rows), repositories);
+        println("SCALE_REPOSITORY_MACRO repositories=${Vector.length(repositories)}" +
+            " prior_f1=${repositoryMacro(repositories, rows, row -> row#prior#f1)}" +
+            " selected_f1=${repositoryMacro(repositories, rows, row -> row#jev#f1)}" +
+            " oracle_f1=${repositoryMacro(repositories, rows, row -> row#oracle#f1)}" +
+            " prior_hit_file=${repositoryMacro(repositories, rows, row -> row#prior#hitFile)}" +
+            " selected_hit_file=${repositoryMacro(repositories, rows, row -> row#jev#hitFile)}" +
+            " prior_context=${repositoryMacro(repositories, rows, row -> row#prior#contextEfficiency)}" +
+            " selected_context=${repositoryMacro(repositories, rows, row -> row#jev#contextEfficiency)}" +
+            " prior_ndcg100=${repositoryMacro(repositories, rows, row -> row#prior#ndcg100)}" +
+            " selected_ndcg100=${repositoryMacro(repositories, rows, row -> row#jev#ndcg100)}");
+        printScaleLanguage("javascript", Vector#{
+            "NodeBB/NodeBB", "mrdoob/three.js", "protonmail/webclients"
+        }, rows);
+        printScaleLanguage("typescript", Vector#{
+            "babel/babel", "element-hq/element-web", "facebook/docusaurus",
+            "tutao/tutanota", "vuejs/core"
+        }, rows)
+    }
+
+    def printScaleRepository(repository: String, rows: Vector[Row]): Unit \ IO = {
+        let selected = Vector.filter(row -> row#repository == repository, rows);
+        println("SCALE_REPOSITORY repository=${repository} cases=${Vector.length(selected)}" +
+            " prior_f1=${mean(selected, row -> row#prior#f1)}" +
+            " selected_f1=${mean(selected, row -> row#jev#f1)}" +
+            " oracle_f1=${mean(selected, row -> row#oracle#f1)}" +
+            " prior_hit_file=${mean(selected, row -> row#prior#hitFile)}" +
+            " selected_hit_file=${mean(selected, row -> row#jev#hitFile)}" +
+            " prior_context=${mean(selected, row -> row#prior#contextEfficiency)}" +
+            " selected_context=${mean(selected, row -> row#jev#contextEfficiency)}" +
+            " improved=${Vector.count(row -> row#jev#f1 > row#prior#f1, selected)}" +
+            " tied=${Vector.count(row -> row#jev#f1 == row#prior#f1, selected)}" +
+            " regressed=${Vector.count(row -> row#jev#f1 < row#prior#f1, selected)}")
+    }
+
+    def repositoryMacro(
+        repositories: Vector[String],
+        rows: Vector[Row],
+        metric: Row -> Float64
+    ): Float64 = Vector.map(repository -> {
+        let selected = Vector.filter(row -> row#repository == repository, rows);
+        mean(selected, metric)
+    }, repositories) |> meanFloat
+
+    def printScaleLanguage(
+        language: String,
+        repositories: Vector[String],
+        rows: Vector[Row]
+    ): Unit \ IO = {
+        let admitted = Vector.toSet(repositories);
+        let selected = Vector.filter(row -> Set.memberOf(row#repository, admitted), rows);
+        println("SCALE_LANGUAGE language=${language} cases=${Vector.length(selected)}" +
+            " prior_f1=${mean(selected, row -> row#prior#f1)}" +
+            " selected_f1=${mean(selected, row -> row#jev#f1)}" +
+            " oracle_f1=${mean(selected, row -> row#oracle#f1)}")
     }
 
     def printRepository(repository: String, rows: Vector[Row]): Unit \ IO = {
