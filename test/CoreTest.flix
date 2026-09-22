@@ -247,6 +247,81 @@ def gritFixtureHandlerEliminatesCapability(): Unit \ Assert = {
 }
 
 @Test
+def sourceExtensionsRouteToExplicitGritDialects(): Unit \ Assert = {
+    Assert.assertEq(expected = Ok(Repository.Grit.Language.JavaScript), Repository.language("src/a.js"));
+    Assert.assertEq(expected = Ok(Repository.Grit.Language.JavaScript), Repository.language("src/a.mjs"));
+    Assert.assertEq(expected = Ok(Repository.Grit.Language.JavaScript), Repository.language("src/a.cjs"));
+    Assert.assertEq(expected = Ok(Repository.Grit.Language.Jsx), Repository.language("src/a.jsx"));
+    Assert.assertEq(expected = Ok(Repository.Grit.Language.TypeScript), Repository.language("src/a.ts"));
+    Assert.assertEq(expected = Ok(Repository.Grit.Language.TypeScript), Repository.language("src/a.mts"));
+    Assert.assertEq(expected = Ok(Repository.Grit.Language.TypeScript), Repository.language("src/a.cts"));
+    Assert.assertEq(expected = Ok(Repository.Grit.Language.Tsx), Repository.language("src/a.tsx"));
+    match Repository.language("src/a.vue") {
+        case Err(Repository.Error.UnsupportedSourceDialect(path)) => Assert.assertEq(expected = "src/a.vue", path)
+        case _ => Assert.fail("unsupported source extension was not rejected")
+    }
+}
+
+def gritValues(
+    language: Repository.Grit.Language,
+    program: Repository.Grit.Program,
+    path: String,
+    source: String
+): Vector[String] \ {Assert, Repository.Grit.Eval} = {
+    let wire = Repository.Grit.evaluate(language, program, path, source);
+    match Repository.Grit.facts(path, source, wire) {
+        case Err(error) => { Assert.fail(ToString.toString(error)); Vector.empty() }
+        case Ok(facts) => Vector.map(fact -> fact#value, facts)
+    }
+}
+
+def assertGritDialect(
+    language: Repository.Grit.Language,
+    path: String,
+    source: String
+): Unit \ {Assert, Repository.Grit.Eval} = {
+    Assert.assertEq(expected = Vector#{"View"},
+        gritValues(language, Repository.Grit.Program.Defines, path, source));
+    Assert.assertEq(expected = Vector#{"\"./render\""},
+        gritValues(language, Repository.Grit.Program.Imports, path, source));
+    Assert.assertEq(expected = Vector#{"render"},
+        gritValues(language, Repository.Grit.Program.Calls, path, source))
+}
+
+@Test
+def everyGritDialectProducesExpectedFacts(): Unit \ {Assert, IO} =
+    Repository.Grit.runWithNative(() -> {
+        let javascript =
+            "import { render } from \"./render\";\n" +
+            "export function View(props) {\n" +
+            "  render(props.name);\n" +
+            "  return props.name;\n" +
+            "}\n";
+        let jsx =
+            "import { render } from \"./render\";\n" +
+            "export function View(props) {\n" +
+            "  render(props.name);\n" +
+            "  return <div>{props.name}</div>;\n" +
+            "}\n";
+        let typescript =
+            "import { render } from \"./render\";\n" +
+            "export function View(props: { name: string }): string {\n" +
+            "  render(props.name);\n" +
+            "  return props.name;\n" +
+            "}\n";
+        let tsx =
+            "import { render } from \"./render\";\n" +
+            "export function View(props: { name: string }) {\n" +
+            "  render(props.name);\n" +
+            "  return <div>{props.name}</div>;\n" +
+            "}\n";
+        assertGritDialect(Repository.Grit.Language.JavaScript, "fixture.js", javascript);
+        assertGritDialect(Repository.Grit.Language.Jsx, "fixture.jsx", jsx);
+        assertGritDialect(Repository.Grit.Language.TypeScript, "fixture.ts", typescript);
+        assertGritDialect(Repository.Grit.Language.Tsx, "fixture.tsx", tsx)
+    })
+
+@Test
 def gritWireDecodingPreservesNestedUtf8ByteFacts(): Unit \ Assert = {
     let source = "const π = 'é';\nBoolean(verify(name));";
     let wire = Repository.Grit.Wire.Wire(

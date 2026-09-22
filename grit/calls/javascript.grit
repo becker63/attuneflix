@@ -1,5 +1,9 @@
 engine marzano(0.1)
-language js(typescript)
+language js(jsx)
+
+// @dialect javascript
+// JavaScript sources (.js, .mjs, .cjs) use the JSX-capable parser intentionally; JSX is a strict syntactic superset needed to preserve the frozen extractor behavior.
+// Grit returns syntax matches plus logged source values. Attune later assigns repository identities, resolves/admit edges, and derives inverse relations; this frontend does none of those jobs.
 
 // @syntax source
 //
@@ -65,3 +69,4 @@ language js(typescript)
   $callee <: not r"^require$",
   log(message="call", variable=$callee)
 }
+

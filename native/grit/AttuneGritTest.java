@@ -33,12 +33,17 @@ public final class AttuneGritTest {
     }
 
     public static void main(String[] args) throws Exception {
-        String calls = AttuneGrit.program("calls");
-        String defines = AttuneGrit.program("defines");
-        String imports = AttuneGrit.program("imports");
-        require(calls.equals(Files.readString(Path.of("native/grit/calls.grit"))), "packaged calls.grit differs");
-        require(defines.equals(Files.readString(Path.of("native/grit/defines.grit"))), "packaged defines.grit differs");
-        require(imports.equals(Files.readString(Path.of("native/grit/imports.grit"))), "packaged imports.grit differs");
+        String calls = AttuneGrit.program("typescript", "calls");
+        String defines = AttuneGrit.program("typescript", "defines");
+        String imports = AttuneGrit.program("typescript", "imports");
+        for (String relation : List.of("calls", "defines", "imports")) {
+            for (String dialect : List.of("javascript", "jsx", "typescript", "tsx")) {
+                String packaged = AttuneGrit.program(dialect, relation);
+                Path visible = Path.of("grit", relation, dialect + ".grit");
+                require(packaged.equals(Files.readString(visible)),
+                        "packaged entry point differs: " + visible);
+            }
+        }
         String nested = "Boolean(verify(name));";
 
         if (args.length == 1 && args[0].equals("--fresh-child")) {

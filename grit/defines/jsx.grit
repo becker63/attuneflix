@@ -1,5 +1,9 @@
 engine marzano(0.1)
-language js(typescript)
+language js(jsx)
+
+// @dialect jsx
+// JSX sources (.jsx) use the JSX parser.
+// Grit returns syntax matches plus logged source values. Attune later assigns repository identities, resolves/admit edges, and derives inverse relations; this frontend does none of those jobs.
 
 // @syntax structural Callable shapes use TypeScript parser nodes; function-expression values use a small source-shaped check.
 //
@@ -173,3 +177,4 @@ or {
 } as $definition where {
   log(message="definition", variable=$name)
 }
+

@@ -13,12 +13,11 @@ public final class AttuneGrit {
         return AttuneGritNative.evaluate(language, program, path, source);
     }
 
-    /** Returns one Nix-packaged, admitted Attune Grit program. */
-    public static String program(String name) {
-        String resource = switch (name) {
-            case "defines", "imports", "calls" -> "/attune/grit/programs/" + name + ".grit";
-            default -> throw new IllegalArgumentException("unknown Attune Grit program: " + name);
-        };
+    /** Returns one Nix-packaged, admitted Attune Grit dialect entry point. */
+    public static String program(String language, String name) {
+        // Flix owns both closed enums and therefore the admitted cross-product.
+        // This Java leaf only loads the corresponding immutable JAR resource.
+        String resource = "/attune/grit/programs/" + name + "/" + language + ".grit";
         try (InputStream stream = AttuneGrit.class.getResourceAsStream(resource)) {
             if (stream == null) throw new IllegalStateException("missing Attune Grit resource: " + resource);
             return new String(stream.readAllBytes(), StandardCharsets.UTF_8);

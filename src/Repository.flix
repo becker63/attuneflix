@@ -40,6 +40,7 @@ mod Repository {
         case Store(String),
         case Wire(String),
         case DuplicatePath(String),
+        case UnsupportedSourceDialect(String),
         case UnexpectedFact(String, String),
         case UnknownFactPath(String)
     }
@@ -265,20 +266,25 @@ mod Repository {
             |> Vector.toSet
 
     def observe(program: Repository.Grit.Program, kind: String, sources: Vector[Source]): Result[Error, Vector[Repository.Grit.Fact]] \ Repository.Grit.Eval =
-        Vector.traverse(source -> {
-            let wire = Repository.Grit.evaluate(language(source#path), program, source#path, source#content);
-            Repository.Grit.facts(source#path, source#content, wire)
-                |> Result.mapErr(Error.Grit)
-                |> Result.flatMap(facts -> requireKind(kind, facts))
+        Vector.traverse(source -> match language(source#path) {
+            case Err(error) => Err(error)
+            case Ok(dialect) => {
+                let wire = Repository.Grit.evaluate(dialect, program, source#path, source#content);
+                Repository.Grit.facts(source#path, source#content, wire)
+                    |> Result.mapErr(Error.Grit)
+                    |> Result.flatMap(facts -> requireKind(kind, facts))
+            }
         }, sources)
             |> Result.map(Vector.flatten)
 
-    def language(path: String): Repository.Grit.Language =
-        if (List.exists(suffix -> String.endsWith(suffix = suffix, path),
-            ".js" :: ".jsx" :: ".mjs" :: ".cjs" :: ".tsx" :: Nil))
-            Repository.Grit.Language.Tsx
-        else
-            Repository.Grit.Language.TypeScript
+    pub def language(path: String): Result[Error, Repository.Grit.Language] =
+        if (String.endsWith(suffix = ".tsx", path)) Ok(Repository.Grit.Language.Tsx)
+        else if (String.endsWith(suffix = ".jsx", path)) Ok(Repository.Grit.Language.Jsx)
+        else if (List.exists(suffix -> String.endsWith(suffix = suffix, path),
+            ".js" :: ".mjs" :: ".cjs" :: Nil)) Ok(Repository.Grit.Language.JavaScript)
+        else if (List.exists(suffix -> String.endsWith(suffix = suffix, path),
+            ".ts" :: ".mts" :: ".cts" :: Nil)) Ok(Repository.Grit.Language.TypeScript)
+        else Err(Error.UnsupportedSourceDialect(path))
 
     def requireKind(expected: String, facts: Vector[Repository.Grit.Fact]): Result[Error, Vector[Repository.Grit.Fact]] =
         match Vector.find(fact -> fact#kind != expected, facts) {

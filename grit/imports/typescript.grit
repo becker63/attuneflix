@@ -1,6 +1,10 @@
 engine marzano(0.1)
 language js(typescript)
 
+// @dialect typescript
+// TypeScript sources (.ts, .mts, .cts) use the TypeScript parser.
+// Grit returns syntax matches plus logged source values. Attune later assigns repository identities, resolves/admit edges, and derives inverse relations; this frontend does none of those jobs.
+
 // @syntax source
 //
 // Static module dependencies.

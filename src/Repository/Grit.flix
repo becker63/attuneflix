@@ -6,6 +6,8 @@ pub mod Repository.Grit {
     use Util.Json.FromJson
 
     pub enum Language with Eq, Order, ToString, Hash {
+        case JavaScript,
+        case Jsx,
         case TypeScript,
         case Tsx
     }
@@ -78,14 +80,22 @@ pub mod Repository.Grit {
 
     pub def json(wire: Wire): String = let Wire.Wire(value) = wire; value
 
-    /// Coarse, truthful identity for retained source observations. Bump this
-    /// value whenever the pinned Marzano implementation or a fixed Grit
-    /// program changes.
+    /// Exact source identity for retained observations. Timing and resource
+    /// telemetry are deliberately absent from semantic identity.
     pub def observationIdentity(): String =
         "marzano-c80b3026471b229f41b279c3eb0c162dcdacfdb1" +
-        ":defines-bba7b2aa5d958d3ea2369fae0b7025718d68fcd1ea10bdfc1351c676899552cb" +
-        ":imports-368c1c09ed1ba38437ddab45d1084710cb717adc8dc0c831e3b2e8c49f3ad14d" +
-        ":calls-de0e5436777fc93f96a517298386e5e728cd77fe5e46a027a5ae942287212147"
+        ":defines-js-f900274ac3946ac34f6b45f6b0d563fac419c3a18469bd10eebc10b4544ca3ae" +
+        ":defines-jsx-381f8ff92982d131e59429dd3ea480ac2b9de89125e09604421b4dd86627edf4" +
+        ":defines-ts-90694687a51de99b715fb55e59c53072bdad9cdced9b3b7c76a83b6c19fa576c" +
+        ":defines-tsx-eb560f45914c3cbd7e3d3e58cc2051c55995cb38e32724e37c31e86dbf2dec14" +
+        ":imports-js-2d8ae48d4ec92f03994ac31f78a14cfce6061adb196bb3226601243211c0f1ed" +
+        ":imports-jsx-bd7d241bd0b8f009455bac08705bf8cef5e94b1985d217709e5c03627b17cb82" +
+        ":imports-ts-681edf9ffc137fe14b67a4ffc1d582a26557508799924ced210cfd973606e218" +
+        ":imports-tsx-d29a731ca5a02bdb948db211376bfbdacb60bb07e27a6fd6b33b3e1b1e7b0671" +
+        ":calls-js-4d77d225337651fb9d6b479d04589e64bc0b679c73ece4892d5ae8a678b71a30" +
+        ":calls-jsx-6778315ccb4fab253c0eab6602079078da3407552f6bd26cc101453267d9f4c6" +
+        ":calls-ts-e84e1c3a5779bae714684dd7a1586fc59235f0aeb411c35fba8f84a385316a5a" +
+        ":calls-tsx-b8974c7b3b098df429db0cb9f34e50c1ac8d70b2b2dfe8fbdb1a5d70b3587723"
 
     /// Decode the stable native envelope without trusting its external data.
     pub def decode(wire: Wire): Result[Error, Evaluation] =
@@ -241,6 +251,8 @@ pub mod Repository.Grit {
 
     def evaluateNative(language: Language, program: Program, path: String, source: String): Wire \ IO =
         let name = match language {
+            case Language.JavaScript => "javascript"
+            case Language.Jsx        => "jsx"
             case Language.TypeScript => "typescript"
             case Language.Tsx        => "tsx"
         };
@@ -249,5 +261,5 @@ pub mod Repository.Grit {
             case Program.Imports => "imports"
             case Program.Calls   => "calls"
         };
-        Wire.Wire(AttuneGrit.evaluate(name, AttuneGrit.program(programName), path, source))
+        Wire.Wire(AttuneGrit.evaluate(name, AttuneGrit.program(name, programName), path, source))
 }

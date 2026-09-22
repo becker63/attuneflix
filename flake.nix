@@ -103,9 +103,12 @@
             mkdir -p "$generated" "$classes" "$java_src" "$resources" "$out/share/java"
             cp ${./native/grit/AttuneGritNative.java} "$java_src/AttuneGritNative.java"
             cp ${./native/grit/AttuneGrit.java} "$java_src/AttuneGrit.java"
-            cp ${./native/grit/defines.grit} "$resources/defines.grit"
-            cp ${./native/grit/imports.grit} "$resources/imports.grit"
-            cp ${./native/grit/calls.grit} "$resources/calls.grit"
+            for relation in defines imports calls; do
+              mkdir -p "$resources/$relation"
+              for dialect in javascript jsx typescript tsx; do
+                cp ${./grit}/$relation/$dialect.grit "$resources/$relation/$dialect.grit"
+              done
+            done
 
             jextract \
               -I "$(clang -print-resource-dir)/include" \

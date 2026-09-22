@@ -1,0 +1,71 @@
+engine marzano(0.1)
+language js(typescript)
+
+// @dialect typescript
+// TypeScript sources (.ts, .mts, .cts) use the TypeScript parser.
+// Grit returns syntax matches plus logged source values. Attune later assigns repository identities, resolves/admit edges, and derives inverse relations; this frontend does none of those jobs.
+
+// @syntax source
+//
+// Calls between source-level callables.
+//
+// All of these match:
+//
+//   verify(name);
+//
+//   client.verify(name);
+//
+//   client?.verify(name);
+//
+//   verify<string>(name);
+//
+//   await verify(name);
+//
+// $callee is exactly the expression being called:
+//
+//   verify(name)         -> verify
+//   client.verify(name)  -> client.verify
+//   client?.verify(name) -> client?.verify
+//
+// Nested calls produce separate matches:
+//
+//   Boolean(verify(name));
+//
+// becomes:
+//
+//   Boolean
+//   verify
+//
+// Module loading is deliberately excluded:
+//
+//   import("./lazy");
+//   require("./verify");
+//
+// TypeScript parses it as a call expression, but it loads a module rather
+// than calling a repository symbol.
+//
+// Constructors are also excluded:
+//
+//   new Client();
+//
+// The TypeScript grammar represents that as a constructor expression rather
+// than a normal call expression.
+//
+// Python later resolves:
+//
+//   verify
+//   client.verify
+//
+// to SymbolId values when the target is unambiguous.
+//
+// @example A member call records the member expression as its callee.
+// export function greet(name: string): boolean {
+//   return client.verify(name);
+// }
+// @end
+
+`$callee($...)` as $call where {
+  $callee <: not r"^import$",
+  $callee <: not r"^require$",
+  log(message="call", variable=$callee)
+}
