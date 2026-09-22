@@ -35,6 +35,20 @@ pub mod Repository.Nix {
         sources      = Vector[Source]
     }
 
+    /// One gold-free case selected from the frozen scale manifest.
+    pub type alias ScaleCase = {
+        manifestIndex    = Int32,
+        instanceId       = String,
+        datasetFamily    = String,
+        repository       = String,
+        baseRevision     = String,
+        declaredLanguage = String,
+        population       = String,
+        split            = String,
+        snapshot         = StorePath,
+        sources          = Vector[Source]
+    }
+
     /// Evaluator evidence is deliberately acquired through a separate value
     /// from `LocalizationCase`, so solver construction cannot receive gold.
     pub type alias EvaluationEvidence = {
@@ -68,6 +82,7 @@ pub mod Repository.Nix {
         def localization(caseIndex: Int32): Wire
         def evaluation(): Wire
         def population(): Wire
+        def scaleCase(caseIndex: Int32): Wire
         def readSource(file: String): Result[Error, String]
     }
 
@@ -86,6 +101,9 @@ pub mod Repository.Nix {
     pub def population(): Result[Error, PopulationEvidence] \ Acquire =
         decodePopulation(Acquire.population())
 
+    pub def scaleCase(caseIndex: Int32): Result[Error, ScaleCase] \ Acquire =
+        decodeScaleCase(Acquire.scaleCase(caseIndex))
+
     pub def runWithNative(f: Unit -> a \ ef): a \ (ef - Acquire) + IO =
         run { f() } with handler Acquire {
             def sweExplore(k) = k(realiseNative())
@@ -93,6 +111,7 @@ pub mod Repository.Nix {
             def localization(caseIndex, k) = k(realiseLocalization(caseIndex))
             def evaluation(k) = k(realiseEvaluation())
             def population(k) = k(realisePopulation())
+            def scaleCase(caseIndex, k) = k(realiseScaleCase(caseIndex))
             def readSource(file, k) = k(readNativeSource(file))
         }
 
@@ -103,6 +122,7 @@ pub mod Repository.Nix {
             def localization(_, k) = k(fixture)
             def evaluation(k) = k(fixture)
             def population(k) = k(fixture)
+            def scaleCase(_, k) = k(fixture)
             def readSource(file, k) = k(Err(Error.Native("fixture", "unexpected store source: ${file}")))
         }
 
@@ -181,6 +201,26 @@ pub mod Repository.Nix {
                         text <- stringField("text", fields);
                         paths <- stringVectorField("store_paths", fields);
                         result <- decodePopulationEvidence(text, paths)
+                    ) yield result
+                }
+            }
+            case Ok(_) => Err(Error.Wire("expected a JSON object"))
+        }
+    }
+
+    pub def decodeScaleCase(wire: Wire): Result[Error, ScaleCase] \ Acquire = {
+        let Wire.Wire(payload) = wire;
+        match Json.parse(payload) {
+            case Err(error) => Err(Error.Wire(ToString.toString(error)))
+            case Ok(JObject(fields)) => match intField("version", fields) {
+                case Err(error) => Err(error)
+                case Ok(version) if version != 1 => Err(Error.UnsupportedVersion(version))
+                case Ok(_) => match Map.get("error", fields) {
+                    case Some(value) => nativeScaleCaseError(value)
+                    case None => forM (
+                        text <- stringField("text", fields);
+                        paths <- stringVectorField("store_paths", fields);
+                        result <- decodeScaleCaseText(text, paths)
                     ) yield result
                 }
             }
@@ -282,6 +322,36 @@ pub mod Repository.Nix {
             case Ok(_) => Err(Error.Wire("realised population text must be an object"))
         }
 
+    def decodeScaleCaseText(text: String, paths: Vector[String]): Result[Error, ScaleCase] \ Acquire =
+        match Json.parse(text) {
+            case Err(error) => Err(Error.Wire("realised scale case: ${ToString.toString(error)}"))
+            case Ok(JObject(fields)) => forM (
+                manifestIndex <- intField("manifest_index", fields);
+                instanceId <- stringField("instance_id", fields);
+                datasetFamily <- stringField("dataset_family", fields);
+                repository <- stringField("repository", fields);
+                baseRevision <- stringField("base_revision", fields);
+                declaredLanguage <- stringField("declared_benchmark_language", fields);
+                population <- stringField("population", fields);
+                split <- stringField("repository_group_split", fields);
+                snapshot <- stringField("snapshot", fields);
+                sources <- sourceVectorField("sources", fields);
+                _ <- if (Vector.toSet(paths) == Set#{snapshot}) Ok(()) else Err(Error.IncompleteContext)
+            ) yield {
+                manifestIndex = manifestIndex,
+                instanceId = instanceId,
+                datasetFamily = datasetFamily,
+                repository = repository,
+                baseRevision = baseRevision,
+                declaredLanguage = declaredLanguage,
+                population = population,
+                split = split,
+                snapshot = StorePath.StorePath(snapshot),
+                sources = sources
+            }
+            case Ok(_) => Err(Error.Wire("realised scale case must be an object"))
+        }
+
     def completeContext(benchmark: String, snapshot: String, paths: Vector[String]): Result[Error, Unit] =
         if (Vector.toSet(paths) == Set#{benchmark, snapshot}) Ok(()) else Err(Error.IncompleteContext)
 
@@ -322,6 +392,17 @@ pub mod Repository.Nix {
     }
 
     def nativePopulationError(value: Json): Result[Error, PopulationEvidence] = match value {
+        case JObject(fields) => match stringField("kind", fields) {
+            case Err(error) => Err(error)
+            case Ok(kind) => match stringField("message", fields) {
+                case Err(error) => Err(error)
+                case Ok(message) => Err(Error.Native(kind, message))
+            }
+        }
+        case _ => Err(Error.Wire("error must be an object"))
+    }
+
+    def nativeScaleCaseError(value: Json): Result[Error, ScaleCase] = match value {
         case JObject(fields) => match stringField("kind", fields) {
             case Err(error) => Err(error)
             case Ok(kind) => match stringField("message", fields) {
@@ -422,6 +503,12 @@ pub mod Repository.Nix {
     def realisePopulation(): Wire \ IO =
         Wire.Wire(AttuneNix.realise(
             "import ./scale-population.nix",
+            System.getProperty("user.dir")
+        ))
+
+    def realiseScaleCase(caseIndex: Int32): Wire \ IO =
+        Wire.Wire(AttuneNix.realise(
+            "import ./scale-case.nix { caseIndex = ${caseIndex}; }",
             System.getProperty("user.dir")
         ))
 }

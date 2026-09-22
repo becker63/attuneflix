@@ -1,4 +1,6 @@
 pub mod ScaleExperiment {
+    import java.lang.System
+
     use Fs.FileSystem
     use Util.Json
     use Util.Json.Json.{JArray, JObject, JString}
@@ -95,6 +97,60 @@ pub mod ScaleExperiment {
 
     pub def historicalParity(root: String): Result[Error, Unit] \ {FileSystem, IO, Repository.Grit.Eval, Repository.Nix.Acquire} =
         historicalParityCase(root, 0)
+
+    /// Acquires and retains facts for new cases assigned to one deterministic
+    /// process shard. Worker count and execution order never affect semantics.
+    pub def acquireNewFacts(
+        root: String,
+        shard: Int32,
+        shards: Int32
+    ): Result[Error, Unit] \ {FileSystem, IO, Repository.Grit.Eval, Repository.Nix.Acquire} =
+        if (shards <= 0 or shard < 0 or shard >= shards)
+            Err(Error.Wire("invalid case shard ${shard}/${shards}"))
+        else acquireNewFactsAt(root, shard, shards, 0, 0)
+
+    def acquireNewFactsAt(
+        root: String,
+        shard: Int32,
+        shards: Int32,
+        index: Int32,
+        acquired: Int32
+    ): Result[Error, Unit] \ {FileSystem, IO, Repository.Grit.Eval, Repository.Nix.Acquire} =
+        if (index >= 78) {
+            println("SCALE_FACT_SHARD shard=${shard}/${shards} acquired=${acquired}");
+            Ok(())
+        } else if (Int32.remainder(index, shards) != shard)
+            acquireNewFactsAt(root, shard, shards, index + 1, acquired)
+        else forM (
+            case0 <- Repository.Nix.scaleCase(index) |> Result.mapErr(Error.Nix);
+            _ <- if (case0#manifestIndex == index) Ok(())
+                else Err(Error.Wire("scale case index mismatch"));
+            next <- if (case0#population == "historical-development") Ok(acquired)
+                else {
+                    let started = System.nanoTime();
+                    let sources = Vector.map(source -> {path = source#path, content = source#content}, case0#sources);
+                    match Repository.extractRetained(
+                        root,
+                        case0#repository,
+                        case0#baseRevision,
+                        Repository.Nix.path(case0#snapshot),
+                        sources
+                    ) {
+                        case Err(error) => Err(Error.Repository(error))
+                        case Ok(world) => {
+                            let elapsed = Int64.toFloat64(System.nanoTime() - started) / 1000000000.0;
+                            println("SCALE_FACT case=${case0#instanceId}" +
+                                " shard=${shard}/${shards}" +
+                                " files=${Vector.length(world#files)}" +
+                                " symbols=${Vector.length(world#symbols)}" +
+                                " seconds=${elapsed}" +
+                                " snapshot=${Repository.Nix.path(case0#snapshot)}");
+                            Ok(acquired + 1)
+                        }
+                    }
+                };
+            _ <- acquireNewFactsAt(root, shard, shards, index + 1, next)
+        ) yield ()
 
     def historicalParityCase(
         root: String,
