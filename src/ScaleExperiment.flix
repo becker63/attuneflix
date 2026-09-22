@@ -234,6 +234,47 @@ pub mod ScaleExperiment {
         " live=${totals#live} calls=${totals#calls}" +
         " input_tokens=${totals#inputTokens} total_tokens=${totals#totalTokens}")
 
+    pub def semanticPriorCensus(
+        factsRoot: String
+    ): Result[Error, Unit] \ {FileSystem, IO, Repository.Grit.Eval, Repository.Nix.Acquire} = forM (
+        issues <- Repository.Nix.scaleIssues() |> Result.mapErr(Error.Nix);
+        issuePayload <- Repository.Nix.Acquire.readSource(Repository.Nix.path(issues#issueFixture))
+            |> Result.mapErr(Error.Nix);
+        totals <- semanticPriorCensusAt(
+            factsRoot, issuePayload, 0, emptyPriorTotals())
+    ) yield println("SCALE_PRIOR_CENSUS cases=${totals#cases}" +
+        " documents=${totals#documents} unique_requests_by_case=${totals#unique}")
+
+    def semanticPriorCensusAt(
+        factsRoot: String,
+        issuePayload: String,
+        index: Int32,
+        totals: PriorTotals
+    ): Result[Error, PriorTotals] \ {FileSystem, IO, Repository.Grit.Eval, Repository.Nix.Acquire} =
+        if (index >= 78) Ok(totals)
+        else forM (
+            case0 <- Repository.Nix.scaleCase(index) |> Result.mapErr(Error.Nix);
+            next <- if (case0#population == "historical-development") Ok(totals)
+                else forM (
+                    prepared <- Localization.prepareScaleRetained(
+                        factsRoot, case0, issuePayload) |> Result.mapErr(Error.Prior);
+                    requests = uniquePriorRequests(prepared);
+                    _ = println("SCALE_PRIOR_CENSUS_CASE case=${case0#instanceId}" +
+                        " repository=${case0#repository}" +
+                        " documents=${Vector.length(prepared#documents)}" +
+                        " unique_requests=${Vector.length(requests)}");
+                    result = {
+                        cases = totals#cases + 1,
+                        documents = totals#documents + Vector.length(prepared#documents),
+                        unique = totals#unique + Vector.length(requests),
+                        replayed = 0, live = 0, calls = 0,
+                        inputTokens = 0, totalTokens = 0
+                    }
+                ) yield result;
+            result <- semanticPriorCensusAt(
+                factsRoot, issuePayload, index + 1, next)
+        ) yield result
+
     def semanticPriorAt(
         root: String,
         factsRoot: String,

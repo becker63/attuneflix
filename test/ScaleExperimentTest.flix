@@ -46,6 +46,12 @@ mod ScaleExperimentTest {
                 case Err(error) => Assert.fail(ToString.toString(error))
                 case Ok(()) => ()
             }
+            case Some("prior-prepare") => match Repository.Grit.runWithNative(() ->
+                Repository.Nix.runWithNative(() -> ScaleExperiment.semanticPriorCensus(
+                    ".attune/repository-facts-js-ts-scale-v1"))) {
+                case Err(error) => Assert.fail(ToString.toString(error))
+                case Ok(()) => ()
+            }
             case Some("prior-replay") => match Repository.Grit.runWithNative(() ->
                 Repository.Nix.runWithNative(() -> ScaleExperiment.semanticPrior(
                     ".attune/semantic-prior-js-ts-scale-v1",
