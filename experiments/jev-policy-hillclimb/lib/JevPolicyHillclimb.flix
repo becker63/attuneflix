@@ -1,4 +1,4 @@
-mod JevPolicyHillclimb {
+pub mod JevPolicyHillclimb {
     import java.lang.System
 
     use Fs.FileSystem
@@ -58,6 +58,15 @@ mod JevPolicyHillclimb {
 
     def deepRoot(): String =
         ".attune/experiments/jev-policy-hillclimb/013-deep-planner-portfolio"
+
+    def scaleClassicRoot(): String =
+        ".attune/experiments/swe-explore-js-ts-scale/003-force-first-macro"
+
+    def scaleBestRoot(): String =
+        ".attune/experiments/swe-explore-js-ts-scale/012-pruned-planner-portfolio"
+
+    def scaleDeepRoot(): String =
+        ".attune/experiments/swe-explore-js-ts-scale/013-deep-planner-portfolio"
 
     def classicProtocol(): String = "attune-jev-policy-hillclimb-003-force-first-macro-v1"
 
@@ -198,6 +207,33 @@ mod JevPolicyHillclimb {
                 }
             }
         }
+
+    /// Exact frozen iteration-013 policy for the scale generalization run.
+    /// Store roots are operational only; all model-visible protocols, prompts,
+    /// alternatives, tie-breaking, and structural semantics remain unchanged.
+    pub def frozen013(
+        prepared: Localization.Prepared,
+        prior: Localization.Tree.Prior,
+        computed: Localization.Tree.Computed,
+        acquire: Bool
+    ): Result[Error, Localization.Tree.Outcome] \ {FileSystem, IO} =
+        runScalePolicy(scaleClassicRoot(), acquire, () ->
+            classicNavigate(classicProtocol(), prepared, prior, computed,
+                Vector.empty(), computed#input, Vector.empty()))
+        |> Result.flatMap(classic -> runScalePolicy(scaleBestRoot(), acquire, () ->
+            portfolio(bestProtocol(), 1, prepared, prior, computed, classic)))
+        |> Result.flatMap(best -> runScalePolicy(scaleDeepRoot(), acquire, () -> forM (
+            deep <- planningExpert(deepProtocol(), 2, prepared, prior, computed);
+            selected <- selectExpert(deepProtocol(), prepared, prior, computed, best, deep)
+        ) yield selected))
+
+    def runScalePolicy(
+        root0: String,
+        acquire: Bool,
+        f: Unit -> Result[Error, Localization.Tree.Outcome] \ ef
+    ): Result[Error, Localization.Tree.Outcome] \ (ef - Decide.Choice) + {FileSystem, IO} =
+        if (acquire) Decide.runWithAcquire(root0, f)
+        else Decide.runWithStoreReplay(root0, f)
 
     def portfolio(
         policyProtocol: String,
