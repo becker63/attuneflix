@@ -16,7 +16,7 @@ In other Flix worktrees the extension falls back to `flix lsp` from `PATH`.
 Install it as a Zed development extension by selecting this directory:
 
 ```text
-/home/becker/projects/attuneflix/zed
+zed/
 ```
 
 After changing the extension source, reinstall the same development-extension

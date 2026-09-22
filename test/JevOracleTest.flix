@@ -1,4 +1,6 @@
 mod JevOracleTest {
+    import java.lang.Integer
+
     use Fs.FileSystem
     use Sys.Env
     use Util.Json
@@ -87,6 +89,11 @@ mod JevOracleTest {
         priorRegions = Vector[SourceRegion],
         jevRegions = Vector[SourceRegion],
         oracleRegions = Vector[SourceRegion]
+    }
+
+    type alias ScaleIdentity = {
+        instanceId = String,
+        split = String
     }
 
     type alias FrozenReference = {
@@ -232,6 +239,18 @@ mod JevOracleTest {
                 case Ok(()) => ()
                 case Err(error) => Assert.fail(ToString.toString(error))
             }
+            case Some("scale-censored-three-context") => match executeScaleCensored() {
+                case Ok(()) => ()
+                case Err(error) => Assert.fail(ToString.toString(error))
+            }
+            case Some("scale-censored-three-context-shard") => match executeScaleCensoredShard() {
+                case Ok(()) => ()
+                case Err(error) => Assert.fail(ToString.toString(error))
+            }
+            case Some("scale-censored-three-context-merge") => match executeScaleCensoredMerge() {
+                case Ok(()) => ()
+                case Err(error) => Assert.fail(ToString.toString(error))
+            }
             case Some(value) => Assert.fail("unknown ATTUNE_JEV_EVALUATE: ${value}")
         }
 
@@ -250,11 +269,11 @@ mod JevOracleTest {
         }
 
     def executeDiagnosis(): Result[Error, Unit] \ {FileSystem, IO} = forM (
-        priorPayload <- read(".attune/semantic-prior-v1/rankings.json");
-        outcomePayload <- read(".attune/jev-localization-v1/outcomes.json");
+        priorPayload <- read(".attune/semantic-prior-v1/rankings.parquet");
+        outcomePayload <- read(".attune/jev-localization-v1/outcomes.parquet");
         goldPayload <- Repository.Nix.runWithNative(() -> forM (
             evidence <- Repository.Nix.evaluation() |> Result.mapErr(Error.Nix);
-            payload <- Repository.Nix.Acquire.readSource(Repository.Nix.path(evidence#goldFixture))
+            payload <- Repository.Nix.Acquire.readDataset(Repository.Nix.path(evidence#goldFixture))
                 |> Result.mapErr(Error.Nix)
         ) yield payload);
         gold <- decodeGold(goldPayload);
@@ -853,7 +872,7 @@ mod JevOracleTest {
     def maximumFloat(values: Vector[Float64]): Float64 =
         Vector.foldLeft(Float64.max, Vector.get(0, values), values)
 
-    def writeDiagnosis(cases: Vector[CaseDiagnosis]): Result[Error, Unit] \ FileSystem = {
+    def writeDiagnosis(cases: Vector[CaseDiagnosis]): Result[Error, Unit] \ IO = {
         let decisions = Vector.flatMap(case0 -> case0#decisions, cases);
         let motifs = Vector.flatMap(case0 -> case0#motifs, cases);
         let payload = Json.toCompactString(JObject(Map#{
@@ -869,11 +888,8 @@ mod JevOracleTest {
             "summary" => summaryJson(cases, decisions, motifs),
             "cases" => JArray(Vector.map(caseDiagnosisJson, cases))
         }));
-        let written = run {
-            FileSystem.write(str = payload, ".attune/jev-selection-diagnosis-v1/diagnosis.json")
-        } with FileSystem.withMkParentDirs
-          with FileSystem.withAtomicWrite;
-        Result.mapErr(error -> Error.File(ToString.toString(error)), written)
+        let _ = ScientificData.writeObject(".attune/jev-selection-diagnosis-v1/diagnosis.parquet", payload);
+        Ok(())
     }
 
     def summaryJson(
@@ -1101,11 +1117,11 @@ mod JevOracleTest {
     }
 
     def execute(): Result[Error, Unit] \ {FileSystem, IO} = forM (
-        priorPayload <- read(".attune/semantic-prior-v1/rankings.json");
-        outcomePayload <- read(".attune/jev-localization-v1/outcomes.json");
+        priorPayload <- read(".attune/semantic-prior-v1/rankings.parquet");
+        outcomePayload <- read(".attune/jev-localization-v1/outcomes.parquet");
         goldPayload <- Repository.Nix.runWithNative(() -> forM (
             evidence <- Repository.Nix.evaluation() |> Result.mapErr(Error.Nix);
-            payload <- Repository.Nix.Acquire.readSource(Repository.Nix.path(evidence#goldFixture))
+            payload <- Repository.Nix.Acquire.readDataset(Repository.Nix.path(evidence#goldFixture))
                 |> Result.mapErr(Error.Nix)
         ) yield payload);
         gold <- decodeGold(goldPayload);
@@ -1115,37 +1131,198 @@ mod JevOracleTest {
         _ <- writeResults(rows)
     ) yield printAggregate(rows)
 
-    /// Phase B gold opening. This entry point is not invoked until every new
-    /// PRIOR and frozen-013 prediction has been retained and replayed.
+    /// Complete Phase B gold opening. This entry point is not invoked until
+    /// every new prior and frozen-013 prediction has been retained and replayed.
     def executeScale(): Result[Error, Unit] \ {FileSystem, IO} =
+        executeScaleAt(
+            false,
+            0,
+            78,
+            63,
+            "experiments/swe-explore-js-ts-scale/results.parquet",
+            "attune-jev-policy-hillclimb-013-deep-planner-portfolio-v1")
+
+    /// Explicitly censored continuation after the provider rejected the exact
+    /// frozen semantic-prior inputs for two Three.js validation cases. This
+    /// never relabels the 61-case result as the complete 63-case experiment.
+    def executeScaleCensored(): Result[Error, Unit] \ {FileSystem, IO} =
+        executeScaleAt(
+            true,
+            0,
+            78,
+            61,
+            "experiments/swe-explore-js-ts-scale/results-censored.parquet",
+            "attune-jev-policy-hillclimb-013-deep-planner-portfolio-v1-censored-three-context")
+
+    /// Mechanical recovery boundary for the frozen evaluator. Each shard uses
+    /// the identical gold, scorer, ordering, and policy evidence; only the JVM
+    /// lifetime is bounded so large repository worlds can be reclaimed.
+    def executeScaleCensoredShard(): Result[Error, Unit] \ {Env, FileSystem, IO} = forM (
+        startText <- requiredEnv("ATTUNE_SCALE_EVALUATE_START");
+        endText <- requiredEnv("ATTUNE_SCALE_EVALUATE_END");
+        expectedText <- requiredEnv("ATTUNE_SCALE_EVALUATE_EXPECTED");
+        outputPath <- requiredEnv("ATTUNE_SCALE_EVALUATE_OUTPUT");
+        start = Integer.parseInt(startText);
+        end = Integer.parseInt(endText);
+        expected = Integer.parseInt(expectedText);
+        _ <- if (start >= 0 and start <= end and end <= 78 and expected >= 0) Ok(())
+            else Err(Error.Wire("invalid scale evaluator shard"));
+        _ <- executeScaleAt(
+            true,
+            start,
+            end,
+            expected,
+            outputPath,
+            "attune-jev-policy-hillclimb-013-deep-planner-portfolio-v1-censored-three-context-shard-${start}-${end}")
+    ) yield ()
+
+    /// Joins the mechanically sharded evaluator outputs without recomputing a
+    /// case. Scientific order and split membership come from the frozen
+    /// manifest; the shards are only bounded-lifetime execution artifacts.
+    def executeScaleCensoredMerge(): Result[Error, Unit] \ {FileSystem, IO} = forM (
+        rows <- readScaleShards(scaleShardPaths(), 0, Vector.empty());
+        manifestPayload <- FileSystem.read("experiments/swe-explore-js-ts-scale/MANIFEST.json")
+            |> Result.mapErr(error -> Error.File(ToString.toString(error)));
+        identities <- decodeScaleIdentities(manifestPayload);
+        expected = Vector.filter(identity ->
+            identity#instanceId != "mrdoob__three.js-26589" and
+            identity#instanceId != "mrdoob__three.js-27395", identities);
+        actualIds = Vector.map(row -> row#instanceId, rows);
+        expectedIds = Vector.map(identity -> identity#instanceId, expected);
+        _ <- if (Vector.length(rows) == 61 and actualIds == expectedIds) Ok(())
+            else Err(Error.Wire("merged scale rows do not match frozen manifest order"));
+        validationIds = Vector.filter(identity ->
+            identity#split == "post-optimization-validation", expected)
+            |> Vector.map(identity -> identity#instanceId) |> Vector.toSet;
+        validationCount = Vector.count(row -> Set.memberOf(row#instanceId, validationIds), rows);
+        _ <- if (validationCount == 19 and Vector.length(rows) - validationCount == 42) Ok(())
+            else Err(Error.Wire("merged scale split cardinalities changed"));
+        _ <- writeResultsAt(
+            rows,
+            "experiments/swe-explore-js-ts-scale/results-censored.parquet",
+            "attune-jev-policy-hillclimb-013-deep-planner-portfolio-v1-censored-three-context");
+        report = renderScaleReport(rows, expected);
+        written = run {
+            FileSystem.write(str = report, "experiments/swe-explore-js-ts-scale/REPORT.md")
+        } with FileSystem.withMkParentDirs with FileSystem.withAtomicWrite;
+        _ <- Result.mapErr(error -> Error.File(ToString.toString(error)), written)
+    ) yield printScaleAggregate(rows)
+
+    def scaleShardPaths(): Vector[String] = Vector#{
+        ".attune/experiments/swe-explore-js-ts-scale/evaluation-shards/0-10.parquet",
+        ".attune/experiments/swe-explore-js-ts-scale/evaluation-shards/10-22.parquet",
+        ".attune/experiments/swe-explore-js-ts-scale/evaluation-shards/24-34.parquet",
+        ".attune/experiments/swe-explore-js-ts-scale/evaluation-shards/34-40.parquet",
+        ".attune/experiments/swe-explore-js-ts-scale/evaluation-shards/55-65.parquet",
+        ".attune/experiments/swe-explore-js-ts-scale/evaluation-shards/65-74.parquet",
+        ".attune/experiments/swe-explore-js-ts-scale/evaluation-shards/74-78.parquet"
+    }
+
+    def readScaleShards(
+        paths: Vector[String],
+        index: Int32,
+        rows: Vector[Row]
+    ): Result[Error, Vector[Row]] \ {FileSystem, IO} =
+        if (index >= Vector.length(paths)) Ok(rows)
+        else forM (
+            payload <- read(Vector.get(index, paths));
+            shard <- decodeResultRows(payload);
+            result <- readScaleShards(paths, index + 1, rows ++ shard)
+        ) yield result
+
+    def decodeResultRows(payload: String): Result[Error, Vector[Row]] = match Json.parse(payload) {
+        case Err(error) => Err(Error.Wire(ToString.toString(error)))
+        case Ok(JObject(fields)) => forM (
+            version <- intField("version", fields);
+            _ <- if (version == 1) Ok(()) else Err(Error.Wire("unsupported result version"));
+            values <- arrayField("cases", fields);
+            rows <- Vector.traverse(decodeResultRow, values)
+        ) yield rows
+        case Ok(_) => Err(Error.Wire("scale result shard must be an object"))
+    }
+
+    def decodeResultRow(value: Json): Result[Error, Row] = match value {
+        case JObject(fields) => forM (
+            instanceId <- stringField("instance_id", fields);
+            repository <- stringField("repository", fields);
+            oraclePath <- stringField("oracle_path", fields);
+            priorValue <- field("prior", fields);
+            prior <- decodeCondition(priorValue);
+            jevValue <- field("jev", fields);
+            jev <- decodeCondition(jevValue);
+            oracleValue <- field("structural_oracle", fields);
+            oracle <- decodeCondition(oracleValue)
+        ) yield {
+            instanceId = instanceId,
+            repository = repository,
+            prior = fst(prior),
+            jev = fst(jev),
+            oracle = fst(oracle),
+            oraclePath = oraclePath,
+            priorRegions = snd(prior),
+            jevRegions = snd(jev),
+            oracleRegions = snd(oracle)
+        }
+        case _ => Err(Error.Wire("scale result case must be an object"))
+    }
+
+    def decodeScaleIdentities(payload: String): Result[Error, Vector[ScaleIdentity]] =
+        match Json.parse(payload) {
+            case Err(error) => Err(Error.Wire(ToString.toString(error)))
+            case Ok(JObject(fields)) => forM (
+                values <- arrayField("cases", fields);
+                decoded <- Vector.traverse(decodeScaleIdentity, values)
+            ) yield Vector.filterMap(identity -> identity, decoded)
+            case Ok(_) => Err(Error.Wire("scale manifest must be an object"))
+        }
+
+    def decodeScaleIdentity(value: Json): Result[Error, Option[ScaleIdentity]] = match value {
+        case JObject(fields) => forM (
+            instanceId <- stringField("instance_id", fields);
+            population <- stringField("population", fields);
+            split <- stringField("repository_group_split", fields)
+        ) yield if (population == "new") Some({instanceId = instanceId, split = split}) else None
+        case _ => Err(Error.Wire("scale manifest case must be an object"))
+    }
+
+    def executeScaleAt(
+        censorThreeContext: Bool,
+        startIndex: Int32,
+        endIndex: Int32,
+        expected: Int32,
+        outputPath: String,
+        resultProtocol: String
+    ): Result[Error, Unit] \ {FileSystem, IO} =
         Repository.Nix.runWithNative(() -> forM (
             issues <- Repository.Nix.scaleIssues() |> Result.mapErr(Error.Nix);
-            issuePayload <- Repository.Nix.Acquire.readSource(
+            issuePayload <- Repository.Nix.Acquire.readDataset(
                 Repository.Nix.path(issues#issueFixture)) |> Result.mapErr(Error.Nix);
             evidence <- Repository.Nix.scaleEvaluation() |> Result.mapErr(Error.Nix);
-            goldPayload <- Repository.Nix.Acquire.readSource(
+            goldPayload <- Repository.Nix.Acquire.readDataset(
                 Repository.Nix.path(evidence#goldFixture)) |> Result.mapErr(Error.Nix);
             gold <- decodeGold(goldPayload);
             tree = Localization.Tree.compile();
             rows <- evaluateScaleCases(
-                0, issuePayload, gold, tree, Vector.empty());
-            _ <- writeResultsAt(
-                rows,
-                "experiments/swe-explore-js-ts-scale/PHASE_B_RESULTS.json",
-                "attune-jev-policy-hillclimb-013-deep-planner-portfolio-v1")
+                startIndex, endIndex, issuePayload, gold, tree, censorThreeContext, Vector.empty());
+            _ <- if (Vector.length(rows) == expected) Ok(())
+                else Err(Error.Wire("unexpected scale result cardinality: ${Vector.length(rows)}"));
+            _ <- writeResultsAt(rows, outputPath, resultProtocol)
         ) yield printScaleAggregate(rows))
 
     def evaluateScaleCases(
         index: Int32,
+        endIndex: Int32,
         issuePayload: String,
         gold: Vector[Gold],
         tree: Localization.Tree.Tree,
+        censorThreeContext: Bool,
         rows: Vector[Row]
     ): Result[Error, Vector[Row]] \ {FileSystem, IO, Repository.Nix.Acquire} =
-        if (index >= 78) Ok(rows)
+        if (index >= endIndex) Ok(rows)
         else forM (
             case0 <- Repository.Nix.scaleCase(index) |> Result.mapErr(Error.Nix);
-            next <- if (case0#population == "historical-development") Ok(rows)
+            next <- if (case0#population == "historical-development" or
+                (censorThreeContext and isThreeContextCensored(case0#instanceId))) Ok(rows)
                 else forM (
                     prepared <- Localization.prepareScaleRetained(
                         ".attune/repository-facts-js-ts-scale-v1",
@@ -1153,9 +1330,9 @@ mod JevOracleTest {
                         issuePayload
                     ) |> Result.mapErr(Error.Prepare);
                     priorPayload <- read(
-                        ".attune/semantic-prior-js-ts-scale-v1/rankings/${case0#baseRevision}.json");
+                        ".attune/semantic-prior-js-ts-scale-v1/rankings/${case0#baseRevision}.parquet");
                     outcomePayload <- read(
-                        ".attune/experiments/swe-explore-js-ts-scale/013-predictions/${case0#baseRevision}.json");
+                        ".attune/experiments/swe-explore-js-ts-scale/013-predictions/${case0#baseRevision}.parquet");
                     prior <- Localization.Tree.decodePrior(prepared#instanceId, priorPayload)
                         |> Result.mapErr(Error.Tree);
                     fixture <- decodeScaleOutcome(prepared#instanceId, outcomePayload);
@@ -1182,8 +1359,13 @@ mod JevOracleTest {
                     };
                     _ = printRow(row)
                 ) yield Vector.append(rows, Vector#{row});
-            result <- evaluateScaleCases(index + 1, issuePayload, gold, tree, next)
+            result <- evaluateScaleCases(
+                index + 1, endIndex, issuePayload, gold, tree, censorThreeContext, next)
         ) yield result
+
+    def isThreeContextCensored(instanceId: String): Bool =
+        instanceId == "mrdoob__three.js-26589" or
+        instanceId == "mrdoob__three.js-27395"
 
     /// Scores a frozen experiment outcome through the same official evaluator
     /// without changing or validating against the immutable v1 aggregate.
@@ -1192,12 +1374,12 @@ mod JevOracleTest {
         outcomePath <- requiredEnv("ATTUNE_JEV_CANDIDATE_OUTCOMES");
         outputPath <- requiredEnv("ATTUNE_JEV_CANDIDATE_EVALUATION");
         candidateProtocol <- requiredEnv("ATTUNE_JEV_CANDIDATE_PROTOCOL");
-        priorPayload <- read(".attune/semantic-prior-v1/rankings.json");
+        priorPayload <- read(".attune/semantic-prior-v1/rankings.parquet");
         outcomePayload <- read(outcomePath);
-        frozenPayload <- read("JEV_LOCALIZATION_RESULTS.json");
+        frozenPayload = ScientificData.readObject("docs/research/jev/localization-results.parquet");
         goldPayload <- Repository.Nix.runWithNative(() -> forM (
             evidence <- Repository.Nix.evaluation() |> Result.mapErr(Error.Nix);
-            payload <- Repository.Nix.Acquire.readSource(Repository.Nix.path(evidence#goldFixture))
+            payload <- Repository.Nix.Acquire.readDataset(Repository.Nix.path(evidence#goldFixture))
                 |> Result.mapErr(Error.Nix)
         ) yield payload);
         gold <- decodeGold(goldPayload);
@@ -1852,8 +2034,11 @@ mod JevOracleTest {
         case _ => None
     }
 
-    def read(path: String): Result[Error, String] \ FileSystem =
-        FileSystem.read(path) |> Result.mapErr(error -> Error.File(ToString.toString(error)))
+    def read(path: String): Result[Error, String] \ {FileSystem, IO} = match FileSystem.exists(path) {
+        case Err(error) => Err(Error.File(ToString.toString(error)))
+        case Ok(false) => Err(Error.File("missing retained Parquet artifact: ${path}"))
+        case Ok(true) => Ok(ScientificData.readObject(path))
+    }
 
     def field(name: String, fields: Map[String, Json]): Result[Error, Json] =
         Map.get(name, fields) |> Option.toOk(Error.Wire("missing JSON field: ${name}"))
@@ -1910,12 +2095,171 @@ mod JevOracleTest {
         printRepository("preactjs/preact", rows)
     }
 
+    def renderScaleReport(rows: Vector[Row], identities: Vector[ScaleIdentity]): String = {
+        let validationIds = Vector.filter(identity ->
+            identity#split == "post-optimization-validation", identities)
+            |> Vector.map(identity -> identity#instanceId) |> Vector.toSet;
+        let optimization = Vector.filter(row ->
+            not Set.memberOf(row#instanceId, validationIds), rows);
+        let validation = Vector.filter(row ->
+            Set.memberOf(row#instanceId, validationIds), rows);
+        "# Frozen SWE-Explore JavaScript/TypeScript localization result\n\n" +
+        "This report is generated by Flix from the canonical merged Parquet result. " +
+        "The semantic prior, Atlas grammar, iteration-013 policy, model, request " +
+        "identity, case order, evaluator, and top-five region budget were frozen " +
+        "before validation gold was opened.\n\n" +
+        "## Population\n\n" +
+        "| Population | Attempted | Completed | Censored | Role |\n" +
+        "| --- | ---: | ---: | ---: | --- |\n" +
+        "| Historical development | 15 | 15 | 0 | Earlier policy-development evidence; reported separately |\n" +
+        "| Expanded optimization development | 42 | ${Vector.length(optimization)} | 0 | Frozen-policy scale evaluation |\n" +
+        "| Post-optimization validation | 21 | ${Vector.length(validation)} | 2 | Untouched until predictions were frozen |\n" +
+        "| New scale population | 63 | ${Vector.length(rows)} | 2 | Authorized iteration-013 scale result |\n\n" +
+        "The censored cases are `mrdoob__three.js-26589` and " +
+        "`mrdoob__three.js-27395`. Each exact frozen 48,000-codepoint embedding " +
+        "input tokenizes to 40,961 tokens against the provider/model limit of " +
+        "40,960. No clipping, corpus, model, or document population was changed.\n\n" +
+        renderPopulation("Expanded optimization development (42/42)", optimization) +
+        renderPopulation("Post-optimization validation (19/21; two censored)", validation) +
+        renderPopulation("All completed new cases (61/63; two censored)", rows) +
+        "## Repository regimes\n\n" +
+        "The oracle is an evaluator-gold diagnostic upper bound over the same " +
+        "finite Atlas family; it is not a deployable localization score. Headroom " +
+        "capture is `(013 F1 - prior F1) / (oracle F1 - prior F1)` when defined.\n\n" +
+        "| Repository | Cases | Prior F1 | 013 F1 | Delta | Oracle F1 | Capture | Prior context | 013 context | Prior nDCG@100 | 013 nDCG@100 | Improved / tied / regressed |\n" +
+        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |\n" +
+        renderRepositoryRows(scaleRepositories(), rows, 0) + "\n" +
+        "## Case-level result\n\n" +
+        "Cases are ordered from the largest F1 regression to the largest " +
+        "improvement. This table preserves the heterogeneous result rather than " +
+        "collapsing it to one winner/loser label.\n\n" +
+        "| Case | Repository | Prior F1 | 013 F1 | Delta | Oracle F1 | Capture | Prior context | 013 context | Prior nDCG@100 | 013 nDCG@100 |\n" +
+        "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |\n" +
+        renderCaseRows(Vector.sortBy(row -> f1Delta(row), rows), 0) + "\n" +
+        "## Provider usage and latency\n\n" +
+        "The frozen 61-case predictions reference 3,911 Jev decisions: " +
+        "13,842,402 input tokens, 806,338 output tokens, and $0.581380884 of " +
+        "provider-reported decision cost. Semantic-prior acquisition retained " +
+        "27,858,287 embedding input tokens; the provider returned no embedding " +
+        "cost field. Full retained-evidence and operational timing details are in " +
+        "[USAGE.md](USAGE.md). Provider request latency was not present in the " +
+        "frozen envelopes and is not invented from replay time.\n\n" +
+        "## Interpretation and limitations\n\n" +
+        "Iteration 013 is a frozen selector over Atlas, not Atlas itself. The " +
+        "structural oracle measures whether the finite Atlas family contains a " +
+        "better state; it uses evaluator gold and cannot be deployed. Repository " +
+        "differences, selector failures, and precision/recall/context tradeoffs " +
+        "must therefore be read separately. The study covers the frozen JS/TS " +
+        "subset and does not establish a matched full-benchmark leaderboard rank " +
+        "or an end-to-end coding-agent speedup.\n\n" +
+        "The 15 historical-development cases influenced policy development and " +
+        "are not pooled into the untouched validation estimate. Later Atlas " +
+        "signature analysis may explore relationships between repository geometry " +
+        "and these localization regimes, but that analysis is post hoc and will " +
+        "not retune this result.\n"
+    }
+
+    def renderPopulation(label: String, rows: Vector[Row]): String =
+        "## ${label}\n\n" +
+        "Cases: ${Vector.length(rows)}. F1 outcomes: " +
+        "${Vector.count(row -> row#jev#f1 > row#prior#f1, rows)} improved, " +
+        "${Vector.count(row -> row#jev#f1 == row#prior#f1, rows)} tied, " +
+        "${Vector.count(row -> row#jev#f1 < row#prior#f1, rows)} regressed. " +
+        "Available mean F1 headroom is " +
+        "${mean(rows, row -> row#oracle#f1) - mean(rows, row -> row#prior#f1)}; " +
+        "captured headroom is ${captureText(rows)}.\n\n" +
+        renderMetricTable(rows) + "\n"
+
+    def renderMetricTable(rows: Vector[Row]): String =
+        "| Metric | Semantic prior | Frozen 013 | Structural oracle | 013 - prior |\n" +
+        "| --- | ---: | ---: | ---: | ---: |\n" +
+        metricRow("Line precision", rows, score -> score#precision) +
+        metricRow("Line recall", rows, score -> score#recall) +
+        metricRow("Line F1", rows, score -> score#f1) +
+        metricRow("HitFile", rows, score -> score#hitFile) +
+        metricRow("Noise-file rate", rows, score -> score#noiseFile) +
+        metricRow("HitRegion", rows, score -> score#hitRegion) +
+        metricRow("Noise-region rate", rows, score -> score#noiseRegion) +
+        metricRow("Weighted core coverage", rows, score -> score#weightedCoreCoverage) +
+        metricRow("Context efficiency", rows, score -> score#contextEfficiency) +
+        metricRow("nDCG@100", rows, score -> score#ndcg100) +
+        metricRow("nDCG@300", rows, score -> score#ndcg300) +
+        metricRow("nDCG@500", rows, score -> score#ndcg500) +
+        metricRow("Recall@100", rows, score -> score#recall100) +
+        metricRow("Recall@300", rows, score -> score#recall300) +
+        metricRow("Recall@500", rows, score -> score#recall500) +
+        metricRow("First useful hit", rows, score -> score#firstUsefulHit)
+
+    def metricRow(label: String, rows: Vector[Row], metric: Score -> Float64): String = {
+        let prior = mean(rows, row -> metric(row#prior));
+        let selected = mean(rows, row -> metric(row#jev));
+        let oracle = mean(rows, row -> metric(row#oracle));
+        "| ${label} | ${prior} | ${selected} | ${oracle} | ${selected - prior} |\n"
+    }
+
+    def captureText(rows: Vector[Row]): String = {
+        let prior = mean(rows, row -> row#prior#f1);
+        let selected = mean(rows, row -> row#jev#f1);
+        let oracle = mean(rows, row -> row#oracle#f1);
+        let available = oracle - prior;
+        if (available <= 0.0) "n/a" else "${(selected - prior) / available}"
+    }
+
+    def scaleRepositories(): Vector[String] = Vector#{
+        "NodeBB/NodeBB", "babel/babel", "element-hq/element-web",
+        "facebook/docusaurus", "protonmail/webclients", "tutao/tutanota",
+        "vuejs/core"
+    }
+
+    def renderRepositoryRows(
+        repositories: Vector[String],
+        rows: Vector[Row],
+        index: Int32
+    ): String =
+        if (index >= Vector.length(repositories)) ""
+        else {
+            let repository = Vector.get(index, repositories);
+            let selectedRows = Vector.filter(row -> row#repository == repository, rows);
+            let line = if (Vector.isEmpty(selectedRows)) "" else {
+                let prior = mean(selectedRows, row -> row#prior#f1);
+                let selected = mean(selectedRows, row -> row#jev#f1);
+                let oracle = mean(selectedRows, row -> row#oracle#f1);
+                "| ${repository} | ${Vector.length(selectedRows)} | ${prior} | ${selected} | " +
+                "${selected - prior} | ${oracle} | ${captureText(selectedRows)} | " +
+                "${mean(selectedRows, row -> row#prior#contextEfficiency)} | " +
+                "${mean(selectedRows, row -> row#jev#contextEfficiency)} | " +
+                "${mean(selectedRows, row -> row#prior#ndcg100)} | " +
+                "${mean(selectedRows, row -> row#jev#ndcg100)} | " +
+                "${Vector.count(row -> row#jev#f1 > row#prior#f1, selectedRows)} / " +
+                "${Vector.count(row -> row#jev#f1 == row#prior#f1, selectedRows)} / " +
+                "${Vector.count(row -> row#jev#f1 < row#prior#f1, selectedRows)} |\n"
+            };
+            line + renderRepositoryRows(repositories, rows, index + 1)
+        }
+
+    def renderCaseRows(rows: Vector[Row], index: Int32): String =
+        if (index >= Vector.length(rows)) ""
+        else {
+            let row = Vector.get(index, rows);
+            let prior = row#prior#f1;
+            let selected = row#jev#f1;
+            let available = row#oracle#f1 - prior;
+            let capture = if (available <= 0.0) "n/a" else "${(selected - prior) / available}";
+            "| `${row#instanceId}` | ${row#repository} | ${prior} | ${selected} | " +
+            "${selected - prior} | ${row#oracle#f1} | ${capture} | " +
+            "${row#prior#contextEfficiency} | ${row#jev#contextEfficiency} | " +
+            "${row#prior#ndcg100} | ${row#jev#ndcg100} |\n" +
+            renderCaseRows(rows, index + 1)
+        }
+
     def printScaleAggregate(rows: Vector[Row]): Unit \ IO = {
-        let repositories = Vector#{
+        let allRepositories = Vector#{
             "NodeBB/NodeBB", "babel/babel", "element-hq/element-web",
             "facebook/docusaurus", "mrdoob/three.js", "protonmail/webclients",
             "tutao/tutanota", "vuejs/core"
         };
+        let repositories = Vector.filter(repository ->
+            Vector.exists(row -> row#repository == repository, rows), allRepositories);
         let priorF1 = mean(rows, row -> row#prior#f1);
         let selectedF1 = mean(rows, row -> row#jev#f1);
         let oracleF1 = mean(rows, row -> row#oracle#f1);
@@ -2074,15 +2418,15 @@ mod JevOracleTest {
         }
     }
 
-    def writeResults(rows: Vector[Row]): Result[Error, Unit] \ FileSystem = {
-        writeResultsAt(rows, ".attune/jev-localization-v1/evaluation.json", Decide.protocol())
+    def writeResults(rows: Vector[Row]): Result[Error, Unit] \ IO = {
+        writeResultsAt(rows, ".attune/jev-localization-v1/evaluation.parquet", Decide.protocol())
     }
 
     def writeResultsAt(
         rows: Vector[Row],
         outputPath: String,
         resultProtocol: String
-    ): Result[Error, Unit] \ FileSystem = {
+    ): Result[Error, Unit] \ IO = {
         let payload = Json.toCompactString(JObject(Map#{
             "version" => ToJson.toJson(1),
             "benchmark_revision" => JString("bdb0ae45d7c337d9e1dc3ebfe2a0af6bc7c1fbd9"),
@@ -2092,11 +2436,8 @@ mod JevOracleTest {
             "top_k" => ToJson.toJson(5),
             "cases" => JArray(Vector.map(rowJson, rows))
         }));
-        let written = run {
-            FileSystem.write(str = payload, outputPath)
-        } with FileSystem.withMkParentDirs
-          with FileSystem.withAtomicWrite;
-        Result.mapErr(error -> Error.File(ToString.toString(error)), written)
+        let _ = ScientificData.writeObject(outputPath, payload);
+        Ok(())
     }
 
     def rowJson(row: Row): Json = JObject(Map#{

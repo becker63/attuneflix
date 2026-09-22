@@ -60,7 +60,7 @@ Weighted core coverage `0.104712`, noise-region rate `0.653333`, nDCG@100
 
 Every per-case official metric is unchanged from iteration 003. Paths change
 for Axios 4731, Preact 3010, 3739, 3763, and 4152, but all five remain at zero
-F1. The complete paths and scores are in `metrics.json`.
+F1. The complete paths and scores are in `metrics.parquet`.
 
 ## Decision depth / model-call statistics
 

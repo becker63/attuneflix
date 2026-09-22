@@ -79,7 +79,7 @@ The selected path changes from the two-step same-file frontier to:
 defined_in -> imports -> defines -> calls -> callers -> calls -> calls
 ```
 
-Full per-case metrics are retained in `metrics.json`.
+Full per-case metrics are retained in `metrics.parquet`.
 
 ## Decision depth / model-call statistics
 

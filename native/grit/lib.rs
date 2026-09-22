@@ -18,12 +18,19 @@ const ABI_OK: i32 = 0;
 const ABI_HOST_ERROR: i32 = 1;
 
 type ProgramKey = (String, Vec<u8>);
+type InputKey = (String, String);
+type CachedEvaluation = (String, Vec<u8>);
 
 static PROBLEMS: LazyLock<Mutex<HashMap<ProgramKey, Problem>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+static EVALUATIONS: LazyLock<Mutex<HashMap<ProgramKey, HashMap<String, CachedEvaluation>>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
 #[cfg(test)]
 static COMPILE_COUNTS: LazyLock<Mutex<HashMap<ProgramKey, usize>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+#[cfg(test)]
+static EXECUTE_COUNTS: LazyLock<Mutex<HashMap<(ProgramKey, InputKey), usize>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
 fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
@@ -39,6 +46,16 @@ fn record_compile(key: &ProgramKey) {
 
 #[cfg(not(test))]
 fn record_compile(_key: &ProgramKey) {}
+
+#[cfg(test)]
+fn record_execute(program: &ProgramKey, input: &InputKey) {
+    *lock(&EXECUTE_COUNTS)
+        .entry((program.clone(), input.clone()))
+        .or_insert(0) += 1;
+}
+
+#[cfg(not(test))]
+fn record_execute(_program: &ProgramKey, _input: &InputKey) {}
 
 #[derive(Serialize)]
 struct Span {
@@ -183,6 +200,21 @@ fn run(language: &[u8], program: &[u8], path: &[u8], source: &[u8]) -> Vec<u8> {
         Err(error) => return error,
     };
     let key = (language.clone(), program.to_vec());
+    let input_key = (path.clone(), source.clone());
+
+    if let Some(bytes) = lock(&EVALUATIONS)
+        .get(&key)
+        .and_then(|inputs| inputs.get(&path))
+        .and_then(|(cached_source, bytes)| {
+            if cached_source == &source {
+                Some(bytes.clone())
+            } else {
+                None
+            }
+        })
+    {
+        return bytes;
+    }
 
     let mut problems = lock(&PROBLEMS);
     if !problems.contains_key(&key) {
@@ -193,10 +225,19 @@ fn run(language: &[u8], program: &[u8], path: &[u8], source: &[u8]) -> Vec<u8> {
         problems.insert(key.clone(), problem);
         record_compile(&key);
     }
-    match problems.get(&key) {
-        Some(problem) => execute(problem, path, source),
+    let bytes = match problems.get(&key) {
+        Some(problem) => {
+            record_execute(&key, &input_key);
+            execute(problem, path, source)
+        }
         None => failure("host", "compiled Grit program disappeared"),
-    }
+    };
+    drop(problems);
+    lock(&EVALUATIONS)
+        .entry(key)
+        .or_default()
+        .insert(input_key.0, (input_key.1, bytes.clone()));
+    bytes
 }
 
 unsafe fn input<'a>(data: *const u8, len: usize) -> Result<&'a [u8], Vec<u8>> {
@@ -307,11 +348,17 @@ language js(typescript)
     }
 
     #[test]
-    fn repeated_program_is_stable_and_compiled_once() {
+    fn repeated_exact_input_is_stable_compiled_once_and_executed_once() {
         let cache_program = [PROGRAM, b"\n"].concat();
         let key = ("typescript".to_string(), cache_program.clone());
+        let input = (
+            "src/example.ts".to_string(),
+            "Boolean(verify(name));".to_string(),
+        );
         lock(&PROBLEMS).remove(&key);
+        lock(&EVALUATIONS).remove(&key);
         lock(&COMPILE_COUNTS).remove(&key);
+        lock(&EXECUTE_COUNTS).remove(&(key.clone(), input.clone()));
         let first = run(
             b"typescript",
             &cache_program,
@@ -327,10 +374,34 @@ language js(typescript)
         assert_eq!(first, second);
         assert!(lock(&PROBLEMS).contains_key(&key));
         assert_eq!(lock(&COMPILE_COUNTS).get(&key), Some(&1));
+        assert_eq!(
+            lock(&EXECUTE_COUNTS).get(&(key.clone(), input.clone())),
+            Some(&1)
+        );
         let value: serde_json::Value = serde_json::from_slice(&first).unwrap();
         assert_eq!(value["matched"], true);
         assert_eq!(value["matches"].as_array().unwrap().len(), 2);
         assert_eq!(value["logs"].as_array().unwrap().len(), 2);
+
+        let changed_source = "Boolean(other(name));".to_string();
+        let changed = run(
+            b"typescript",
+            &cache_program,
+            b"src/example.ts",
+            changed_source.as_bytes(),
+        );
+        assert_ne!(first, changed);
+        assert_eq!(
+            lock(&EXECUTE_COUNTS).get(&(
+                key.clone(),
+                ("src/example.ts".to_string(), changed_source.clone()),
+            )),
+            Some(&1)
+        );
+        let evaluations = lock(&EVALUATIONS);
+        let inputs = evaluations.get(&key).unwrap();
+        assert_eq!(inputs.len(), 1);
+        assert_eq!(inputs["src/example.ts"].0, changed_source);
     }
 
     #[test]

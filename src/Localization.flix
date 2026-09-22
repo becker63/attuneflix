@@ -215,7 +215,7 @@ mod Localization {
 
     pub def prepare(caseIndex: Int32): Result[Error, Prepared] \ {Repository.Nix.Acquire, Repository.Grit.Eval} = forM (
         case_ <- Repository.Nix.localization(caseIndex) |> Result.mapErr(Error.Nix);
-        issuePayload <- Repository.Nix.Acquire.readSource(Repository.Nix.path(case_#issueFixture))
+        issuePayload <- Repository.Nix.Acquire.readDataset(Repository.Nix.path(case_#issueFixture))
             |> Result.mapErr(Error.Nix);
         issue <- decodeIssue(case_#instanceId, case_#repository, case_#baseCommit, issuePayload);
         world <- Repository.extract(case_#sources) |> Result.mapErr(Error.Repository);
@@ -236,9 +236,9 @@ mod Localization {
     pub def prepareRetained(
         root: String,
         caseIndex: Int32
-    ): Result[Error, Prepared] \ {Fs.FileSystem, Repository.Nix.Acquire, Repository.Grit.Eval} = forM (
+    ): Result[Error, Prepared] \ {Fs.FileSystem, IO, Repository.Nix.Acquire, Repository.Grit.Eval} = forM (
         case_ <- Repository.Nix.localization(caseIndex) |> Result.mapErr(Error.Nix);
-        issuePayload <- Repository.Nix.Acquire.readSource(Repository.Nix.path(case_#issueFixture))
+        issuePayload <- Repository.Nix.Acquire.readDataset(Repository.Nix.path(case_#issueFixture))
             |> Result.mapErr(Error.Nix);
         issue <- decodeIssue(case_#instanceId, case_#repository, case_#baseCommit, issuePayload);
         world <- Repository.extractRetained(
@@ -266,7 +266,7 @@ mod Localization {
         root: String,
         case_: Repository.Nix.ScaleCase,
         issuePayload: String
-    ): Result[Error, Prepared] \ Fs.FileSystem = forM (
+    ): Result[Error, Prepared] \ {Fs.FileSystem, IO} = forM (
         issue <- decodeIssue(
             case_#instanceId,
             case_#repository,

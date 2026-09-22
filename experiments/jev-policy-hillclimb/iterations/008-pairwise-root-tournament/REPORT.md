@@ -69,7 +69,7 @@ measure relevant to the primary objective worsens.
 ## Per-case results
 
 Four cases improve over PRIOR, one worsens, and ten tie. Full per-case metrics
-and all binary judgments are retained in `metrics.json`.
+and all binary judgments are retained in `metrics.parquet`.
 
 ## Decision depth / model-call statistics
 

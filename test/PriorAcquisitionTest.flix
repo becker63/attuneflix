@@ -145,7 +145,7 @@ mod PriorAcquisitionTest {
         corpora: Vector[Corpus],
         rankings: Vector[Vector[Localization.Ranked]],
         acquisition: Localization.Acquisition
-    ): Result[String, Unit] \ FileSystem = {
+    ): Result[String, Unit] \ IO = {
         let cases = Vector.zip(corpora, rankings) |> Vector.map(match (corpus, ranking) -> JObject(Map#{
             "instance_id" => JString(corpus#instanceId),
             "repository" => JString(corpus#repository),
@@ -167,11 +167,8 @@ mod PriorAcquisitionTest {
             "total_tokens" => ToJson.toJson(acquisition#totalTokens),
             "cases" => JArray(cases)
         }));
-        let written = run {
-            FileSystem.write(str = payload, "${root}/rankings.json")
-        } with FileSystem.withMkParentDirs
-          with FileSystem.withAtomicWrite;
-        Result.mapErr(ToString.toString, written)
+        let _ = ScientificData.writeObject("${root}/rankings.parquet", payload);
+        Ok(())
     }
 
     def documentJson(document: Localization.Document): Json = JObject(Map#{

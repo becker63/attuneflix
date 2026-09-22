@@ -55,7 +55,7 @@ nDCG@100 is `0.306877`. The retained run made 78 decisions (5.2 per case), used
 ## Per-case results
 
 The complete per-case metrics, paths, and decision counts are in
-`metrics.json`. Thirteen cases have positive structural F1 headroom; v1 captures
+`metrics.parquet`. Thirteen cases have positive structural F1 headroom; v1 captures
 positive headroom in only three.
 
 ## Decision depth / model-call statistics

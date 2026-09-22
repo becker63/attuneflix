@@ -89,7 +89,7 @@ pub mod ScaleExperiment {
 
     pub def materialize(path: String): Result[Error, Manifest] \ {FileSystem, Repository.Nix.Acquire} = forM (
         evidence <- Repository.Nix.population() |> Result.mapErr(Error.Nix);
-        payload <- Repository.Nix.Acquire.readSource(Repository.Nix.path(evidence#projection))
+        payload <- Repository.Nix.Acquire.readDataset(Repository.Nix.path(evidence#projection))
             |> Result.mapErr(Error.Nix);
         projection <- decodeProjection(payload);
         manifest <- build(evidence, projection);
@@ -118,7 +118,7 @@ pub mod ScaleExperiment {
     /// trajectory, or gold fields into the Flix experiment boundary.
     pub def issueCensus(): Result[Error, IssueCensus] \ Repository.Nix.Acquire = forM (
         evidence <- Repository.Nix.scaleIssues() |> Result.mapErr(Error.Nix);
-        payload <- Repository.Nix.Acquire.readSource(Repository.Nix.path(evidence#issueFixture))
+        payload <- Repository.Nix.Acquire.readDataset(Repository.Nix.path(evidence#issueFixture))
             |> Result.mapErr(Error.Nix);
         cases <- validateIssueProjection(payload)
     ) yield {
@@ -171,26 +171,33 @@ pub mod ScaleExperiment {
     ): Result[Error, Unit] \ {FileSystem, IO, Repository.Grit.Eval, Repository.Nix.Acquire} =
         if (shards <= 0 or shard < 0 or shard >= shards)
             Err(Error.Wire("invalid case shard ${shard}/${shards}"))
-        else acquireNewFactsAt(root, shard, shards, 0, 0)
+        else acquireNewFactsAt(root, shard, shards, 0, 0, 0)
 
     def acquireNewFactsAt(
         root: String,
         shard: Int32,
         shards: Int32,
         index: Int32,
-        acquired: Int32
+        acquired: Int32,
+        replayed: Int32
     ): Result[Error, Unit] \ {FileSystem, IO, Repository.Grit.Eval, Repository.Nix.Acquire} =
         if (index >= 78) {
-            println("SCALE_FACT_SHARD shard=${shard}/${shards} acquired=${acquired}");
+            println("SCALE_FACT_SHARD shard=${shard}/${shards}" +
+                " acquired=${acquired} replayed=${replayed}");
             Ok(())
         } else if (Int32.remainder(index, shards) != shard)
-            acquireNewFactsAt(root, shard, shards, index + 1, acquired)
+            acquireNewFactsAt(root, shard, shards, index + 1, acquired, replayed)
         else forM (
             case0 <- Repository.Nix.scaleCase(index) |> Result.mapErr(Error.Nix);
             _ <- if (case0#manifestIndex == index) Ok(())
                 else Err(Error.Wire("scale case index mismatch"));
-            next <- if (case0#population == "historical-development") Ok(acquired)
+            next <- if (case0#population == "historical-development") Ok((acquired, replayed))
                 else {
+                    let retainedPath = "${root}/${case0#baseRevision}.parquet";
+                    match FileSystem.exists(retainedPath) |> Result.mapErr(error ->
+                        Error.File(ToString.toString(error))) {
+                    case Err(error) => Err(error)
+                    case Ok(wasRetained) => {
                     let started = System.nanoTime();
                     let sources = Vector.map(source -> {path = source#path, content = source#content}, case0#sources);
                     match Repository.extractRetained(
@@ -205,15 +212,20 @@ pub mod ScaleExperiment {
                             let elapsed = Int64.toFloat64(System.nanoTime() - started) / 1000000000.0;
                             println("SCALE_FACT case=${case0#instanceId}" +
                                 " shard=${shard}/${shards}" +
+                                " action=${if (wasRetained) "replayed" else "acquired"}" +
                                 " files=${Vector.length(world#files)}" +
                                 " symbols=${Vector.length(world#symbols)}" +
                                 " seconds=${elapsed}" +
                                 " snapshot=${Repository.Nix.path(case0#snapshot)}");
-                            Ok(acquired + 1)
+                            Ok(if (wasRetained) (acquired, replayed + 1)
+                                else (acquired + 1, replayed))
                         }
                     }
+                    }
+                    }
                 };
-            _ <- acquireNewFactsAt(root, shard, shards, index + 1, next)
+            _ <- acquireNewFactsAt(
+                root, shard, shards, index + 1, fst(next), snd(next))
         ) yield ()
 
     /// Builds the frozen semantic prior one case at a time while sharing the
@@ -223,12 +235,39 @@ pub mod ScaleExperiment {
         root: String,
         factsRoot: String,
         live: Bool
+    ): Result[Error, Unit] \ {FileSystem, IO, Repository.Nix.Acquire} =
+        semanticPriorRange(root, factsRoot, live, 0, 78)
+
+    /// Resumes acquisition at an original manifest index. Earlier cases are
+    /// neither loaded nor rewritten; repository observation stores retain the
+    /// same exact request-identity reuse for later revisions.
+    pub def semanticPriorFrom(
+        root: String,
+        factsRoot: String,
+        live: Bool,
+        startIndex: Int32
+    ): Result[Error, Unit] \ {FileSystem, IO, Repository.Nix.Acquire} =
+        semanticPriorRange(root, factsRoot, live, startIndex, 78)
+
+    /// Executes a half-open original-manifest range. This is a recovery and
+    /// replay boundary only; case preparation and scientific identities are
+    /// identical to the complete run.
+    pub def semanticPriorRange(
+        root: String,
+        factsRoot: String,
+        live: Bool,
+        startIndex: Int32,
+        endIndex: Int32
     ): Result[Error, Unit] \ {FileSystem, IO, Repository.Nix.Acquire} = forM (
+        _ <- if (startIndex >= 0 and startIndex <= endIndex and endIndex <= 78) Ok(())
+            else Err(Error.Wire("invalid prior range: ${startIndex}..${endIndex}"));
         issues <- Repository.Nix.scaleIssues() |> Result.mapErr(Error.Nix);
-        issuePayload <- Repository.Nix.Acquire.readSource(Repository.Nix.path(issues#issueFixture))
+        issuePayload <- Repository.Nix.Acquire.readDataset(Repository.Nix.path(issues#issueFixture))
             |> Result.mapErr(Error.Nix);
-        totals <- semanticPriorAt(root, factsRoot, issuePayload, live, 0, emptyPriorTotals())
+        totals <- semanticPriorAt(root, factsRoot, issuePayload, live,
+            startIndex, endIndex, emptyPriorTotals())
     ) yield println("SCALE_PRIOR mode=${if (live) "acquire" else "replay"}" +
+        " range=${startIndex}..${endIndex}" +
         " cases=${totals#cases} documents=${totals#documents}" +
         " unique_requests=${totals#unique} replayed=${totals#replayed}" +
         " live=${totals#live} calls=${totals#calls}" +
@@ -238,7 +277,7 @@ pub mod ScaleExperiment {
         factsRoot: String
     ): Result[Error, Unit] \ {FileSystem, IO, Repository.Nix.Acquire} = forM (
         issues <- Repository.Nix.scaleIssues() |> Result.mapErr(Error.Nix);
-        issuePayload <- Repository.Nix.Acquire.readSource(Repository.Nix.path(issues#issueFixture))
+        issuePayload <- Repository.Nix.Acquire.readDataset(Repository.Nix.path(issues#issueFixture))
             |> Result.mapErr(Error.Nix);
         totals <- semanticPriorCensusAt(
             factsRoot, issuePayload, 0, emptyPriorTotals())
@@ -281,9 +320,10 @@ pub mod ScaleExperiment {
         issuePayload: String,
         live: Bool,
         index: Int32,
+        endIndex: Int32,
         totals: PriorTotals
     ): Result[Error, PriorTotals] \ {FileSystem, IO, Repository.Nix.Acquire} =
-        if (index >= 78) Ok(totals)
+        if (index >= endIndex) Ok(totals)
         else forM (
             case0 <- Repository.Nix.scaleCase(index) |> Result.mapErr(Error.Nix);
             next <- if (case0#population == "historical-development") Ok(totals)
@@ -299,7 +339,7 @@ pub mod ScaleExperiment {
                     ranking <- rankPrepared(prepared, acquired#observations);
                     payload = priorCasePayload(prepared, ranking, acquired);
                     _ <- retainOrVerifyPrior(
-                        "${root}/rankings/${case0#baseRevision}.json", payload, live);
+                        "${root}/rankings/${case0#baseRevision}.parquet", payload, live);
                     calls = (acquired#live + 63) / 64;
                     _ = println("SCALE_PRIOR_CASE case=${case0#instanceId}" +
                         " repository=${case0#repository}" +
@@ -309,7 +349,8 @@ pub mod ScaleExperiment {
                         " calls=${calls}");
                     result = addPriorTotals(totals, prepared, requests, acquired, calls)
                 ) yield result;
-            result <- semanticPriorAt(root, factsRoot, issuePayload, live, index + 1, next)
+            result <- semanticPriorAt(root, factsRoot, issuePayload, live,
+                index + 1, endIndex, next)
         ) yield result
 
     def acquirePriorObservations(
@@ -404,17 +445,26 @@ pub mod ScaleExperiment {
         path: String,
         payload: String,
         live: Bool
-    ): Result[Error, Unit] \ FileSystem =
-        if (live) writeManifest(path, payload)
-        else FileSystem.read(path)
-            |> Result.mapErr(error -> Error.File(ToString.toString(error)))
-            |> Result.flatMap(expected -> priorSemanticEqual(expected, payload)
-                |> Result.flatMap(equal -> if (equal) Ok(()) else Err(Error.PriorReplay(path))))
+    ): Result[Error, Unit] \ {FileSystem, IO} =
+        if (live) {
+            let _ = ScientificData.writeObject(path, payload);
+            Ok(())
+        } else match FileSystem.exists(path)
+            |> Result.mapErr(error -> Error.File(ToString.toString(error))) {
+            case Err(error) => Err(error)
+            case Ok(false) => Err(Error.File("missing retained Parquet artifact: ${path}"))
+            case Ok(true) => priorSemanticEqual(ScientificData.readObject(path), payload)
+                |> Result.flatMap(equal -> if (equal) Ok(()) else Err(Error.PriorReplay(path)))
+        }
 
-    def priorSemanticEqual(left: String, right: String): Result[Error, Bool] = forM (
+    def priorSemanticEqual(left: String, right: String): Result[Error, Bool] \ IO = forM (
         leftFields <- priorSemanticFields(left);
         rightFields <- priorSemanticFields(right)
-    ) yield leftFields == rightFields
+    ) yield ScientificData.canonicalizeObject(priorSemanticPayload(leftFields)) ==
+        ScientificData.canonicalizeObject(priorSemanticPayload(rightFields))
+
+    def priorSemanticPayload(fields: Vector[Json]): String =
+        Json.toCompactString(JObject(Map#{"semantic" => JArray(fields)}))
 
     def priorSemanticFields(payload: String): Result[Error, Vector[Json]] = match Json.parse(payload) {
         case Err(error) => Err(Error.Wire(ToString.toString(error)))
@@ -469,8 +519,11 @@ pub mod ScaleExperiment {
         if (index >= 15) Ok(())
         else forM (
             case0 <- Repository.Nix.localization(index) |> Result.mapErr(Error.Nix);
-            payload <- FileSystem.read("${root}/${case0#baseCommit}.json")
+            path = "${root}/${case0#baseCommit}.parquet";
+            exists <- FileSystem.exists(path)
                 |> Result.mapErr(_ -> Error.MissingHistoricalFacts(case0#instanceId));
+            _ <- if (exists) Ok(()) else Err(Error.MissingHistoricalFacts(case0#instanceId));
+            payload = ScientificData.readObject(path);
             sources = Vector.map(source -> {path = source#path, content = source#content}, case0#sources);
             legacy <- Repository.decodeObservationsAtIdentity(
                 case0#repository,

@@ -74,9 +74,11 @@ mod JevLocalizationTest {
     }
 
     def runCases(start: Int32, execute: Bool, acquire: Bool): Result[Error, Unit] \ {FileSystem, IO} =
-        match FileSystem.read(".attune/semantic-prior-v1/rankings.json") {
+        match FileSystem.exists(".attune/semantic-prior-v1/rankings.parquet") {
             case Err(error) => Err(Error.File(ToString.toString(error)))
-            case Ok(payload) => {
+            case Ok(false) => Err(Error.File("missing retained Parquet prior"))
+            case Ok(true) => {
+                let payload = ScientificData.readObject(".attune/semantic-prior-v1/rankings.parquet");
                 let tree = Localization.Tree.compile();
                 println("JEV_TREE routes=${Localization.Tree.routeCount(tree)} symbol_routes=${Localization.Tree.symbolRouteCount(tree)} nodes=${Radii.Compiled.nodeCount(tree#program)}");
                 match prepareCases(start, payload, tree, execute, acquire, Vector.empty()) {
@@ -148,7 +150,7 @@ mod JevLocalizationTest {
         Result.mapErr(Error.Tree, result)
     }
 
-    def writeResults(results: Vector[CaseResult]): Result[Error, Unit] \ FileSystem = {
+    def writeResults(results: Vector[CaseResult]): Result[Error, Unit] \ IO = {
         let cases = Vector.map(result -> JObject(Map#{
             "instance_id" => JString(result#instanceId),
             "repository" => JString(result#repository),
@@ -174,11 +176,8 @@ mod JevLocalizationTest {
             "max_depth" => ToJson.toJson(Localization.Tree.maxDepth()),
             "cases" => JArray(cases)
         }));
-        let written = run {
-            FileSystem.write(str = payload, ".attune/jev-localization-v1/outcomes.json")
-        } with FileSystem.withMkParentDirs
-          with FileSystem.withAtomicWrite;
-        Result.mapErr(error -> Error.File(ToString.toString(error)), written)
+        let _ = ScientificData.writeObject(".attune/jev-localization-v1/outcomes.parquet", payload);
+        Ok(())
     }
 
     def decisionJson(observation: Decide.Observation): Json = JObject(Map#{

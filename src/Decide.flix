@@ -161,10 +161,12 @@ mod Decide {
             def policy(request0, k) = k(decideNative(request0))
         }
 
-    pub def runWithStoreReplay(root: String, f: Unit -> a \ ef): a \ (ef - Choice) + FileSystem =
+    pub def runWithStoreReplay(root: String, f: Unit -> a \ ef): a \ (ef - Choice) + FileSystem = {
+        let stored = readStore(root);
         run { f() } with handler Choice {
-            def policy(request0, k) = k(replayRetained(root, request0))
+            def policy(request0, k) = k(replayStored(stored, request0))
         }
+    }
 
     /// Acquire replays exact hits. A miss is retained as raw provider data
     /// before local admission so decoder changes never purchase it again.
@@ -212,9 +214,9 @@ mod Decide {
     def decideNative(request0: Request): Result[Error, Observation] \ IO =
         decode(request0, Wire.Wire(AttuneDecision.decide(request0#payload)))
 
-    def replayRetained(root: String, request0: Request): Result[Error, Observation] \ FileSystem =
-        readStore(root) |> Result.flatMap(stored ->
-            Map.get(request0#decision, stored#wires)
+    def replayStored(stored: Result[Error, Stored], request0: Request): Result[Error, Observation] =
+        stored |> Result.flatMap(view ->
+            Map.get(request0#decision, view#wires)
                 |> Option.toOk(Error.MissingReplay(request0#decision))
                 |> Result.flatMap(wire -> decode(request0, wire)))
 

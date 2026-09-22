@@ -233,6 +233,20 @@
               runHook postInstall
             '';
             };
+          attuneParquetJar = pkgs.maven.buildMavenPackage {
+            pname = "attune-parquet";
+            version = "0.1.0";
+            src = ./native/parquet;
+            mvnJdk = pkgs.jdk25;
+            mvnHash = "sha256-3rahVXZqAoR7Qp7UeVvvrqyAcXxHj8aYRXGZnngUxVA=";
+            installPhase = ''
+              runHook preInstall
+              mkdir -p "$out/share/java"
+              install -Dm644 target/attune-parquet-0.1.0.jar \
+                "$out/share/java/attune-parquet.jar"
+              runHook postInstall
+            '';
+          };
           hoverProvider = pkgs.runCommand "attuneflix-hover-provider" {
             nativeBuildInputs = [ pkgs.jdk25 pkgs.scala_2_13 ];
           } ''
@@ -252,6 +266,7 @@
           flixJdk25 = pkgs.writeShellScriptBin "flix" ''
             exec ${pkgs.jdk25}/bin/java \
               --enable-native-access=ALL-UNNAMED \
+              --add-opens=java.base/java.nio=ALL-UNNAMED \
               -cp ${hoverProvider}/share/java/attuneflix-hover.jar:${flixJar} \
               ca.uwaterloo.flix.Main "$@"
           '';
@@ -260,6 +275,7 @@
           attune-grit-jar = attuneGritJar;
           attune-nix-jar = attuneNixJar;
           attune-embed-jar = attuneEmbedJar;
+          attune-parquet-jar = attuneParquetJar;
           flix = flixJdk25;
           flix-hover-provider = hoverProvider;
           libc-dev = pkgs.glibc.dev;
@@ -279,6 +295,7 @@
               pkgs.jdk25
               pkgs.jextract
               pkgs.jujutsu
+              pkgs.python3Packages.pyarrow
               pkgs.rustc
               pkgs.rustfmt
             ];

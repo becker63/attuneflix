@@ -74,7 +74,7 @@ The delta selector restores Preact 2757 (`0.178273 -> 0.184497`) and improves
 Preact 3689 (`0.137931 -> 0.213660`). It loses Immutable 2005
 (`0.159915 -> 0.105379`), Immutable 2006 (`0.224969 -> 0.181373`), and Preact
 3454 (`0.530435 -> 0.402640`). Other cases tie. Full results are in
-`metrics.json`.
+`metrics.parquet`.
 
 ## Decision depth / model-call statistics
 

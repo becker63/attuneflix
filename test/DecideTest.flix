@@ -95,6 +95,39 @@ mod DecideTest {
         }
     } with FileSystem.withMemoryOverlay
 
+    @Test
+    def retainedStoreIsLoadedOnceBeforeReplayBody(): Unit \ {Assert, FileSystem} = run {
+        let request0 = request("issue", Vector#{callsAlternative()});
+        let response = "{" +
+            "\"answers\":{\"next_action\":{\"type\":\"choice\",\"choice\":\"calls\"," +
+            "\"confidence\":1.0,\"probabilities\":{\"calls\":1.0}}}," +
+            "\"id\":\"decision-1\",\"model\":\"typesafe/jev-1.13\",\"provider\":\"openrouter\"}";
+        let Radii.Evaluate.DecisionId.DecisionId(identity) = request0#decision;
+        let retained = "{\"version\":1,\"provider\":\"openrouter\"," +
+            "\"model\":\"typesafe/jev-1.13\",\"decision_id\":" + jsonString(identity) +
+            ",\"response\":" + jsonString(response) + "}";
+        match FileSystem.write(str = retained, "/decisions/raw/decision-0.json") {
+            case Err(error) => Assert.fail(ToString.toString(error))
+            case Ok(()) => match Decide.runWithStoreReplay("/decisions", () -> {
+                // A store mutation after handler construction must not change
+                // the immutable replay view used by any decision in this run.
+                match FileSystem.write(str = "not json", "/decisions/raw/decision-1.json") {
+                    case Err(error) => Err(Decide.Error.ObservationStore(ToString.toString(error)))
+                    case Ok(()) => forM (
+                        first <- Decide.policy(request0);
+                        second <- Decide.policy(request0)
+                    ) yield (first, second)
+                }
+            }) {
+                case Err(error) => Assert.fail(ToString.toString(error))
+                case Ok((first, second)) => {
+                    Assert.assertEq(expected = 0, first#choiceIndex);
+                    Assert.assertEq(expected = first#choiceIndex, second#choiceIndex)
+                }
+            }
+        }
+    } with FileSystem.withMemoryOverlay
+
     def request(issue: String, alternatives: Vector[Decide.Alternative]): Decide.Request =
         match Decide.request(stateId(), "issue: ${issue}", alternatives) {
             case Err(_error) => unreachable!()

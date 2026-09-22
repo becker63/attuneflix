@@ -66,7 +66,7 @@ All secondary metrics are identical to iteration 003: weighted core coverage
 ## Per-case results
 
 Every case has the same selected path and official score as iteration 003. Full
-per-case metrics and all 70 policy observations are in `metrics.json`.
+per-case metrics and all 70 policy observations are in `metrics.parquet`.
 
 ## Decision depth / model-call statistics
 

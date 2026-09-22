@@ -1,4 +1,6 @@
 mod ScaleExperimentTest {
+    import java.lang.Integer
+
     use Fs.FileSystem
     use Sys.Env
 
@@ -38,10 +40,12 @@ mod ScaleExperimentTest {
                 case Ok(census) => println("SCALE_ISSUES cases=${census#cases}" +
                     " bytes=${census#payloadBytes} store_path=${census#storePath}")
             }
-            case Some("prior-acquire") => match Repository.Nix.runWithNative(() -> ScaleExperiment.semanticPrior(
+            case Some("prior-acquire") => match Repository.Nix.runWithNative(() -> ScaleExperiment.semanticPriorRange(
                     ".attune/semantic-prior-js-ts-scale-v1",
                     ".attune/repository-facts-js-ts-scale-v1",
-                    true)) {
+                    true,
+                    priorStartIndex(),
+                    priorEndIndex())) {
                 case Err(error) => Assert.fail(ToString.toString(error))
                 case Ok(()) => ()
             }
@@ -51,10 +55,12 @@ mod ScaleExperimentTest {
                 case Err(error) => Assert.fail(ToString.toString(error))
                 case Ok(()) => ()
             }
-            case Some("prior-replay") => match Repository.Nix.runWithNative(() -> ScaleExperiment.semanticPrior(
+            case Some("prior-replay") => match Repository.Nix.runWithNative(() -> ScaleExperiment.semanticPriorRange(
                     ".attune/semantic-prior-js-ts-scale-v1",
                     ".attune/repository-facts-js-ts-scale-v1",
-                    false)) {
+                    false,
+                    priorStartIndex(),
+                    priorEndIndex())) {
                 case Err(error) => Assert.fail(ToString.toString(error))
                 case Ok(()) => ()
             }
@@ -70,5 +76,15 @@ mod ScaleExperimentTest {
         case Some("1/2") => Ok((1, 2))
         case Some("0/78") => Ok((0, 78))
         case _ => Err("unsupported ATTUNE_CASE_SHARD")
+    }
+
+    def priorStartIndex(): Int32 \ Env = match Env.getVar("ATTUNE_SCALE_PRIOR_START") {
+        case None => 0
+        case Some(value) => Integer.parseInt(value)
+    }
+
+    def priorEndIndex(): Int32 \ Env = match Env.getVar("ATTUNE_SCALE_PRIOR_END") {
+        case None => 78
+        case Some(value) => Integer.parseInt(value)
     }
 }

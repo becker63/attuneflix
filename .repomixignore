@@ -1,0 +1,31 @@
+# Secrets and private retained evidence
+.env
+.env.*
+.attune/
+.venv
+
+# VCS and build products
+.git/
+.jj/
+.build/
+artifact/
+lib/external/
+native/grit/target/
+zed/target/
+zed/grammars/
+zed/extension.wasm
+result
+result-*
+
+# Binary scientific payloads are described by adjacent Markdown
+*.parquet
+*.jar
+*.fpkg
+
+# Generated packs, runtime logs, and editor residue
+repomix-output.*
+experiments/**/logs/
+crash_report_*.txt
+__pycache__/
+*.py[cod]
+.DS_Store

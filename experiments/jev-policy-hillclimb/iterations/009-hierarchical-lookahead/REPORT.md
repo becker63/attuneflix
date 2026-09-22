@@ -70,7 +70,7 @@ does not come from a noisier context tradeoff.
 The largest gains over iteration 003 are Axios 5085 (`0 -> 0.189474`), Immutable
 2005 (`0.019507 -> 0.159915`), and Preact 2757 (`0.127774 -> 0.184497`). Preact
 4436 retains its exact-oracle `0.803506`. Full per-case metrics are retained in
-`metrics.json`.
+`metrics.parquet`.
 
 ## Decision depth / model-call statistics
 

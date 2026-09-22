@@ -70,7 +70,7 @@ efficiency by `0.048110`, while weighted coverage and nDCG fall.
 
 Thirteen cases are identical to iteration 009. Preact 4182 improves from
 `0.025229` to `0.051429`; Preact 3689 falls from `0.102752` to `0.068571`.
-Complete metrics are in `metrics.json`.
+Complete metrics are in `metrics.parquet`.
 
 ## Decision depth / model-call statistics
 

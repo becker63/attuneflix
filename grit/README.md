@@ -27,3 +27,8 @@ Unknown extensions are rejected before Grit runs. Every entry point documents
 positive examples, exclusions, normalization, parser selection, returned
 values, and the later resolver/admission responsibilities.
 
+The native host memoizes serialized evaluator output only when language,
+program bytes, path, and source bytes are all exact matches. It retains at most
+one source/result per program and path, so unchanged files are reused across
+repository revisions without changing extraction semantics or allowing old
+revisions to grow memory without bound.

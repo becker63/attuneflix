@@ -77,7 +77,7 @@ than uniform dominance.
 Preact 3454 improves from `0.402640` to `0.530435`, reaching `92.61%` of its
 `0.572770` oracle F1. Preact 2757 regresses from `0.184497` to `0.178273` after
 the selector accepts one extra `calls` step. Every other case ties iteration
-012. Full per-case metrics are retained in `metrics.json`.
+012. Full per-case metrics are retained in `metrics.parquet`.
 
 ## Decision depth / model-call statistics
 

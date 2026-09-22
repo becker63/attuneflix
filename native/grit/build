@@ -4,9 +4,10 @@ set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
 cd "$root"
 
-package=$(nix build path:.#attune-grit-jar --no-link --print-out-paths)
 classes="$root/.build/grit/test-classes"
 jar_file="$root/.build/grit/attune-grit.jar"
+root_link="$root/.build/grit/nix-root"
+package=$(nix build path:.#attune-grit-jar --out-link "$root_link" --print-out-paths)
 
 rm -rf "$classes"
 mkdir -p "$classes"

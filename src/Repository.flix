@@ -71,28 +71,21 @@ mod Repository {
         baseCommit: String,
         snapshot: String,
         sources0: Vector[Source]
-    ): Result[Error, World] \ {FileSystem, Repository.Grit.Eval} = {
-        let file = "${root}/${baseCommit}.json";
+    ): Result[Error, World] \ {FileSystem, IO, Repository.Grit.Eval} = {
+        let file = "${root}/${baseCommit}.parquet";
         match FileSystem.exists(file) |> Result.mapErr(storeError) {
             case Err(error) => Err(error)
-            case Ok(true) => FileSystem.read(file)
-                |> Result.mapErr(storeError)
-                |> Result.flatMap(payload -> decodeObservationsAtIdentity(
+            case Ok(true) => decodeObservationsAtIdentity(
                     repository, baseCommit, snapshot, sources0,
-                    Repository.Grit.observationIdentity(), payload))
+                    Repository.Grit.observationIdentity(), ScientificData.readObject(file))
                 |> Result.flatMap(admitObserved)
             case Ok(false) => match observeAll(sources0) {
                 case Err(error) => Err(error)
                 case Ok(observations) => {
                     let payload = encodeObservations(
                         repository, baseCommit, snapshot, observations);
-                    let written = run { FileSystem.write(str = payload, file) }
-                        with FileSystem.withMkParentDirs
-                        with FileSystem.withAtomicWrite;
-                    match Result.mapErr(storeError, written) {
-                        case Err(error) => Err(error)
-                        case Ok(()) => admitObserved(observations)
-                    }
+                    let _ = ScientificData.writeObject(file, payload);
+                    admitObserved(observations)
                 }
             }
         }
@@ -106,16 +99,14 @@ mod Repository {
         baseCommit: String,
         snapshot: String,
         sources0: Vector[Source]
-    ): Result[Error, World] \ FileSystem = {
-        let file = "${root}/${baseCommit}.json";
+    ): Result[Error, World] \ {FileSystem, IO} = {
+        let file = "${root}/${baseCommit}.parquet";
         match FileSystem.exists(file) |> Result.mapErr(storeError) {
             case Err(error) => Err(error)
             case Ok(false) => Err(Error.Store("retained repository observation missing: ${file}"))
-            case Ok(true) => FileSystem.read(file)
-                |> Result.mapErr(storeError)
-                |> Result.flatMap(payload -> decodeObservationsAtIdentity(
+            case Ok(true) => decodeObservationsAtIdentity(
                     repository, baseCommit, snapshot, sources0,
-                    Repository.Grit.observationIdentity(), payload))
+                    Repository.Grit.observationIdentity(), ScientificData.readObject(file))
                 |> Result.flatMap(admitObserved)
         }
     }

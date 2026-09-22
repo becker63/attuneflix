@@ -4,9 +4,10 @@ set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
 cd "$root"
 
-package=$(nix build path:.#attune-nix-jar --no-link --print-out-paths)
 classes="$root/.build/nix/test-classes"
 jar_file="$root/.build/nix/attune-nix.jar"
+root_link="$root/.build/nix/nix-root"
+package=$(nix build path:.#attune-nix-jar --out-link "$root_link" --print-out-paths)
 
 rm -rf "$classes"
 mkdir -p "$classes"

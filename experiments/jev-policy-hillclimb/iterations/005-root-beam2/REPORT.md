@@ -68,7 +68,7 @@ primary line-F1 objective regresses.
 
 Four cases improve over PRIOR. Preact 2896 remains `0.379666`; 4182 improves to
 `0.096220`; 4436 reaches `0.482636` but falls well below iteration 003's exact
-oracle. Axios 4731 gains a small `0.003922`. Full details are in `metrics.json`.
+oracle. Axios 4731 gains a small `0.003922`. Full details are in `metrics.parquet`.
 
 ## Decision depth / model-call statistics
 

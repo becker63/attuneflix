@@ -1,18 +1,33 @@
-artifact/
-.attune/
-.env
-.venv
-.build/
-build/
-lib/
-!experiments/jev-policy-hillclimb/lib/
-!experiments/jev-policy-hillclimb/lib/**
-native/grit/target/
-zed/target/
-zed/extension.wasm
-zed/grammars/
+# Retained local evidence and credentials
+/.attune/
+/.env
+/.env.*
+!/.env.example
+
+# Nix, Flix, and generated JVM bindings/dependencies
+/result
+/result-*
+/.build/
+/artifact/
+/lib/external/
 *.fpkg
-*.jar
-crash_report_*.txt
-result
-repomix-output.xml
+
+# Rust/Zed build output
+/native/grit/target/
+/zed/target/
+/zed/extension.wasm
+/zed/grammars/
+
+# Python/editor/OS residue
+/.venv
+/.direnv/
+__pycache__/
+*.py[cod]
+.DS_Store
+*.swp
+*~
+
+# Local diagnostics and generated inspection packs
+/crash_report_*.txt
+/repomix-output.*
+/experiments/**/logs/

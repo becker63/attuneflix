@@ -93,6 +93,7 @@ pub mod Repository.Nix {
         def scaleCase(caseIndex: Int32): Wire
         def scaleIssues(): Wire
         def readSource(file: String): Result[Error, String]
+        def readDataset(file: String): Result[Error, String]
     }
 
     pub def sweExplore(): Result[Error, ExploreCase] \ Acquire =
@@ -130,6 +131,7 @@ pub mod Repository.Nix {
             def scaleCase(caseIndex, k) = k(realiseScaleCase(caseIndex))
             def scaleIssues(k) = k(realiseScaleIssues())
             def readSource(file, k) = k(readNativeSource(file))
+            def readDataset(file, k) = k(Ok(ScientificData.readObject(file)))
         }
 
     pub def runWithFixture(fixture: Wire, f: Unit -> a \ ef): a \ (ef - Acquire) =
@@ -143,6 +145,7 @@ pub mod Repository.Nix {
             def scaleCase(_, k) = k(fixture)
             def scaleIssues(k) = k(fixture)
             def readSource(file, k) = k(Err(Error.Native("fixture", "unexpected store source: ${file}")))
+            def readDataset(file, k) = k(Err(Error.Native("fixture", "unexpected store dataset: ${file}")))
         }
 
     pub def path(value: StorePath): String = let StorePath.StorePath(result) = value; result
@@ -548,47 +551,47 @@ pub mod Repository.Nix {
     }
 
     def realiseNative(): Wire \ IO =
-        Wire.Wire(AttuneNix.realise("import ./swe-explore.nix", System.getProperty("user.dir")))
+        Wire.Wire(AttuneNix.realise("import ./nix/swe-explore.nix", System.getProperty("user.dir")))
 
     def realiseReplication(caseIndex: Int32): Wire \ IO =
         Wire.Wire(AttuneNix.realise(
-            "import ./replication.nix { caseIndex = ${caseIndex}; }",
+            "import ./nix/replication.nix { caseIndex = ${caseIndex}; }",
             System.getProperty("user.dir")
         ))
 
     def realiseLocalization(caseIndex: Int32): Wire \ IO =
         Wire.Wire(AttuneNix.realise(
-            "import ./localization.nix { caseIndex = ${caseIndex}; }",
+            "import ./nix/localization.nix { caseIndex = ${caseIndex}; }",
             System.getProperty("user.dir")
         ))
 
     def realiseEvaluation(): Wire \ IO =
         Wire.Wire(AttuneNix.realise(
-            "import ./evaluation.nix",
+            "import ./nix/evaluation.nix",
             System.getProperty("user.dir")
         ))
 
     def realiseScaleEvaluation(): Wire \ IO =
         Wire.Wire(AttuneNix.realise(
-            "import ./scale-evaluation.nix {}",
+            "import ./nix/scale-evaluation.nix {}",
             System.getProperty("user.dir")
         ))
 
     def realisePopulation(): Wire \ IO =
         Wire.Wire(AttuneNix.realise(
-            "import ./scale-population.nix {}",
+            "import ./nix/scale-population.nix {}",
             System.getProperty("user.dir")
         ))
 
     def realiseScaleCase(caseIndex: Int32): Wire \ IO =
         Wire.Wire(AttuneNix.realise(
-            "import ./scale-case.nix { caseIndex = ${caseIndex}; }",
+            "import ./nix/scale-case.nix { caseIndex = ${caseIndex}; }",
             System.getProperty("user.dir")
         ))
 
     def realiseScaleIssues(): Wire \ IO =
         Wire.Wire(AttuneNix.realise(
-            "import ./scale-issues.nix {}",
+            "import ./nix/scale-issues.nix {}",
             System.getProperty("user.dir")
         ))
 }
