@@ -266,7 +266,7 @@ mod Localization {
         root: String,
         case_: Repository.Nix.ScaleCase,
         issuePayload: String
-    ): Result[Error, Prepared] \ {Fs.FileSystem, Repository.Grit.Eval} = forM (
+    ): Result[Error, Prepared] \ Fs.FileSystem = forM (
         issue <- decodeIssue(
             case_#instanceId,
             case_#repository,
@@ -274,7 +274,7 @@ mod Localization {
             issuePayload
         );
         sources = Vector.map(source -> {path = source#path, content = source#content}, case_#sources);
-        world <- Repository.extractRetained(
+        world <- Repository.replayRetained(
             root,
             case_#repository,
             case_#baseRevision,

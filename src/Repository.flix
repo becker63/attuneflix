@@ -98,6 +98,28 @@ mod Repository {
         }
     }
 
+    /// Strict deterministic replay. Downstream scientific phases must never
+    /// turn a missing fact artifact into an unreported live extraction.
+    pub def replayRetained(
+        root: String,
+        repository: String,
+        baseCommit: String,
+        snapshot: String,
+        sources0: Vector[Source]
+    ): Result[Error, World] \ FileSystem = {
+        let file = "${root}/${baseCommit}.json";
+        match FileSystem.exists(file) |> Result.mapErr(storeError) {
+            case Err(error) => Err(error)
+            case Ok(false) => Err(Error.Store("retained repository observation missing: ${file}"))
+            case Ok(true) => FileSystem.read(file)
+                |> Result.mapErr(storeError)
+                |> Result.flatMap(payload -> decodeObservationsAtIdentity(
+                    repository, baseCommit, snapshot, sources0,
+                    Repository.Grit.observationIdentity(), payload))
+                |> Result.flatMap(admitObserved)
+        }
+    }
+
     def encodeObservations(
         repository: String,
         baseCommit: String,

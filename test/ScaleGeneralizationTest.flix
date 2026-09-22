@@ -40,7 +40,7 @@ mod ScaleGeneralizationTest {
         println("SCALE_013_TREE routes=${Localization.Tree.routeCount(tree)}" +
             " symbol_routes=${Localization.Tree.symbolRouteCount(tree)}" +
             " nodes=${Radii.Compiled.nodeCount(tree#program)}");
-        Repository.Grit.runWithNative(() -> Repository.Nix.runWithNative(() -> forM (
+        Repository.Nix.runWithNative(() -> forM (
             issues <- Repository.Nix.scaleIssues() |> Result.mapErr(Error.Nix);
             issuePayload <- Repository.Nix.Acquire.readSource(
                 Repository.Nix.path(issues#issueFixture)) |> Result.mapErr(Error.Nix);
@@ -48,7 +48,7 @@ mod ScaleGeneralizationTest {
                 {cases = 0, calls = 0, precomputeNanos = 0i64})
         ) yield println("SCALE_013 mode=${if (execute) (if (acquire) "acquire" else "replay") else "prepare"}" +
             " cases=${totals#cases} calls=${totals#calls}" +
-            " precompute_nanos=${totals#precomputeNanos}")))
+            " precompute_nanos=${totals#precomputeNanos}"))
     }
 
     def runAt(
@@ -58,7 +58,7 @@ mod ScaleGeneralizationTest {
         acquire: Bool,
         index: Int32,
         totals: Totals
-    ): Result[Error, Totals] \ {FileSystem, IO, Repository.Grit.Eval, Repository.Nix.Acquire} =
+    ): Result[Error, Totals] \ {FileSystem, IO, Repository.Nix.Acquire} =
         if (index >= 78) Ok(totals)
         else forM (
             case0 <- Repository.Nix.scaleCase(index) |> Result.mapErr(Error.Nix);

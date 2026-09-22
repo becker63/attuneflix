@@ -223,7 +223,7 @@ pub mod ScaleExperiment {
         root: String,
         factsRoot: String,
         live: Bool
-    ): Result[Error, Unit] \ {FileSystem, IO, Repository.Grit.Eval, Repository.Nix.Acquire} = forM (
+    ): Result[Error, Unit] \ {FileSystem, IO, Repository.Nix.Acquire} = forM (
         issues <- Repository.Nix.scaleIssues() |> Result.mapErr(Error.Nix);
         issuePayload <- Repository.Nix.Acquire.readSource(Repository.Nix.path(issues#issueFixture))
             |> Result.mapErr(Error.Nix);
@@ -236,7 +236,7 @@ pub mod ScaleExperiment {
 
     pub def semanticPriorCensus(
         factsRoot: String
-    ): Result[Error, Unit] \ {FileSystem, IO, Repository.Grit.Eval, Repository.Nix.Acquire} = forM (
+    ): Result[Error, Unit] \ {FileSystem, IO, Repository.Nix.Acquire} = forM (
         issues <- Repository.Nix.scaleIssues() |> Result.mapErr(Error.Nix);
         issuePayload <- Repository.Nix.Acquire.readSource(Repository.Nix.path(issues#issueFixture))
             |> Result.mapErr(Error.Nix);
@@ -250,7 +250,7 @@ pub mod ScaleExperiment {
         issuePayload: String,
         index: Int32,
         totals: PriorTotals
-    ): Result[Error, PriorTotals] \ {FileSystem, IO, Repository.Grit.Eval, Repository.Nix.Acquire} =
+    ): Result[Error, PriorTotals] \ {FileSystem, IO, Repository.Nix.Acquire} =
         if (index >= 78) Ok(totals)
         else forM (
             case0 <- Repository.Nix.scaleCase(index) |> Result.mapErr(Error.Nix);
@@ -282,7 +282,7 @@ pub mod ScaleExperiment {
         live: Bool,
         index: Int32,
         totals: PriorTotals
-    ): Result[Error, PriorTotals] \ {FileSystem, IO, Repository.Grit.Eval, Repository.Nix.Acquire} =
+    ): Result[Error, PriorTotals] \ {FileSystem, IO, Repository.Nix.Acquire} =
         if (index >= 78) Ok(totals)
         else forM (
             case0 <- Repository.Nix.scaleCase(index) |> Result.mapErr(Error.Nix);

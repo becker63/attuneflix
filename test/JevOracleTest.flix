@@ -1127,8 +1127,8 @@ mod JevOracleTest {
                 Repository.Nix.path(evidence#goldFixture)) |> Result.mapErr(Error.Nix);
             gold <- decodeGold(goldPayload);
             tree = Localization.Tree.compile();
-            rows <- Repository.Grit.runWithNative(() -> evaluateScaleCases(
-                0, issuePayload, gold, tree, Vector.empty()));
+            rows <- evaluateScaleCases(
+                0, issuePayload, gold, tree, Vector.empty());
             _ <- writeResultsAt(
                 rows,
                 "experiments/swe-explore-js-ts-scale/PHASE_B_RESULTS.json",
@@ -1141,7 +1141,7 @@ mod JevOracleTest {
         gold: Vector[Gold],
         tree: Localization.Tree.Tree,
         rows: Vector[Row]
-    ): Result[Error, Vector[Row]] \ {FileSystem, IO, Repository.Grit.Eval, Repository.Nix.Acquire} =
+    ): Result[Error, Vector[Row]] \ {FileSystem, IO, Repository.Nix.Acquire} =
         if (index >= 78) Ok(rows)
         else forM (
             case0 <- Repository.Nix.scaleCase(index) |> Result.mapErr(Error.Nix);

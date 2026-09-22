@@ -38,25 +38,23 @@ mod ScaleExperimentTest {
                 case Ok(census) => println("SCALE_ISSUES cases=${census#cases}" +
                     " bytes=${census#payloadBytes} store_path=${census#storePath}")
             }
-            case Some("prior-acquire") => match Repository.Grit.runWithNative(() ->
-                Repository.Nix.runWithNative(() -> ScaleExperiment.semanticPrior(
+            case Some("prior-acquire") => match Repository.Nix.runWithNative(() -> ScaleExperiment.semanticPrior(
                     ".attune/semantic-prior-js-ts-scale-v1",
                     ".attune/repository-facts-js-ts-scale-v1",
-                    true))) {
+                    true)) {
                 case Err(error) => Assert.fail(ToString.toString(error))
                 case Ok(()) => ()
             }
-            case Some("prior-prepare") => match Repository.Grit.runWithNative(() ->
-                Repository.Nix.runWithNative(() -> ScaleExperiment.semanticPriorCensus(
-                    ".attune/repository-facts-js-ts-scale-v1"))) {
+            case Some("prior-prepare") => match Repository.Nix.runWithNative(() ->
+                ScaleExperiment.semanticPriorCensus(
+                    ".attune/repository-facts-js-ts-scale-v1")) {
                 case Err(error) => Assert.fail(ToString.toString(error))
                 case Ok(()) => ()
             }
-            case Some("prior-replay") => match Repository.Grit.runWithNative(() ->
-                Repository.Nix.runWithNative(() -> ScaleExperiment.semanticPrior(
+            case Some("prior-replay") => match Repository.Nix.runWithNative(() -> ScaleExperiment.semanticPrior(
                     ".attune/semantic-prior-js-ts-scale-v1",
                     ".attune/repository-facts-js-ts-scale-v1",
-                    false))) {
+                    false)) {
                 case Err(error) => Assert.fail(ToString.toString(error))
                 case Ok(()) => ()
             }
