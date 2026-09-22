@@ -77,8 +77,9 @@ mod Repository {
             case Err(error) => Err(error)
             case Ok(true) => FileSystem.read(file)
                 |> Result.mapErr(storeError)
-                |> Result.flatMap(payload -> decodeObservations(
-                    repository, baseCommit, snapshot, sources0, payload))
+                |> Result.flatMap(payload -> decodeObservationsAtIdentity(
+                    repository, baseCommit, snapshot, sources0,
+                    Repository.Grit.observationIdentity(), payload))
                 |> Result.flatMap(admitObserved)
             case Ok(false) => match observeAll(sources0) {
                 case Err(error) => Err(error)
@@ -113,11 +114,14 @@ mod Repository {
         "calls" => factsJson(observations#calls)
     }))
 
-    def decodeObservations(
+    /// Explicit identity parameter exists for the one-time extractor-layout
+    /// parity audit. Normal replay always supplies the current identity above.
+    pub def decodeObservationsAtIdentity(
         repository: String,
         baseCommit: String,
         snapshot: String,
         sources0: Vector[Source],
+        expectedIdentity: String,
         payload: String
     ): Result[Error, Observations] = match Json.parse(payload) {
         case Err(error) => Err(Error.Wire(ToString.toString(error)))
@@ -126,7 +130,7 @@ mod Repository {
             _ <- requireField("repository", repository, fields);
             _ <- requireField("base_commit", baseCommit, fields);
             _ <- requireField("snapshot", snapshot, fields);
-            _ <- requireField("grit_identity", Repository.Grit.observationIdentity(), fields);
+            _ <- requireField("grit_identity", expectedIdentity, fields);
             definitions <- factVectorField("definitions", fields);
             imports <- factVectorField("imports", fields);
             calls <- factVectorField("calls", fields);

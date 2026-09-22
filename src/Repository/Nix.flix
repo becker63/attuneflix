@@ -43,6 +43,17 @@ pub mod Repository.Nix {
         goldFixture = StorePath
     }
 
+    /// Gold-free metadata projection used to materialize the scale manifest.
+    pub type alias PopulationEvidence = {
+        benchmarkRevision    = String,
+        multilingualRevision = String,
+        proRevision          = String,
+        benchmark            = StorePath,
+        multilingual         = StorePath,
+        pro                  = StorePath,
+        projection           = StorePath
+    }
+
     pub enum Error with Eq, ToString {
         case Wire(String),
         case Native(String, String),
@@ -56,6 +67,7 @@ pub mod Repository.Nix {
         def replication(caseIndex: Int32): Wire
         def localization(caseIndex: Int32): Wire
         def evaluation(): Wire
+        def population(): Wire
         def readSource(file: String): Result[Error, String]
     }
 
@@ -71,12 +83,16 @@ pub mod Repository.Nix {
     pub def evaluation(): Result[Error, EvaluationEvidence] \ Acquire =
         decodeEvaluation(Acquire.evaluation())
 
+    pub def population(): Result[Error, PopulationEvidence] \ Acquire =
+        decodePopulation(Acquire.population())
+
     pub def runWithNative(f: Unit -> a \ ef): a \ (ef - Acquire) + IO =
         run { f() } with handler Acquire {
             def sweExplore(k) = k(realiseNative())
             def replication(caseIndex, k) = k(realiseReplication(caseIndex))
             def localization(caseIndex, k) = k(realiseLocalization(caseIndex))
             def evaluation(k) = k(realiseEvaluation())
+            def population(k) = k(realisePopulation())
             def readSource(file, k) = k(readNativeSource(file))
         }
 
@@ -86,6 +102,7 @@ pub mod Repository.Nix {
             def replication(_, k) = k(fixture)
             def localization(_, k) = k(fixture)
             def evaluation(k) = k(fixture)
+            def population(k) = k(fixture)
             def readSource(file, k) = k(Err(Error.Native("fixture", "unexpected store source: ${file}")))
         }
 
@@ -144,6 +161,26 @@ pub mod Repository.Nix {
                         text <- stringField("text", fields);
                         paths <- stringVectorField("store_paths", fields);
                         result <- decodeEvaluationEvidence(text, paths)
+                    ) yield result
+                }
+            }
+            case Ok(_) => Err(Error.Wire("expected a JSON object"))
+        }
+    }
+
+    pub def decodePopulation(wire: Wire): Result[Error, PopulationEvidence] = {
+        let Wire.Wire(payload) = wire;
+        match Json.parse(payload) {
+            case Err(error) => Err(Error.Wire(ToString.toString(error)))
+            case Ok(JObject(fields)) => match intField("version", fields) {
+                case Err(error) => Err(error)
+                case Ok(version) if version != 1 => Err(Error.UnsupportedVersion(version))
+                case Ok(_) => match Map.get("error", fields) {
+                    case Some(value) => nativePopulationError(value)
+                    case None => forM (
+                        text <- stringField("text", fields);
+                        paths <- stringVectorField("store_paths", fields);
+                        result <- decodePopulationEvidence(text, paths)
                     ) yield result
                 }
             }
@@ -218,6 +255,33 @@ pub mod Repository.Nix {
             case Ok(_) => Err(Error.Wire("realised evaluation text must be an object"))
         }
 
+    def decodePopulationEvidence(text: String, paths: Vector[String]): Result[Error, PopulationEvidence] =
+        match Json.parse(text) {
+            case Err(error) => Err(Error.Wire("realised population text: ${ToString.toString(error)}"))
+            case Ok(JObject(fields)) => forM (
+                version <- intField("version", fields);
+                _ <- if (version == 1) Ok(()) else Err(Error.UnsupportedVersion(version));
+                benchmarkRevision <- stringField("benchmarkRevision", fields);
+                multilingualRevision <- stringField("multilingualRevision", fields);
+                proRevision <- stringField("proRevision", fields);
+                benchmark <- stringField("benchmark", fields);
+                multilingual <- stringField("multilingual", fields);
+                pro <- stringField("pro", fields);
+                projection <- stringField("projection", fields);
+                _ <- if (Vector.toSet(paths) == Set#{benchmark, multilingual, pro, projection})
+                    Ok(()) else Err(Error.IncompleteContext)
+            ) yield {
+                benchmarkRevision = benchmarkRevision,
+                multilingualRevision = multilingualRevision,
+                proRevision = proRevision,
+                benchmark = StorePath.StorePath(benchmark),
+                multilingual = StorePath.StorePath(multilingual),
+                pro = StorePath.StorePath(pro),
+                projection = StorePath.StorePath(projection)
+            }
+            case Ok(_) => Err(Error.Wire("realised population text must be an object"))
+        }
+
     def completeContext(benchmark: String, snapshot: String, paths: Vector[String]): Result[Error, Unit] =
         if (Vector.toSet(paths) == Set#{benchmark, snapshot}) Ok(()) else Err(Error.IncompleteContext)
 
@@ -247,6 +311,17 @@ pub mod Repository.Nix {
     }
 
     def nativeEvaluationError(value: Json): Result[Error, EvaluationEvidence] = match value {
+        case JObject(fields) => match stringField("kind", fields) {
+            case Err(error) => Err(error)
+            case Ok(kind) => match stringField("message", fields) {
+                case Err(error) => Err(error)
+                case Ok(message) => Err(Error.Native(kind, message))
+            }
+        }
+        case _ => Err(Error.Wire("error must be an object"))
+    }
+
+    def nativePopulationError(value: Json): Result[Error, PopulationEvidence] = match value {
         case JObject(fields) => match stringField("kind", fields) {
             case Err(error) => Err(error)
             case Ok(kind) => match stringField("message", fields) {
@@ -341,6 +416,12 @@ pub mod Repository.Nix {
     def realiseEvaluation(): Wire \ IO =
         Wire.Wire(AttuneNix.realise(
             "import ./evaluation.nix",
+            System.getProperty("user.dir")
+        ))
+
+    def realisePopulation(): Wire \ IO =
+        Wire.Wire(AttuneNix.realise(
+            "import ./scale-population.nix",
             System.getProperty("user.dir")
         ))
 }
