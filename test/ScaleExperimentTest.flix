@@ -33,6 +33,27 @@ mod ScaleExperimentTest {
                     case Ok(()) => ()
                 }
             }
+            case Some("issues") => match Repository.Nix.runWithNative(ScaleExperiment.issueCensus) {
+                case Err(error) => Assert.fail(ToString.toString(error))
+                case Ok(census) => println("SCALE_ISSUES cases=${census#cases}" +
+                    " bytes=${census#payloadBytes} store_path=${census#storePath}")
+            }
+            case Some("prior-acquire") => match Repository.Grit.runWithNative(() ->
+                Repository.Nix.runWithNative(() -> ScaleExperiment.semanticPrior(
+                    ".attune/semantic-prior-js-ts-scale-v1",
+                    ".attune/repository-facts-js-ts-scale-v1",
+                    true))) {
+                case Err(error) => Assert.fail(ToString.toString(error))
+                case Ok(()) => ()
+            }
+            case Some("prior-replay") => match Repository.Grit.runWithNative(() ->
+                Repository.Nix.runWithNative(() -> ScaleExperiment.semanticPrior(
+                    ".attune/semantic-prior-js-ts-scale-v1",
+                    ".attune/repository-facts-js-ts-scale-v1",
+                    false))) {
+                case Err(error) => Assert.fail(ToString.toString(error))
+                case Ok(()) => ()
+            }
             case Some(mode) => Assert.fail("unknown ATTUNE_SCALE_MODE: ${mode}")
         }
 
@@ -41,7 +62,9 @@ mod ScaleExperimentTest {
         case Some("1/4") => Ok((1, 4))
         case Some("2/4") => Ok((2, 4))
         case Some("3/4") => Ok((3, 4))
+        case Some("0/2") => Ok((0, 2))
+        case Some("1/2") => Ok((1, 2))
         case Some("0/78") => Ok((0, 78))
-        case _ => Err("ATTUNE_CASE_SHARD must be 0/4, 1/4, 2/4, or 3/4")
+        case _ => Err("unsupported ATTUNE_CASE_SHARD")
     }
 }

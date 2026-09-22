@@ -48,6 +48,23 @@ pub mod ScaleExperiment {
         cases                 = Vector[Case]
     }
 
+    pub type alias IssueCensus = {
+        cases       = Int32,
+        storePath   = String,
+        payloadBytes = Int32
+    }
+
+    type alias PriorTotals = {
+        cases       = Int32,
+        documents   = Int32,
+        unique      = Int32,
+        replayed    = Int32,
+        live        = Int32,
+        calls       = Int32,
+        inputTokens = Int32,
+        totalTokens = Int32
+    }
+
     type alias SplitCandidate = {
         repositories = Set[String],
         cases        = Int32
@@ -64,6 +81,8 @@ pub mod ScaleExperiment {
         case UnsupportedEligibleRepository(String),
         case PopulationCount(String, Int32, Int32),
         case Repository(Repository.Error),
+        case Prior(Localization.Error),
+        case PriorReplay(String),
         case HistoricalParity(String),
         case MissingHistoricalFacts(String)
     }
@@ -94,6 +113,51 @@ pub mod ScaleExperiment {
 
     pub def validationCount(manifest: Manifest): Int32 =
         Vector.count(case0 -> case0#split == "post-optimization-validation", manifest#cases)
+
+    /// Validates the solver-visible projection without admitting patch, test,
+    /// trajectory, or gold fields into the Flix experiment boundary.
+    pub def issueCensus(): Result[Error, IssueCensus] \ Repository.Nix.Acquire = forM (
+        evidence <- Repository.Nix.scaleIssues() |> Result.mapErr(Error.Nix);
+        payload <- Repository.Nix.Acquire.readSource(Repository.Nix.path(evidence#issueFixture))
+            |> Result.mapErr(Error.Nix);
+        cases <- validateIssueProjection(payload)
+    ) yield {
+        cases = cases,
+        storePath = Repository.Nix.path(evidence#issueFixture),
+        payloadBytes = Vector.length(String.toBytes(payload))
+    }
+
+    def validateIssueProjection(payload: String): Result[Error, Int32] = match Json.parse(payload) {
+        case Err(error) => Err(Error.Wire(ToString.toString(error)))
+        case Ok(JObject(fields)) => forM (
+            version <- intField("version", fields);
+            _ <- if (version == 1) Ok(()) else Err(Error.UnsupportedVersion(version));
+            values <- arrayField("issues", fields);
+            _ <- if (Vector.length(values) == 78) Ok(())
+                else Err(Error.PopulationCount("solver-visible issues", 78, Vector.length(values)));
+            _ <- Vector.traverse(validateIssueRow, values)
+        ) yield Vector.length(values)
+        case Ok(_) => Err(Error.Wire("issue projection must be an object"))
+    }
+
+    def validateIssueRow(value: Json): Result[Error, Unit] = match value {
+        case JObject(fields) => {
+            let expected = Set#{"instanceId", "repository", "baseCommit", "problemStatement"};
+            let actual = Map.toVector(fields) |> Vector.map(match (name, _) -> name) |> Vector.toSet;
+            if (actual != expected)
+                Err(Error.Wire("issue projection contains an unexpected field"))
+            else forM (
+                instanceId <- stringField("instanceId", fields);
+                repository <- stringField("repository", fields);
+                baseCommit <- stringField("baseCommit", fields);
+                statement <- stringField("problemStatement", fields);
+                _ <- if (String.isEmpty(instanceId) or String.isEmpty(repository) or
+                    String.isEmpty(baseCommit) or String.isEmpty(statement))
+                    Err(Error.Wire("issue projection contains an empty field")) else Ok(())
+            ) yield ()
+        }
+        case _ => Err(Error.Wire("issue projection row must be an object"))
+    }
 
     pub def historicalParity(root: String): Result[Error, Unit] \ {FileSystem, IO, Repository.Grit.Eval, Repository.Nix.Acquire} =
         historicalParityCase(root, 0)
@@ -151,6 +215,211 @@ pub mod ScaleExperiment {
                 };
             _ <- acquireNewFactsAt(root, shard, shards, index + 1, next)
         ) yield ()
+
+    /// Builds the frozen semantic prior one case at a time while sharing the
+    /// retained observation store within a repository. This bounds memory,
+    /// preserves cross-revision reuse, and keeps repository stores disjoint.
+    pub def semanticPrior(
+        root: String,
+        factsRoot: String,
+        live: Bool
+    ): Result[Error, Unit] \ {FileSystem, IO, Repository.Grit.Eval, Repository.Nix.Acquire} = forM (
+        issues <- Repository.Nix.scaleIssues() |> Result.mapErr(Error.Nix);
+        issuePayload <- Repository.Nix.Acquire.readSource(Repository.Nix.path(issues#issueFixture))
+            |> Result.mapErr(Error.Nix);
+        totals <- semanticPriorAt(root, factsRoot, issuePayload, live, 0, emptyPriorTotals())
+    ) yield println("SCALE_PRIOR mode=${if (live) "acquire" else "replay"}" +
+        " cases=${totals#cases} documents=${totals#documents}" +
+        " unique_requests=${totals#unique} replayed=${totals#replayed}" +
+        " live=${totals#live} calls=${totals#calls}" +
+        " input_tokens=${totals#inputTokens} total_tokens=${totals#totalTokens}")
+
+    def semanticPriorAt(
+        root: String,
+        factsRoot: String,
+        issuePayload: String,
+        live: Bool,
+        index: Int32,
+        totals: PriorTotals
+    ): Result[Error, PriorTotals] \ {FileSystem, IO, Repository.Grit.Eval, Repository.Nix.Acquire} =
+        if (index >= 78) Ok(totals)
+        else forM (
+            case0 <- Repository.Nix.scaleCase(index) |> Result.mapErr(Error.Nix);
+            next <- if (case0#population == "historical-development") Ok(totals)
+                else forM (
+                    prepared <- Localization.prepareScaleRetained(
+                        factsRoot, case0, issuePayload) |> Result.mapErr(Error.Prior);
+                    requests = uniquePriorRequests(prepared);
+                    acquired <- acquirePriorObservations(
+                        "${root}/observations/${repositoryKey(case0#repository)}",
+                        requests,
+                        live
+                    );
+                    ranking <- rankPrepared(prepared, acquired#observations);
+                    payload = priorCasePayload(prepared, ranking, acquired);
+                    _ <- retainOrVerifyPrior(
+                        "${root}/rankings/${case0#baseRevision}.json", payload, live);
+                    calls = (acquired#live + 63) / 64;
+                    _ = println("SCALE_PRIOR_CASE case=${case0#instanceId}" +
+                        " repository=${case0#repository}" +
+                        " documents=${Vector.length(prepared#documents)}" +
+                        " unique_requests=${Vector.length(requests)}" +
+                        " replayed=${acquired#replayed} live=${acquired#live}" +
+                        " calls=${calls}");
+                    result = addPriorTotals(totals, prepared, requests, acquired, calls)
+                ) yield result;
+            result <- semanticPriorAt(root, factsRoot, issuePayload, live, index + 1, next)
+        ) yield result
+
+    def acquirePriorObservations(
+        root: String,
+        requests: Vector[Localization.Request],
+        live: Bool
+    ): Result[Error, Localization.Acquisition] \ {FileSystem, IO} =
+        if (live)
+            Localization.acquireRetained(root, requests) |> Result.mapErr(Error.Prior)
+        else Localization.replayRetained(root, requests)
+            |> Result.mapErr(Error.Prior)
+            |> Result.map(observations -> {
+                observations = observations,
+                replayed = Vector.length(requests),
+                live = 0,
+                inputTokens = Some(0),
+                totalTokens = Some(0)
+            })
+
+    def uniquePriorRequests(prepared: Localization.Prepared): Vector[Localization.Request] =
+        Vector.append(
+            Vector#{Localization.queryRequest(prepared#issue#text)},
+            Vector.map(document -> document#request, prepared#documents)
+        )
+        |> Vector.map(request -> (request#id, request))
+        |> Vector.toMap
+        |> Map.toVector
+        |> Vector.map(match (_, request) -> request)
+
+    def rankPrepared(
+        prepared: Localization.Prepared,
+        observations: Vector[Localization.Observation]
+    ): Result[Error, Vector[Localization.Ranked]] = {
+        let byId = Vector.map(observation -> (observation#id, observation), observations)
+            |> Vector.toMap;
+        forM (
+            queryObservation <- Map.get(Localization.queryRequest(prepared#issue#text)#id, byId)
+                |> Option.toOk(Error.Prior(Localization.Error.ReplayMiss));
+            candidates <- Vector.traverse(document ->
+                Map.get(document#request#id, byId)
+                    |> Option.toOk(Error.Prior(Localization.Error.ReplayMiss))
+                    |> Result.map(observation -> {
+                        identity = document#semanticId,
+                        ordinal = document#ordinal,
+                        vector = observation#vector
+                    }), prepared#documents)
+        ) yield Localization.rank(queryObservation#vector, candidates)
+    }
+
+    def priorCasePayload(
+        prepared: Localization.Prepared,
+        ranking: Vector[Localization.Ranked],
+        acquisition: Localization.Acquisition
+    ): String = Json.toCompactString(JObject(Map#{
+        "version" => ToJson.toJson(1),
+        "provider" => JString(Localization.provider()),
+        "model" => JString(Localization.model()),
+        "instruction" => JString(Localization.instruction()),
+        "text_limit" => ToJson.toJson(Localization.textLimit()),
+        "dimension" => ToJson.toJson(Localization.dimension()),
+        "issue_revision" => JString("swe-explore-js-ts-pinned-sources-v1"),
+        "replayed" => ToJson.toJson(acquisition#replayed),
+        "live" => ToJson.toJson(acquisition#live),
+        "input_tokens" => ToJson.toJson(acquisition#inputTokens),
+        "total_tokens" => ToJson.toJson(acquisition#totalTokens),
+        "cases" => JArray(Vector#{JObject(Map#{
+            "instance_id" => JString(prepared#instanceId),
+            "repository" => JString(prepared#repository),
+            "base_commit" => JString(prepared#baseCommit),
+            "documents" => JArray(Vector.map(priorDocumentJson, prepared#documents)),
+            "ranking" => JArray(Vector.map(priorRankingJson, ranking))
+        })})
+    }))
+
+    def priorDocumentJson(document: Localization.Document): Json = JObject(Map#{
+        "semantic_id" => JString(document#semanticId),
+        "node_id" => JString(document#nodeId),
+        "path" => JString(document#path),
+        "name" => JString(document#name),
+        "start_byte" => ToJson.toJson(document#startByte),
+        "end_byte" => ToJson.toJson(document#endByte),
+        "ordinal" => ToJson.toJson(document#ordinal)
+    })
+
+    def priorRankingJson(item: Localization.Ranked): Json = JObject(Map#{
+        "semantic_id" => JString(item#identity),
+        "score" => ToJson.toJson(item#score),
+        "ordinal" => ToJson.toJson(item#ordinal)
+    })
+
+    def retainOrVerifyPrior(
+        path: String,
+        payload: String,
+        live: Bool
+    ): Result[Error, Unit] \ FileSystem =
+        if (live) writeManifest(path, payload)
+        else FileSystem.read(path)
+            |> Result.mapErr(error -> Error.File(ToString.toString(error)))
+            |> Result.flatMap(expected -> priorSemanticEqual(expected, payload)
+                |> Result.flatMap(equal -> if (equal) Ok(()) else Err(Error.PriorReplay(path))))
+
+    def priorSemanticEqual(left: String, right: String): Result[Error, Bool] = forM (
+        leftFields <- priorSemanticFields(left);
+        rightFields <- priorSemanticFields(right)
+    ) yield leftFields == rightFields
+
+    def priorSemanticFields(payload: String): Result[Error, Vector[Json]] = match Json.parse(payload) {
+        case Err(error) => Err(Error.Wire(ToString.toString(error)))
+        case Ok(JObject(fields)) => Vector#{
+            "version", "provider", "model", "instruction", "text_limit", "dimension", "cases"
+        } |> Vector.traverse(name -> Map.get(name, fields)
+            |> Option.toOk(Error.Wire("missing prior semantic field: ${name}")))
+        case Ok(_) => Err(Error.Wire("prior ranking artifact must be an object"))
+    }
+
+    def repositoryKey(repository: String): String = match repository {
+        case "NodeBB/NodeBB"             => "nodebb"
+        case "protonmail/webclients"    => "protonmail-webclients"
+        case "axios/axios"              => "axios"
+        case "mrdoob/three.js"          => "three-js"
+        case "preactjs/preact"          => "preact"
+        case "element-hq/element-web"   => "element-web"
+        case "tutao/tutanota"           => "tutanota"
+        case "babel/babel"              => "babel"
+        case "facebook/docusaurus"      => "docusaurus"
+        case "immutable-js/immutable-js" => "immutable-js"
+        case "vuejs/core"               => "vue-core"
+        case _                            => "unsupported"
+    }
+
+    def emptyPriorTotals(): PriorTotals = {
+        cases = 0, documents = 0, unique = 0, replayed = 0, live = 0,
+        calls = 0, inputTokens = 0, totalTokens = 0
+    }
+
+    def addPriorTotals(
+        totals: PriorTotals,
+        prepared: Localization.Prepared,
+        requests: Vector[Localization.Request],
+        acquisition: Localization.Acquisition,
+        calls0: Int32
+    ): PriorTotals = {
+        cases = totals#cases + 1,
+        documents = totals#documents + Vector.length(prepared#documents),
+        unique = totals#unique + Vector.length(requests),
+        replayed = totals#replayed + acquisition#replayed,
+        live = totals#live + acquisition#live,
+        calls = totals#calls + calls0,
+        inputTokens = totals#inputTokens + Option.getWithDefault(0, acquisition#inputTokens),
+        totalTokens = totals#totalTokens + Option.getWithDefault(0, acquisition#totalTokens)
+    }
 
     def historicalParityCase(
         root: String,

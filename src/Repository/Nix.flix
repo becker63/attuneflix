@@ -68,6 +68,13 @@ pub mod Repository.Nix {
         projection           = StorePath
     }
 
+    /// Gold-free issue text acquired independently from source snapshots.
+    pub type alias ScaleIssueEvidence = {
+        multilingualRevision = String,
+        proRevision           = String,
+        issueFixture          = StorePath
+    }
+
     pub enum Error with Eq, ToString {
         case Wire(String),
         case Native(String, String),
@@ -83,6 +90,7 @@ pub mod Repository.Nix {
         def evaluation(): Wire
         def population(): Wire
         def scaleCase(caseIndex: Int32): Wire
+        def scaleIssues(): Wire
         def readSource(file: String): Result[Error, String]
     }
 
@@ -104,6 +112,9 @@ pub mod Repository.Nix {
     pub def scaleCase(caseIndex: Int32): Result[Error, ScaleCase] \ Acquire =
         decodeScaleCase(Acquire.scaleCase(caseIndex))
 
+    pub def scaleIssues(): Result[Error, ScaleIssueEvidence] \ Acquire =
+        decodeScaleIssues(Acquire.scaleIssues())
+
     pub def runWithNative(f: Unit -> a \ ef): a \ (ef - Acquire) + IO =
         run { f() } with handler Acquire {
             def sweExplore(k) = k(realiseNative())
@@ -112,6 +123,7 @@ pub mod Repository.Nix {
             def evaluation(k) = k(realiseEvaluation())
             def population(k) = k(realisePopulation())
             def scaleCase(caseIndex, k) = k(realiseScaleCase(caseIndex))
+            def scaleIssues(k) = k(realiseScaleIssues())
             def readSource(file, k) = k(readNativeSource(file))
         }
 
@@ -123,6 +135,7 @@ pub mod Repository.Nix {
             def evaluation(k) = k(fixture)
             def population(k) = k(fixture)
             def scaleCase(_, k) = k(fixture)
+            def scaleIssues(k) = k(fixture)
             def readSource(file, k) = k(Err(Error.Native("fixture", "unexpected store source: ${file}")))
         }
 
@@ -221,6 +234,26 @@ pub mod Repository.Nix {
                         text <- stringField("text", fields);
                         paths <- stringVectorField("store_paths", fields);
                         result <- decodeScaleCaseText(text, paths)
+                    ) yield result
+                }
+            }
+            case Ok(_) => Err(Error.Wire("expected a JSON object"))
+        }
+    }
+
+    pub def decodeScaleIssues(wire: Wire): Result[Error, ScaleIssueEvidence] = {
+        let Wire.Wire(payload) = wire;
+        match Json.parse(payload) {
+            case Err(error) => Err(Error.Wire(ToString.toString(error)))
+            case Ok(JObject(fields)) => match intField("version", fields) {
+                case Err(error) => Err(error)
+                case Ok(version) if version != 1 => Err(Error.UnsupportedVersion(version))
+                case Ok(_) => match Map.get("error", fields) {
+                    case Some(value) => nativeScaleIssuesError(value)
+                    case None => forM (
+                        text <- stringField("text", fields);
+                        paths <- stringVectorField("store_paths", fields);
+                        result <- decodeScaleIssueEvidence(text, paths)
                     ) yield result
                 }
             }
@@ -352,6 +385,24 @@ pub mod Repository.Nix {
             case Ok(_) => Err(Error.Wire("realised scale case must be an object"))
         }
 
+    def decodeScaleIssueEvidence(text: String, paths: Vector[String]): Result[Error, ScaleIssueEvidence] =
+        match Json.parse(text) {
+            case Err(error) => Err(Error.Wire("realised scale issues: ${ToString.toString(error)}"))
+            case Ok(JObject(fields)) => forM (
+                version <- intField("version", fields);
+                _ <- if (version == 1) Ok(()) else Err(Error.UnsupportedVersion(version));
+                multilingualRevision <- stringField("multilingualRevision", fields);
+                proRevision <- stringField("proRevision", fields);
+                issueFixture <- stringField("issueFixture", fields);
+                _ <- if (Vector.toSet(paths) == Set#{issueFixture}) Ok(()) else Err(Error.IncompleteContext)
+            ) yield {
+                multilingualRevision = multilingualRevision,
+                proRevision = proRevision,
+                issueFixture = StorePath.StorePath(issueFixture)
+            }
+            case Ok(_) => Err(Error.Wire("realised scale issues must be an object"))
+        }
+
     def completeContext(benchmark: String, snapshot: String, paths: Vector[String]): Result[Error, Unit] =
         if (Vector.toSet(paths) == Set#{benchmark, snapshot}) Ok(()) else Err(Error.IncompleteContext)
 
@@ -403,6 +454,17 @@ pub mod Repository.Nix {
     }
 
     def nativeScaleCaseError(value: Json): Result[Error, ScaleCase] = match value {
+        case JObject(fields) => match stringField("kind", fields) {
+            case Err(error) => Err(error)
+            case Ok(kind) => match stringField("message", fields) {
+                case Err(error) => Err(error)
+                case Ok(message) => Err(Error.Native(kind, message))
+            }
+        }
+        case _ => Err(Error.Wire("error must be an object"))
+    }
+
+    def nativeScaleIssuesError(value: Json): Result[Error, ScaleIssueEvidence] = match value {
         case JObject(fields) => match stringField("kind", fields) {
             case Err(error) => Err(error)
             case Ok(kind) => match stringField("message", fields) {
@@ -502,13 +564,19 @@ pub mod Repository.Nix {
 
     def realisePopulation(): Wire \ IO =
         Wire.Wire(AttuneNix.realise(
-            "import ./scale-population.nix",
+            "import ./scale-population.nix {}",
             System.getProperty("user.dir")
         ))
 
     def realiseScaleCase(caseIndex: Int32): Wire \ IO =
         Wire.Wire(AttuneNix.realise(
             "import ./scale-case.nix { caseIndex = ${caseIndex}; }",
+            System.getProperty("user.dir")
+        ))
+
+    def realiseScaleIssues(): Wire \ IO =
+        Wire.Wire(AttuneNix.realise(
+            "import ./scale-issues.nix {}",
             System.getProperty("user.dir")
         ))
 }

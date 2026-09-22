@@ -260,6 +260,39 @@ mod Localization {
         documents = corpus
     }
 
+    /// Scale-population preparation from independently acquired, gold-free
+    /// source and issue projections. The caller controls manifest sharding.
+    pub def prepareScaleRetained(
+        root: String,
+        case_: Repository.Nix.ScaleCase,
+        issuePayload: String
+    ): Result[Error, Prepared] \ {Fs.FileSystem, Repository.Grit.Eval} = forM (
+        issue <- decodeIssue(
+            case_#instanceId,
+            case_#repository,
+            case_#baseRevision,
+            issuePayload
+        );
+        sources = Vector.map(source -> {path = source#path, content = source#content}, case_#sources);
+        world <- Repository.extractRetained(
+            root,
+            case_#repository,
+            case_#baseRevision,
+            Repository.Nix.path(case_#snapshot),
+            sources
+        ) |> Result.mapErr(Error.Repository);
+        corpus <- documents(case_#repository, case_#baseRevision, world, sources)
+    ) yield {
+        instanceId = case_#instanceId,
+        repository = case_#repository,
+        baseCommit = case_#baseRevision,
+        snapshot = case_#snapshot,
+        issue = issue,
+        world = world,
+        sources = sources,
+        documents = corpus
+    }
+
     pub def runWithNative(f: Unit -> a \ ef): a \ (ef - Embed) + IO =
         run { f() } with handler Embed {
             def acquire(requests, k) = k(acquireNative(requests))

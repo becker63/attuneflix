@@ -1,3 +1,5 @@
+{ raw ? false }:
+
 let
   pkgs = import (builtins.getFlake
     "github:NixOS/nixpkgs/20b1ddd1aa5ace70c9468305030aa4f9ef79671b") {
@@ -83,9 +85,10 @@ let
   projection = pkgs.runCommand "attune-swe-explore-population-projection-v1.json" {} ''
     ${projector} ${benchmark} ${multilingual} ${pro} "$out"
   '';
-in
-builtins.toJSON {
+  result = {
   version = 1;
   inherit benchmarkRevision multilingualRevision proRevision;
   inherit benchmark multilingual pro projection;
-}
+  };
+in
+if raw then result else builtins.toJSON result
