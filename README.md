@@ -1034,6 +1034,38 @@ All 2,463 answers still exist. The surprising result is that, on this Axios
 snapshot and seed, those programs repeatedly bounce among only four actual
 sets of repository entities.
 
+In the AttuneRadii Python dialect, the measured shape is easiest to picture
+like this. The middle of `programs` is omitted here only so the README stays
+readable; the experiment evaluated the complete typed family:
+
+```python
+programs = (
+    imports,
+    imported_by,
+    defines >> defined_in,
+    imported_by >> imports,
+    imported_by >> defines >> callers >> defined_in,
+    # ...every other well-typed File program through cost seven...
+)
+
+answers = tuple(
+    select(relations, program, seed)
+    for program in programs
+)
+
+assert len(answers) == 2_463
+assert len(set(answers)) == 4
+```
+
+`select` returns an immutable typed set. The first assertion says Atlas did
+not throw programs away: every syntactically distinct program still has an
+answer. The second says those 2,463 answer slots contain only four distinct
+sets. Programs such as `imports`, `defines >> defined_in`, and a much longer
+mixed path may look unrelated on paper, yet on this exact repository seed
+they can land on the same File set. That equality is discovered by executing
+the relations; it is not declared by the grammar and it is not predicted by
+an embedding model.
+
 The same language behaves differently on another repository. For Immutable's
 `src/Map.js` seed:
 
