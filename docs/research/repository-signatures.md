@@ -24,6 +24,74 @@ The current evidence covers several parts of a signature:
 These quantities depend on the frozen repository facts and Atlas protocol.
 They do not depend on the localization prior or Jev.
 
+## Original MUI, Vue, and Darkreader result
+
+The earliest issue-blind census is now retained in this repository as part of
+the [AttuneRadii migration record](../../migration/attuneradii/README.md). It
+ran the same fixed, composition-only depth-seven language after removing the
+issue-conditioned semantic seed. The repository regimes remained distinct.
+
+| Repository family | Mean Symbol-frontier density | Mechanical character |
+| --- | ---: | --- |
+| MUI | 0.0410 | wide modular component families; local islands; early extinction and high convergence |
+| Vue core | 0.4941 | compact runtime/compiler graph; long-lived frontiers; rapid structural mixing |
+| Darkreader | 0.5730 | dense call structure; broad propagation; low whole-frontier convergence |
+
+The relation-specific census makes the contrast harder to explain away as
+repository size. In MUI no primitive direction produced a state covering half
+of its compatible domain; its p90 densities ranged from roughly 2.9% to
+14.6%. In Vue, callers crossed 50% in 56.8% of observations, while containment
+and reverse imports were also broad. Darkreader was similarly dense across
+containment and call directions. These are normalized response measurements,
+not raw file or symbol counts.
+
+The source trees make the measurements understandable:
+
+- MUI repeats a highly regular package/component pattern. Many components are
+  locally rich but weakly joined to other components, so paths collapse or
+  extinguish quickly. One extreme case reduced 3,279 logical prefixes to 15
+  physical transitions and four unique frontiers.
+- Vue has a regular package layout too, but its runtime-core, compiler,
+  reactivity, and renderer packages form an interconnected library system.
+  Structural paths keep finding new symbols instead of falling into isolated
+  component islands.
+- Darkreader's two retained cases have enough calls per symbol and enough
+  cross-cutting propagation to behave much closer to Vue. Because that sample
+  is only two cases, this is a strong snapshot observation, not yet a stable
+  population estimate.
+
+The exact protocol choice, depth counts, relation tables, and limitations are
+in the retained [grammar decision](../../migration/attuneradii/spec.md#15-search-grammars--atlas-measurement-versus-policy-synthesis),
+[finite depth study](../../migration/attuneradii/spec.md#42-finite-relational-language-search--exact-evidence-through-depth-7),
+and [repository-character sections](../../migration/attuneradii/spec.md#45-structural-mixinglocalness--permanent-conceptual-model).
+
+The numbers are useful because they lead back to recognizable source
+architecture. After the measurements were frozen, the measured hubs and
+residuals were opened and read. That source inspection found several different
+mechanisms behind the signatures:
+
+- **Axios** has a connected implementation core surrounded by generated
+  bundles, public type contracts, and integration tests that deliberately do
+  not import the internal file they exercise.
+- **Immutable** groups maintenance by semantic operation families. Parallel
+  `Map`, `Set`, `slice`, and `splice` tests are siblings in meaning even when
+  no source edge joins them.
+- **Preact** has a compact runtime core plus an outer layer joined through
+  package aliases, declaration/runtime mirroring, and build configuration.
+- **Vue** has a notably regular package layout. Runtime-core, reactivity,
+  compiler, and renderer modules form visible structural hubs; the main
+  residuals cross workspace package names and compiler/runtime name contracts.
+- **NodeBB** exposes broad facade and plugin-hook surfaces. Its plugin index is
+  a major import hub, its database implementation is selected through
+  configuration, browser/server calls meet through string-addressed Socket.IO
+  methods, and Redis behavior is spread across sibling modules installed on a
+  shared backend object.
+
+These are not labels supplied to Atlas. They are source-level explanations of
+patterns Atlas measured without issue text or AI. The full observations and
+the exact measured examples are in the
+[replication report](../replication/README.md#provisional-taxonomy).
+
 ## Easy repository distinctions
 
 ### Vue: a statically explicit core

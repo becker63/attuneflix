@@ -1,5 +1,7 @@
 exports_files([
     "grit_repository.bzl",
+    "jextract.bzl",
+    "jextract_repository.bzl",
     "src/InferenceBoundaryTest.flix",
     "src/Repository.flix",
 ])

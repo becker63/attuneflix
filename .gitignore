@@ -18,6 +18,14 @@
 /bazel-remote-grpc.log
 /execution_log.binpb.zst
 
+# rules_rust crate-universe projections for Grit path dependencies. The
+# authoritative BUILD definitions live in build/grit_repository.bzl.
+/resources/language-metavariables/tree-sitter-javascript/BUILD.bazel
+/resources/language-metavariables/tree-sitter-typescript/BUILD.bazel
+/vendor/tree-sitter-facade/BUILD.bazel
+/vendor/tree-sitter-gritql/BUILD.bazel
+/vendor/web-tree-sitter/BUILD.bazel
+
 # Rust/Zed build output
 /native/grit/target/
 /zed/target/

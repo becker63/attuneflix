@@ -99,7 +99,7 @@
             generated="$TMPDIR/jextract"
             classes="$TMPDIR/classes"
             java_src="$TMPDIR/java"
-            resources="$TMPDIR/resources/attune/grit/programs"
+            resources="$TMPDIR/resources/grit"
             mkdir -p "$generated" "$classes" "$java_src" "$resources" "$out/share/java"
             cp ${./native/grit/AttuneGritNative.java} "$java_src/AttuneGritNative.java"
             cp ${./native/grit/AttuneGrit.java} "$java_src/AttuneGrit.java"

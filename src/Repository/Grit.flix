@@ -12,7 +12,7 @@ pub mod Repository.Grit {
         case Tsx
     }
 
-    /// The admitted source-syntax vocabulary is closed and Nix-packaged.
+    /// The admitted source-syntax vocabulary is closed and a declared Bazel resource.
     pub enum Program with Eq, Order, ToString, Hash {
         case Defines,
         case Imports,

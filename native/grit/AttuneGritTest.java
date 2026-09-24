@@ -218,6 +218,7 @@ async function run(client: Client): Promise<void> {
         Process child = new ProcessBuilder(
                 java,
                 "--enable-native-access=ALL-UNNAMED",
+                "-Djava.library.path=" + System.getProperty("java.library.path"),
                 "-cp", System.getProperty("java.class.path"),
                 AttuneGritTest.class.getName(),
                 "--fresh-child")

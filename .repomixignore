@@ -12,6 +12,11 @@ artifact/
 lib/external/
 native/grit/target/
 native/grit/cargo-bazel-lock.json
+resources/language-metavariables/tree-sitter-javascript/BUILD.bazel
+resources/language-metavariables/tree-sitter-typescript/BUILD.bazel
+vendor/tree-sitter-facade/BUILD.bazel
+vendor/tree-sitter-gritql/BUILD.bazel
+vendor/web-tree-sitter/BUILD.bazel
 zed/target/
 zed/grammars/
 zed/extension.wasm
@@ -22,6 +27,10 @@ result-*
 *.parquet
 *.jar
 *.fpkg
+
+# Temporary historical migration source is public in Git, but its 7k-line
+# laboratory spec and old Python/Nix runtime would swamp the current AI pack.
+migration/attuneradii/
 
 # Generated packs, runtime logs, and editor residue
 repomix-output.*

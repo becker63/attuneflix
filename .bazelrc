@@ -3,10 +3,10 @@ build --announce_rc
 build --local_resources=cpu=4
 build --local_resources=memory=4096
 build --jobs=4
-build --java_language_version=21
-build --tool_java_language_version=21
-build --java_runtime_version=remotejdk_21
-build --tool_java_runtime_version=remotejdk_21
+build --java_language_version=25
+build --tool_java_language_version=25
+build --java_runtime_version=remotejdk_25
+build --tool_java_runtime_version=remotejdk_25
 test --test_output=errors
 
 # Authentication is supplied by the local credential helper from ignored .env.

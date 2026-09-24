@@ -1,5 +1,8 @@
 load("@grit_crates//:defs.bzl", "aliases", "all_crate_deps", "crate_edition")
+load("@rules_cc//cc:cc_import.bzl", "cc_import")
+load("@rules_java//java:defs.bzl", "java_library", "java_test")
 load("@rules_rust//rust:defs.bzl", "rust_shared_library", "rust_test")
+load("//build:jextract.bzl", "jextract_bindings")
 
 exports_files([
     "Cargo.lock",
@@ -9,12 +12,56 @@ exports_files([
     "lib.rs",
 ])
 
+# rules_rust's hermetic LLVM toolchain links cdylibs with compiler-rt but does
+# not automatically retain the real unwind archive. Keep that runtime edge a
+# declared C++ dependency; no host libgcc or /nix/store path enters the action.
+cc_import(
+    name = "unwind",
+    alwayslink = True,
+    static_library = "@llvm-project//libunwind:libunwind.static",
+)
+
+jextract_bindings(
+    name = "attune_grit_ffi_sources",
+    header = "attune_grit.h",
+)
+
+java_library(
+    name = "attune_grit",
+    srcs = [
+        ":attune_grit_ffi_sources",
+        "AttuneGrit.java",
+        "AttuneGritNative.java",
+    ],
+    javacopts = ["--release=23"],
+    resources = ["//grit:programs"],
+    visibility = ["//visibility:public"],
+)
+
+java_test(
+    name = "attune_grit_test",
+    srcs = ["AttuneGritTest.java"],
+    data = [
+        ":attune_grit_abi",
+        "//grit:programs",
+    ],
+    javacopts = ["--release=23"],
+    jvm_flags = [
+        "--enable-native-access=ALL-UNNAMED",
+        "-Djava.library.path=$${JAVA_RUNFILES}/_main/native/grit",
+    ],
+    main_class = "attune.grit.AttuneGritTest",
+    use_testrunner = False,
+    deps = [":attune_grit"],
+)
+
 rust_shared_library(
     name = "attune_grit_abi",
     srcs = ["lib.rs"],
     aliases = aliases(package_name = "attune-grit"),
     crate_name = "attune_grit_abi",
     edition = crate_edition(package_name = "attune-grit"),
+    link_deps = [":unwind"],
     proc_macro_deps = all_crate_deps(
         package_name = "attune-grit",
         proc_macro = True,

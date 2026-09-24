@@ -12,14 +12,22 @@ http_jar(
 )
 
 bazel_dep(name = "rules_java", version = "9.9.0")
+bazel_dep(name = "rules_cc", version = "0.2.25")
 bazel_dep(name = "rules_jvm_external", version = "7.1")
 bazel_dep(name = "rules_rust", version = "0.74.0")
 bazel_dep(name = "toolchains_buildbuddy", version = "0.0.4")
 bazel_dep(name = "llvm", version = "0.8.21")
+bazel_dep(name = "platforms", version = "1.1.0")
 
 # Rust build scripts and final linking use the same declared hermetic toolchain
 # locally and on BuildBuddy. No host /nix/store compiler path enters an action.
 register_toolchains("@llvm//toolchain:all")
+
+# Expose the runtime libraries produced by the same hermetic LLVM extension.
+# Rust cdylibs need the real libunwind archive rather than the toolchain's
+# compatibility stub for -lgcc_s.
+llvm_runtime = use_extension("@llvm//extensions:llvm.bzl", "llvm")
+use_repo(llvm_runtime, "llvm-project")
 
 rust = use_extension("@rules_rust//rust:extensions.bzl", "rust")
 rust.toolchain(
@@ -33,6 +41,9 @@ register_toolchains("@rust_toolchains//:all")
 crate = use_extension("@rules_rust//crate_universe:extensions.bzl", "crate")
 
 gritql_repository = use_repo_rule("//build:grit_repository.bzl", "gritql_repository")
+jextract_repository = use_repo_rule("//build:jextract_repository.bzl", "jextract_repository")
+
+jextract_repository(name = "jextract")
 
 gritql_repository(
     name = "gritql_source",

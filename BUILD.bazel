@@ -9,8 +9,10 @@ test_suite(
     name = "tests",
     tests = [
         "//native/embed:attune_inference_test",
+        "//native/grit:attune_grit_test",
         "//native/parquet:attune_parquet_test",
         "//test:core_parity_test",
+        "//test:grit_boundary_test",
         "//test:inference_boundary_test",
     ],
 )

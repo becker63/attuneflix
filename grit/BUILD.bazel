@@ -1,0 +1,9 @@
+filegroup(
+    name = "programs",
+    srcs = glob([
+        "calls/*.grit",
+        "defines/*.grit",
+        "imports/*.grit",
+    ]),
+    visibility = ["//visibility:public"],
+)

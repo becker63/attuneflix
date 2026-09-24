@@ -77,11 +77,388 @@ tail learns:    what mistakes does Atlas make?
 ```
 
 Atlas changes both neighboring learning problems into smaller, specialized
-problems. The long-term question is therefore not only which model is best. It
-is where each kind of computation belongs inside a heterogeneous executable
-program: learned semantic acquisition, deterministic structural inference, or
-learned discrimination. AttuneFlix is meant to measure that allocation rather
-than hide it inside one large model call.
+problems. More importantly, AttuneFlix is an executable program, not a diagram
+of three model roles. We can run it, inspect every intermediate value, replay
+it without provider access, replace one component, and measure what changed.
+
+That makes the research question larger than “which model is best?” It asks
+where each kind of computation belongs inside one heterogeneous program:
+learned semantic acquisition, deterministic structural inference, or learned
+discrimination. Because the allocation is explicit code, we can optimize it
+for several properties at once:
+
+- legibility and understandability;
+- exact semantic correctness;
+- localization quality and coverage;
+- fresh-query latency and developer wall clock;
+- memory use;
+- provider tokens and cost;
+- deterministic reuse and cacheability;
+- transfer to repositories that were not used to design the program.
+
+## Why Flix
+
+Flix was chosen for two practical reasons.
+
+First, this project already knew that much of scientific work can live in a
+build cache. Earlier work used Buck2 extensively, then AttuneRadii moved the
+same idea inside an experimental Python system with
+[Rote](migration/attuneradii/spec.md#48-rote-contract-in-detail). That worked:
+when the deterministic boundary was honest, a fresh process replayed six real
+science stages as cache hits and avoided about 202.6 seconds of work.
+
+The hard part was not calling a cache. It was knowing which code was safe to
+cache. AttuneRadii enforced a deliberately narrow Python discipline with
+BasedPyright, Ruff, Fixit/LibCST architecture rules, explicit `@rote.cache`
+boundaries, effect-python services, immutable values, and bans on hidden
+memoization and mutation inside cached functions. This made ordinary Python
+obviously cacheable, but the enforcement system itself grew into a large
+experimental Python project with many concepts. It was useful science and an
+unpleasant language to make agents write correctly.
+
+Flix moves that discipline into the language. Effects say which capabilities
+a function needs. Immutable values are normal. Nominal types keep repository
+identities apart. Regions keep evaluator mutation local while its public
+meaning stays pure. Bazel and BuildBuddy cache declared processes; Flix makes
+the code inside those processes honest enough to reason about. The system can
+therefore get smaller as its reuse becomes more explicit.
+
+Second, AttuneFlix needs a language for the repository meaning itself. In
+AttuneRadii, types, effects, relations, architectural lint, and cache laws were
+assembled around Python because Python did not supply the semantics the work
+needed. Flix already has typed Datalog, closed enums and exhaustive matching,
+effects, regions, and functional data. Repository relations can be executable
+definitions instead of conventions spread across classes and linters.
+
+The short version is: I first built the missing semantics myself, then found a
+mature language that would do it for me. That leaves more attention for the
+actual research, and makes the program much easier to present and inspect.
+
+And programs let us pick niche domain-specific languages for our problems.
+Grit was built for structural source matching. Flix Datalog was built for
+stating relations and deriving new facts. These tools already have the syntax,
+semantics, type checking, and execution machinery this problem needs; a model
+does not have to rediscover them inside a prompt.
+
+Admission begins with small Grit programs. These two patterns find static
+module dependencies and ordinary calls while deliberately keeping dynamic
+module loading out of the call relation:
+
+```grit
+// imports/typescript.grit
+// Match both ES modules and CommonJS. $source is kept as source text so the
+// repository boundary can resolve it under one explicit admission policy.
+or {
+  `import $source`,
+  `require($source)`
+} as $import where {
+  log(message="import", variable=$source)
+}
+
+// calls/typescript.grit
+// Match the expression being called, but do not pretend module loading is a
+// call edge. Constructors are a different syntax node and are excluded too.
+`$callee($...)` as $call where {
+  $callee <: not r"^import$",
+  $callee <: not r"^require$",
+  log(message="call", variable=$callee)
+}
+```
+
+The complete frozen frontends are under [`grit/`](grit/). They cover named
+functions, methods, arrow-function bindings, static imports, CommonJS imports,
+and calls for JavaScript, JSX, TypeScript, and TSX. Grit observes syntax;
+AttuneFlix assigns repository identities and admits only unambiguous edges.
+
+The admitted facts then enter a deliberately small Datalog catalog. This is
+the intended compact shape of the final Flix definition (and the current
+implementation already uses these rules):
+
+```flix
+/// Source extraction admits only three directed observations:
+/// a file defines a symbol, a file imports a file, and a symbol calls a symbol.
+/// FileId and SymbolId are nominal types, so these domains cannot be mixed.
+pub def structuralRules(): #{
+    Defines(FileId, SymbolId),
+    Imports(FileId, FileId),
+    Calls(SymbolId, SymbolId),
+    Parent(LocationId, LocationId),
+    DefinedIn(SymbolId, FileId),
+    ImportedBy(FileId, FileId),
+    Caller(SymbolId, SymbolId),
+    SameFile(SymbolId, SymbolId),
+    ImportNeighbor(SymbolId, SymbolId),
+    ImporterNeighbor(SymbolId, SymbolId),
+    RepositoryAdjacent(LocationId, LocationId) | r
+} = #{
+    // Give every directed source observation its readable inverse.
+    DefinedIn(symbol, file) :- Defines(file, symbol).
+    ImportedBy(target, source) :- Imports(source, target).
+    Caller(callee, caller) :- Calls(caller, callee).
+
+    // Symbols are neighbors when the repository places them in one file.
+    SameFile(x, y) :- Defines(file, x), Defines(file, y).
+
+    // Follow an import from a symbol in the importing file to every symbol
+    // defined by the imported file.
+    ImportNeighbor(x, y) :-
+        Defines(source, x),
+        Imports(source, target),
+        Defines(target, y).
+
+    // The reverse direction exposes symbols in files that depend on us.
+    ImporterNeighbor(x, y) :-
+        Defines(target, x),
+        Imports(source, target),
+        Defines(source, y).
+
+    // Directory locality is deliberately separate from source dependencies.
+    // Either direction in the repository tree counts as adjacent.
+    RepositoryAdjacent(x, y) :- Parent(x, y).
+    RepositoryAdjacent(x, y) :- Parent(y, x).
+}
+```
+
+The full executable catalog is
+[`Repository.Structure`](src/Repository/Structure.flix). Its Datalog rules are
+the readable definition of meaning. A separate physical evaluator implements
+the same relations with indexed sets and a shared DAG. Neither implementation
+calls the other; parity tests compare them. That independence is what lets us
+optimize execution aggressively without turning the definition above into an
+opaque performance trick.
+
+Radii turns those named relations into a small typed algebra. The Flix
+declaration is ordinary closed data, so the compiler can check every case and
+the program can inspect, normalize, compile, and enumerate its own queries:
+
+```flix
+pub enum Expr with Eq, Order, ToString, Hash {
+    case Atom(Atom),
+    case Reverse(Expr),
+    case Compose(Expr, Expr),
+    case Union(Expr, Expr)
+}
+
+/// Composition is legal only when the middle domains agree.
+pub def compose(first: Expr, second: Expr): Option[Expr] = {
+    let (_, firstTarget) = endpoints(first);
+    let (secondSource, _) = endpoints(second);
+    if (firstTarget == secondSource)
+        Some(normalize(Expr.Compose(first, second)))
+    else
+        None
+}
+```
+
+The operators are ordinary computer-science operations over finite sets of
+pairs. Start with two tiny relations:
+
+```text
+defines = {
+    (ui/Button.tsx, Button),
+    (ui/Button.tsx, renderButton)
+}
+
+calls = {
+    (Button, renderButton)
+}
+```
+
+Changing direction just swaps the columns:
+
+```text
+defines                         defined_in
+(ui/Button.tsx, Button)    ->   (Button, ui/Button.tsx)
+(ui/Button.tsx, renderButton)  (renderButton, ui/Button.tsx)
+```
+
+Putting steps in sequence joins on the middle value and removes it from the
+result:
+
+```text
+defined_in                     defines
+(Button, ui/Button.tsx)   >>   (ui/Button.tsx, renderButton)
+
+result
+(Button, renderButton)
+```
+
+Union is the usual OR over membership. Intersection and difference were also
+measured during grammar design, so the familiar set algebra is useful even
+though those two operations are not part of frozen Atlas:
+
+| In A | In B | `A \| B` (OR) | `A & B` (AND) | `A - B` (A AND NOT B) |
+| ---: | ---: | ---: | ---: | ---: |
+| 0 | 0 | 0 | 0 | 0 |
+| 0 | 1 | 1 | 0 | 0 |
+| 1 | 0 | 1 | 0 | 1 |
+| 1 | 1 | 1 | 1 | 0 |
+
+The only extra rule is type compatibility. It is small enough to write as a
+truth table too:
+
+| First output | Next input | Legal sequence? |
+| --- | --- | ---: |
+| `Symbol` | `Symbol` | 1 |
+| `Symbol` | `File` | 0 |
+| `File` | `Symbol` | 0 |
+| `File` | `File` | 1 |
+
+That table is what `compose` checks. It is also the whole reason the Atlas
+enumerator has only three continuations at every node instead of blindly
+trying all six atoms.
+
+The earlier AttuneRadii prototype made the same algebra unusually easy to
+read. After seeing the Flix type above, its notation is almost literal:
+
+```python
+defined_in = ~defines
+imported_by = ~imports
+callers = ~calls
+
+same_file = defined_in >> defines
+import_neighbors = defined_in >> imports >> defines
+importer_neighbors = defined_in >> imported_by >> defines
+
+repository_adjacent = parent | ~parent
+```
+
+Here `~` reverses a relation, `>>` composes two relations, and `|` takes their
+union. This imported prototype is now [temporary migration
+source](migration/attuneradii/README.md); the permanent implementation is
+Flix. The point of showing both is not the Python. It is that a tiny algebra
+can be written down, type checked, executed, and exhaustively explored.
+
+“Exhaustively” is literal here. Atlas starts in the `Symbol` domain. At depth
+one there are exactly three legal programs:
+
+```text
+defined_in                         Symbol -> File
+calls                              Symbol -> Symbol
+callers                            Symbol -> Symbol
+```
+
+At depth two, each program receives every atom accepted by its current output
+domain. The next exact level contains all nine legal permutations:
+
+```text
+defined_in >> defines              Symbol -> Symbol
+defined_in >> imports              Symbol -> File
+defined_in >> imported_by          Symbol -> File
+
+calls      >> defined_in           Symbol -> File
+calls      >> calls                Symbol -> Symbol
+calls      >> callers              Symbol -> Symbol
+
+callers    >> defined_in           Symbol -> File
+callers    >> calls                Symbol -> Symbol
+callers    >> callers              Symbol -> Symbol
+```
+
+At depth three, the rule does not change. Each of those nine programs gets
+three compatible continuations:
+
+```text
+defined_in >> defines     >> { defined_in, calls, callers }
+defined_in >> imports     >> { defines, imports, imported_by }
+defined_in >> imported_by >> { defines, imports, imported_by }
+
+calls      >> defined_in  >> { defines, imports, imported_by }
+calls      >> calls       >> { defined_in, calls, callers }
+calls      >> callers     >> { defined_in, calls, callers }
+
+callers    >> defined_in  >> { defines, imports, imported_by }
+callers    >> calls       >> { defined_in, calls, callers }
+callers    >> callers     >> { defined_in, calls, callers }
+```
+
+That growing tree is the frozen Atlas measurement language. The surrounding
+Radii algebra is not limited to `>>`. Complete paths can themselves become
+inputs to the other finite-set operations:
+
+```text
+A = defined_in >> imports     >> defines
+B = defined_in >> imported_by >> defines
+
+~A          walk the same relation in the opposite direction
+A | B       symbols reached by A OR B
+A & B       symbols reached by A AND B
+A - B       symbols reached by A AND NOT B
+```
+
+`~`, `>>`, and `|` are the current small public Radii grammar. `&` and `-`
+were exhaustive one-layer scientific challengers: both found novel states,
+but neither earned a permanent public constructor. Intersection added less
+oracle value than union; difference added the least value while doubling the
+directed candidate space.
+
+Recursive union is also deliberately absent from the Atlas tree. Once every
+path can be ORed with every other path, the number of expressions grows much
+faster than the depth table below and the census starts measuring grammar
+choice as much as repository structure. Applications may use the richer Radii
+operators. Repository signatures keep the smaller `>>`-only protocol so the
+same complete ruler is applied to every repository.
+
+The growth is mechanical and monotonic:
+
+| Maximum depth | New typed programs | Cumulative typed programs | Cumulative Symbol-ending programs |
+| ---: | ---: | ---: | ---: |
+| 1 | 3 | 3 | 2 |
+| 2 | 9 | 12 | 7 |
+| 3 | 27 | 39 | 21 |
+| 4 | 81 | 120 | 62 |
+| 5 | 243 | 363 | 184 |
+| 6 | 729 | 1,092 | 549 |
+| 7 | 2,187 | 3,279 | 1,643 |
+
+There is no search heuristic in that table. Atlas constructs every row. A
+program is rejected only when its source domain does not match the previous
+program's target domain. The type rule is therefore both the language
+definition and the enumerator's pruning rule.
+
+The logical tree is much larger than the work needed to execute it. First,
+programs share prefixes:
+
+```text
+calls
+  +-- >> defined_in
+  |       +-- >> defines
+  |       +-- >> imports
+  |       `-- >> imported_by
+  +-- >> calls
+  |       +-- ...
+  `-- >> callers
+          +-- ...
+```
+
+The compiled evaluator stores that as a DAG. It evaluates `calls` once for a
+given input state, not once for every longer program beginning with `calls`.
+
+Second, different programs can recur at the same semantic state:
+
+```text
+logical route A ----\
+                     +--> state 42 -- imported_by --> state 91
+logical route B ----/                    |
+                                          `-- computed once
+```
+
+`state 42` is the exact typed set of files or symbols, not a probabilistic
+similarity. Once two routes produce that same set, the next identical
+transition has the same input and meaning. The evaluator interns the state and
+reuses the transition. This gives three distinct counts worth retaining:
+
+```text
+logical programs        what the finite language says to evaluate
+unique semantic states  what the repository actually distinguishes
+physical transitions    what the evaluator actually had to compute
+```
+
+The gap between them is recurrence/compression, and it is part of the
+repository signature. Bazel and BuildBuddy add a separate outer layer: if the
+declared snapshot, facts, Atlas program, evaluator, and protocol are unchanged,
+the whole deterministic action can be reused across runs. In-process DAG reuse
+and cross-run build-cache reuse are measured separately.
 
 The frozen baseline is:
 
@@ -126,6 +503,95 @@ For one frozen repository snapshot, Atlas has:
 - maximum depth seven;
 - a deterministic complete program family.
 
+Radii is the larger algebra shown above. Atlas deliberately selects a smaller
+measurement language from it: the six directed atoms are already named, and
+Atlas enumerates `Compose` only. Reverse and union remain useful Radii
+operations for application policies, but they are not silently mixed into the
+repository-signature protocol.
+
+Depth is the core of the language. One atom is one typed structural step. A
+depth-two program composes exactly two compatible atoms; a depth-seven program
+composes seven. Atlas does not ask a model which programs to invent and it does
+not stop after a promising beam. It enumerates every well-typed composition up
+to the bound in stable order.
+
+The cleanup is moving the existing enumerator out of Localization and onto the
+small public `Atlas.programs` surface. Its final Flix shape is:
+
+```flix
+/// Atlas programs contain only composition. Radii's Reverse and Union
+/// constructors are intentionally absent from this bounded language.
+pub type alias Program = {
+    steps = Vector[Atom],
+    expression = Expr
+}
+
+pub def programs(maxDepth: Int32): Vector[Program] =
+    enumerateLevels(current = 1, maxDepth, previous = Vector#{}, all = Vector.empty())
+
+def enumerateLevels(
+    current: Int32,
+    maxDepth: Int32,
+    previous: Vector[Program],
+    all: Vector[Program]
+): Vector[Program] =
+    if (current > maxDepth)
+        all
+    else {
+        // At depth one, begin with every atom legal for a Symbol seed.
+        let exact = if (current == 1)
+            Vector.map(atom -> {
+                steps = Vector#{atom},
+                expression = Expr.Atom(atom)
+            }, compatible(Domain.Symbol))
+        else
+            // Thereafter, extend every prior program with every atom whose
+            // source domain matches the program's current terminal domain.
+            Vector.flatMap(program -> Vector.map(atom -> {
+                steps = Vector.append(program#steps, Vector#{atom}),
+                expression = Expr.Compose(program#expression, atom)
+            }, compatible(target(program#expression))), previous);
+
+        enumerateLevels(
+            current + 1,
+            maxDepth,
+            exact,
+            Vector.append(all, exact)
+        )
+    }
+
+def compatible(domain: Domain): Vector[Atom] = match domain {
+    case Domain.Symbol => Vector#{Atom.DefinedIn, Atom.Calls, Atom.Callers}
+    case Domain.File   => Vector#{Atom.Defines, Atom.Imports, Atom.ImportedBy}
+}
+```
+
+Starting from Symbols, each level has exactly three legal continuations. The
+terminal domain still changes which three they are. Through depth seven this
+produces 3,279 logical programs in total, of which 1,643 end in Symbols and can
+be projected directly back onto the semantic prior. Those cardinalities are
+frozen tests, not observations that happen to vary by repository. Repository
+behavior enters only when the complete language is evaluated over its facts.
+
+Depth seven was not picked because seven sounded sufficient. The earlier
+finite-language study exhausted every Symbol-ending program at each depth. At
+depth seven, 1,455 of the 1,643 programs still had distinct extensional
+behavior and the family reached 218 of 233 residual-gold symbols (93.56%). The
+best single fixed path improved slowly while the per-case oracle kept
+improving. That moved the practical bottleneck from “invent more syntax” to
+“select the useful state.” The 15 unreachable symbols are better evidence for
+new admitted relations than a blind depth increase; depth eight would triple
+the family again and increasingly turn local neighborhoods into structural
+fog.
+
+This is why the grammar is frozen as a protocol. Composition-only depth seven
+preserves direct comparison with the original MUI/Vue/Darkreader measurement,
+keeps the complete family tractable, and separates repository geometry from
+the richer policy language. It is not a claim that every future Atlas
+application must use composition only. The retained [depth study and grammar
+decision](migration/attuneradii/spec.md#42-finite-relational-language-search--exact-evidence-through-depth-7)
+contain the full counts and alternatives.
+
 An embedding prior chooses where a localization task enters the structure. It
 does not define the structure. Replacing the embedding model or removing it
 entirely does not change the issue-blind repository signature.
@@ -149,12 +615,34 @@ reuses. In the real-repository tree-reuse study, the largest completed File
 tier had 237.56× median primitive-transition compression across repositories;
 repository medians ranged from 83.89× to 494.94×. Shared and independent
 execution produced the same exact state maps. Issue-blind measurements also
-found repository-specific behavior, such as NodeBB's broad reverse-import
-propagation, before localization results were inspected.
+found strong repository-specific behavior before localization results were
+inspected:
+
+- MUI was wide, uniform, and modular: repetitive component families formed
+  many small structural islands. No primitive direction reached 50% of its
+  domain in the relation census, and an extreme case collapsed 3,279 logical
+  prefixes into 15 physical transitions and four unique frontiers.
+- Vue core was compact and deeply interconnected: runtime, compiler,
+  reactivity, and rendering modules kept non-empty frontiers alive and mixed
+  rapidly through the callable universe.
+- Darkreader, though represented by only two cases in that study, behaved
+  much closer to Vue than MUI: dense call structure, long-lived frontiers, and
+  little whole-frontier convergence.
+- NodeBB later showed a different kind of density: especially broad
+  reverse-import propagation around facade and plugin-hook surfaces, with
+  important links also carried by configured backends and string-addressed
+  client/server methods.
+
+Those are useful facts about repository construction, not model scores. In
+the source, they correspond to recognizable designs: MUI's repeated component
+packages, Vue's regular runtime/compiler package system, Darkreader's dense
+call structure, and NodeBB's plugin and backend indirection. Removing the
+semantic prior and learned decision stage did not remove these regimes.
 
 See the [repository-signature evidence](docs/research/repository-signatures.md),
 [tree reuse](docs/research/tree-reuse.md), and the
-[replication study](docs/replication/README.md). The full SWE-Explore Atlas
+[original MUI/Vue/Darkreader record](migration/attuneradii/spec.md#45-structural-mixinglocalness--permanent-conceptual-model),
+and [replication study](docs/replication/README.md). The full SWE-Explore Atlas
 census will produce one typed Parquet signature per unique frozen snapshot.
 Only after that data is sealed will it be joined to localization outcomes.
 

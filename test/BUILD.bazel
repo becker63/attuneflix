@@ -34,3 +34,19 @@ checked_test(
     name = "inference_boundary_test",
     check = ":inference_boundary_check",
 )
+
+flix_check(
+    name = "grit_boundary_check",
+    srcs = [
+        "//build:src/Repository.flix",
+        "//src:Repository/Grit.flix",
+    ],
+    command = "check",
+    java_deps = ["//native/grit:attune_grit"],
+    threads = 2,
+)
+
+checked_test(
+    name = "grit_boundary_test",
+    check = ":grit_boundary_check",
+)
