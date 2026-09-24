@@ -13,7 +13,7 @@ load(
 # Ordered exactly like the frozen 78-case manifest. The labels point at typed,
 # content-addressed Repository.World tables; neither these labels nor their
 # identity metadata contain a Nix store path.
-_WORLDS = [
+ATLAS_WORLDS = [
     "//.attune/repository-world-v1/4b14c05228d2c59e68c2aaa978fb7d655aed032a75804f35ac94389520607084:world",
     "//.attune/repository-world-v1/43d1969f5d5b33ddcee39867475aaf1fdde2042171e2425b339e9b2fbffb8e5a:world",
     "//.attune/repository-world-v1/d60aff465833ebc595c2c3681e87a2a8fd3b352c0d45499f29deeec2a410e609:world",
@@ -98,7 +98,7 @@ def atlas_census():
     """Expands the frozen manifest into independent Atlas actions."""
     signatures = []
     summaries = []
-    for index, world in enumerate(_WORLDS):
+    for index, world in enumerate(ATLAS_WORLDS):
         key = ("0" if index < 10 else "") + str(index)
         world_name = "world_" + key
         signature_name = "signature_" + key
@@ -121,7 +121,7 @@ def atlas_census():
         name = "worlds",
         srcs = [
             ":world_" + ("0" if index < 10 else "") + str(index)
-            for index in range(len(_WORLDS))
+            for index in range(len(ATLAS_WORLDS))
         ],
         visibility = ["//visibility:public"],
     )

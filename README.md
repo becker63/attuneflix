@@ -22,15 +22,19 @@ They are not a claim about rank on the full multilingual benchmark.
 | Untouched validation: prior + frozen iteration 013 | 19/21 | 0.1581 | 0.2196 | 0.8251 | 0.8107 |
 | Untouched validation: structural oracle, gold-only diagnostic | 19/21 | 0.3502 | 0.2300 | 0.9621 | 0.8007 |
 
-For scale only, these are selected rows from the SWE-Explore paper's official
-`K = 5` table. They use the same metric definitions, but they are **not a
-matched leaderboard comparison**: the paper evaluates 848 issues across ten
+For scale only, the next table puts those Attune rows beside selected rows from
+the SWE-Explore paper's official `K = 5` table. The metric definitions match,
+but the populations do not: the paper evaluates 848 issues across ten
 languages and 203 repositories, while Attune's frozen scale study is the 61
-completed new cases in its JS/TS population. The paper drives every agentic
-explorer below with GPT-5.4.
+completed new cases in its JS/TS population. This is an operating-range
+comparison, **not a matched leaderboard claim**. The paper drives every
+agentic explorer below with GPT-5.4.
 
-| Published full-benchmark explorer | Line F1 | HitFile | Context efficiency | nDCG@500 | Comparable latency or cost |
+| System and population | Line F1 | HitFile | Context efficiency | nDCG@500 | Measured latency or cost evidence |
 | --- | ---: | ---: | ---: | ---: | --- |
+| Attune Qwen prior, 61 completed new JS/TS cases | 0.128 | 0.216 | 0.613 | 0.646 | 27.86M retained embedding input tokens; provider omitted cost and request latency |
+| Attune prior + iteration 013, same 61 cases | 0.112 | 0.218 | 0.652 | 0.670 | $0.581 total Jev cost; 229.53s/case live; exact replay 57.69s cold and 1.19s warm for all 61 cases |
+| Attune structural oracle, same 61 cases; gold-only diagnostic | 0.253 | 0.252 | 0.799 | 0.783 | $0 provider work; all-condition official evaluation 51.70s cold and 0.153s warm |
 | BM25 | 0.024 | 0.079 | 0.087 | 0.132 | not reported |
 | Claude Code | 0.202 | 0.667 | 0.829 | 0.938 | not reported |
 | Codex | 0.223 | 0.649 | 0.762 | 0.901 | not reported |
@@ -1662,16 +1666,23 @@ JS/TS source-tree digest + Grit/Marzano protocol + admitted facts`; it contains
 no Nix store path. Normal Atlas, replay, and evaluation targets read these
 tables directly. The one-time migration was checked by reproducing every Atlas
 census output byte-for-byte, then by passing all 61 replay and official-
-evaluation parity proofs. Nix remains an oracle for how the old frozen inputs
-were obtained, not a dependency of the live scientific graph.
+evaluation parity proofs. The migration implementation is preserved in the
+scientific checkpoint that performed it, not carried as dead machinery at
+HEAD.
+
+The Atlas census and the optional frozen-localization graph are tracked
+Starlark. A public checkout can inspect and run the census without private
+inputs. In the laboratory checkout, the presence of retained decision evidence
+and evaluator gold exposes 61 independent replay actions and 61 independent
+evaluation actions. Removing those private roots leaves one explanatory
+placeholder target; it does not make the public checkout invalid.
 
 Bazel owns declared builds, tests, and deterministic derived artifacts.
 BuildBuddy remotely executes and caches that graph. Flix owns the scientific
 semantics. Java and Rust are narrow foreign-runtime seams. Nix supplies only
-the developer shell, the secret-safe Bazel wrapper, and two one-time migration
-oracles. There is no `Repository.Nix`, Nix Java FFI, libnix dependency, manual
-JAR staging, or Nix expression evaluation in a normal build, test, replay,
-evaluation, or census action.
+the developer shell and its secret-safe Bazel wrapper. There is no
+`Repository.Nix`, Nix Java FFI, libnix dependency, manual JAR staging, or Nix
+expression evaluation in a build, test, replay, evaluation, or census action.
 
 ## Repository map
 
@@ -1682,7 +1693,6 @@ experiments/                 frozen protocols, Parquet results, and reports
 docs/architecture/           implementation details
 docs/research/               research history and interpretation
 src/native/                  narrow foreign runtime boundaries
-nix/                         two one-time frozen-data migration scripts
 migration/attuneradii/       temporary source record for the earlier prototype
 ```
 

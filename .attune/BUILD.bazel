@@ -1,0 +1,14 @@
+load("//experiments/localization-swe-explore:graph.bzl", "frozen_localization")
+
+# The graph is public source; paid provider observations and evaluator gold are
+# private retained evidence. A clean checkout therefore remains buildable, while
+# a laboratory checkout exposes the complete frozen 61-case graph.
+frozen_localization(
+    enabled = len(glob(
+        [
+            "evaluation-inputs/gold.parquet",
+            "localization-inputs/issues.json",
+        ],
+        allow_empty = True,
+    )) == 2,
+)

@@ -1,5 +1,6 @@
 # Retained local evidence and credentials
 /.attune/*
+!/.attune/BUILD.bazel
 !/.attune/repository-world-v1/
 !/.attune/repository-world-v1/**
 /.env

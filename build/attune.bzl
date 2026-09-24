@@ -133,34 +133,6 @@ def _world_fixture_impl(ctx):
         _world_info(ctx, metadata, entities, relations),
     ]
 
-def _world_migration_impl(ctx):
-    metadata = ctx.actions.declare_file(ctx.label.name + "/metadata.parquet")
-    entities = ctx.actions.declare_file(ctx.label.name + "/entities.parquet")
-    relations = ctx.actions.declare_file(ctx.label.name + "/relations.parquet")
-    identity = ctx.actions.declare_file(ctx.label.name + "/identity.json")
-    args = ctx.actions.args()
-    for name, value in [
-        ("attune.oracle", ctx.file.oracle.path),
-        ("attune.retained_observations", ctx.file.retained_observations.path),
-        ("attune.world_metadata", metadata.path),
-        ("attune.world_entities", entities.path),
-        ("attune.world_relations", relations.path),
-        ("attune.world_identity", identity.path),
-    ]:
-        args.add(_jvm_property(name, value))
-    ctx.actions.run(
-        executable = ctx.executable.tool,
-        arguments = [args],
-        inputs = [ctx.file.oracle, ctx.file.retained_observations],
-        outputs = [metadata, entities, relations, identity],
-        mnemonic = "AttuneWorldMigration",
-        progress_message = "Migrating retained repository world %{label}",
-    )
-    return [
-        DefaultInfo(files = depset([metadata, entities, relations, identity])),
-        _world_info(ctx, metadata, entities, relations, identity),
-    ]
-
 def _world_files_impl(ctx):
     return [
         DefaultInfo(files = depset([
@@ -201,22 +173,6 @@ attune_world_fixture = rule(
         "source_tree_identity": attr.string(mandatory = True),
         "fact_identity": attr.string(mandatory = True),
         "snapshot_id": attr.string(mandatory = True),
-        "tool": attr.label(executable = True, cfg = "exec", mandatory = True),
-    },
-)
-
-attune_world_migration = rule(
-    implementation = _world_migration_impl,
-    attrs = {
-        "oracle": attr.label(allow_single_file = [".json"], mandatory = True),
-        "retained_observations": attr.label(allow_single_file = [".parquet"], mandatory = True),
-        "repository": attr.string(mandatory = True),
-        "base_revision": attr.string(mandatory = True),
-        "source_tree_identity": attr.string(mandatory = True),
-        # These identities are outputs of semantic admission. The canonical
-        # identity file, not these empty analysis-time fields, is authoritative.
-        "fact_identity": attr.string(default = ""),
-        "snapshot_id": attr.string(default = ""),
         "tool": attr.label(executable = True, cfg = "exec", mandatory = True),
     },
 )
