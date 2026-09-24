@@ -4,14 +4,13 @@
 import java.lang.System
 
 use Fs.FileSystem
-use Util.Json
-use Util.Json.Json.{JArray, JObject, JString}
-use Util.Json.FromJson
-
 type alias CaseInput = {
     key = String,
     baseRevision = String,
-    prediction = String,
+    predictionSummary = String,
+    predictionRanking = String,
+    predictionDecisions = String,
+    predictionProbabilities = String,
     output = String,
     responseIds = Set[String]
 }
@@ -36,16 +35,22 @@ def parseCases(payload: String): Result[String, Vector[CaseInput]] \ IO =
     lines(payload)
     |> Vector.traverse(line -> {
         let fields = String.splitOn(substr = "\t", line) |> List.toVector;
-        if (Vector.length(fields) != 4) Err("invalid localization migration case row")
+        if (Vector.length(fields) != 7) Err("invalid localization migration case row")
         else {
-            let prediction = Vector.get(2, fields);
-            let payload0 = ScientificData.readObject(prediction);
-            predictionResponseIds(payload0)
+            let summary = Vector.get(2, fields);
+            let ranking = Vector.get(3, fields);
+            let decisions = Vector.get(4, fields);
+            let probabilities = Vector.get(5, fields);
+            Localization.PredictionTable.read(summary, ranking, decisions, probabilities)
+                |> Result.flatMap(Localization.PredictionTable.responseIds)
                 |> Result.map(ids -> {
                     key = Vector.get(0, fields),
                     baseRevision = Vector.get(1, fields),
-                    prediction = prediction,
-                    output = Vector.get(3, fields),
+                    predictionSummary = summary,
+                    predictionRanking = ranking,
+                    predictionDecisions = decisions,
+                    predictionProbabilities = probabilities,
+                    output = Vector.get(6, fields),
                     responseIds = ids
                 })
         }
@@ -55,41 +60,6 @@ def lines(payload: String): Vector[String] =
     String.splitOn(substr = "\n", payload)
     |> List.filter(line -> not String.isEmpty(line))
     |> List.toVector
-
-def predictionResponseIds(payload: String): Result[String, Set[String]] =
-    match Json.parse(payload) {
-        case Err(error) => Err(ToString.toString(error))
-        case Ok(JObject(fields)) => forM (
-            version <- integer("version", fields);
-            _ <- if (version == 1) Ok(()) else Err("unsupported localization result version");
-            decisions <- array("decisions", fields);
-            ids <- Vector.traverse(value -> match value {
-                case JObject(decision) => string("response_id", decision)
-                case _ => Err("localization decision must be an object")
-            }, decisions)
-        ) yield Vector.toSet(ids)
-        case Ok(_) => Err("localization result must be an object")
-    }
-
-def string(name: String, fields: Map[String, Json]): Result[String, String] =
-    match Map.get(name, fields) {
-        case Some(JString(value)) => Ok(value)
-        case Some(_) => Err("${name} must be text")
-        case None => Err("missing ${name}")
-    }
-
-def integer(name: String, fields: Map[String, Json]): Result[String, Int32] =
-    match Map.get(name, fields) {
-        case Some(value) => FromJson.fromJson(value) |> Result.mapErr(ToString.toString)
-        case None => Err("missing ${name}")
-    }
-
-def array(name: String, fields: Map[String, Json]): Result[String, Vector[Json]] =
-    match Map.get(name, fields) {
-        case Some(JArray(values)) => Ok(values)
-        case Some(_) => Err("${name} must be an array")
-        case None => Err("missing ${name}")
-    }
 
 def collect(
     paths: Vector[String],

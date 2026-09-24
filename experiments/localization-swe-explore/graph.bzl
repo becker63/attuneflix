@@ -7,6 +7,7 @@ load(
     "attune_decision_bundles",
     "attune_localization_evaluation",
     "attune_localization_evaluations",
+    "attune_localization_data",
     "attune_localization_replay",
     "attune_localization_replays",
 )
@@ -96,14 +97,23 @@ def frozen_localization(enabled):
             "experiments/swe-explore-js-ts-scale/013-deep-planner-portfolio/raw/*.json",
         ]),
     )
+    typed_data = []
+    for key, instance_id, revision in _CASES:
+        data = "localization_data_" + key
+        attune_localization_data(
+            name = data,
+            instance_id = instance_id,
+            legacy_prediction = "experiments/swe-explore-js-ts-scale/013-predictions/%s.parquet" % revision,
+            legacy_prior = "semantic-prior-js-ts-scale-v1/rankings/%s.parquet" % revision,
+            tool = "//migration/localization_data:localization_data",
+        )
+        typed_data.append(":" + data)
+
     attune_decision_bundles(
         name = "localization_decision_bundles",
         base_revisions = [case[2] for case in _CASES],
         case_keys = [case[0] for case in _CASES],
-        predictions = [
-            "experiments/swe-explore-js-ts-scale/013-predictions/%s.parquet" % case[2]
-            for case in _CASES
-        ],
+        predictions = typed_data,
         raw_envelopes = [":retained_scale_decision_envelopes"],
         tool = "//migration/localization:decision_bundle",
     )
@@ -115,8 +125,7 @@ def frozen_localization(enabled):
         replay = "localization_replay_" + key
         evaluation = "localization_evaluation_" + key
         world = ATLAS_WORLDS[int(key)]
-        prior = "semantic-prior-js-ts-scale-v1/rankings/%s.parquet" % revision
-        prediction = "experiments/swe-explore-js-ts-scale/013-predictions/%s.parquet" % revision
+        data = ":localization_data_" + key
         attune_decision_bundle(
             name = decisions,
             bundles = ":localization_decision_bundles",
@@ -124,22 +133,21 @@ def frozen_localization(enabled):
         )
         attune_localization_replay(
             name = replay,
+            data = data,
             decisions = ":" + decisions,
-            expected = prediction,
             instance_id = instance_id,
             issues = "localization-inputs/issues.json",
-            prior = prior,
             tool = "//experiments/localization-swe-explore:replay",
             world = world,
         )
         attune_localization_evaluation(
             name = evaluation,
+            data = data,
             frozen_results = "//experiments/swe-explore-js-ts-scale:results-censored.parquet",
             geometry = "evaluation-inputs/geometry/%s.parquet" % key,
             gold = "evaluation-inputs/gold.parquet",
             instance_id = instance_id,
             issues = "localization-inputs/issues.json",
-            prior = prior,
             replay = ":" + replay,
             tool = "//experiments/localization-swe-explore:evaluate",
             world = world,

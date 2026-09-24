@@ -23,27 +23,40 @@ def main(): Unit \ {FileSystem, IO} = {
         property("attune.instance_id"), identity#repository,
         identity#baseRevision, identity#snapshotId, issuePayload, world
     ) |> require;
-    let prior = Localization.Tree.decodePrior(
-        prepared#instanceId,
-        ScientificData.readObject(property("attune.prior"))
-    ) |> Result.mapErr(ToString.toString) |> require;
+    let prior = Localization.PriorTable.read(
+        property("attune.prior_metadata"), property("attune.prior_documents"),
+        property("attune.prior_ranking"), prepared#instanceId) |> require;
     let tree = Localization.Tree.compile();
     let computed = Localization.Tree.compute(prepared, prior, tree)
         |> Result.mapErr(ToString.toString) |> require;
     let wires = Decide.Table.read(property("attune.decisions")) |> require;
     let outcome = Localization.Policy.frozen013Replay(prepared, prior, computed, wires)
         |> Result.mapErr(ToString.toString) |> require;
-    let replay = ScientificData.canonicalizeObject(Localization.Result.encode(prepared, outcome));
-    let expected = ScientificData.readObject(property("attune.expected"));
-    if (replay != expected) bug!("exact localization replay mismatch for ${prepared#instanceId}")
+    let replay = Localization.PredictionTable.rows(prepared, outcome);
+    let expected = Localization.PredictionTable.read(
+        property("attune.expected_summary"), property("attune.expected_ranking"),
+        property("attune.expected_decisions"), property("attune.expected_probabilities")) |> require;
+    if (not Localization.PredictionTable.exactEqual(replay, expected))
+        bug!("exact localization replay mismatch for ${prepared#instanceId}")
     else {
-        let _admitted = ScientificData.writeObject(property("attune.output_prediction"), replay);
-        let readBack = ScientificData.readObject(property("attune.output_prediction"));
-        if (readBack != expected) bug!("replayed prediction persistence mismatch")
+        let _admitted = Localization.PredictionTable.write(
+            property("attune.output_prediction_summary"), property("attune.output_prediction_ranking"),
+            property("attune.output_prediction_decisions"), property("attune.output_prediction_probabilities"),
+            replay);
+        let readBack = Localization.PredictionTable.read(
+            property("attune.output_prediction_summary"), property("attune.output_prediction_ranking"),
+            property("attune.output_prediction_decisions"), property("attune.output_prediction_probabilities"))
+            |> require;
+        if (not Localization.PredictionTable.exactEqual(readBack, expected))
+            bug!("replayed prediction persistence mismatch")
         else {
             let elapsed = System.nanoTime() - started;
-            let expectedId = ScientificIdentity.versioned("localization-prediction-v1", expected);
-            let replayId = ScientificIdentity.versioned("localization-prediction-v1", replay);
+            let expectedId = Localization.PredictionTable.identity(expected);
+            // Identity is over the admitted typed representation. The fresh
+            // in-memory rows may encode equal numeric values with a different
+            // JSON number constructor; readBack is the canonical Parquet
+            // admission already proven semantically equal above.
+            let replayId = Localization.PredictionTable.identity(readBack);
             let proof = ScientificTable.write(property("attune.output_proof"), LocalizationReplay.schema(), Vector#{Map#{
                 "protocol" => JString("attune-keyless-localization-replay-v1"),
                 "instance_id" => JString(prepared#instanceId),

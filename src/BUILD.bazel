@@ -6,6 +6,8 @@ exports_files([
     "Decide/Table.flix",
     "Decide.flix",
     "Localization/Result.flix",
+    "Localization/PriorTable.flix",
+    "Localization/PredictionTable.flix",
     "Localization/EvaluationData.flix",
     "Localization/EvaluationTable.flix",
     "Localization/Evaluate.flix",

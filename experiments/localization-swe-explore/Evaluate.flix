@@ -14,13 +14,15 @@ def main(): Unit \ {FileSystem, IO} = {
     let prepared = Localization.prepareWorld(
         property("attune.instance_id"), identity#repository, identity#baseRevision,
         identity#snapshotId, issuePayload, world) |> require;
-    let prior = Localization.Tree.decodePrior(prepared#instanceId,
-        ScientificData.readObject(property("attune.prior")))
-        |> Result.mapErr(ToString.toString) |> require;
+    let prior = Localization.PriorTable.read(
+        property("attune.prior_metadata"), property("attune.prior_documents"),
+        property("attune.prior_ranking"), prepared#instanceId) |> require;
     let computed = Localization.Tree.compute(prepared, prior, Localization.Tree.compile())
         |> Result.mapErr(ToString.toString) |> require;
-    let selected = Localization.Evaluate.predictionRanking(prepared#instanceId,
-        ScientificData.readObject(property("attune.prediction"))) |> require;
+    let prediction = Localization.PredictionTable.read(
+        property("attune.prediction_summary"), property("attune.prediction_ranking"),
+        property("attune.prediction_decisions"), property("attune.prediction_probabilities")) |> require;
+    let selected = Localization.PredictionTable.rankingIdentities(prepared#instanceId, prediction) |> require;
     let gold = Localization.EvaluationData.readGold(
         property("attune.gold"), prepared#instanceId) |> require;
     let geometry = Localization.EvaluationData.readGeometry(

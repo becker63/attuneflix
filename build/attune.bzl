@@ -55,11 +55,97 @@ AttuneDecisionBundleInfo = provider(
     fields = {"bundle": "decision bundle Parquet"},
 )
 
+AttunePriorInfo = provider(
+    doc = "One typed frozen semantic prior.",
+    fields = {
+        "metadata": "provider/protocol/case metadata Parquet",
+        "documents": "exact ranked document corpus Parquet",
+        "ranking": "ordered semantic-prior ranking Parquet",
+    },
+)
+
+AttunePredictionInfo = provider(
+    doc = "One typed frozen localization prediction.",
+    fields = {
+        "summary": "case/path/physical-work summary Parquet",
+        "ranking": "ordered predicted semantic identities Parquet",
+        "decisions": "ordered admitted decision observations Parquet",
+        "probabilities": "per-decision alternative probabilities Parquet",
+    },
+)
+
 AttuneLocalizationReplayInfo = provider(
     doc = "One exact keyless localization replay result.",
     fields = {
-        "prediction": "canonical replayed prediction Parquet",
+        "summary": "typed replayed prediction summary Parquet",
+        "ranking": "typed replayed prediction ranking Parquet",
+        "decisions": "typed replayed prediction decisions Parquet",
+        "probabilities": "typed replayed prediction probabilities Parquet",
         "proof": "typed exact-equality and execution telemetry Parquet",
+    },
+)
+
+def _localization_data_impl(ctx):
+    prior_metadata = ctx.actions.declare_file(ctx.label.name + "/prior-metadata.parquet")
+    prior_documents = ctx.actions.declare_file(ctx.label.name + "/prior-documents.parquet")
+    prior_ranking = ctx.actions.declare_file(ctx.label.name + "/prior-ranking.parquet")
+    prediction_summary = ctx.actions.declare_file(ctx.label.name + "/prediction-summary.parquet")
+    prediction_ranking = ctx.actions.declare_file(ctx.label.name + "/prediction-ranking.parquet")
+    prediction_decisions = ctx.actions.declare_file(ctx.label.name + "/prediction-decisions.parquet")
+    prediction_probabilities = ctx.actions.declare_file(ctx.label.name + "/prediction-probabilities.parquet")
+    args = ctx.actions.args()
+    for name, value in [
+        ("attune.instance_id", ctx.attr.instance_id),
+        ("attune.legacy_prior", ctx.file.legacy_prior.path),
+        ("attune.legacy_prediction", ctx.file.legacy_prediction.path),
+        ("attune.output_prior_metadata", prior_metadata.path),
+        ("attune.output_prior_documents", prior_documents.path),
+        ("attune.output_prior_ranking", prior_ranking.path),
+        ("attune.output_prediction_summary", prediction_summary.path),
+        ("attune.output_prediction_ranking", prediction_ranking.path),
+        ("attune.output_prediction_decisions", prediction_decisions.path),
+        ("attune.output_prediction_probabilities", prediction_probabilities.path),
+    ]:
+        args.add(_jvm_property(name, value))
+    outputs = [
+        prior_metadata,
+        prior_documents,
+        prior_ranking,
+        prediction_summary,
+        prediction_ranking,
+        prediction_decisions,
+        prediction_probabilities,
+    ]
+    ctx.actions.run(
+        executable = ctx.executable.tool,
+        arguments = [args],
+        inputs = [ctx.file.legacy_prior, ctx.file.legacy_prediction],
+        outputs = outputs,
+        mnemonic = "AttuneLocalizationDataMigration",
+        progress_message = "Migrating frozen localization data %{label}",
+    )
+    return [
+        DefaultInfo(files = depset(outputs)),
+        AttunePriorInfo(
+            metadata = prior_metadata,
+            documents = prior_documents,
+            ranking = prior_ranking,
+        ),
+        AttunePredictionInfo(
+            summary = prediction_summary,
+            ranking = prediction_ranking,
+            decisions = prediction_decisions,
+            probabilities = prediction_probabilities,
+        ),
+    ]
+
+attune_localization_data = rule(
+    implementation = _localization_data_impl,
+    attrs = {
+        "instance_id": attr.string(mandatory = True),
+        "legacy_prior": attr.label(allow_single_file = [".parquet"], mandatory = True),
+        "legacy_prediction": attr.label(allow_single_file = [".parquet"], mandatory = True),
+        "tool": attr.label(executable = True, cfg = "exec", mandatory = True),
     },
 )
 
@@ -413,19 +499,23 @@ attune_atlas_report = rule(
 )
 
 def _decision_bundles_impl(ctx):
-    if len(ctx.attr.case_keys) != len(ctx.files.predictions) or len(ctx.attr.case_keys) != len(ctx.attr.base_revisions):
+    if len(ctx.attr.case_keys) != len(ctx.attr.predictions) or len(ctx.attr.case_keys) != len(ctx.attr.base_revisions):
         fail("case_keys, base_revisions, and predictions must have identical lengths")
     outputs = {}
     case_manifest = ctx.actions.declare_file(ctx.label.name + "/cases.tsv")
     raw_manifest = ctx.actions.declare_file(ctx.label.name + "/raw.tsv")
     case_lines = []
     for index, key in enumerate(ctx.attr.case_keys):
+        prediction = ctx.attr.predictions[index][AttunePredictionInfo]
         output = ctx.actions.declare_file(ctx.label.name + "/" + key + ".parquet")
         outputs[key] = output
-        case_lines.append("%s\t%s\t%s\t%s\n" % (
+        case_lines.append("%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (
             key,
             ctx.attr.base_revisions[index],
-            ctx.files.predictions[index].path,
+            prediction.summary.path,
+            prediction.ranking.path,
+            prediction.decisions.path,
+            prediction.probabilities.path,
             output.path,
         ))
     ctx.actions.write(case_manifest, "".join(case_lines))
@@ -439,7 +529,16 @@ def _decision_bundles_impl(ctx):
     ctx.actions.run(
         executable = ctx.executable.tool,
         arguments = [args],
-        inputs = [case_manifest, raw_manifest] + ctx.files.predictions + ctx.files.raw_envelopes,
+        inputs = [case_manifest, raw_manifest] + ctx.files.raw_envelopes + [
+            file
+            for target in ctx.attr.predictions
+            for file in [
+                target[AttunePredictionInfo].summary,
+                target[AttunePredictionInfo].ranking,
+                target[AttunePredictionInfo].decisions,
+                target[AttunePredictionInfo].probabilities,
+            ]
+        ],
         outputs = outputs.values(),
         mnemonic = "AttuneDecisionBundleMigration",
         progress_message = "Projecting paid observations into typed per-case replay bundles %{label}",
@@ -454,7 +553,7 @@ attune_decision_bundles = rule(
     attrs = {
         "case_keys": attr.string_list(mandatory = True),
         "base_revisions": attr.string_list(mandatory = True),
-        "predictions": attr.label_list(allow_files = [".parquet"], mandatory = True),
+        "predictions": attr.label_list(providers = [AttunePredictionInfo], mandatory = True),
         "raw_envelopes": attr.label_list(allow_files = [".json"], mandatory = True),
         "tool": attr.label(executable = True, cfg = "exec", mandatory = True),
     },
@@ -481,9 +580,14 @@ attune_decision_bundle = rule(
 def _localization_replay_impl(ctx):
     world = ctx.attr.world[AttuneWorldInfo]
     decisions = ctx.attr.decisions[AttuneDecisionBundleInfo]
+    prior = ctx.attr.data[AttunePriorInfo]
+    expected = ctx.attr.data[AttunePredictionInfo]
     if not world.identity:
         fail("localization replay requires the canonical migrated world identity")
-    prediction = ctx.actions.declare_file(ctx.label.name + "/prediction.parquet")
+    summary = ctx.actions.declare_file(ctx.label.name + "/prediction-summary.parquet")
+    ranking = ctx.actions.declare_file(ctx.label.name + "/prediction-ranking.parquet")
+    prediction_decisions = ctx.actions.declare_file(ctx.label.name + "/prediction-decisions.parquet")
+    probabilities = ctx.actions.declare_file(ctx.label.name + "/prediction-probabilities.parquet")
     proof = ctx.actions.declare_file(ctx.label.name + "/proof.parquet")
     args = ctx.actions.args()
     for name, value in [
@@ -493,10 +597,18 @@ def _localization_replay_impl(ctx):
         ("attune.world_relations", world.relations.path),
         ("attune.issues", ctx.file.issues.path),
         ("attune.instance_id", ctx.attr.instance_id),
-        ("attune.prior", ctx.file.prior.path),
+        ("attune.prior_metadata", prior.metadata.path),
+        ("attune.prior_documents", prior.documents.path),
+        ("attune.prior_ranking", prior.ranking.path),
         ("attune.decisions", decisions.bundle.path),
-        ("attune.expected", ctx.file.expected.path),
-        ("attune.output_prediction", prediction.path),
+        ("attune.expected_summary", expected.summary.path),
+        ("attune.expected_ranking", expected.ranking.path),
+        ("attune.expected_decisions", expected.decisions.path),
+        ("attune.expected_probabilities", expected.probabilities.path),
+        ("attune.output_prediction_summary", summary.path),
+        ("attune.output_prediction_ranking", ranking.path),
+        ("attune.output_prediction_decisions", prediction_decisions.path),
+        ("attune.output_prediction_probabilities", probabilities.path),
         ("attune.output_proof", proof.path),
     ]:
         args.add(_jvm_property(name, value))
@@ -509,17 +621,28 @@ def _localization_replay_impl(ctx):
             world.entities,
             world.relations,
             ctx.file.issues,
-            ctx.file.prior,
+            prior.metadata,
+            prior.documents,
+            prior.ranking,
             decisions.bundle,
-            ctx.file.expected,
+            expected.summary,
+            expected.ranking,
+            expected.decisions,
+            expected.probabilities,
         ],
-        outputs = [prediction, proof],
+        outputs = [summary, ranking, prediction_decisions, probabilities, proof],
         mnemonic = "AttuneLocalizationReplay",
         progress_message = "Replaying frozen localization case %{label}",
     )
     return [
-        DefaultInfo(files = depset([prediction, proof])),
-        AttuneLocalizationReplayInfo(prediction = prediction, proof = proof),
+        DefaultInfo(files = depset([summary, ranking, prediction_decisions, probabilities, proof])),
+        AttuneLocalizationReplayInfo(
+            summary = summary,
+            ranking = ranking,
+            decisions = prediction_decisions,
+            probabilities = probabilities,
+            proof = proof,
+        ),
     ]
 
 attune_localization_replay = rule(
@@ -529,8 +652,7 @@ attune_localization_replay = rule(
         "decisions": attr.label(providers = [AttuneDecisionBundleInfo], mandatory = True),
         "issues": attr.label(allow_single_file = [".json"], mandatory = True),
         "instance_id": attr.string(mandatory = True),
-        "prior": attr.label(allow_single_file = [".parquet"], mandatory = True),
-        "expected": attr.label(allow_single_file = [".parquet"], mandatory = True),
+        "data": attr.label(providers = [AttunePriorInfo, AttunePredictionInfo], mandatory = True),
         "tool": attr.label(executable = True, cfg = "exec", mandatory = True),
     },
 )
@@ -567,6 +689,7 @@ attune_localization_replays = rule(
 def _localization_evaluation_impl(ctx):
     world = ctx.attr.world[AttuneWorldInfo]
     replay = ctx.attr.replay[AttuneLocalizationReplayInfo]
+    prior = ctx.attr.data[AttunePriorInfo]
     metrics = ctx.actions.declare_file(ctx.label.name + "/metrics.parquet")
     regions = ctx.actions.declare_file(ctx.label.name + "/regions.parquet")
     telemetry = ctx.actions.declare_file(ctx.label.name + "/telemetry.parquet")
@@ -575,8 +698,13 @@ def _localization_evaluation_impl(ctx):
     for name, value in [
         ("attune.instance_id", ctx.attr.instance_id),
         ("attune.issues", ctx.file.issues.path),
-        ("attune.prior", ctx.file.prior.path),
-        ("attune.prediction", replay.prediction.path),
+        ("attune.prior_metadata", prior.metadata.path),
+        ("attune.prior_documents", prior.documents.path),
+        ("attune.prior_ranking", prior.ranking.path),
+        ("attune.prediction_summary", replay.summary.path),
+        ("attune.prediction_ranking", replay.ranking.path),
+        ("attune.prediction_decisions", replay.decisions.path),
+        ("attune.prediction_probabilities", replay.probabilities.path),
         ("attune.gold", ctx.file.gold.path),
         ("attune.geometry", ctx.file.geometry.path),
         ("attune.frozen_results", ctx.file.frozen_results.path),
@@ -595,8 +723,13 @@ def _localization_evaluation_impl(ctx):
         arguments = [args],
         inputs = [
             ctx.file.issues,
-            ctx.file.prior,
-            replay.prediction,
+            prior.metadata,
+            prior.documents,
+            prior.ranking,
+            replay.summary,
+            replay.ranking,
+            replay.decisions,
+            replay.probabilities,
             ctx.file.gold,
             ctx.file.geometry,
             ctx.file.frozen_results,
@@ -624,7 +757,7 @@ attune_localization_evaluation = rule(
     attrs = {
         "instance_id": attr.string(mandatory = True),
         "issues": attr.label(allow_single_file = True, mandatory = True),
-        "prior": attr.label(allow_single_file = [".parquet"], mandatory = True),
+        "data": attr.label(providers = [AttunePriorInfo, AttunePredictionInfo], mandatory = True),
         "replay": attr.label(providers = [AttuneLocalizationReplayInfo], mandatory = True),
         "gold": attr.label(allow_single_file = [".parquet"], mandatory = True),
         "geometry": attr.label(allow_single_file = [".parquet"], mandatory = True),
