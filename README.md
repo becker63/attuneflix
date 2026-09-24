@@ -61,6 +61,9 @@ The execution result is at least as important as the score:
 | Same five-case replay after retained-store load-once | none | no new tokens | $0 | **95.62s (20.33x faster)** |
 | Exact keyless replay, 61 independent BuildBuddy actions, cold | none | no new tokens | $0 | **57.69s total; 56.35s critical path** |
 | Same 61-case Bazel graph, unchanged warm rerun | none | no new tokens | $0 | **1.19s Bazel wall time** |
+| Official evaluation, seven sequential bounded-lifetime shards | none | no new tokens | $0 | 4,301.12s summed wall time; 70.51s/case |
+| Official evaluation, 61 independent BuildBuddy actions + aggregate, cold | none | no new tokens | $0 | **51.70s total; 51.38s critical path** |
+| Same official-evaluation graph, unchanged warm rerun | none | no new tokens | $0 | **0.153s Bazel wall time** |
 
 The semantic prior also retained 27,858,287 embedding input tokens. Its
 provider returned no cost field, so total spend is correctly reported as
@@ -69,7 +72,19 @@ not retain request latency; the wall times above are complete measured
 processes, not invented provider percentiles. The distributed cold replay used
 62 remote actions and turned roughly 41 minutes of measured sequential case
 work into less than one minute of wall time; all 61 predictions remained
-exactly equal. The [sealed report](experiments/swe-explore-js-ts-scale/REPORT.md)
+exactly equal. The official evaluator then used 61 bounded per-case actions and
+one aggregate action. It reproduced all prior, iteration-013, and structural-
+oracle regions and metrics with exact discrete equality and the frozen `1e-10`
+floating tolerance. Compared with the retained 4,301.12 seconds of sequential
+shard time, the 51.70-second cold graph is an **83.2x wall-clock reduction**.
+Across the same cases, 100,223 logical oracle routes became 67,354 unique
+semantic states, 18,325 unique top-five region projections, and 18,386 actual
+official score evaluations. Atlas did not prune a route or change an answer;
+the evaluator stopped rescoring identical outcomes. The
+[cold evaluation](https://app.buildbuddy.io/invocation/a3369127-dbb9-4c93-8ac0-edcdcc614e7c)
+and [unchanged warm evaluation](https://app.buildbuddy.io/invocation/0bdb72c0-f5ee-4516-a9db-b817425c27fc)
+show the actual remote fanout and cache reuse. The
+[sealed report](experiments/swe-explore-js-ts-scale/REPORT.md)
 contains every metric and case, and the [usage record](experiments/swe-explore-js-ts-scale/USAGE.md)
 contains the token, cost, latency, and memory evidence.
 

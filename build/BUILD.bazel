@@ -10,6 +10,7 @@ exports_files([
     "src/AtlasTest.flix",
     "src/InferenceBoundaryTest.flix",
     "src/Localization.flix",
+    "src/LocalizationNamespace.flix",
     "src/IdentityTest.flix",
     "src/Repository.flix",
     "src/RepositoryAdmissionTest.flix",

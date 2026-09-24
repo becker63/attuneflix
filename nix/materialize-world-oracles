@@ -89,7 +89,7 @@ done
 # fact_identity and snapshot_id are computed from content and admitted meaning.
 build_tmp="$(mktemp "$workspace/.attune/BUILD.bazel.XXXXXX")"
 {
-  printf 'load("//build:attune.bzl", "attune_atlas_aggregate", "attune_atlas_report", "attune_atlas_signature", "attune_atlas_signature_summaries", "attune_atlas_signature_summary", "attune_atlas_signatures", "attune_decision_bundle", "attune_decision_bundles", "attune_localization_replay", "attune_localization_replays", "attune_world_migration")\n\n'
+  printf 'load("//build:attune.bzl", "attune_atlas_aggregate", "attune_atlas_report", "attune_atlas_signature", "attune_atlas_signature_summaries", "attune_atlas_signature_summary", "attune_atlas_signatures", "attune_decision_bundle", "attune_decision_bundles", "attune_localization_evaluation", "attune_localization_evaluations", "attune_localization_replay", "attune_localization_replays", "attune_world_migration")\n\n'
   targets=()
   signatures=()
   summaries=()
@@ -99,6 +99,7 @@ build_tmp="$(mktemp "$workspace/.attune/BUILD.bazel.XXXXXX")"
   replay_priors=()
   replay_revisions=()
   predictions=()
+  evaluation_targets=()
   mapfile -t oracle_files < <(find "$oracle_root" -maxdepth 1 -type f -name '*.json' -print | sort -V)
   for oracle in "${oracle_files[@]}"; do
     index="$(basename "$oracle" .json)"
@@ -214,6 +215,23 @@ build_tmp="$(mktemp "$workspace/.attune/BUILD.bazel.XXXXXX")"
     printf '    tool = "//experiments/localization-swe-explore:replay",\n'
     printf '    world = ":%s",\n' "${replay_worlds[$offset]}"
     printf ')\n'
+    geometry="evaluation-inputs/geometry/$key.parquet"
+    if [[ -s "$workspace/.attune/$geometry" ]]; then
+      evaluation_target="localization_evaluation_$key"
+      evaluation_targets+=(":$evaluation_target")
+      printf '\nattune_localization_evaluation(\n'
+      printf '    name = "%s",\n' "$evaluation_target"
+      printf '    frozen_results = "//experiments/swe-explore-js-ts-scale:results-censored.parquet",\n'
+      printf '    geometry = "%s",\n' "$geometry"
+      printf '    gold = "evaluation-inputs/gold.parquet",\n'
+      printf '    instance_id = "%s",\n' "${replay_instances[$offset]}"
+      printf '    issues = "localization-inputs/issues.json",\n'
+      printf '    prior = "%s",\n' "${replay_priors[$offset]}"
+      printf '    replay = ":%s",\n' "$replay_target"
+      printf '    tool = "//experiments/localization-swe-explore:evaluate",\n'
+      printf '    world = ":%s",\n' "${replay_worlds[$offset]}"
+      printf ')\n'
+    fi
   done
   printf '\nfilegroup(\n    name = "localization_replay_cases",\n    srcs = [\n'
   for replay_target in "${replay_targets[@]}"; do
@@ -225,5 +243,15 @@ build_tmp="$(mktemp "$workspace/.attune/BUILD.bazel.XXXXXX")"
     printf '        "%s",\n' "$replay_target"
   done
   printf '    ],\n    tool = "//experiments/localization-swe-explore:aggregate",\n    visibility = ["//visibility:public"],\n)\n'
+  printf '\nfilegroup(\n    name = "localization_evaluation_cases",\n    srcs = [\n'
+  for evaluation_target in "${evaluation_targets[@]}"; do
+    printf '        "%s",\n' "$evaluation_target"
+  done
+  printf '    ],\n    visibility = ["//visibility:public"],\n)\n'
+  printf '\nattune_localization_evaluations(\n    name = "localization_evaluation",\n    evaluations = [\n'
+  for evaluation_target in "${evaluation_targets[@]}"; do
+    printf '        "%s",\n' "$evaluation_target"
+  done
+  printf '    ],\n    tool = "//experiments/localization-swe-explore:aggregate_evaluation",\n    visibility = ["//visibility:public"],\n)\n'
 } > "$build_tmp"
 mv "$build_tmp" "$workspace/.attune/BUILD.bazel"

@@ -132,6 +132,64 @@ run, but it is explicitly not a provider latency percentile: the numerator
 contains non-provider work and the calls were embedded in sequential policy
 execution.
 
+## Post-refactor deterministic evaluation
+
+The frozen predictions and metrics above were not changed. Their execution was
+re-expressed as 61 independent Bazel actions plus one deterministic aggregate.
+Each case receives one typed admitted world, one compact source-line geometry
+table, evaluator-only gold, its exact keyless replay, and the sealed result used
+for parity. No evaluator action receives a source checkout, a Nix-store path, a
+provider credential, or network access.
+
+The one-time migration prepared source line counts and document byte-to-line
+regions once for each of all 78 frozen cases. This includes both localization
+censors because their source geometry is valid. The 61 admissible evaluation
+actions then performed no source scan or byte-to-line projection. They proved:
+
+```text
+prior regions and metrics                 exact / <= 1e-10
+iteration-013 regions and metrics         exact / <= 1e-10
+stable structural-oracle route            exact
+structural-oracle regions and metrics     exact / <= 1e-10
+case parity proofs                         61 / 61
+```
+
+The oracle now scores unique outcomes rather than every logical route:
+
+| Evaluation work across 61 cases | Count |
+| --- | ---: |
+| Symbol-ending logical routes | 100,223 |
+| Unique semantic states | 67,354 |
+| Unique top-five region projections | 18,325 |
+| Official score evaluations, including 61 prior roots | 18,386 |
+
+This is a 5.45x reduction from logical routes to actual metric evaluations.
+It is exact reuse: all logical routes still exist, and the first logical route
+to reach a tied state remains the stable explanation.
+
+| Execution | Wall time | Critical path | Remote work | Result |
+| --- | ---: | ---: | ---: | --- |
+| Retained sequential evaluator shards | 4,301.12 s | not retained | none | sealed baseline |
+| Per-case BuildBuddy evaluation + aggregate, cold after evaluator change | 51.70 s | 51.38 s | 64 actions | exact parity |
+| Same aggregate target, unchanged warm rerun | 0.153 s | 0.00 s | 0 actions | full cache reuse |
+
+The cold graph is 83.2x shorter than the sum of the retained sequential shard
+wall times. It measures the new distributed derivation graph, not an 83.2x
+speedup of one JVM instruction stream. The new boundary also removes the old
+many-case JVM lifetime that was killed at 8,158,112 KiB RSS. BuildBuddy worker
+peak RSS was not retained, so no replacement peak-memory number is invented.
+
+BuildBuddy evidence:
+
+- [cold official evaluation](https://app.buildbuddy.io/invocation/a3369127-dbb9-4c93-8ac0-edcdcc614e7c)
+- [unchanged warm evaluation](https://app.buildbuddy.io/invocation/0bdb72c0-f5ee-4516-a9db-b817425c27fc)
+- [canonical Bazel test suite](https://app.buildbuddy.io/invocation/8a516a0a-31a5-45df-91ac-d7d51154f6b6)
+
+The aggregate typed outputs are exposed by
+`//.attune:localization_evaluation` as `metrics.parquet`, `regions.parquet`,
+`telemetry.parquet`, and `proof.parquet`. They are deterministic build products;
+the pre-refactor sealed result remains the durable scientific record.
+
 ## What the result supports
 
 The strongest cost result is already sealed: 3,911 typed structural decisions

@@ -65,3 +65,67 @@ java_binary(
     visibility = ["//visibility:public"],
     runtime_deps = [":aggregate_flix"],
 )
+
+flix_fatjar(
+    name = "evaluate_flix",
+    srcs = [
+        "Evaluate.flix",
+        "//build:src/AtlasRepository.flix",
+        "//build:src/Localization.flix",
+        "//src:Decide.flix",
+        "//src:Localization/Evaluate.flix",
+        "//src:Localization/EvaluationData.flix",
+        "//src:Localization/EvaluationTable.flix",
+        "//src:Localization/Tree.flix",
+        "//src:Radii.flix",
+        "//src:Radii/Compiled.flix",
+        "//src:Radii/Evaluate.flix",
+        "//src:Repository/Identity.flix",
+        "//src:Repository/Physical.flix",
+        "//src:Repository/Structure.flix",
+        "//src:Repository/Table.flix",
+        "//src:ScientificData.flix",
+        "//src:ScientificIdentity.flix",
+        "//src:ScientificTable.flix",
+    ],
+    java_deps = [
+        "//src/native/identity:attune_identity",
+        "//src/native/inference:attune_inference",
+        "//src/native/parquet:attune_parquet",
+    ],
+    threads = 2,
+)
+
+java_binary(
+    name = "evaluate",
+    jvm_flags = [
+        "--add-opens=java.base/java.nio=ALL-UNNAMED",
+        "--enable-native-access=ALL-UNNAMED",
+    ],
+    main_class = "Main",
+    visibility = ["//visibility:public"],
+    runtime_deps = [":evaluate_flix"],
+)
+
+flix_fatjar(
+    name = "aggregate_evaluation_flix",
+    srcs = [
+        "AggregateEvaluation.flix",
+        "//build:src/LocalizationNamespace.flix",
+        "//src:Localization/EvaluationTable.flix",
+        "//src:ScientificTable.flix",
+    ],
+    java_deps = ["//src/native/parquet:attune_parquet"],
+    threads = 2,
+)
+
+java_binary(
+    name = "aggregate_evaluation",
+    jvm_flags = [
+        "--add-opens=java.base/java.nio=ALL-UNNAMED",
+        "--enable-native-access=ALL-UNNAMED",
+    ],
+    main_class = "Main",
+    visibility = ["//visibility:public"],
+    runtime_deps = [":aggregate_evaluation_flix"],
+)

@@ -68,6 +68,26 @@ AttuneLocalizationReplaysInfo = provider(
     fields = {"proof": "61-row typed replay proof Parquet"},
 )
 
+AttuneLocalizationEvaluationInfo = provider(
+    doc = "One official SWE-Explore case evaluation with frozen-result parity proof.",
+    fields = {
+        "metrics": "three condition metric rows",
+        "regions": "ordered top-five regions for every condition",
+        "telemetry": "oracle recurrence/compression counters",
+        "proof": "exact-discrete and tolerant-floating parity proof",
+    },
+)
+
+AttuneLocalizationEvaluationsInfo = provider(
+    doc = "Canonical aggregate official evaluation tables and parity proof.",
+    fields = {
+        "metrics": "all three-condition metric rows",
+        "regions": "all ordered top-five region rows",
+        "telemetry": "one oracle compression row per case",
+        "proof": "one exact parity row per case",
+    },
+)
+
 def _jvm_property(name, value):
     return "--jvm_flag=-D%s=%s" % (name, value)
 
@@ -573,6 +593,135 @@ attune_localization_replays = rule(
     implementation = _localization_replays_impl,
     attrs = {
         "replays": attr.label_list(providers = [AttuneLocalizationReplayInfo], mandatory = True),
+        "tool": attr.label(executable = True, cfg = "exec", mandatory = True),
+    },
+)
+
+def _localization_evaluation_impl(ctx):
+    world = ctx.attr.world[AttuneWorldInfo]
+    replay = ctx.attr.replay[AttuneLocalizationReplayInfo]
+    metrics = ctx.actions.declare_file(ctx.label.name + "/metrics.parquet")
+    regions = ctx.actions.declare_file(ctx.label.name + "/regions.parquet")
+    telemetry = ctx.actions.declare_file(ctx.label.name + "/telemetry.parquet")
+    proof = ctx.actions.declare_file(ctx.label.name + "/proof.parquet")
+    args = ctx.actions.args()
+    for name, value in [
+        ("attune.instance_id", ctx.attr.instance_id),
+        ("attune.issues", ctx.file.issues.path),
+        ("attune.prior", ctx.file.prior.path),
+        ("attune.prediction", replay.prediction.path),
+        ("attune.gold", ctx.file.gold.path),
+        ("attune.geometry", ctx.file.geometry.path),
+        ("attune.frozen_results", ctx.file.frozen_results.path),
+        ("attune.world_identity", world.identity.path),
+        ("attune.world_metadata", world.metadata.path),
+        ("attune.world_entities", world.entities.path),
+        ("attune.world_relations", world.relations.path),
+        ("attune.output_metrics", metrics.path),
+        ("attune.output_regions", regions.path),
+        ("attune.output_telemetry", telemetry.path),
+        ("attune.output_proof", proof.path),
+    ]:
+        args.add(_jvm_property(name, value))
+    ctx.actions.run(
+        executable = ctx.executable.tool,
+        arguments = [args],
+        inputs = [
+            ctx.file.issues,
+            ctx.file.prior,
+            replay.prediction,
+            ctx.file.gold,
+            ctx.file.geometry,
+            ctx.file.frozen_results,
+            world.identity,
+            world.metadata,
+            world.entities,
+            world.relations,
+        ],
+        outputs = [metrics, regions, telemetry, proof],
+        mnemonic = "AttuneLocalizationEvaluation",
+        progress_message = "Evaluating frozen localization case %{label}",
+    )
+    return [
+        DefaultInfo(files = depset([metrics, regions, telemetry, proof])),
+        AttuneLocalizationEvaluationInfo(
+            metrics = metrics,
+            regions = regions,
+            telemetry = telemetry,
+            proof = proof,
+        ),
+    ]
+
+attune_localization_evaluation = rule(
+    implementation = _localization_evaluation_impl,
+    attrs = {
+        "instance_id": attr.string(mandatory = True),
+        "issues": attr.label(allow_single_file = True, mandatory = True),
+        "prior": attr.label(allow_single_file = [".parquet"], mandatory = True),
+        "replay": attr.label(providers = [AttuneLocalizationReplayInfo], mandatory = True),
+        "gold": attr.label(allow_single_file = [".parquet"], mandatory = True),
+        "geometry": attr.label(allow_single_file = [".parquet"], mandatory = True),
+        "frozen_results": attr.label(allow_single_file = [".parquet"], mandatory = True),
+        "world": attr.label(providers = [AttuneWorldInfo], mandatory = True),
+        "tool": attr.label(executable = True, cfg = "exec", mandatory = True),
+    },
+)
+
+def _localization_evaluations_impl(ctx):
+    evaluations = [target[AttuneLocalizationEvaluationInfo] for target in ctx.attr.evaluations]
+    manifest = ctx.actions.declare_file(ctx.label.name + "/inputs.tsv")
+    metrics = ctx.actions.declare_file(ctx.label.name + "/metrics.parquet")
+    regions = ctx.actions.declare_file(ctx.label.name + "/regions.parquet")
+    telemetry = ctx.actions.declare_file(ctx.label.name + "/telemetry.parquet")
+    proof = ctx.actions.declare_file(ctx.label.name + "/proof.parquet")
+    ctx.actions.write(manifest, "".join([
+        "%s\t%s\t%s\t%s\n" % (
+            evaluation.metrics.path,
+            evaluation.regions.path,
+            evaluation.telemetry.path,
+            evaluation.proof.path,
+        )
+        for evaluation in evaluations
+    ]))
+    args = ctx.actions.args()
+    for name, value in [
+        ("attune.input_manifest", manifest.path),
+        ("attune.output_metrics", metrics.path),
+        ("attune.output_regions", regions.path),
+        ("attune.output_telemetry", telemetry.path),
+        ("attune.output_proof", proof.path),
+    ]:
+        args.add(_jvm_property(name, value))
+    inputs = [manifest]
+    for evaluation in evaluations:
+        inputs.extend([
+            evaluation.metrics,
+            evaluation.regions,
+            evaluation.telemetry,
+            evaluation.proof,
+        ])
+    ctx.actions.run(
+        executable = ctx.executable.tool,
+        arguments = [args],
+        inputs = inputs,
+        outputs = [metrics, regions, telemetry, proof],
+        mnemonic = "AttuneLocalizationEvaluationAggregate",
+        progress_message = "Aggregating official localization evaluation %{label}",
+    )
+    return [
+        DefaultInfo(files = depset([metrics, regions, telemetry, proof])),
+        AttuneLocalizationEvaluationsInfo(
+            metrics = metrics,
+            regions = regions,
+            telemetry = telemetry,
+            proof = proof,
+        ),
+    ]
+
+attune_localization_evaluations = rule(
+    implementation = _localization_evaluations_impl,
+    attrs = {
+        "evaluations": attr.label_list(providers = [AttuneLocalizationEvaluationInfo], mandatory = True),
         "tool": attr.label(executable = True, cfg = "exec", mandatory = True),
     },
 )

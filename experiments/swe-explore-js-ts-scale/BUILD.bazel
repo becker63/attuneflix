@@ -1,0 +1,6 @@
+exports_files([
+    "MANIFEST.json",
+    "REPORT.md",
+    "USAGE.md",
+    "results-censored.parquet",
+])
