@@ -16,7 +16,6 @@ exports_files([
     "Localization/Policy.flix",
     "LocalizationReplay.flix",
     "Localization/Tree.flix",
-    "ScientificData.flix",
     "ScientificIdentity.flix",
     "Radii.flix",
     "Radii/Evaluate.flix",

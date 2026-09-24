@@ -45,11 +45,6 @@ AttuneAtlasAggregateInfo = provider(
     },
 )
 
-AttuneDecisionBundlesInfo = provider(
-    doc = "Typed per-case projections of immutable paid decision evidence.",
-    fields = {"bundles": "dictionary from stable case key to bundle Parquet"},
-)
-
 AttuneDecisionBundleInfo = provider(
     doc = "One typed keyless replay bundle.",
     fields = {"bundle": "decision bundle Parquet"},
@@ -131,76 +126,6 @@ AttuneLocalizationReplayInfo = provider(
         "decisions": "typed replayed prediction decisions Parquet",
         "probabilities": "typed replayed prediction probabilities Parquet",
         "proof": "typed exact-equality and execution telemetry Parquet",
-    },
-)
-
-def _localization_data_impl(ctx):
-    issue = ctx.actions.declare_file(ctx.label.name + "/issue.parquet")
-    prior_metadata = ctx.actions.declare_file(ctx.label.name + "/prior-metadata.parquet")
-    prior_documents = ctx.actions.declare_file(ctx.label.name + "/prior-documents.parquet")
-    prior_ranking = ctx.actions.declare_file(ctx.label.name + "/prior-ranking.parquet")
-    prediction_summary = ctx.actions.declare_file(ctx.label.name + "/prediction-summary.parquet")
-    prediction_ranking = ctx.actions.declare_file(ctx.label.name + "/prediction-ranking.parquet")
-    prediction_decisions = ctx.actions.declare_file(ctx.label.name + "/prediction-decisions.parquet")
-    prediction_probabilities = ctx.actions.declare_file(ctx.label.name + "/prediction-probabilities.parquet")
-    args = ctx.actions.args()
-    for name, value in [
-        ("attune.instance_id", ctx.attr.instance_id),
-        ("attune.legacy_prior", ctx.file.legacy_prior.path),
-        ("attune.legacy_prediction", ctx.file.legacy_prediction.path),
-        ("attune.legacy_issues", ctx.file.legacy_issues.path),
-        ("attune.output_issue", issue.path),
-        ("attune.output_prior_metadata", prior_metadata.path),
-        ("attune.output_prior_documents", prior_documents.path),
-        ("attune.output_prior_ranking", prior_ranking.path),
-        ("attune.output_prediction_summary", prediction_summary.path),
-        ("attune.output_prediction_ranking", prediction_ranking.path),
-        ("attune.output_prediction_decisions", prediction_decisions.path),
-        ("attune.output_prediction_probabilities", prediction_probabilities.path),
-    ]:
-        args.add(_jvm_property(name, value))
-    outputs = [
-        issue,
-        prior_metadata,
-        prior_documents,
-        prior_ranking,
-        prediction_summary,
-        prediction_ranking,
-        prediction_decisions,
-        prediction_probabilities,
-    ]
-    ctx.actions.run(
-        executable = ctx.executable.tool,
-        arguments = [args],
-        inputs = [ctx.file.legacy_prior, ctx.file.legacy_prediction, ctx.file.legacy_issues],
-        outputs = outputs,
-        mnemonic = "AttuneLocalizationDataMigration",
-        progress_message = "Migrating frozen localization data %{label}",
-    )
-    return [
-        DefaultInfo(files = depset(outputs)),
-        AttunePriorInfo(
-            metadata = prior_metadata,
-            documents = prior_documents,
-            ranking = prior_ranking,
-        ),
-        AttuneIssueInfo(issue = issue),
-        AttunePredictionInfo(
-            summary = prediction_summary,
-            ranking = prediction_ranking,
-            decisions = prediction_decisions,
-            probabilities = prediction_probabilities,
-        ),
-    ]
-
-attune_localization_data = rule(
-    implementation = _localization_data_impl,
-    attrs = {
-        "instance_id": attr.string(mandatory = True),
-        "legacy_prior": attr.label(allow_single_file = [".parquet"], mandatory = True),
-        "legacy_prediction": attr.label(allow_single_file = [".parquet"], mandatory = True),
-        "legacy_issues": attr.label(allow_single_file = [".json"], mandatory = True),
-        "tool": attr.label(executable = True, cfg = "exec", mandatory = True),
     },
 )
 
@@ -533,90 +458,6 @@ attune_atlas_report = rule(
     attrs = {
         "aggregate": attr.label(providers = [AttuneAtlasAggregateInfo], mandatory = True),
         "tool": attr.label(executable = True, cfg = "exec", mandatory = True),
-    },
-)
-
-def _decision_bundles_impl(ctx):
-    if len(ctx.attr.case_keys) != len(ctx.attr.predictions) or len(ctx.attr.case_keys) != len(ctx.attr.base_revisions):
-        fail("case_keys, base_revisions, and predictions must have identical lengths")
-    outputs = {}
-    keys = []
-    revisions = []
-    summaries = []
-    rankings = []
-    decisions = []
-    probabilities = []
-    output_files = []
-    for index, key in enumerate(ctx.attr.case_keys):
-        prediction = ctx.attr.predictions[index][AttunePredictionInfo]
-        output = ctx.actions.declare_file(ctx.label.name + "/" + key + ".parquet")
-        outputs[key] = output
-        keys.append(key)
-        revisions.append(ctx.attr.base_revisions[index])
-        summaries.append(prediction.summary)
-        rankings.append(prediction.ranking)
-        decisions.append(prediction.decisions)
-        probabilities.append(prediction.probabilities)
-        output_files.append(output)
-    args = ctx.actions.args()
-    args.add(_jvm_property("attune.cases.count", str(len(keys))))
-    for index, key in enumerate(keys):
-        args.add(_jvm_property("attune.case_keys.%d" % index, key))
-        args.add(_jvm_property("attune.base_revisions.%d" % index, revisions[index]))
-    _add_indexed(args, "attune.prediction_summaries", summaries)
-    _add_indexed(args, "attune.prediction_rankings", rankings)
-    _add_indexed(args, "attune.prediction_decisions", decisions)
-    _add_indexed(args, "attune.prediction_probabilities", probabilities)
-    _add_indexed(args, "attune.bundle_outputs", output_files)
-    _add_indexed(args, "attune.raw_envelopes", ctx.files.raw_envelopes)
-    ctx.actions.run(
-        executable = ctx.executable.tool,
-        arguments = [args],
-        inputs = ctx.files.raw_envelopes + [
-            file
-            for target in ctx.attr.predictions
-            for file in [
-                target[AttunePredictionInfo].summary,
-                target[AttunePredictionInfo].ranking,
-                target[AttunePredictionInfo].decisions,
-                target[AttunePredictionInfo].probabilities,
-            ]
-        ],
-        outputs = outputs.values(),
-        mnemonic = "AttuneDecisionBundleMigration",
-        progress_message = "Projecting paid observations into typed per-case replay bundles %{label}",
-    )
-    return [
-        DefaultInfo(files = depset(outputs.values())),
-        AttuneDecisionBundlesInfo(bundles = outputs),
-    ]
-
-attune_decision_bundles = rule(
-    implementation = _decision_bundles_impl,
-    attrs = {
-        "case_keys": attr.string_list(mandatory = True),
-        "base_revisions": attr.string_list(mandatory = True),
-        "predictions": attr.label_list(providers = [AttunePredictionInfo], mandatory = True),
-        "raw_envelopes": attr.label_list(allow_files = [".json"], mandatory = True),
-        "tool": attr.label(executable = True, cfg = "exec", mandatory = True),
-    },
-)
-
-def _decision_bundle_impl(ctx):
-    bundles = ctx.attr.bundles[AttuneDecisionBundlesInfo].bundles
-    if ctx.attr.case_key not in bundles:
-        fail("unknown localization case key: " + ctx.attr.case_key)
-    bundle = bundles[ctx.attr.case_key]
-    return [
-        DefaultInfo(files = depset([bundle])),
-        AttuneDecisionBundleInfo(bundle = bundle),
-    ]
-
-attune_decision_bundle = rule(
-    implementation = _decision_bundle_impl,
-    attrs = {
-        "bundles": attr.label(providers = [AttuneDecisionBundlesInfo], mandatory = True),
-        "case_key": attr.string(mandatory = True),
     },
 )
 

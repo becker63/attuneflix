@@ -45,20 +45,7 @@ public final class AttuneParquet {
     static { System.setProperty("arrow.allocation.manager.type", "Unsafe"); }
 
     private static final ObjectMapper JSON = new ObjectMapper();
-    private static final TypeReference<List<Row>> ROWS = new TypeReference<>() {};
     private static final TypeReference<List<Map<String, Object>>> TABLE_ROWS = new TypeReference<>() {};
-    private static final String FORMAT = "attune-json-tree-v1";
-    private static final Schema SCHEMA = new Schema(List.of(
-            field("path", new ArrowType.List(), false,
-                    List.of(field("element", new ArrowType.Utf8(), true, null))),
-            field("node_type", new ArrowType.Utf8(), false, null),
-            field("string_value", new ArrowType.Utf8(), true, null),
-            field("integer_value", new ArrowType.Int(64, true), true, null),
-            field("float_value", new ArrowType.FloatingPoint(
-                    org.apache.arrow.vector.types.FloatingPointPrecision.DOUBLE), true, null),
-            field("boolean_value", new ArrowType.Bool(), true, null),
-            field("format_version", new ArrowType.Utf8(), false, null)),
-            Map.of("attune.format", FORMAT));
 
     private AttuneParquet() {}
 
@@ -104,103 +91,6 @@ public final class AttuneParquet {
         } catch (Exception error) {
             throw new IllegalStateException("cannot read typed Parquet table: " + name, error);
         }
-    }
-
-    public static String readRows(String name) {
-        try (BufferAllocator allocator = new RootAllocator()) {
-            Path path = Path.of(name).toAbsolutePath();
-            try (var factory = new FileSystemDatasetFactory(allocator, NativeMemoryPool.getDefault(),
-                         FileFormat.PARQUET, path.toUri().toString());
-                 var dataset = factory.finish();
-                 var scanner = dataset.newScan(new ScanOptions(32_768));
-                 var reader = scanner.scanBatches()) {
-                String format = scanner.schema().getCustomMetadata().get("attune.format");
-                if (format != null && !FORMAT.equals(format))
-                    throw new IllegalArgumentException("unsupported Attune Parquet format");
-                List<String> columns = scanner.schema().getFields().stream().map(Field::getName).toList();
-                List<String> legacy = List.of("path", "node_type", "string_value", "integer_value",
-                        "float_value", "boolean_value");
-                List<String> current = List.of("path", "node_type", "string_value", "integer_value",
-                        "float_value", "boolean_value", "format_version");
-                boolean inlineFormat = columns.equals(current);
-                if (!columns.equals(legacy) && !inlineFormat)
-                    throw new IllegalArgumentException("unsupported Attune Parquet columns: " + columns);
-                // Arrow Dataset does not expose the Parquet footer metadata written by the
-                // retained PyArrow bridge.  The exact six-column schema is therefore the
-                // explicit legacy-v1 read boundary.  New writes always use inlineFormat.
-                List<Row> rows = new ArrayList<>();
-                while (reader.loadNextBatch()) {
-                    var root = reader.getVectorSchemaRoot();
-                    var paths = (ListVector) root.getVector("path");
-                    var types = (VarCharVector) root.getVector("node_type");
-                    var strings = (VarCharVector) root.getVector("string_value");
-                    var integers = (BigIntVector) root.getVector("integer_value");
-                    var floats = (Float8Vector) root.getVector("float_value");
-                    var booleans = (BitVector) root.getVector("boolean_value");
-                    var formats = inlineFormat ? (VarCharVector) root.getVector("format_version") : null;
-                    for (int i = 0; i < root.getRowCount(); i++) {
-                        if (formats != null && (formats.isNull(i) || !FORMAT.equals(text(formats, i))))
-                            throw new IllegalArgumentException("invalid inline Attune Parquet format identity");
-                        rows.add(new Row(
-                                ((List<?>) paths.getObject(i)).stream().map(Object::toString).toList(),
-                                text(types, i), strings.isNull(i) ? null : text(strings, i),
-                                integers.isNull(i) ? null : integers.get(i),
-                                floats.isNull(i) ? null : floats.get(i),
-                                booleans.isNull(i) ? null : booleans.get(i) != 0));
-                    }
-                }
-                return JSON.writeValueAsString(rows);
-            }
-        } catch (Exception error) {
-            throw new IllegalStateException("cannot read Parquet rows: " + name, error);
-        }
-    }
-
-    public static String writeRows(String name, String payload) {
-        try {
-            List<Row> rows = JSON.readValue(payload, ROWS);
-            write(name, SCHEMA, root -> fill(root, rows));
-            return readRows(name);
-        } catch (Exception error) {
-            throw new IllegalStateException("cannot write Parquet rows: " + name, error);
-        }
-    }
-
-    public static String canonicalizeRows(String payload) {
-        Path directory = null;
-        try {
-            directory = Files.createTempDirectory("attune-parquet-");
-            return writeRows(directory.resolve("object.parquet").toString(), payload);
-        } catch (IOException error) {
-            throw new IllegalStateException("cannot canonicalize Parquet rows", error);
-        } finally {
-            if (directory != null) remove(directory);
-        }
-    }
-
-    private static void fill(VectorSchemaRoot root, List<Row> rows) {
-        root.allocateNew();
-        var paths = (ListVector) root.getVector("path");
-        var pathWriter = paths.getWriter();
-        var types = (VarCharVector) root.getVector("node_type");
-        var strings = (VarCharVector) root.getVector("string_value");
-        var integers = (BigIntVector) root.getVector("integer_value");
-        var floats = (Float8Vector) root.getVector("float_value");
-        var booleans = (BitVector) root.getVector("boolean_value");
-        var formats = (VarCharVector) root.getVector("format_version");
-        for (int i = 0; i < rows.size(); i++) {
-            Row row = rows.get(i);
-            pathWriter.setPosition(i); pathWriter.startList();
-            for (String component : row.path) pathWriter.writeVarChar(component);
-            pathWriter.endList();
-            set(types, i, row.type); set(strings, i, row.string);
-            if (row.integer == null) integers.setNull(i); else integers.setSafe(i, row.integer);
-            if (row.floating == null) floats.setNull(i); else floats.setSafe(i, row.floating);
-            if (row.bool == null) booleans.setNull(i); else booleans.setSafe(i, row.bool ? 1 : 0);
-            set(formats, i, FORMAT);
-        }
-        for (var vector : root.getFieldVectors()) vector.setValueCount(rows.size());
-        root.setRowCount(rows.size());
     }
 
     private static Schema tableSchema(TableSpec spec) {
@@ -364,8 +254,6 @@ public final class AttuneParquet {
         } catch (IOException error) { throw new UncheckedIOException(error); }
     }
 
-    private record Row(List<String> path, String type, String string,
-                       Long integer, Double floating, Boolean bool) {}
     private record ColumnSpec(String name, String type, boolean nullable) {}
     private record TableSpec(String format, List<ColumnSpec> columns) {}
 }

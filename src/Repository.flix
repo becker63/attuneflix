@@ -1,9 +1,4 @@
 mod Repository {
-    use Fs.FileSystem
-    use Util.Json
-    use Util.Json.Json.{JArray, JObject, JString}
-    use Util.Json.FromJson
-    use Util.Json.ToJson
 
     pub type alias Source = {
         path    = String,
@@ -37,8 +32,6 @@ mod Repository {
 
     pub enum Error with Eq, ToString {
         case Grit(Repository.Grit.Error),
-        case Store(String),
-        case Wire(String),
         case DuplicatePath(String),
         case UnsupportedSourceDialect(String),
         case UnexpectedFact(String, String),
@@ -59,158 +52,6 @@ mod Repository {
             world <- admitObserved(observations)
         ) yield world
     }
-
-    /// Replays immutable Grit facts when available and otherwise retains them
-    /// atomically before pure repository admission. The artifact is keyed by
-    /// the Nix snapshot and exact Grit/Marzano observation identity; resolver
-    /// changes therefore re-admit the same source evidence instead of buying
-    /// native extraction again.
-    pub def extractRetained(
-        root: String,
-        repository: String,
-        baseCommit: String,
-        snapshot: String,
-        sources0: Vector[Source]
-    ): Result[Error, World] \ {FileSystem, IO, Repository.Grit.Eval} = {
-        let file = "${root}/${baseCommit}.parquet";
-        match FileSystem.exists(file) |> Result.mapErr(storeError) {
-            case Err(error) => Err(error)
-            case Ok(true) => decodeObservationsAtIdentity(
-                    repository, baseCommit, snapshot, sources0,
-                    Repository.Grit.observationIdentity(), ScientificData.readObject(file))
-                |> Result.flatMap(admitObserved)
-            case Ok(false) => match observeAll(sources0) {
-                case Err(error) => Err(error)
-                case Ok(observations) => {
-                    let payload = encodeObservations(
-                        repository, baseCommit, snapshot, observations);
-                    let _ = ScientificData.writeObject(file, payload);
-                    admitObserved(observations)
-                }
-            }
-        }
-    }
-
-    /// Strict deterministic replay. Downstream scientific phases must never
-    /// turn a missing fact artifact into an unreported live extraction.
-    pub def replayRetained(
-        root: String,
-        repository: String,
-        baseCommit: String,
-        snapshot: String,
-        sources0: Vector[Source]
-    ): Result[Error, World] \ {FileSystem, IO} = {
-        let file = "${root}/${baseCommit}.parquet";
-        match FileSystem.exists(file) |> Result.mapErr(storeError) {
-            case Err(error) => Err(error)
-            case Ok(false) => Err(Error.Store("retained repository observation missing: ${file}"))
-            case Ok(true) => decodeObservationsAtIdentity(
-                    repository, baseCommit, snapshot, sources0,
-                    Repository.Grit.observationIdentity(), ScientificData.readObject(file))
-                |> Result.flatMap(admitObserved)
-        }
-    }
-
-    def encodeObservations(
-        repository: String,
-        baseCommit: String,
-        snapshot: String,
-        observations: Observations
-    ): String = Json.toCompactString(JObject(Map#{
-        "version" => ToJson.toJson(1),
-        "repository" => JString(repository),
-        "base_commit" => JString(baseCommit),
-        "snapshot" => JString(snapshot),
-        "grit_identity" => JString(Repository.Grit.observationIdentity()),
-        "definitions" => factsJson(observations#definitions),
-        "imports" => factsJson(observations#imports),
-        "calls" => factsJson(observations#calls)
-    }))
-
-    /// Explicit identity parameter exists for the one-time extractor-layout
-    /// parity audit. Normal replay always supplies the current identity above.
-    pub def decodeObservationsAtIdentity(
-        repository: String,
-        baseCommit: String,
-        snapshot: String,
-        sources0: Vector[Source],
-        expectedIdentity: String,
-        payload: String
-    ): Result[Error, Observations] = match Json.parse(payload) {
-        case Err(error) => Err(Error.Wire(ToString.toString(error)))
-        case Ok(JObject(fields)) => forM (
-            version <- intField("version", fields);
-            _ <- requireField("repository", repository, fields);
-            _ <- requireField("base_commit", baseCommit, fields);
-            _ <- requireField("snapshot", snapshot, fields);
-            _ <- requireField("grit_identity", expectedIdentity, fields);
-            definitions <- factVectorField("definitions", fields);
-            imports <- factVectorField("imports", fields);
-            calls <- factVectorField("calls", fields);
-            _ <- if (version == 1) Ok(()) else Err(Error.Wire("unsupported retained fact version"))
-        ) yield {
-            sources = Vector.sortBy(source -> source#path, sources0),
-            definitions = definitions,
-            imports = imports,
-            calls = calls
-        }
-        case Ok(_) => Err(Error.Wire("retained facts must be an object"))
-    }
-
-    def factsJson(facts: Vector[Repository.Grit.Fact]): Json =
-        JArray(Vector.map(fact -> JObject(Map#{
-            "kind" => JString(fact#kind),
-            "path" => JString(fact#path),
-            "start_byte" => ToJson.toJson(fact#startByte),
-            "end_byte" => ToJson.toJson(fact#endByte),
-            "value" => JString(fact#value)
-        }), facts))
-
-    def factVectorField(name: String, fields: Map[String, Json]): Result[Error, Vector[Repository.Grit.Fact]] =
-        match Map.get(name, fields) {
-            case None => Err(Error.Wire("missing JSON field: ${name}"))
-            case Some(JArray(values)) => Vector.traverse(decodeFact, values)
-            case Some(_) => Err(Error.Wire("${name}: expected array"))
-        }
-
-    def decodeFact(value: Json): Result[Error, Repository.Grit.Fact] = match value {
-        case JObject(fields) => forM (
-            kind <- stringField("kind", fields);
-            path <- stringField("path", fields);
-            startByte <- intField("start_byte", fields);
-            endByte <- intField("end_byte", fields);
-            text <- stringField("value", fields)
-        ) yield {
-            kind = kind,
-            path = path,
-            startByte = startByte,
-            endByte = endByte,
-            value = text
-        }
-        case _ => Err(Error.Wire("fact must be an object"))
-    }
-
-    def requireField(name: String, expected: String, fields: Map[String, Json]): Result[Error, Unit] =
-        stringField(name, fields) |> Result.flatMap(actual ->
-            if (actual == expected) Ok(())
-            else Err(Error.Wire("retained ${name} mismatch")))
-
-    def stringField(name: String, fields: Map[String, Json]): Result[Error, String] =
-        match Map.get(name, fields) {
-            case Some(JString(value)) => Ok(value)
-            case Some(_) => Err(Error.Wire("${name}: expected string"))
-            case None => Err(Error.Wire("missing JSON field: ${name}"))
-        }
-
-    def intField(name: String, fields: Map[String, Json]): Result[Error, Int32] =
-        match Map.get(name, fields) {
-            case Some(value) => FromJson.fromJson(value)
-                |> Result.mapErr(error -> Error.Wire("${name}: ${ToString.toString(error)}"))
-            case None => Err(Error.Wire("missing JSON field: ${name}"))
-        }
-
-    def storeError(error: a): Error with ToString[a] =
-        Error.Store(ToString.toString(error))
 
     /// Effectful source observation is kept separate so experiments can time Grit honestly.
     pub def observeAll(sources0: Vector[Source]): Result[Error, Observations] \ Repository.Grit.Eval = {

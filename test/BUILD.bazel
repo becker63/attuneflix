@@ -57,12 +57,10 @@ flix_check(
         "//src:Repository.flix",
         "//src:Repository/Grit.flix",
         "//src:Repository/Structure.flix",
-        "//src:ScientificData.flix",
     ],
     command = "test",
     java_deps = [
         "//src/native/grit:attune_grit",
-        "//src/native/parquet:attune_parquet",
     ],
     threads = 2,
 )
