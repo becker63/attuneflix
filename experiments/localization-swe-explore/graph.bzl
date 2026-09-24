@@ -3,11 +3,9 @@
 load(
     "//build:attune.bzl",
     "attune_atlas_localization_analysis",
-    "attune_decision_bundle",
-    "attune_decision_bundles",
+    "attune_localization_case",
     "attune_localization_evaluation",
     "attune_localization_evaluations",
-    "attune_localization_data",
     "attune_localization_replay",
     "attune_localization_replays",
 )
@@ -89,53 +87,33 @@ def frozen_localization(enabled):
         )
         return
 
-    native.filegroup(
-        name = "retained_scale_decision_envelopes",
-        srcs = native.glob([
-            "experiments/swe-explore-js-ts-scale/003-force-first-macro/raw/*.json",
-            "experiments/swe-explore-js-ts-scale/012-pruned-planner-portfolio/raw/*.json",
-            "experiments/swe-explore-js-ts-scale/013-deep-planner-portfolio/raw/*.json",
-        ]),
-    )
-    typed_data = []
     for key, instance_id, revision in _CASES:
-        data = "localization_data_" + key
-        attune_localization_data(
+        data = "localization_case_" + key
+        root = "localization-v1/%s/" % key
+        attune_localization_case(
             name = data,
-            instance_id = instance_id,
-            legacy_prediction = "experiments/swe-explore-js-ts-scale/013-predictions/%s.parquet" % revision,
-            legacy_prior = "semantic-prior-js-ts-scale-v1/rankings/%s.parquet" % revision,
-            legacy_issues = "localization-inputs/issues.json",
-            tool = "//migration/localization_data:localization_data",
+            issue = root + "issue.parquet",
+            prior_metadata = root + "prior-metadata.parquet",
+            prior_documents = root + "prior-documents.parquet",
+            prior_ranking = root + "prior-ranking.parquet",
+            prediction_summary = root + "prediction-summary.parquet",
+            prediction_ranking = root + "prediction-ranking.parquet",
+            prediction_decisions = root + "prediction-decisions.parquet",
+            prediction_probabilities = root + "prediction-probabilities.parquet",
+            decision_bundle = root + "decision-bundle.parquet",
         )
-        typed_data.append(":" + data)
-
-    attune_decision_bundles(
-        name = "localization_decision_bundles",
-        base_revisions = [case[2] for case in _CASES],
-        case_keys = [case[0] for case in _CASES],
-        predictions = typed_data,
-        raw_envelopes = [":retained_scale_decision_envelopes"],
-        tool = "//migration/localization:decision_bundle",
-    )
 
     replays = []
     evaluations = []
     for key, instance_id, revision in _CASES:
-        decisions = "localization_decisions_" + key
         replay = "localization_replay_" + key
         evaluation = "localization_evaluation_" + key
         world = ATLAS_WORLDS[int(key)]
-        data = ":localization_data_" + key
-        attune_decision_bundle(
-            name = decisions,
-            bundles = ":localization_decision_bundles",
-            case_key = key,
-        )
+        data = ":localization_case_" + key
         attune_localization_replay(
             name = replay,
             data = data,
-            decisions = ":" + decisions,
+            decisions = data,
             instance_id = instance_id,
             tool = "//experiments/localization-swe-explore:replay",
             world = world,

@@ -79,6 +79,50 @@ AttunePredictionInfo = provider(
     },
 )
 
+def _localization_case_impl(ctx):
+    files = [
+        ctx.file.issue,
+        ctx.file.prior_metadata,
+        ctx.file.prior_documents,
+        ctx.file.prior_ranking,
+        ctx.file.prediction_summary,
+        ctx.file.prediction_ranking,
+        ctx.file.prediction_decisions,
+        ctx.file.prediction_probabilities,
+        ctx.file.decision_bundle,
+    ]
+    return [
+        DefaultInfo(files = depset(files)),
+        AttuneIssueInfo(issue = ctx.file.issue),
+        AttunePriorInfo(
+            metadata = ctx.file.prior_metadata,
+            documents = ctx.file.prior_documents,
+            ranking = ctx.file.prior_ranking,
+        ),
+        AttunePredictionInfo(
+            summary = ctx.file.prediction_summary,
+            ranking = ctx.file.prediction_ranking,
+            decisions = ctx.file.prediction_decisions,
+            probabilities = ctx.file.prediction_probabilities,
+        ),
+        AttuneDecisionBundleInfo(bundle = ctx.file.decision_bundle),
+    ]
+
+attune_localization_case = rule(
+    implementation = _localization_case_impl,
+    attrs = {
+        "issue": attr.label(allow_single_file = [".parquet"], mandatory = True),
+        "prior_metadata": attr.label(allow_single_file = [".parquet"], mandatory = True),
+        "prior_documents": attr.label(allow_single_file = [".parquet"], mandatory = True),
+        "prior_ranking": attr.label(allow_single_file = [".parquet"], mandatory = True),
+        "prediction_summary": attr.label(allow_single_file = [".parquet"], mandatory = True),
+        "prediction_ranking": attr.label(allow_single_file = [".parquet"], mandatory = True),
+        "prediction_decisions": attr.label(allow_single_file = [".parquet"], mandatory = True),
+        "prediction_probabilities": attr.label(allow_single_file = [".parquet"], mandatory = True),
+        "decision_bundle": attr.label(allow_single_file = [".parquet"], mandatory = True),
+    },
+)
+
 AttuneLocalizationReplayInfo = provider(
     doc = "One exact keyless localization replay result.",
     fields = {
