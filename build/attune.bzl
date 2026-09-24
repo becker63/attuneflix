@@ -67,6 +67,69 @@ AttunePredictionInfo = provider(
     },
 )
 
+AttunePopulationInfo = provider(
+    doc = "One typed frozen scientific population and its protocol.",
+    fields = {
+        "metadata": "population protocol metadata Parquet",
+        "cases": "ordered population cases and outcomes Parquet",
+    },
+)
+
+def _population_files_impl(ctx):
+    return [
+        DefaultInfo(files = depset([ctx.file.metadata, ctx.file.cases])),
+        AttunePopulationInfo(metadata = ctx.file.metadata, cases = ctx.file.cases),
+    ]
+
+attune_population_files = rule(
+    implementation = _population_files_impl,
+    attrs = {
+        "metadata": attr.label(allow_single_file = [".parquet"], mandatory = True),
+        "cases": attr.label(allow_single_file = [".parquet"], mandatory = True),
+    },
+)
+
+def _issue_files_impl(ctx):
+    return [
+        DefaultInfo(files = depset([ctx.file.issue])),
+        AttuneIssueInfo(issue = ctx.file.issue),
+    ]
+
+attune_issue_files = rule(
+    implementation = _issue_files_impl,
+    attrs = {"issue": attr.label(allow_single_file = [".parquet"], mandatory = True)},
+)
+
+def _prior_files_impl(ctx):
+    files = [ctx.file.metadata, ctx.file.documents, ctx.file.ranking]
+    return [
+        DefaultInfo(files = depset(files)),
+        AttunePriorInfo(metadata = files[0], documents = files[1], ranking = files[2]),
+    ]
+
+attune_prior_files = rule(
+    implementation = _prior_files_impl,
+    attrs = {
+        "metadata": attr.label(allow_single_file = [".parquet"], mandatory = True),
+        "documents": attr.label(allow_single_file = [".parquet"], mandatory = True),
+        "ranking": attr.label(allow_single_file = [".parquet"], mandatory = True),
+    },
+)
+
+def _prediction_files_impl(ctx):
+    return [
+        DefaultInfo(files = depset([ctx.file.summary, ctx.file.ranking])),
+        AttunePredictionInfo(summary = ctx.file.summary, ranking = ctx.file.ranking),
+    ]
+
+attune_prediction_files = rule(
+    implementation = _prediction_files_impl,
+    attrs = {
+        "summary": attr.label(allow_single_file = [".parquet"], mandatory = True),
+        "ranking": attr.label(allow_single_file = [".parquet"], mandatory = True),
+    },
+)
+
 def _jvm_property(name, value):
     return "--jvm_flag=-D%s=%s" % (name, value)
 

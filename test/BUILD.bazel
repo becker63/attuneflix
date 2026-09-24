@@ -140,6 +140,24 @@ checked_test(
 )
 
 flix_check(
+    name = "population_table_check",
+    srcs = [
+        "//build:src/PopulationTableTest.flix",
+        "//src:Population.flix",
+        "//src:Population/Table.flix",
+        "//src:ScientificTable.flix",
+    ],
+    command = "test",
+    java_deps = ["//src/native/parquet:attune_parquet"],
+    threads = 2,
+)
+
+checked_test(
+    name = "population_table_test",
+    check = ":population_table_check",
+)
+
+flix_check(
     name = "repository_table_check",
     srcs = [
         "//build:src/AtlasRepository.flix",

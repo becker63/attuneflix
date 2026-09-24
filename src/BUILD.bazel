@@ -9,6 +9,8 @@ exports_files([
     "Localization/IssueTable.flix",
     "Localization/PriorTable.flix",
     "Localization/PredictionTable.flix",
+    "Population.flix",
+    "Population/Table.flix",
     "ScientificIdentity.flix",
     "Radii.flix",
     "Radii/Evaluate.flix",

@@ -10,6 +10,7 @@ exports_files([
     "src/AtlasTest.flix",
     "src/InferenceBoundaryTest.flix",
     "src/LocalizationTest.flix",
+    "src/PopulationTableTest.flix",
     "src/IdentityTest.flix",
     "src/Repository.flix",
     "src/RepositoryAdmissionTest.flix",

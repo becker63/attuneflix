@@ -1,6 +1,15 @@
+load("//build:attune.bzl", "attune_population_files")
+
 exports_files([
     "MANIFEST.json",
     "REPORT.md",
     "USAGE.md",
     "results-censored.parquet",
 ])
+
+attune_population_files(
+    name = "population",
+    cases = "population-cases.parquet",
+    metadata = "population-metadata.parquet",
+    visibility = ["//visibility:public"],
+)
