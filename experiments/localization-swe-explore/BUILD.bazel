@@ -87,7 +87,6 @@ flix_fatjar(
         "//src:Repository/Physical.flix",
         "//src:Repository/Structure.flix",
         "//src:Repository/Table.flix",
-        "//src:ScientificData.flix",
         "//src:ScientificIdentity.flix",
         "//src:ScientificTable.flix",
     ],

@@ -121,7 +121,8 @@ def frozen_localization(enabled):
         attune_localization_evaluation(
             name = evaluation,
             data = data,
-            frozen_results = "//experiments/swe-explore-js-ts-scale:results-censored.parquet",
+            expected_metrics = "localization-v1/evaluation/metrics.parquet",
+            expected_regions = "localization-v1/evaluation/regions.parquet",
             geometry = "evaluation-inputs/geometry/%s.parquet" % key,
             gold = "evaluation-inputs/gold.parquet",
             instance_id = instance_id,

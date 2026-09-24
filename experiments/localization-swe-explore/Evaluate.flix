@@ -29,8 +29,13 @@ def main(): Unit \ {FileSystem, IO} = {
         property("attune.geometry"), prepared#instanceId, Vector.length(world#symbols)) |> require;
     let result = Localization.Evaluate.evaluate(
         prepared, prior, computed, selected, gold, geometry) |> require;
-    let frozen = ScientificData.readObject(property("attune.frozen_results"));
-    let proofRow = Localization.Evaluate.parityProof(prepared#instanceId, frozen, result) |> require;
+    let expectedMetrics = ScientificTable.read(
+        property("attune.expected_metrics"), Localization.EvaluationTable.metrics());
+    let expectedRegions = ScientificTable.read(
+        property("attune.expected_regions"), Localization.EvaluationTable.regions());
+    let proofRow = Localization.Evaluate.parityProof(
+        prepared#instanceId, identity#baseRevision, identity#snapshotId,
+        expectedMetrics, expectedRegions, result) |> require;
     let metrics = ScientificTable.write(property("attune.output_metrics"),
         Localization.EvaluationTable.metrics(),
         Localization.Evaluate.metricRows(result, identity#baseRevision, identity#snapshotId));

@@ -4,9 +4,6 @@
 /// unique semantic state and each unique top-five projection once, while the
 /// first logical route remains the stable tie winner.
 pub mod Localization.Evaluate {
-    use Util.Json
-    use Util.Json.Json.{JArray, JBool, JNumber, JObject, JString}
-    use Util.Json.FromJson
     use ScientificTable.Value
 
     pub type alias SourceRegion = Localization.EvaluationData.SourceRegion
@@ -115,17 +112,6 @@ pub mod Localization.Evaluate {
         telemetry = oracle#telemetry
     }
 
-    pub def predictionRanking(instanceId: String, payload: String): Result[String, Vector[String]] =
-        match Json.parse(payload) {
-            case Err(error) => Err(ToString.toString(error))
-            case Ok(JObject(fields)) => forM (
-                actual <- stringField("instance_id", fields);
-                _ <- if (actual == instanceId) Ok(()) else Err("prediction instance identity mismatch");
-                ranking <- stringVectorField("ranking", fields)
-            ) yield ranking
-            case Ok(_) => Err("localization prediction must be an object")
-        }
-
     pub def metricRows(
         row: ResultRow,
         baseRevision: String,
@@ -151,22 +137,30 @@ pub mod Localization.Evaluate {
         "score_evaluations" => Value.Int32(row#telemetry#scoreEvaluations)
     }}
 
-    /// Strict discrete parity and the established 1e-10 floating tolerance.
-    pub def parityProof(instanceId: String, frozenPayload: String, row: ResultRow): Result[String, ScientificTable.Row] = forM (
-        expected <- frozenRow(instanceId, frozenPayload);
-        _ <- if (expected#oraclePath == row#oraclePath and
-            projectionKey(expected#priorRegions) == projectionKey(row#priorRegions) and
-            projectionKey(expected#selectedRegions) == projectionKey(row#selectedRegions) and
-            projectionKey(expected#oracleRegions) == projectionKey(row#oracleRegions)) Ok(())
-            else Err("frozen evaluator discrete parity mismatch");
-        _ <- if (sameScore(expected#prior, row#prior) and
-            sameScore(expected#selected, row#selected) and
-            sameScore(expected#oracle, row#oracle)) Ok(())
-            else Err("frozen evaluator metric parity mismatch")
-    ) yield Map#{
-        "protocol" => Value.Text("attune-localization-evaluation-parity-v1"),
-        "instance_id" => Value.Text(instanceId), "exact_discrete" => Value.Boolean(true),
-        "metrics_within_tolerance" => Value.Boolean(true), "tolerance" => Value.Float64(0.0000000001)
+    /// Compare a fresh evaluation with the admitted typed result tables.
+    /// Region/order/string identity is exact; official floating metrics retain
+    /// the established 1e-10 tolerance from the sealed experiment.
+    pub def parityProof(
+        instanceId: String,
+        baseRevision: String,
+        snapshotId: String,
+        expectedMetrics: Vector[ScientificTable.Row],
+        expectedRegions: Vector[ScientificTable.Row],
+        row: ResultRow
+    ): Result[String, ScientificTable.Row] = {
+        let metrics0 = rowsFor(instanceId, expectedMetrics);
+        let regions0 = rowsFor(instanceId, expectedRegions);
+        let metrics1 = metricRows(row, baseRevision, snapshotId);
+        let regions1 = regionRows(row);
+        if (ScientificTable.canonicalRows(regions0) != ScientificTable.canonicalRows(regions1))
+            Err("frozen evaluator discrete region parity mismatch")
+        else if (not sameMetricRows(metrics0, metrics1))
+            Err("frozen evaluator metric parity mismatch")
+        else Ok(Map#{
+            "protocol" => Value.Text("attune-localization-evaluation-parity-v1"),
+            "instance_id" => Value.Text(instanceId), "exact_discrete" => Value.Boolean(true),
+            "metrics_within_tolerance" => Value.Boolean(true), "tolerance" => Value.Float64(0.0000000001)
+        })
     }
 
     def evaluationContext(gold: Gold, geometry: Geometry): Context = {
@@ -503,113 +497,30 @@ pub mod Localization.Evaluate {
             "start_line" => Value.Int32(span0#start), "end_line" => Value.Int32(span0#end)
         }, regions)
 
-    type alias Frozen = {
-        prior = Score, selected = Score, oracle = Score, oraclePath = String,
-        priorRegions = Vector[SourceRegion], selectedRegions = Vector[SourceRegion],
-        oracleRegions = Vector[SourceRegion]
-    }
+    def rowsFor(instanceId: String, rows: Vector[ScientificTable.Row]): Vector[ScientificTable.Row] =
+        Vector.filter(row -> ScientificTable.text(row, "instance_id") == Ok(instanceId), rows)
 
-    def frozenRow(instanceId: String, payload: String): Result[String, Frozen] = match Json.parse(payload) {
-        case Err(error) => Err(ToString.toString(error))
-        case Ok(JObject(fields)) => forM (
-            values <- arrayField("cases", fields);
-            value <- Vector.find(item -> caseId(item) == Some(instanceId), values)
-                |> Option.toOk("missing frozen evaluation row: ${instanceId}");
-            frozen <- decodeFrozen(value)
-        ) yield frozen
-        case Ok(_) => Err("frozen evaluation must be an object")
-    }
+    def sameMetricRows(
+        expected: Vector[ScientificTable.Row],
+        actual: Vector[ScientificTable.Row]
+    ): Bool = Vector.length(expected) == 3 and Vector.length(actual) == 3 and
+        Vector.forAll(match (left, right) -> sameMetricRow(left, right), Vector.zip(expected, actual))
 
-    def decodeFrozen(value: Json): Result[String, Frozen] = match value {
-        case JObject(fields) => forM (
-            oraclePath <- stringField("oracle_path", fields);
-            priorValue <- field("prior", fields); prior <- decodeCondition(priorValue);
-            selectedValue <- field("jev", fields); selected <- decodeCondition(selectedValue);
-            oracleValue <- field("structural_oracle", fields); oracle <- decodeCondition(oracleValue)
-        ) yield {
-            prior = fst(prior), selected = fst(selected), oracle = fst(oracle), oraclePath = oraclePath,
-            priorRegions = snd(prior), selectedRegions = snd(selected), oracleRegions = snd(oracle)
+    def sameMetricRow(left: ScientificTable.Row, right: ScientificTable.Row): Bool =
+        Vector.forAll(name -> ScientificTable.text(left, name) == ScientificTable.text(right, name), Vector#{
+            "protocol", "instance_id", "repository", "base_revision", "snapshot_id", "condition", "oracle_path"
+        }) and Vector.forAll(name ->
+            Float64.abs(float(left, name) - float(right, name)) <= 0.0000000001, Vector#{
+                "precision", "recall", "f1_score", "hit_file_rate", "noise_file_rate",
+                "hit_region_rate", "noise_region_rate", "weighted_core_coverage", "context_efficiency",
+                "ndcg_at_100", "ndcg_at_300", "ndcg_at_500", "recall_at_100", "recall_at_300",
+                "recall_at_500", "first_useful_hit"
+            })
+
+    def float(row: ScientificTable.Row, name: String): Float64 =
+        match ScientificTable.float64(row, name) {
+            case Ok(value) => value
+            case Err(error) => bug!(error)
         }
-        case _ => Err("frozen evaluation case must be an object")
-    }
-
-    def decodeCondition(value: Json): Result[String, (Score, Vector[SourceRegion])] = match value {
-        case JObject(fields) => forM (
-            metricsValue <- field("metrics", fields); metrics <- decodeScore(metricsValue);
-            regionValues <- arrayField("regions", fields); regions <- Vector.traverse(decodeRegion, regionValues)
-        ) yield (metrics, regions)
-        case _ => Err("evaluation condition must be an object")
-    }
-
-    def decodeScore(value: Json): Result[String, Score] = match value {
-        case JObject(fields) => forM (
-            precision <- floatField("precision", fields); recall <- floatField("recall", fields);
-            f1 <- floatField("f1_score", fields); hitFile <- floatField("hit_file_rate", fields);
-            noiseFile <- floatField("noise_file_rate", fields); hitRegion <- floatField("hit_region_rate", fields);
-            noiseRegion <- floatField("noise_region_rate", fields);
-            weighted <- floatField("weighted_core_coverage", fields); context <- floatField("context_efficiency", fields);
-            ndcg100 <- floatField("ndcg_at_100", fields); ndcg300 <- floatField("ndcg_at_300", fields);
-            ndcg500 <- floatField("ndcg_at_500", fields); recall100 <- floatField("recall_at_100", fields);
-            recall300 <- floatField("recall_at_300", fields); recall500 <- floatField("recall_at_500", fields);
-            first <- floatField("first_useful_hit", fields)
-        ) yield {
-            precision = precision, recall = recall, f1 = f1, hitFile = hitFile, noiseFile = noiseFile,
-            hitRegion = hitRegion, noiseRegion = noiseRegion, weightedCoreCoverage = weighted,
-            contextEfficiency = context, ndcg100 = ndcg100, ndcg300 = ndcg300, ndcg500 = ndcg500,
-            recall100 = recall100, recall300 = recall300, recall500 = recall500, firstUsefulHit = first
-        }
-        case _ => Err("evaluation metrics must be an object")
-    }
-
-    def decodeRegion(value: Json): Result[String, SourceRegion] = match value {
-        case JObject(fields) => forM (
-            path <- stringField("path", fields); start <- intField("start", fields); end <- intField("end", fields)
-        ) yield {path = path, start = Int32.max(1, start), end = end}
-        case _ => Err("evaluation region must be an object")
-    }
-
-    def sameScore(left: Score, right: Score): Bool = Vector.forAll(pair ->
-        Float64.abs(fst(pair) - snd(pair)) <= 0.0000000001, Vector#{
-            (left#precision, right#precision), (left#recall, right#recall), (left#f1, right#f1),
-            (left#hitFile, right#hitFile), (left#noiseFile, right#noiseFile),
-            (left#hitRegion, right#hitRegion), (left#noiseRegion, right#noiseRegion),
-            (left#weightedCoreCoverage, right#weightedCoreCoverage),
-            (left#contextEfficiency, right#contextEfficiency), (left#ndcg100, right#ndcg100),
-            (left#ndcg300, right#ndcg300), (left#ndcg500, right#ndcg500),
-            (left#recall100, right#recall100), (left#recall300, right#recall300),
-            (left#recall500, right#recall500), (left#firstUsefulHit, right#firstUsefulHit)
-        })
-
-    def caseId(value: Json): Option[String] = match value {
-        case JObject(fields) => match Map.get("instance_id", fields) {
-            case Some(JString(value0)) => Some(value0)
-            case _ => None
-        }
-        case _ => None
-    }
-
-    def field(name: String, fields: Map[String, Json]): Result[String, Json] =
-        Map.get(name, fields) |> Option.toOk("missing JSON field: ${name}")
-
-    def stringField(name: String, fields: Map[String, Json]): Result[String, String] = match field(name, fields) {
-        case Ok(JString(value)) => Ok(value)
-        case Ok(_) => Err("${name}: expected string")
-        case Err(error) => Err(error)
-    }
-
-    def intField(name: String, fields: Map[String, Json]): Result[String, Int32] =
-        field(name, fields) |> Result.flatMap(value -> FromJson.fromJson(value) |> Result.mapErr(ToString.toString))
-
-    def floatField(name: String, fields: Map[String, Json]): Result[String, Float64] =
-        field(name, fields) |> Result.flatMap(value -> FromJson.fromJson(value) |> Result.mapErr(ToString.toString))
-
-    def arrayField(name: String, fields: Map[String, Json]): Result[String, Vector[Json]] = match field(name, fields) {
-        case Ok(JArray(values)) => Ok(values)
-        case Ok(_) => Err("${name}: expected array")
-        case Err(error) => Err(error)
-    }
-
-    def stringVectorField(name: String, fields: Map[String, Json]): Result[String, Vector[String]] =
-        field(name, fields) |> Result.flatMap(value -> FromJson.fromJson(value) |> Result.mapErr(ToString.toString))
 
 }
