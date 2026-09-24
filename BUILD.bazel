@@ -9,6 +9,7 @@ test_suite(
     name = "tests",
     tests = [
         "//src/native/inference:attune_inference_test",
+        "//src/native/identity:attune_identity_test",
         "//src/native/grit:attune_grit_test",
         "//src/native/parquet:attune_parquet_test",
         "//test:core_parity_test",
@@ -16,6 +17,7 @@ test_suite(
         "//test:atlas_signature_table_test",
         "//test:grit_boundary_test",
         "//test:inference_boundary_test",
+        "//test:identity_test",
         "//test:scientific_table_test",
     ],
 )

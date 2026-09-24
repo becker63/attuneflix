@@ -105,3 +105,19 @@ checked_test(
     name = "atlas_signature_table_test",
     check = ":atlas_signature_table_check",
 )
+
+flix_check(
+    name = "identity_check",
+    srcs = [
+        "//build:src/IdentityTest.flix",
+        "//src:ScientificIdentity.flix",
+    ],
+    command = "test",
+    java_deps = ["//src/native/identity:attune_identity"],
+    threads = 2,
+)
+
+checked_test(
+    name = "identity_test",
+    check = ":identity_check",
+)

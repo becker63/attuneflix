@@ -8,6 +8,7 @@ exports_files([
     "src/Atlas/Signature.flix",
     "src/AtlasTest.flix",
     "src/InferenceBoundaryTest.flix",
+    "src/IdentityTest.flix",
     "src/Repository.flix",
     "src/ScientificTableTest.flix",
 ])

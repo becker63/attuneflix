@@ -1,0 +1,17 @@
+load("@rules_java//java:defs.bzl", "java_library", "java_test")
+
+java_library(
+    name = "attune_identity",
+    srcs = ["AttuneIdentity.java"],
+    javacopts = ["--release=21"],
+    visibility = ["//visibility:public"],
+)
+
+java_test(
+    name = "attune_identity_test",
+    srcs = ["AttuneIdentityTest.java"],
+    javacopts = ["--release=21"],
+    main_class = "attune.identity.AttuneIdentityTest",
+    use_testrunner = False,
+    deps = [":attune_identity"],
+)
