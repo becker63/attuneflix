@@ -1,0 +1,24 @@
+build --enable_bzlmod
+build --announce_rc
+build --local_resources=cpu=4
+build --local_resources=memory=4096
+build --java_language_version=21
+build --tool_java_language_version=21
+build --java_runtime_version=remotejdk_21
+build --tool_java_runtime_version=remotejdk_21
+test --test_output=errors
+
+# Authentication is supplied by the local credential helper from ignored .env.
+build:buildbuddy --bes_results_url=https://app.buildbuddy.io/invocation/
+build:buildbuddy --bes_backend=grpcs://remote.buildbuddy.io
+build:buildbuddy --remote_cache=grpcs://remote.buildbuddy.io
+build:buildbuddy --remote_cache_compression
+build:buildbuddy --remote_grpc_log=bazel-remote-grpc.log
+build:buildbuddy --execution_log_compact_file=execution_log.binpb.zst
+build:buildbuddy --noslim_profile
+build:buildbuddy --experimental_profile_include_target_label
+build:buildbuddy --experimental_profile_include_primary_output
+build:buildbuddy-rbe --config=buildbuddy
+build:buildbuddy-rbe --remote_executor=grpcs://remote.buildbuddy.io
+build:buildbuddy-rbe --extra_execution_platforms=@buildbuddy_toolchain//:platform_linux_arm64
+test:buildbuddy-rbe --test_env=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin

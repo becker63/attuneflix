@@ -1,0 +1,9 @@
+exports_files([
+    "Radii.flix",
+    "Radii/Compiled.flix",
+    "Radii/Evaluate.flix",
+    "Radii/Synthesize.flix",
+    "Repository/Physical.flix",
+    "Repository/Reference.flix",
+    "Repository/Structure.flix",
+])

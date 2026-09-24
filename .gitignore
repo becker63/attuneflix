@@ -11,6 +11,12 @@
 /artifact/
 /lib/external/
 *.fpkg
+/bazel-attuneflix
+/bazel-bin
+/bazel-out
+/bazel-testlogs
+/bazel-remote-grpc.log
+/execution_log.binpb.zst
 
 # Rust/Zed build output
 /native/grit/target/

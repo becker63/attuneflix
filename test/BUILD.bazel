@@ -1,0 +1,23 @@
+load("//build:flix.bzl", "checked_test", "flix_check")
+
+flix_check(
+    name = "core_parity_check",
+    srcs = [
+        "ParityTest.flix",
+        "//build:src/Repository.flix",
+        "//src:Radii.flix",
+        "//src:Radii/Compiled.flix",
+        "//src:Radii/Evaluate.flix",
+        "//src:Radii/Synthesize.flix",
+        "//src:Repository/Physical.flix",
+        "//src:Repository/Reference.flix",
+        "//src:Repository/Structure.flix",
+    ],
+    command = "test",
+    threads = 2,
+)
+
+checked_test(
+    name = "core_parity_test",
+    check = ":core_parity_check",
+)

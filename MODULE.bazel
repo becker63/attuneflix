@@ -1,0 +1,34 @@
+module(
+    name = "attuneflix",
+    version = "0.1.0",
+)
+
+http_jar = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_jar")
+
+http_jar(
+    name = "flix_compiler",
+    sha256 = "d8d9a3870e199c03ed6364ea9430f56f67bfd38c332c411628a6a7cb88b2b0b4",
+    urls = ["https://github.com/flix/flix/releases/download/v0.76.0/flix.jar"],
+)
+
+bazel_dep(name = "rules_java", version = "9.9.0")
+bazel_dep(name = "rules_jvm_external", version = "7.1")
+bazel_dep(name = "toolchains_buildbuddy", version = "0.0.4")
+
+buildbuddy = use_extension("@toolchains_buildbuddy//:extensions.bzl", "buildbuddy")
+buildbuddy.platform(buildbuddy_container_image = "UBUNTU22_04_IMAGE")
+use_repo(buildbuddy, "buildbuddy_toolchain")
+
+maven = use_extension("@rules_jvm_external//:extensions.bzl", "maven")
+maven.install(
+    name = "maven",
+    artifacts = [
+        "com.fasterxml.jackson.core:jackson-databind:2.18.3",
+        "org.apache.arrow:arrow-dataset:19.0.0",
+        "org.apache.arrow:arrow-memory-unsafe:19.0.0",
+        "org.slf4j:slf4j-nop:2.0.17",
+    ],
+    lock_file = "//:maven_install.json",
+    repositories = ["https://repo1.maven.org/maven2"],
+)
+use_repo(maven, "maven")

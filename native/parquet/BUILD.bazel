@@ -1,0 +1,30 @@
+load("@rules_java//java:defs.bzl", "java_library", "java_test")
+
+java_library(
+    name = "attune_parquet",
+    srcs = ["AttuneParquet.java"],
+    javacopts = ["--release=21"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "@maven//:com_fasterxml_jackson_core_jackson_core",
+        "@maven//:com_fasterxml_jackson_core_jackson_databind",
+        "@maven//:org_apache_arrow_arrow_dataset",
+        "@maven//:org_apache_arrow_arrow_memory_core",
+        "@maven//:org_apache_arrow_arrow_memory_unsafe",
+        "@maven//:org_apache_arrow_arrow_vector",
+        "@maven//:org_slf4j_slf4j_nop",
+    ],
+)
+
+java_test(
+    name = "attune_parquet_test",
+    srcs = ["AttuneParquetTest.java"],
+    javacopts = ["--release=21"],
+    jvm_flags = [
+        "--add-opens=java.base/java.nio=ALL-UNNAMED",
+        "--enable-native-access=ALL-UNNAMED",
+    ],
+    main_class = "attune.parquet.AttuneParquetTest",
+    use_testrunner = False,
+    deps = [":attune_parquet"],
+)

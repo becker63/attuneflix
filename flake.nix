@@ -286,10 +286,71 @@
         let
           pkgs = nixpkgs.legacyPackages.${system};
           flixJdk25 = self.packages.${system}.flix;
+          bazel = pkgs.writeShellScriptBin "bazel" ''
+            set -eu
+
+            workspace="$PWD"
+            while [ "$workspace" != / ] && [ ! -f "$workspace/MODULE.bazel" ]; do
+              workspace="$(${pkgs.coreutils}/bin/dirname -- "$workspace")"
+            done
+            if [ ! -f "$workspace/.env" ]; then
+              echo "ignored workspace .env not found" >&2
+              exit 1
+            fi
+
+            key=$(
+              ${pkgs.gawk}/bin/awk '
+                /^BUILDBUDDY_API_KEY=/ {
+                  if (found) exit 2
+                  sub(/^[^=]*=/, "")
+                  print
+                  found = 1
+                }
+                END { if (!found) exit 1 }
+              ' "$workspace/.env"
+            )
+
+            case "$key" in
+              ""|*[!A-Za-z0-9._~-]*)
+                echo "BUILDBUDDY_API_KEY is missing or malformed" >&2
+                exit 1
+                ;;
+            esac
+
+            auth_rc="$(${pkgs.coreutils}/bin/mktemp /tmp/attune-bazel-auth.XXXXXX)"
+            ${pkgs.coreutils}/bin/chmod 600 "$auth_rc"
+            cleanup() {
+              ${pkgs.coreutils}/bin/rm -f -- "$auth_rc"
+            }
+            trap cleanup EXIT HUP INT TERM
+            printf 'common --remote_header=x-buildbuddy-api-key=%s\ncommon --bes_header=x-buildbuddy-api-key=%s\n' \
+              "$key" "$key" > "$auth_rc"
+
+            ${pkgs.coreutils}/bin/env -i \
+              HOME="$HOME" \
+              USER="''${USER:-unknown}" \
+              PATH=${pkgs.lib.makeBinPath [
+                pkgs.bash
+                pkgs.bazelisk
+                pkgs.coreutils
+                pkgs.findutils
+                pkgs.gawk
+                pkgs.gcc
+                pkgs.git
+                pkgs.gnugrep
+                pkgs.gnused
+                pkgs.which
+              ]} \
+              SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt \
+              BUILDBUDDY_API_KEY="$key" \
+              ${pkgs.bazelisk}/bin/bazelisk --bazelrc="$auth_rc" "$@"
+          '';
         in {
           default = pkgs.mkShell {
             packages = [
               pkgs.cargo
+              bazel
+              pkgs.bazel-buildtools
               pkgs.clang
               flixJdk25
               pkgs.jdk25
