@@ -1,0 +1,36 @@
+load("//build:flix.bzl", "flix_fatjar")
+
+flix_fatjar(
+    name = "analysis_flix",
+    srcs = [
+        "Analysis.flix",
+        "//build:src/AtlasRepository.flix",
+        "//build:src/LocalizationNamespace.flix",
+        "//src:Atlas.flix",
+        "//src:Atlas/Signature.flix",
+        "//src:Atlas/Signature/Summary.flix",
+        "//src:Atlas/Signature/Table.flix",
+        "//src:Localization/EvaluationTable.flix",
+        "//src:Radii.flix",
+        "//src:Repository/Physical.flix",
+        "//src:Repository/Structure.flix",
+        "//src:ScientificIdentity.flix",
+        "//src:ScientificTable.flix",
+    ],
+    java_deps = [
+        "//src/native/identity:attune_identity",
+        "//src/native/parquet:attune_parquet",
+    ],
+    threads = 2,
+)
+
+java_binary(
+    name = "analysis",
+    jvm_flags = [
+        "--add-opens=java.base/java.nio=ALL-UNNAMED",
+        "--enable-native-access=ALL-UNNAMED",
+    ],
+    main_class = "Main",
+    visibility = ["//visibility:public"],
+    runtime_deps = [":analysis_flix"],
+)

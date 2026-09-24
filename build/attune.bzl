@@ -88,6 +88,14 @@ AttuneLocalizationEvaluationsInfo = provider(
     },
 )
 
+AttuneAtlasLocalizationInfo = provider(
+    doc = "Post-hoc typed join of two independently frozen experiments.",
+    fields = {
+        "cases": "one typed row per completed localization case",
+        "report": "plain-language post-hoc analysis report",
+    },
+)
+
 def _jvm_property(name, value):
     return "--jvm_flag=-D%s=%s" % (name, value)
 
@@ -681,6 +689,48 @@ attune_localization_evaluations = rule(
     implementation = _localization_evaluations_impl,
     attrs = {
         "evaluations": attr.label_list(providers = [AttuneLocalizationEvaluationInfo], mandatory = True),
+        "tool": attr.label(executable = True, cfg = "exec", mandatory = True),
+    },
+)
+
+def _atlas_localization_analysis_impl(ctx):
+    atlas = ctx.attr.atlas[AttuneAtlasAggregateInfo]
+    localization = ctx.attr.localization[AttuneLocalizationEvaluationsInfo]
+    cases = ctx.actions.declare_file(ctx.label.name + "/cases.parquet")
+    report = ctx.actions.declare_file(ctx.label.name + "/REPORT.md")
+    args = ctx.actions.args()
+    for name, value in [
+        ("attune.atlas_summaries", atlas.summaries.path),
+        ("attune.atlas_physical", atlas.physical.path),
+        ("attune.localization_metrics", localization.metrics.path),
+        ("attune.localization_telemetry", localization.telemetry.path),
+        ("attune.output_cases", cases.path),
+        ("attune.output_report", report.path),
+    ]:
+        args.add(_jvm_property(name, value))
+    ctx.actions.run(
+        executable = ctx.executable.tool,
+        arguments = [args],
+        inputs = [
+            atlas.summaries,
+            atlas.physical,
+            localization.metrics,
+            localization.telemetry,
+        ],
+        outputs = [cases, report],
+        mnemonic = "AttuneAtlasLocalizationAnalysis",
+        progress_message = "Joining frozen Atlas and localization results %{label}",
+    )
+    return [
+        DefaultInfo(files = depset([cases, report])),
+        AttuneAtlasLocalizationInfo(cases = cases, report = report),
+    ]
+
+attune_atlas_localization_analysis = rule(
+    implementation = _atlas_localization_analysis_impl,
+    attrs = {
+        "atlas": attr.label(providers = [AttuneAtlasAggregateInfo], mandatory = True),
+        "localization": attr.label(providers = [AttuneLocalizationEvaluationsInfo], mandatory = True),
         "tool": attr.label(executable = True, cfg = "exec", mandatory = True),
     },
 )

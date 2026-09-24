@@ -2,6 +2,7 @@
 
 load(
     "//build:attune.bzl",
+    "attune_atlas_localization_analysis",
     "attune_decision_bundle",
     "attune_decision_bundles",
     "attune_localization_evaluation",
@@ -166,5 +167,12 @@ def frozen_localization(enabled):
         name = "localization_evaluation",
         evaluations = evaluations,
         tool = "//experiments/localization-swe-explore:aggregate_evaluation",
+        visibility = ["//visibility:public"],
+    )
+    attune_atlas_localization_analysis(
+        name = "atlas_localization_analysis",
+        atlas = "//experiments/atlas-swe-explore/census:atlas_data",
+        localization = ":localization_evaluation",
+        tool = "//experiments/atlas-localization:analysis",
         visibility = ["//visibility:public"],
     )

@@ -55,6 +55,13 @@ oracle is not deployable. It says that substantially better states already
 exist inside the same finite Atlas family and that selection is currently the
 larger accuracy problem.
 
+Because the localization result and issue-blind census were frozen separately,
+their exact snapshot identities can also be joined without retuning either one.
+The [post-hoc Atlas/localization report](experiments/atlas-localization/REPORT.md)
+shows the seven repository regimes and the measured relationships between
+extinction, reach, recurrence, physical reuse, prior quality, selector delta,
+oracle headroom, and context-efficiency delta.
+
 The execution result is at least as important as the score:
 
 | Measured path | Provider work | Retained tokens | Reported decision cost | Whole-process wall time |
