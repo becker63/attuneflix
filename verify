@@ -4,40 +4,6 @@ set -euo pipefail
 root=$(cd "$(dirname "$0")" && pwd)
 cd "$root"
 
-# Verification is intentionally keyless and cannot inherit an acquisition,
-# evaluator, diagnosis, or hillclimb gate from the caller's shell.
-unset OPENROUTER_API_KEY \
-  ATTUNE_CASE_SHARD \
-  ATTUNE_HILLCLIMB_MODE \
-  ATTUNE_JEV_CANDIDATE_EVALUATION \
-  ATTUNE_JEV_CANDIDATE_OUTCOMES \
-  ATTUNE_JEV_CANDIDATE_PROTOCOL \
-  ATTUNE_JEV_DIAGNOSE \
-  ATTUNE_JEV_EVALUATE \
-  ATTUNE_JEV_MODE \
-  ATTUNE_JEV_START \
-  ATTUNE_PRIOR_MODE \
-  ATTUNE_SCALE_GENERALIZATION_MODE \
-  ATTUNE_SCALE_GENERALIZATION_END \
-  ATTUNE_SCALE_GENERALIZATION_START \
-  ATTUNE_SCALE_MODE \
-  ATTUNE_SCALE_PRIOR_END \
-  ATTUNE_SCALE_PRIOR_START
-
-python nix/check-data-plane.py --self-test
-python nix/check-data-plane.py
-./src/native/grit/build
-./src/native/nix/build
-./src/native/inference/build
-./src/native/parquet/build
-java --enable-native-access=ALL-UNNAMED \
-  -cp .build/grit/attune-grit.jar:.build/grit/test-classes \
-  attune.grit.AttuneGritTest
-java --enable-native-access=ALL-UNNAMED \
-  -cp .build/nix/attune-nix.jar:.build/nix/test-classes \
-  attune.nix.AttuneNixTest
-java --enable-native-access=ALL-UNNAMED \
-  --add-opens=java.base/java.nio=ALL-UNNAMED \
-  -cp .build/parquet/attune-parquet.jar:.build/parquet/test-classes \
-  attune.parquet.AttuneParquetTest
-flix test
+# Bazel is the one verification graph. Nix supplies the intentionally small
+# developer shell and secret-safe credential helper, not project construction.
+exec nix develop --command bazel test //... --config=buildbuddy-rbe "$@"

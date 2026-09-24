@@ -5,7 +5,6 @@ exports_files([
     "Atlas/Signature/Table.flix",
     "Decide/Table.flix",
     "Decide.flix",
-    "Localization.flix",
     "Localization/Result.flix",
     "Localization/EvaluationData.flix",
     "Localization/EvaluationTable.flix",
@@ -24,7 +23,6 @@ exports_files([
     "Repository/Table.flix",
     "Repository/Grit.flix",
     "Repository/Identity.flix",
-    "Repository/Nix.flix",
     "Repository/Structure.flix",
     "ScientificTable.flix",
 ])

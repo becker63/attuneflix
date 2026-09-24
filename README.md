@@ -1657,8 +1657,11 @@ checks and current schemas.
 
 Bazel owns declared builds, tests, and deterministic derived artifacts.
 BuildBuddy remotely executes and caches that graph. Flix owns the scientific
-semantics. Java and Rust are narrow foreign-runtime seams. Nix supplies the
-developer shell while its former runtime responsibilities move into Bazel.
+semantics. Java and Rust are narrow foreign-runtime seams. Nix supplies only
+the developer shell, the secret-safe Bazel wrapper, and two one-time migration
+oracles. There is no `Repository.Nix`, Nix Java FFI, libnix dependency, manual
+JAR staging, or Nix expression evaluation in a normal build, test, replay,
+evaluation, or census action.
 
 ## Repository map
 
@@ -1669,25 +1672,27 @@ experiments/                 frozen protocols, Parquet results, and reports
 docs/architecture/           implementation details
 docs/research/               research history and interpretation
 src/native/                  narrow foreign runtime boundaries
-nix/                         pinned historical/build inputs during migration
+nix/                         two one-time frozen-data migration scripts
+migration/attuneradii/       temporary source record for the earlier prototype
 ```
 
 The frozen 78-case study lives in
 [`experiments/swe-explore-js-ts-scale/`](experiments/swe-explore-js-ts-scale/README.md).
 
-The last complete pre-Bazel scientific checkpoint is verified with:
+The ordinary verification command is a tiny alias for the Bazel graph:
 
 ```console
-nix develop --command ./verify
+./verify
 ```
 
-The target interface is ordinary Bazel:
+With Bazel already on `PATH`, no project Nix evaluation is needed:
 
 ```console
 bazel test //...
-bazel build //experiments/localization:replay
-bazel build //experiments/atlas:signatures
-bazel build //experiments/atlas:report
+bazel build //.attune:localization_replay
+bazel build //.attune:localization_evaluation
+bazel build //.attune:signatures
+bazel build //.attune:atlas_report
 ```
 
 Heavy frozen experiments are explicit build targets, not part of the normal
