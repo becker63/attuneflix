@@ -131,8 +131,8 @@ pub mod ScientificData {
 
     def indexRows(
         rows: List[Row], nodes: Map[List[String], Node],
-        children: Map[List[String], Vector[String]]
-    ): Result[String, {nodes = Map[List[String], Node], children = Map[List[String], Vector[String]]}] =
+        children: Map[List[String], List[String]]
+    ): Result[String, {nodes = Map[List[String], Node], children = Map[List[String], List[String]]}] =
         match rows {
             case Nil => Ok({nodes = nodes, children = children})
             case row :: _ if Map.memberOf(row#path, nodes) => Err("duplicate Parquet tree path")
@@ -142,30 +142,38 @@ pub mod ScientificData {
                     case Nil => indexRows(rest, nodes0, children)
                     case part :: reverseParent => {
                         let parent = List.reverse(reverseParent);
-                        let siblings = Map.get(parent, children) |> Option.getWithDefault(Vector.empty());
-                        indexRows(rest, nodes0, Map.insert(parent, Vector.append(siblings, Vector#{part}), children))
+                        let siblings = Map.get(parent, children) |> Option.getWithDefault(Nil);
+                        // Rows arrive in canonical traversal order. Prepending is O(1);
+                        // `orderedChildren` reverses once when the parent is built.
+                        indexRows(rest, nodes0, Map.insert(parent, part :: siblings, children))
                     }
                 }
             }
         }
 
     def build(path: List[String], nodes: Map[List[String], Node],
-              children: Map[List[String], Vector[String]]): Result[String, {value = Json, nodes = Map[List[String], Node]}] =
+              children: Map[List[String], List[String]]): Result[String, {value = Json, nodes = Map[List[String], Node]}] =
         Map.get(path, nodes) |> Option.toOk("missing Parquet tree node") |> Result.flatMap(node -> {
             let remaining = Map.remove(path, nodes);
             match node {
                 case Node.Value(value) => Ok({value = value, nodes = remaining})
                 case Node.Object => buildObject(
-                    Map.get(path, children) |> Option.getWithDefault(Vector.empty()),
+                    orderedChildren(path, children),
                     0, path, remaining, children, Map.empty())
                 case Node.Array => arrayParts(
-                    Map.get(path, children) |> Option.getWithDefault(Vector.empty()))
-                    |> Result.flatMap(parts -> buildArray(parts, 0, path, remaining, children, Vector.empty()))
+                    orderedChildren(path, children))
+                    |> Result.flatMap(parts -> buildArray(parts, 0, path, remaining, children, Nil))
             }
         })
 
+    def orderedChildren(path: List[String], children: Map[List[String], List[String]]): Vector[String] =
+        Map.get(path, children)
+            |> Option.getWithDefault(Nil)
+            |> List.reverse
+            |> List.toVector
+
     def buildObject(parts: Vector[String], offset: Int32, path: List[String],
-                    nodes: Map[List[String], Node], children: Map[List[String], Vector[String]],
+                    nodes: Map[List[String], Node], children: Map[List[String], List[String]],
                     fields: Map[String, Json]
     ): Result[String, {value = Json, nodes = Map[List[String], Node]}] =
         if (offset >= Vector.length(parts)) Ok({value = JObject(fields), nodes = nodes})
@@ -182,35 +190,31 @@ pub mod ScientificData {
         }
 
     def arrayParts(parts: Vector[String]): Result[String, Vector[(Int32, String)]] =
-        arrayPartsLoop(parts, 0, Vector.empty())
-
-    def arrayPartsLoop(parts: Vector[String], offset: Int32, values: Vector[(Int32, String)]
-    ): Result[String, Vector[(Int32, String)]] =
-        if (offset >= Vector.length(parts)) Ok(values)
-        else {
-            let part = Vector.get(offset, parts);
+        Vector.mapWithIndex((offset, part) -> {
             if (not String.startsWith(prefix = "i:", part)) Err("array row has a non-index child")
             else
             match Int32.parse(10, String.slice(start = 2, end = String.length(part), part)) {
                 case Err(_) => Err("invalid array index")
                 case Ok(index) if index != offset => Err("non-contiguous Parquet tree array")
-                case Ok(index) => arrayPartsLoop(parts, offset + 1,
-                    Vector.append(values, Vector#{(index, part)}))
+                case Ok(index) => Ok((index, part))
             }
-        }
+        }, parts) |> Vector.sequence
 
     def buildArray(parts: Vector[(Int32, String)], expected: Int32, path: List[String],
-                   nodes: Map[List[String], Node], children: Map[List[String], Vector[String]],
-                   values: Vector[Json]
+                   nodes: Map[List[String], Node], children: Map[List[String], List[String]],
+                   reverseValues: List[Json]
     ): Result[String, {value = Json, nodes = Map[List[String], Node]}] =
-        if (expected >= Vector.length(parts)) Ok({value = JArray(values), nodes = nodes})
+        if (expected >= Vector.length(parts)) Ok({
+            value = JArray(List.reverse(reverseValues) |> List.toVector),
+            nodes = nodes
+        })
         else {
             let (index, part) = Vector.get(expected, parts);
             if (index != expected) Err("non-contiguous Parquet tree array")
             else match build(path ::: part :: Nil, nodes, children) {
                 case Err(error) => Err(error)
                 case Ok(child) => buildArray(parts, expected + 1, path, child#nodes,
-                    children, Vector.append(values, Vector#{child#value}))
+                    children, child#value :: reverseValues)
             }
         }
 

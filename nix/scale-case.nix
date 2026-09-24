@@ -29,9 +29,17 @@ let
          else if kind == "regular" && builtins.any (suffix: hasSuffix suffix path) sourceSuffixes
               then [{ inherit path; file = child; }]
               else []) (builtins.attrNames entries));
+  sources = readSources "" snapshot;
+  sourceTreePayload = builtins.concatStringsSep "\n" (map (source:
+    "${toString (builtins.stringLength source.path)}:${source.path}:" +
+    builtins.hashFile "sha256" source.file
+  ) sources);
+  sourceTreeIdentity = "source-tree-js-ts-v1:" + builtins.hashString "sha256" (
+    "extensions=.ts,.tsx,.js,.jsx,.mts,.cts,.mjs,.cjs\n" + sourceTreePayload
+  );
 in
   builtins.toJSON (selected // {
-    inherit snapshot;
+    inherit snapshot sourceTreeIdentity;
     manifest_index = caseIndex;
-    sources = readSources "" snapshot;
+    inherit sources;
   })

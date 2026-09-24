@@ -1,0 +1,138 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Temporary Nix-to-Bazel migration boundary. Nix materializes the exact old
+# source snapshot and emits only the facts required to authenticate and admit
+# its retained observation envelope. Bazel owns every expensive operation
+# after this small oracle record exists.
+if (($# != 1)); then
+  echo "usage: nix/materialize-world-oracles MANIFEST_INDEX|START-END|all" >&2
+  exit 2
+fi
+
+if [[ "$1" == all ]]; then
+  mapfile -t indices < <(seq 0 77)
+elif [[ "$1" =~ ^([0-9]+)-([0-9]+)$ ]]; then
+  start="${BASH_REMATCH[1]}"
+  end="${BASH_REMATCH[2]}"
+  if ((10#$start < 0 || 10#$end >= 78 || 10#$start > 10#$end)); then
+    echo "manifest range must be within 0-77 and ordered" >&2
+    exit 2
+  fi
+  mapfile -t indices < <(seq "$start" "$end")
+else
+  case "$1" in
+    ''|*[!0-9]*)
+      echo "manifest index must be an integer in [0, 77], START-END, or all" >&2
+      exit 2
+      ;;
+  esac
+  if ((10#$1 < 0 || 10#$1 >= 78)); then
+    echo "manifest index must be in [0, 77]" >&2
+    exit 2
+  fi
+  indices=("$1")
+fi
+
+workspace="$(pwd -P)"
+oracle_root="$workspace/.attune/repository-world-migration-inputs"
+mkdir -p "$oracle_root"
+
+for index in "${indices[@]}"; do
+  output="$oracle_root/$index.json"
+  temporary="$(mktemp "$oracle_root/$index.json.XXXXXX")"
+  nix eval --impure --raw \
+    --expr "import $workspace/nix/scale-case.nix { caseIndex = $index; }" |
+    jq -ce '{
+      version: 1,
+      manifest_index: .manifest_index,
+      instance_id: .instance_id,
+      repository: .repository,
+      base_revision: .base_revision,
+      population: .population,
+      source_tree_identity: .sourceTreeIdentity,
+      legacy_snapshot: .snapshot,
+      source_paths: [.sources[].path]
+    } | select(
+      (.manifest_index == '"$index"') and
+      (.source_tree_identity | startswith("source-tree-js-ts-v1:")) and
+      (.source_paths | length > 0)
+    )' > "$temporary"
+  mv "$temporary" "$output"
+  printf 'WORLD_ORACLE index=%s paths=%s\n' \
+    "$index" "$(jq -r '.source_paths | length' "$output")"
+done
+
+# Generated migration graph. The legacy Nix-store pathname is an input only;
+# fact_identity and snapshot_id are computed from content and admitted meaning.
+build_tmp="$(mktemp "$workspace/.attune/BUILD.bazel.XXXXXX")"
+{
+  printf 'load("//build:attune.bzl", "attune_atlas_aggregate", "attune_atlas_report", "attune_atlas_signature", "attune_atlas_signature_summaries", "attune_atlas_signature_summary", "attune_atlas_signatures", "attune_world_migration")\n\n'
+  targets=()
+  signatures=()
+  summaries=()
+  mapfile -t oracle_files < <(find "$oracle_root" -maxdepth 1 -type f -name '*.json' -print | sort -V)
+  for oracle in "${oracle_files[@]}"; do
+    index="$(basename "$oracle" .json)"
+    revision="$(jq -r '.base_revision' "$oracle")"
+    repository="$(jq -r '.repository' "$oracle")"
+    population="$(jq -r '.population' "$oracle")"
+    source_tree="$(jq -r '.source_tree_identity' "$oracle")"
+    target="world_$(printf '%02d' "$index")"
+    signature="signature_$(printf '%02d' "$index")"
+    summary="summary_$(printf '%02d' "$index")"
+    if [[ "$population" == historical-development ]]; then
+      retained="repository-facts-v1/$revision.parquet"
+    else
+      retained="repository-facts-js-ts-scale-v1/$revision.parquet"
+    fi
+    if [[ ! -s "$workspace/.attune/$retained" ]]; then
+      echo "retained fact artifact missing for manifest index $index" >&2
+      exit 1
+    fi
+    targets+=(":$target")
+    signatures+=(":$signature")
+    summaries+=(":$summary")
+    printf 'attune_world_migration(\n'
+    printf '    name = "%s",\n' "$target"
+    printf '    base_revision = "%s",\n' "$revision"
+    printf '    oracle = "repository-world-migration-inputs/%s.json",\n' "$index"
+    printf '    repository = "%s",\n' "$repository"
+    printf '    retained_observations = "%s",\n' "$retained"
+    printf '    source_tree_identity = "%s",\n' "$source_tree"
+    printf '    tool = "//migration/world:migrate",\n'
+    printf ')\n\n'
+    printf 'attune_atlas_signature(\n'
+    printf '    name = "%s",\n' "$signature"
+    printf '    tool = "//experiments/atlas-swe-explore:signature",\n'
+    printf '    world = ":%s",\n' "$target"
+    printf ')\n\n'
+    printf 'attune_atlas_signature_summary(\n'
+    printf '    name = "%s",\n' "$summary"
+    printf '    signature = ":%s",\n' "$signature"
+    printf '    tool = "//experiments/atlas-swe-explore:summary",\n'
+    printf ')\n\n'
+  done
+  printf 'filegroup(\n    name = "worlds",\n    srcs = [\n'
+  for target in "${targets[@]}"; do
+    printf '        "%s",\n' "$target"
+  done
+  printf '    ],\n    visibility = ["//visibility:public"],\n)\n'
+  printf '\nattune_atlas_signatures(\n    name = "signatures",\n    signatures = [\n'
+  for signature in "${signatures[@]}"; do
+    printf '        "%s",\n' "$signature"
+  done
+  printf '    ],\n    visibility = ["//visibility:public"],\n)\n'
+  printf '\nattune_atlas_signature_summaries(\n    name = "signature_summaries",\n    summaries = [\n'
+  for summary in "${summaries[@]}"; do
+    printf '        "%s",\n' "$summary"
+  done
+  printf '    ],\n    visibility = ["//visibility:public"],\n)\n'
+  printf '\nattune_atlas_aggregate(\n    name = "atlas_data",\n    summaries = [\n'
+  for summary in "${summaries[@]}"; do
+    printf '        "%s",\n' "$summary"
+  done
+  printf '    ],\n    tool = "//experiments/atlas-swe-explore:aggregate",\n    visibility = ["//visibility:public"],\n)\n'
+  printf '\nattune_atlas_report(\n    name = "atlas_report",\n    aggregate = ":atlas_data",\n    tool = "//experiments/atlas-swe-explore:report",\n    visibility = ["//visibility:public"],\n)\n'
+} > "$build_tmp"
+mv "$build_tmp" "$workspace/.attune/BUILD.bazel"

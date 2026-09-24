@@ -12,6 +12,11 @@ build --tool_java_runtime_version=remotejdk_25
 # @gritql_source. They are not main-repository packages.
 build --deleted_packages=resources/language-metavariables/tree-sitter-javascript,resources/language-metavariables/tree-sitter-typescript,vendor/tree-sitter-facade,vendor/tree-sitter-gritql,vendor/web-tree-sitter
 test --test_output=errors
+# `bazel test //...` is the ordinary law suite. Bazel otherwise also builds
+# every non-test target matched by `//...`, including the explicit Atlas
+# census graph. Heavy deterministic science remains available through its
+# named `bazel build` targets.
+test --build_tests_only
 
 # Authentication is supplied by the local credential helper from ignored .env.
 build:buildbuddy --bes_results_url=https://app.buildbuddy.io/invocation/

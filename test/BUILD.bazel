@@ -52,6 +52,28 @@ checked_test(
 )
 
 flix_check(
+    name = "repository_admission_check",
+    srcs = [
+        "//build:src/RepositoryAdmissionTest.flix",
+        "//src:Repository.flix",
+        "//src:Repository/Grit.flix",
+        "//src:Repository/Structure.flix",
+        "//src:ScientificData.flix",
+    ],
+    command = "test",
+    java_deps = [
+        "//src/native/grit:attune_grit",
+        "//src/native/parquet:attune_parquet",
+    ],
+    threads = 2,
+)
+
+checked_test(
+    name = "repository_admission_test",
+    check = ":repository_admission_check",
+)
+
+flix_check(
     name = "atlas_grammar_check",
     srcs = [
         "//build:src/AtlasTest.flix",
@@ -96,10 +118,14 @@ flix_check(
         "//build:src/RepositoryTableTest.flix",
         "//src:Repository/Table.flix",
         "//src:Repository/Structure.flix",
+        "//src:ScientificIdentity.flix",
         "//src:ScientificTable.flix",
     ],
     command = "test",
-    java_deps = ["//src/native/parquet:attune_parquet"],
+    java_deps = [
+        "//src/native/identity:attune_identity",
+        "//src/native/parquet:attune_parquet",
+    ],
     threads = 2,
 )
 

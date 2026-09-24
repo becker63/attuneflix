@@ -1,0 +1,26 @@
+[package]
+name = "attune-world-migration"
+description = "One-time retained repository world migration"
+version = "0.0.0"
+flix = "0.76.0"
+authors = ["Attune"]
+
+[jar-dependencies]
+"attune-grit.jar" = "url:file:.jars/attune-grit.jar"
+"attune-nix.jar" = "url:file:.jars/attune-nix.jar"
+"attune-identity.jar" = "url:file:.jars/libattune_identity.jar"
+"attune-parquet.jar" = "url:file:.jars/libattune_parquet.jar"
+"jackson-core.jar" = "url:file:.jars/processed_jackson-core-2.22.1.jar"
+"jackson-databind.jar" = "url:file:.jars/processed_jackson-databind-2.22.1.jar"
+"jackson-annotations.jar" = "url:file:.jars/processed_jackson-annotations-2.22.jar"
+"arrow-dataset.jar" = "url:file:.jars/processed_arrow-dataset-19.0.0.jar"
+"arrow-c-data.jar" = "url:file:.jars/processed_arrow-c-data-19.0.0.jar"
+"arrow-memory-core.jar" = "url:file:.jars/processed_arrow-memory-core-19.0.0.jar"
+"slf4j-api.jar" = "url:file:.jars/processed_slf4j-api-2.0.18.jar"
+"arrow-vector.jar" = "url:file:.jars/processed_arrow-vector-19.0.0.jar"
+"jackson-jsr310.jar" = "url:file:.jars/processed_jackson-datatype-jsr310-2.21.0.jar"
+"flatbuffers.jar" = "url:file:.jars/processed_flatbuffers-java-25.2.10.jar"
+"commons-codec.jar" = "url:file:.jars/processed_commons-codec-1.21.0.jar"
+"arrow-format.jar" = "url:file:.jars/processed_arrow-format-19.0.0.jar"
+"arrow-memory-unsafe.jar" = "url:file:.jars/processed_arrow-memory-unsafe-19.0.0.jar"
+"slf4j-nop.jar" = "url:file:.jars/processed_slf4j-nop-2.0.18.jar"

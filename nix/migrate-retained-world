@@ -1,0 +1,116 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Temporary oracle runner. This is the one remaining reason this migration
+# evaluates project Nix: it materializes the exact source tree path named by
+# the old retained observation envelope. The output is path-independent typed
+# Parquet consumed by Bazel; this script and Repository.Nix are deleted after
+# all 78 cases have migrated and the source acquisition parity audit is frozen.
+if (($# != 1)); then
+  echo "usage: nix/migrate-retained-world MANIFEST_INDEX|START-END|all" >&2
+  exit 2
+fi
+
+if [[ "$1" == all ]]; then
+  mapfile -t indices < <(seq 0 77)
+elif [[ "$1" =~ ^([0-9]+)-([0-9]+)$ ]]; then
+  start="${BASH_REMATCH[1]}"
+  end="${BASH_REMATCH[2]}"
+  if ((10#$start < 0 || 10#$end >= 78 || 10#$start > 10#$end)); then
+    echo "manifest range must be within 0-77 and ordered" >&2
+    exit 2
+  fi
+  mapfile -t indices < <(seq "$start" "$end")
+else
+  case "$1" in
+    ''|*[!0-9]*)
+      echo "manifest index must be an integer in [0, 77], START-END, or all" >&2
+      exit 2
+      ;;
+  esac
+  if ((10#$1 < 0 || 10#$1 >= 78)); then
+    echo "manifest index must be in [0, 77]" >&2
+    exit 2
+  fi
+  indices=("$1")
+fi
+
+export ATTUNE_WORKSPACE="$(pwd -P)"
+unset OPENROUTER_API_KEY
+
+# Compile against the current Bazel-owned SHA and typed Parquet seams. The old
+# Nix and Grit jars are inputs only because Repository.Nix and Repository.Grit
+# declare those FFI classes; this command never executes Grit or inference.
+nix develop --command bazel build \
+  //src/native/identity:attune_identity \
+  //src/native/parquet:attune_parquet \
+  --config=buildbuddy-rbe \
+  --remote_download_outputs=all \
+  --jobs=8
+
+java_info='@@rules_java+//java/private:java_info.bzl%JavaInfo'
+mapfile -t bazel_jars < <(nix develop --command bazel cquery \
+  'set(//src/native/parquet:attune_parquet //src/native/identity:attune_identity)' \
+  --output=starlark \
+  --starlark:expr='"\n".join([f.path for f in providers(target)["'"$java_info"'"].transitive_runtime_jars.to_list()])' \
+  --config=buildbuddy-rbe 2>/dev/null)
+
+project="$ATTUNE_WORKSPACE/nix/migrate-world"
+mkdir -p "$project/src" "$project/.jars"
+sources=(
+  Repository.flix
+  Repository/Grit.flix
+  Repository/Nix.flix
+  Repository/Structure.flix
+  Repository/Table.flix
+  ScientificData.flix
+  ScientificIdentity.flix
+  ScientificTable.flix
+)
+for source in "${sources[@]}"; do
+  link="$project/src/$source"
+  mkdir -p "$(dirname "$link")"
+  ln -sfn "$ATTUNE_WORKSPACE/src/$source" "$link"
+done
+ln -sfn "$ATTUNE_WORKSPACE/.build/grit/attune-grit.jar" \
+  "$project/.jars/attune-grit.jar"
+ln -sfn "$ATTUNE_WORKSPACE/.build/nix/attune-nix.jar" \
+  "$project/.jars/attune-nix.jar"
+for jar in "${bazel_jars[@]}"; do
+  ln -sfn "$ATTUNE_WORKSPACE/$jar" "$project/.jars/$(basename "$jar")"
+done
+
+nix develop --command bazel shutdown
+
+# Compile the fixed migration program once. Each case still gets a fresh JVM
+# below, which bounds the lifetime of the large legacy JSON envelope, but it no
+# longer pays for Flix dependency resolution and compilation 78 times.
+(
+  cd "$project"
+  JAVA_TOOL_OPTIONS='-XX:ActiveProcessorCount=2 -Xss128m' \
+  nice -n 10 taskset -c 0,1 \
+  nix develop "$ATTUNE_WORKSPACE" --command flix build-fatjar \
+    --entrypoint MigrateWorld.main \
+    --no-install \
+    --threads 2
+)
+migration_jar="$project/artifact/migrate-world.jar"
+if [[ ! -s "$migration_jar" ]]; then
+  echo "Flix did not produce the migration fatjar: $migration_jar" >&2
+  exit 1
+fi
+
+for index in "${indices[@]}"; do
+  marker="$ATTUNE_WORKSPACE/.attune/repository-world-migration-v1/$index.done"
+  if [[ -f "$marker" ]]; then
+    echo "WORLD_MIGRATION index=$index already_exact=true"
+    continue
+  fi
+  export ATTUNE_SCALE_WORLD_INDEX="$index"
+  JAVA_TOOL_OPTIONS='-XX:ActiveProcessorCount=2 -Xss128m' \
+  nice -n 10 taskset -c 0,1 \
+  nix develop "$ATTUNE_WORKSPACE" --command java \
+    --enable-native-access=ALL-UNNAMED \
+    --add-opens=java.base/java.nio=ALL-UNNAMED \
+    -jar "$migration_jar"
+done

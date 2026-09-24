@@ -1,4 +1,4 @@
-def main(): Unit \ IO = {
+def main(): Unit \ {Fs.FileSystem, IO} = {
     CensusMain.execute()
 }
 
@@ -9,17 +9,20 @@ mod CensusMain {
     import java.lang.System
     import java.lang.Integer
 
+    use Fs.FileSystem
+
     type alias Output = {
         observations = Vector[ScientificTable.Row],
         physical     = Vector[ScientificTable.Row]
     }
 
-    pub def execute(): Unit \ IO = {
+    pub def execute(): Unit \ {FileSystem, IO} = {
         let command = System.getProperty("attune.command");
         match command {
             case "protocol" => printProtocol()
             case "fixture" => writeFixture()
             case "signature" => writeSignature()
+            case "signature-dynamic" => writeDynamicSignature()
             case _ => bug!("unknown Atlas census command: ${command}")
         }
     }
@@ -66,27 +69,33 @@ mod CensusMain {
         println("symbol_ending_programs=${counts#complete}")
     }
 
-    def writeSignature(): Unit \ IO = {
-        let repository = property("attune.repository");
-        let revision = property("attune.base_revision");
-        let sourceTree = property("attune.source_tree_identity");
-        let facts = property("attune.fact_identity");
-        let snapshotId = property("attune.snapshot_id");
-        let worldIdentity: Repository.Table.Identity = {
-            repository = repository,
-            baseRevision = revision,
-            sourceTreeIdentity = sourceTree,
-            factIdentity = facts,
-            snapshotId = snapshotId
-        };
+    def writeDynamicSignature(): Unit \ {FileSystem, IO} =
+        match FileSystem.read(property("attune.world_identity")) |> Result.mapErr(ToString.toString) {
+            case Err(error) => bug!(error)
+            case Ok(payload) => match Repository.Identity.decode(payload) {
+                case Err(error) => bug!(error)
+                case Ok(identity) => writeSignatureFor(identity)
+            }
+        }
+
+    def writeSignature(): Unit \ IO =
+        writeSignatureFor({
+            repository = property("attune.repository"),
+            baseRevision = property("attune.base_revision"),
+            sourceTreeIdentity = property("attune.source_tree_identity"),
+            factIdentity = property("attune.fact_identity"),
+            snapshotId = property("attune.snapshot_id")
+        })
+
+    def writeSignatureFor(worldIdentity: Repository.Table.Identity): Unit \ IO = {
         let snapshot: Atlas.Signature.Table.SnapshotIdentity = {
             signatureProtocol = "atlas-signature-swe-explore-v1",
             atlasProtocol = "atlas-composition-depth7-v1",
-            repository = repository,
-            baseRevision = revision,
-            sourceTreeIdentity = sourceTree,
-            factIdentity = facts,
-            snapshotId = snapshotId
+            repository = worldIdentity#repository,
+            baseRevision = worldIdentity#baseRevision,
+            sourceTreeIdentity = worldIdentity#sourceTreeIdentity,
+            factIdentity = worldIdentity#factIdentity,
+            snapshotId = worldIdentity#snapshotId
         };
         match Repository.Table.read(
             property("attune.world_metadata"),
@@ -112,7 +121,7 @@ mod CensusMain {
                         Atlas.Signature.Table.snapshots(), Vector#{
                             Atlas.Signature.Table.snapshotRow(snapshot, world, manifestCaseCount)
                         });
-                    println("ATLAS_SIGNATURE snapshot=${snapshotId}" +
+                    println("ATLAS_SIGNATURE snapshot=${worldIdentity#snapshotId}" +
                         " seeds=${Vector.length(seeds)}" +
                         " observations=${Vector.length(output#observations)}")
                 }

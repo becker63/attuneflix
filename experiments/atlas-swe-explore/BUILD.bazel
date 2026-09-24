@@ -1,5 +1,5 @@
 load("//build:flix.bzl", "flix_fatjar")
-load("//build:attune.bzl", "attune_atlas_signature", "attune_world_fixture")
+load("//build:attune.bzl", "attune_atlas_signature", "attune_atlas_signature_summary", "attune_world_fixture")
 
 flix_fatjar(
     name = "signature_flix",
@@ -11,6 +11,7 @@ flix_fatjar(
         "//src:Atlas/Signature/Table.flix",
         "//src:Radii.flix",
         "//src:Repository/Physical.flix",
+        "//src:Repository/Identity.flix",
         "//src:Repository/Table.flix",
         "//src:Repository/Structure.flix",
         "//src:ScientificIdentity.flix",
@@ -31,6 +32,108 @@ java_binary(
     ],
     main_class = "Main",
     runtime_deps = [":signature_flix"],
+    visibility = ["//visibility:public"],
+)
+
+# Summary/report semantics compile separately so changing a reduction does not
+# invalidate the expensive immutable per-snapshot observation actions.
+flix_fatjar(
+    name = "summary_flix",
+    srcs = [
+        "Summary.flix",
+        "//build:src/AtlasRepository.flix",
+        "//src:Atlas.flix",
+        "//src:Atlas/Signature.flix",
+        "//src:Atlas/Signature/Summary.flix",
+        "//src:Atlas/Signature/Table.flix",
+        "//src:Radii.flix",
+        "//src:Repository/Physical.flix",
+        "//src:Repository/Structure.flix",
+        "//src:ScientificIdentity.flix",
+        "//src:ScientificTable.flix",
+    ],
+    java_deps = [
+        "//src/native/identity:attune_identity",
+        "//src/native/parquet:attune_parquet",
+    ],
+    threads = 2,
+)
+
+java_binary(
+    name = "summary",
+    jvm_flags = [
+        "--add-opens=java.base/java.nio=ALL-UNNAMED",
+        "--enable-native-access=ALL-UNNAMED",
+    ],
+    main_class = "Main",
+    runtime_deps = [":summary_flix"],
+    visibility = ["//visibility:public"],
+)
+
+flix_fatjar(
+    name = "aggregate_flix",
+    srcs = [
+        "Aggregate.flix",
+        "//build:src/AtlasRepository.flix",
+        "//src:Atlas.flix",
+        "//src:Atlas/Signature.flix",
+        "//src:Atlas/Signature/Summary.flix",
+        "//src:Atlas/Signature/Table.flix",
+        "//src:Radii.flix",
+        "//src:Repository/Physical.flix",
+        "//src:Repository/Structure.flix",
+        "//src:ScientificIdentity.flix",
+        "//src:ScientificTable.flix",
+    ],
+    java_deps = [
+        "//src/native/identity:attune_identity",
+        "//src/native/parquet:attune_parquet",
+    ],
+    threads = 2,
+)
+
+java_binary(
+    name = "aggregate",
+    jvm_flags = [
+        "--add-opens=java.base/java.nio=ALL-UNNAMED",
+        "--enable-native-access=ALL-UNNAMED",
+    ],
+    main_class = "Main",
+    runtime_deps = [":aggregate_flix"],
+    visibility = ["//visibility:public"],
+)
+
+flix_fatjar(
+    name = "report_flix",
+    srcs = [
+        "Report.flix",
+        "//build:src/AtlasRepository.flix",
+        "//src:Atlas.flix",
+        "//src:Atlas/Signature.flix",
+        "//src:Atlas/Signature/Summary.flix",
+        "//src:Atlas/Signature/Table.flix",
+        "//src:Radii.flix",
+        "//src:Repository/Physical.flix",
+        "//src:Repository/Structure.flix",
+        "//src:ScientificIdentity.flix",
+        "//src:ScientificTable.flix",
+    ],
+    java_deps = [
+        "//src/native/identity:attune_identity",
+        "//src/native/parquet:attune_parquet",
+    ],
+    threads = 2,
+)
+
+java_binary(
+    name = "report",
+    jvm_flags = [
+        "--add-opens=java.base/java.nio=ALL-UNNAMED",
+        "--enable-native-access=ALL-UNNAMED",
+    ],
+    main_class = "Main",
+    runtime_deps = [":report_flix"],
+    visibility = ["//visibility:public"],
 )
 
 genrule(
@@ -55,4 +158,10 @@ attune_atlas_signature(
     name = "signature_fixture",
     tool = ":signature",
     world = ":world_fixture",
+)
+
+attune_atlas_signature_summary(
+    name = "summary_fixture",
+    signature = ":signature_fixture",
+    tool = ":summary",
 )

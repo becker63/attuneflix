@@ -76,9 +76,24 @@ pub mod Atlas.Signature.Table {
         snapshot: SnapshotIdentity,
         seed: SeedIdentity,
         signature: Atlas.Signature.Signature
-    ): Vector[ScientificTable.Row] \ IO =
-        Vector.map(observation -> observationRow(snapshot, seed, observation),
-            signature#observations)
+    ): Vector[ScientificTable.Row] \ IO = {
+        // Many logical routes intentionally converge on the same exact set.
+        // Canonicalizing that large set once per unique semantic state keeps
+        // persisted identity exact without repeatedly sorting identical IDs.
+        let (_, reverseRows) = Vector.foldLeft((acc, observation) -> {
+            let (stateIds, rows) = acc;
+            match Map.get(observation#output, stateIds) {
+                case Some(stateId0) =>
+                    (stateIds, observationRow(snapshot, seed, observation, stateId0) :: rows)
+                case None => {
+                    let stateId0 = Atlas.Signature.stateId(observation#output);
+                    (Map.insert(observation#output, stateId0, stateIds),
+                        observationRow(snapshot, seed, observation, stateId0) :: rows)
+                }
+            }
+        }, (Map.empty(), Nil), signature#observations);
+        List.reverse(reverseRows) |> List.toVector
+    }
 
     /// Physical work for this seed. Every transition-table miss inserts one
     /// memo cell, hence `memo_cells == physical_transition_evaluations` for
@@ -139,10 +154,10 @@ pub mod Atlas.Signature.Table {
     def observationRow(
         snapshot: SnapshotIdentity,
         seed: SeedIdentity,
-        observation: Atlas.Signature.Observation
+        observation: Atlas.Signature.Observation,
+        stateId0: String
     ): ScientificTable.Row \ IO = {
         let routeId = Atlas.Signature.routeId(observation#program);
-        let stateId = Atlas.Signature.stateId(observation#output);
         let atoms = Vector.map(Atlas.Signature.atomName, observation#program#steps);
         Map#{
             "signature_protocol" => JString(snapshot#signatureProtocol),
@@ -169,7 +184,7 @@ pub mod Atlas.Signature.Table {
             "reach_fraction" => ToJson.toJson(observation#reachFraction),
             "extinct" => JBool(observation#extinct),
             "first_extinction_depth" => optionalInt(observation#firstExtinctionDepth),
-            "semantic_state_id" => JString(stateId),
+            "semantic_state_id" => JString(stateId0),
             "same_as_input" => JBool(observation#sameAsInput)
         }
     }

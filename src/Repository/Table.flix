@@ -77,6 +77,25 @@ pub mod Repository.Table {
         relations = relationRows(identity#snapshotId, world)
     }
 
+    /// Semantic fact identity. This includes the admitted source tree and
+    /// Grit/Marzano protocol plus the canonical nominal world. Store paths,
+    /// Parquet bytes, and evaluator representations are deliberately absent.
+    pub def factIdentity(
+        sourceTreeIdentity: String,
+        gritIdentity: String,
+        world: Repository.World
+    ): String \ IO = ScientificIdentity.versioned("repository-facts-v2",
+        field(sourceTreeIdentity) + field(gritIdentity) + worldPayload(world))
+
+    pub def snapshotIdentity(
+        repository: String,
+        baseRevision: String,
+        sourceTreeIdentity: String,
+        factIdentity0: String
+    ): String \ IO = ScientificIdentity.versioned("repository-snapshot-v1",
+        field(repository) + field(baseRevision) +
+        field(sourceTreeIdentity) + field(factIdentity0))
+
     /// Decode only the exact declared snapshot. Row order is not trusted;
     /// ordinals restore the vectors that define nominal FileId/SymbolId values.
     pub def world(expected: Identity, rows0: Rows): Result[String, Repository.World] = forM (
@@ -130,6 +149,37 @@ pub mod Repository.Table {
         "unresolved_imports" => ToJson.toJson(world#unresolvedImports),
         "unresolved_calls" => ToJson.toJson(world#unresolvedCalls)
     }
+
+    def worldPayload(world: Repository.World): String = {
+        let files = Vector.mapWithIndex((ordinal, path) ->
+            "F:${ordinal}:${field(path)}", world#files);
+        let symbols = Vector.mapWithIndex((ordinal, symbol) ->
+            "S:${ordinal}:${field(symbol#path)}${field(symbol#name)}:${symbol#startByte}:${symbol#endByte}",
+            world#symbols);
+        let defines = Set.toVector(world#defines)
+            |> Vector.map(match (source, target) ->
+                "D:${fileId(source)}:${symbolId(target)}")
+            |> Vector.sort;
+        let imports = Set.toVector(world#imports)
+            |> Vector.map(match (source, target) ->
+                "I:${fileId(source)}:${fileId(target)}")
+            |> Vector.sort;
+        let calls = Set.toVector(world#calls)
+            |> Vector.map(match (source, target) ->
+                "C:${symbolId(source)}:${symbolId(target)}")
+            |> Vector.sort;
+        let parents = Set.toVector(world#parents)
+            |> Vector.map(match (source, target) ->
+                "P:${locationId(source)}:${locationId(target)}")
+            |> Vector.sort;
+        Vector.flatten(Vector#{files, symbols, defines, imports, calls, parents})
+            |> Vector.append(Vector#{
+                "UI:${world#unresolvedImports}", "UC:${world#unresolvedCalls}"
+            })
+            |> Vector.join("\n")
+    }
+
+    def field(value: String): String = "${String.length(value)}:${value}"
 
     def fileRows(snapshotId: String, files0: Vector[String]): Vector[ScientificTable.Row] =
         Vector.mapWithIndex((ordinal, path) -> Map#{
@@ -222,7 +272,7 @@ pub mod Repository.Table {
         let entries = Vector.filterMap(match entity -> match entity {
             case Entity.File(ordinal, path) => Some((ordinal, path))
             case _ => None
-        }, entities0) |> Vector.sortBy(match (ordinal, _) -> ordinal);
+        }, entities0) |> canonicalOrdinals;
         requireOrdinals(entries) |> Result.map(_ -> Vector.map(match (_, path) -> path, entries))
     }
 
@@ -232,9 +282,25 @@ pub mod Repository.Table {
                 path = path, name = name, startByte = start, endByte = end
             }))
             case _ => None
-        }, entities0) |> Vector.sortBy(match (ordinal, _) -> ordinal);
+        }, entities0) |> canonicalOrdinals;
         requireOrdinals(entries) |> Result.map(_ -> Vector.map(match (_, value) -> value, entries))
     }
+
+    /// Typed tables are written in ordinal order. Preserve that common path
+    /// without feeding an already-sorted large vector to Flix's recursive
+    /// quicksort. Noncanonical readers retain the same sorting semantics.
+    def canonicalOrdinals(entries: Vector[(Int32, a)]): Vector[(Int32, a)] =
+        if (ordinalsOrdered(entries, 1)) entries
+        else Vector.sortBy(match (ordinal, _) -> ordinal, entries)
+
+    def ordinalsOrdered(entries: Vector[(Int32, a)], index: Int32): Bool =
+        if (index >= Vector.length(entries)) true
+        else {
+            let (previous, _) = Vector.get(index - 1, entries);
+            let (current, _) = Vector.get(index, entries);
+            if (previous <= current) ordinalsOrdered(entries, index + 1)
+            else false
+        }
 
     def requireOrdinals(entries: Vector[(Int32, a)]): Result[String, Unit] =
         match Vector.find(match (index, entry) -> let (ordinal, _) = entry; ordinal != index,

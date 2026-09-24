@@ -245,10 +245,7 @@ mod Repository {
         importFacts: Vector[Repository.Grit.Fact],
         callFacts: Vector[Repository.Grit.Fact]
     ): Result[Error, World] = {
-        let definitions = Vector.sortBy(
-            fact -> (fact#path, fact#startByte, fact#endByte, fact#value),
-            definitions0
-        );
+        let definitions = canonicalDefinitions(definitions0);
         let paths = Vector.map(source -> source#path, sources);
         let fileIds = Vector.mapWithIndex((index, path) -> (path, Repository.Structure.FileId.FileId(index)), paths)
             |> Vector.toMap;
@@ -276,6 +273,30 @@ mod Repository {
             unresolvedCalls = called#rejected
         }
     }
+
+    /// Grit emits definitions in canonical source/byte order. Retained worlds
+    /// therefore normally arrive sorted already. Detect that linear case
+    /// before calling the standard-library quicksort: on very large snapshots
+    /// its recursive partitioning otherwise takes the worst-case path for an
+    /// already-sorted vector. Unordered API callers retain the exact previous
+    /// sorting rule.
+    def canonicalDefinitions(definitions: Vector[Repository.Grit.Fact]): Vector[Repository.Grit.Fact] =
+        if (definitionsOrdered(definitions, 1)) definitions
+        else Vector.sortBy(factKey, definitions)
+
+    def definitionsOrdered(
+        definitions: Vector[Repository.Grit.Fact],
+        index: Int32
+    ): Bool =
+        if (index >= Vector.length(definitions)) true
+        else if (Order.lessEqual(
+            factKey(Vector.get(index - 1, definitions)),
+            factKey(Vector.get(index, definitions))))
+            definitionsOrdered(definitions, index + 1)
+        else false
+
+    def factKey(fact: Repository.Grit.Fact): (String, Int32, Int32, String) =
+        (fact#path, fact#startByte, fact#endByte, fact#value)
 
     pub def allSymbols(world: World): Set[Repository.Structure.SymbolId] =
         Vector.range(0, Vector.length(world#symbols))
@@ -376,30 +397,43 @@ mod Repository {
             |> Vector.append(Vector.map(suffix -> base + "/index" + suffix, suffixes))
     }
 
-    def resolveCalls(identities: Vector[Identity], facts: Vector[Repository.Grit.Fact]): Resolution[Repository.Structure.SymbolId, Repository.Structure.SymbolId] =
-        Vector.foldLeft((result, fact) -> match callEdge(identities, fact) {
+    /// Physical lookup plan for call admission. The semantic rule is still:
+    /// choose the narrowest enclosing definition as caller, then admit a
+    /// uniquely named local target or, when no local definition exists, a
+    /// uniquely named repository target. Indexing only removes the old full
+    /// definition-vector scans from every observed call.
+    type alias CallIndex = {
+        byPath        = Map[String, Vector[Identity]],
+        localTargets  = Map[(String, String), Set[Repository.Structure.SymbolId]],
+        globalTargets = Map[String, Set[Repository.Structure.SymbolId]]
+    }
+
+    def resolveCalls(identities: Vector[Identity], facts: Vector[Repository.Grit.Fact]): Resolution[Repository.Structure.SymbolId, Repository.Structure.SymbolId] = {
+        let index = callIndex(identities);
+        Vector.foldLeft((result, fact) -> match callEdge(index, fact) {
             case None => {edges = result#edges, rejected = result#rejected + 1}
             case Some(edge) => {edges = Set.insert(edge, result#edges), rejected = result#rejected}
         }, {edges = Set.empty(), rejected = 0}, facts)
+    }
 
-    def callEdge(identities: Vector[Identity], call: Repository.Grit.Fact): Option[(Repository.Structure.SymbolId, Repository.Structure.SymbolId)] =
-        match owner(identities, call) {
+    def callEdge(index: CallIndex, call: Repository.Grit.Fact): Option[(Repository.Structure.SymbolId, Repository.Structure.SymbolId)] =
+        match owner(index, call) {
             case None => None
             case Some(caller) =>
                 let callee = String.replace(src = "?.", dst = ".", call#value);
                 if (dynamic(callee)) None
-                else target(identities, call#path, simpleName(callee))
+                else target(index, call#path, simpleName(callee))
                     |> Option.map(found -> (caller, found))
         }
 
-    def owner(identities: Vector[Identity], call: Repository.Grit.Fact): Option[Repository.Structure.SymbolId] =
+    def owner(index: CallIndex, call: Repository.Grit.Fact): Option[Repository.Structure.SymbolId] =
         Vector.foldLeft((best, identity) -> match identity {
             case (definition, symbol) =>
-                if (definition#path == call#path and definition#startByte <= call#startByte and call#endByte <= definition#endByte)
+                if (definition#startByte <= call#startByte and call#endByte <= definition#endByte)
                     narrowerOwner(best, definition#endByte - definition#startByte, symbol)
                 else
                     best
-        }, None, identities)
+        }, None, Map.getWithDefault(call#path, Vector.empty(), index#byPath))
         |> Option.map(match (_, symbol) -> symbol)
 
     def narrowerOwner(
@@ -412,21 +446,37 @@ mod Repository {
         case _ => best
     }
 
-    def target(identities: Vector[Identity], path: String, name: String): Option[Repository.Structure.SymbolId] = {
-        let local = Vector.filter(match (fact, _) -> fact#path == path and fact#value == name, identities);
-        if (Vector.length(local) == 1)
-            Some(identitySymbol(Vector.get(0, local)))
-        else if (not Vector.isEmpty(local))
+    def target(index: CallIndex, path: String, name: String): Option[Repository.Structure.SymbolId] = {
+        let local = Map.getWithDefault((path, name), Set.empty(), index#localTargets);
+        if (Set.size(local) == 1)
+            Some(Vector.get(0, Set.toVector(local)))
+        else if (Set.size(local) > 0)
             None
         else {
-            let global = Vector.filter(match (fact, _) -> fact#value == name, identities);
-            if (Vector.length(global) == 1) Some(identitySymbol(Vector.get(0, global))) else None
+            let global = Map.getWithDefault(name, Set.empty(), index#globalTargets);
+            if (Set.size(global) == 1) Some(Vector.get(0, Set.toVector(global))) else None
         }
     }
 
-    def identitySymbol(identity: Identity): Repository.Structure.SymbolId = match identity {
-        case (_, symbol) => symbol
-    }
+    def callIndex(identities: Vector[Identity]): CallIndex =
+        Vector.foldLeft((index, identity) -> {
+            let (fact, symbol) = identity;
+            {
+                byPath = Map.insert(fact#path,
+                    Vector.append(Map.getWithDefault(fact#path, Vector.empty(), index#byPath),
+                        Vector#{identity}), index#byPath),
+                localTargets = Map.insert((fact#path, fact#value),
+                    Set.insert(symbol, Map.getWithDefault((fact#path, fact#value), Set.empty(),
+                        index#localTargets)), index#localTargets),
+                globalTargets = Map.insert(fact#value,
+                    Set.insert(symbol, Map.getWithDefault(fact#value, Set.empty(), index#globalTargets)),
+                    index#globalTargets)
+            }
+        }, {
+            byPath = Map.empty(),
+            localTargets = Map.empty(),
+            globalTargets = Map.empty()
+        }, identities)
 
     def dynamic(callee: String): Bool =
         List.exists(marker -> String.contains(substr = marker, callee),

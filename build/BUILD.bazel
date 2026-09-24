@@ -11,6 +11,7 @@ exports_files([
     "src/InferenceBoundaryTest.flix",
     "src/IdentityTest.flix",
     "src/Repository.flix",
+    "src/RepositoryAdmissionTest.flix",
     "src/RepositoryTableTest.flix",
     "src/ScientificTableTest.flix",
 ])

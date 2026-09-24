@@ -6,6 +6,68 @@ It is a systems and research project, not a coding-agent framework. The main
 object is Atlas: a fixed set of programs over definitions, imports, and calls.
 Localization is one use of Atlas.
 
+## Current localization result
+
+This is the sealed JavaScript/TypeScript SWE-Explore result at the official
+five-region budget. The rows are directly comparable with each other because
+they use the same cases, evaluator, region projection, and metric definitions.
+They are not a claim about rank on the full multilingual benchmark.
+
+| Frozen population and condition | Completed | Line F1 | HitFile | Context efficiency | nDCG@500 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| New cases: Qwen semantic prior | 61/63 | **0.1275** | 0.2156 | 0.6125 | 0.6464 |
+| New cases: prior + frozen iteration 013 | 61/63 | 0.1117 | 0.2180 | 0.6518 | **0.6702** |
+| New cases: structural oracle, gold-only diagnostic | 61/63 | 0.2530 | 0.2524 | 0.7989 | 0.7830 |
+| Untouched validation: Qwen semantic prior | 19/21 | **0.2104** | **0.2366** | **0.8521** | **0.8133** |
+| Untouched validation: prior + frozen iteration 013 | 19/21 | 0.1581 | 0.2196 | 0.8251 | 0.8107 |
+| Untouched validation: structural oracle, gold-only diagnostic | 19/21 | 0.3502 | 0.2300 | 0.9621 | 0.8007 |
+
+For scale only, these are selected rows from the SWE-Explore paper's official
+`K = 5` table. They use the same metric definitions, but they are **not a
+matched leaderboard comparison**: the paper evaluates 848 issues across ten
+languages and 203 repositories, while Attune's frozen scale study is the 61
+completed new cases in its JS/TS population. The paper drives every agentic
+explorer below with GPT-5.4.
+
+| Published full-benchmark explorer | Line F1 | HitFile | Context efficiency | nDCG@500 | Comparable latency or cost |
+| --- | ---: | ---: | ---: | ---: | --- |
+| BM25 | 0.024 | 0.079 | 0.087 | 0.132 | not reported |
+| Claude Code | 0.202 | 0.667 | 0.829 | 0.938 | not reported |
+| Codex | 0.223 | 0.649 | 0.762 | 0.901 | not reported |
+| AutoCodeRover | 0.291 | 0.280 | 0.738 | 0.720 | not reported |
+| LocAgent | 0.241 | 0.540 | 0.799 | 0.950 | not reported |
+| CoSIL | 0.602 | 0.544 | 0.898 | 0.824 | not reported |
+
+Source: [SWE-Explore, Table 6](https://arxiv.org/pdf/2606.07297#page=8).
+The missing final column matters. The published quality rows establish the
+numerical neighborhood, but they do not provide a compatible wall-clock or
+provider-cost denominator. Attune therefore reports its own measured work
+directly below and does not invent prices or latencies for other systems.
+
+Iteration 013 is mixed rather than a general win: across the 61 new cases it
+improved 20, tied 28, and regressed 13. It raised aggregate context efficiency
+and nDCG while losing mean F1, including a clear validation regression. The
+oracle is not deployable. It says that substantially better states already
+exist inside the same finite Atlas family and that selection is currently the
+larger accuracy problem.
+
+The execution result is at least as important as the score:
+
+| Measured path | Provider work | Retained tokens | Reported decision cost | Whole-process wall time |
+| --- | ---: | ---: | ---: | ---: |
+| Frozen iteration-013 decision acquisition, 61 cases | 3,911 Jev decisions | 14,648,740 Jev tokens | $0.581381 total; $0.009531/case | 229.53s/case |
+| Exact keyless replay, migration-era sequential runner | none | no new tokens | $0 | 41.00s/case |
+| Same five-case replay before retained-store load-once | none | no new tokens | $0 | 1,943.99s |
+| Same five-case replay after retained-store load-once | none | no new tokens | $0 | **95.62s (20.33x faster)** |
+
+The semantic prior also retained 27,858,287 embedding input tokens. Its
+provider returned no cost field, so total spend is correctly reported as
+$0.581381 of Jev cost plus unknown embedding cost. The provider envelopes did
+not retain request latency; the wall times above are complete measured
+processes, not invented provider percentiles. The [sealed report](experiments/swe-explore-js-ts-scale/REPORT.md)
+contains every metric and case, and the [usage record](experiments/swe-explore-js-ts-scale/USAGE.md)
+contains the token, cost, latency, and memory evidence.
+
 ## The pipeline
 
 ```text
@@ -706,7 +768,7 @@ recurrence. Vue had a compact, regular library layout with much denser
 propagation. Darkreader also had dense reach but a different profile. NodeBB
 had broad static reach around a plugin system while important runtime
 connections were selected through strings and conventions. These are not style
-scores. We got them by reading source next to measured Atlas behavior. The
+scores. Attune got them by reading source next to measured Atlas behavior. The
 counts, limits, and source-level interpretations are in the
 [repository-signature evidence](docs/research/repository-signatures.md).
 
@@ -824,6 +886,85 @@ This is a future performance program, not a claim about current serving
 latency. The measured source is the [sealed usage record](experiments/swe-explore-js-ts-scale/USAGE.md),
 and physical-plan work is kept behind the [post-census exact-parity
 protocol](experiments/atlas-swe-explore/PHYSICAL-PLANS.md).
+
+### The next prior experiment
+
+Atlas wants a scored field over repository entities. That field does not have
+to come from an embedding API. The current Qwen bi-encoder is the clean
+baseline because repository vectors depend only on source content and model
+identity. They can be computed once and reused for every later issue.
+
+The next comparison should keep that boundary and change what produces the
+scores:
+
+```text
+Qwen embedding prior
+    -> current cheap reusable baseline
+
+DeepSeek direct prior
+    -> ask a generative code model to score or rank entities
+    -> deliberately spend more learned compute before Atlas
+    -> expensive query-dependent comparison condition
+
+DeepSeek-distilled encoder
+    -> use those rankings, hard negatives, bridges, and causal judgments as
+       training data
+    -> return to one query vector + cached repository vectors
+
+Atlas-aware distilled encoder
+    -> train for which seeds let Atlas recover useful context
+    -> do not require the seed itself to be the edited location
+```
+
+The direct condition should not ask DeepSeek to print thousands of vector
+coordinates. It should produce judgments that are exposed through the same
+ordered-score interface Atlas already consumes. Distillation then asks whether
+that software judgment can be compiled into a small reusable embedding space.
+
+The final objective is not simply “put the gold file first.” A semantically
+obvious caller, entry point, test, or architectural anchor can be a better seed
+when a short Atlas program reliably reaches the useful code. The quantity to
+measure is therefore recoverability from the top `k` seeds, together with seed
+diversity, unique post-Atlas outcomes, tail tokens, decisions, latency, and
+cost.
+
+This is an intentional budget shift. A larger prior is allowed to cost more
+than the current embedding lookup if it removes most of iteration 013's median
+71 serial Jev decisions. The target is not “large model everywhere”:
+
+```text
+more capable prior once
+    -> smaller and better seed uncertainty
+    -> Atlas computes the complete local structure
+    -> one to three small Jev decisions, eventually perhaps one
+```
+
+When the serial learned tail shrinks that far, Atlas becomes a measurable part
+of the warm path. Its physical-plan and repository-specialization work then
+improves end-to-end latency instead of shaving milliseconds from a minutes-long
+decision loop. Faster Atlas can also be spent on more exact seed
+counterfactuals before the remaining Jev decision.
+
+```text
+issue + cached repository representations
+                |
+                v
+      small diverse seed field
+                |
+                v
+        exhaustive typed Atlas
+                |
+                v
+       few unique complete outcomes
+                |
+                v
+          one narrow judgment
+```
+
+This experiment shows the sandwich clearly. The prior learns what entrances
+the deterministic program needs. Atlas performs the exact structural work.
+The tail learns only how to choose among the remaining outcomes. Each boundary
+stays inspectable and each expensive observation keeps a semantic cache key.
 
 ## Atlas works without AI
 
@@ -1253,10 +1394,12 @@ See the [repository-signature evidence](docs/research/repository-signatures.md),
 [tree reuse](docs/research/tree-reuse.md), and the
 [original MUI/Vue/Darkreader record](migration/attuneradii/spec.md#45-structural-mixinglocalness--permanent-conceptual-model),
 and [replication study](docs/replication/README.md). The full SWE-Explore Atlas
-census will produce one typed Parquet signature per unique frozen snapshot.
-Its [seed, schema, metric, and analysis protocol is preregistered
-here](experiments/atlas-swe-explore/PREREGISTRATION.md). Only after that data is
-sealed will it be joined to localization outcomes.
+census now contains 78 unique frozen snapshots from 11 repositories, 1,248
+seed executions, and 4,092,192 logical observations. Its [seed, schema, metric,
+and analysis protocol](experiments/atlas-swe-explore/PREREGISTRATION.md) was
+frozen before the census, and the [first census report](experiments/atlas-swe-explore/REPORT.md)
+contains the repository and execution results. Only after this data was sealed
+can it be joined to localization outcomes.
 
 The signature may later drive execution as well as describe it. A repository
 with high extinction may prefer lazy demand evaluation; repeated queries over

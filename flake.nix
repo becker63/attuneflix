@@ -361,7 +361,6 @@
               pkgs.jdk25
               pkgs.jextract
               pkgs.jujutsu
-              pkgs.python3Packages.pyarrow
               pkgs.rustc
               pkgs.rustfmt
             ];

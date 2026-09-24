@@ -45,8 +45,26 @@ pub mod Repository.Nix {
         declaredLanguage = String,
         population       = String,
         split            = String,
+        sourceTreeIdentity = String,
         snapshot         = StorePath,
         sources          = Vector[Source]
+    }
+
+    /// Paths-only projection for one-time retained-fact migration. Nix has
+    /// already hashed the exact source bytes into `sourceTreeIdentity`; pure
+    /// admission from retained Grit facts needs file membership, not bodies.
+    pub type alias ScaleCaseProjection = {
+        manifestIndex      = Int32,
+        instanceId         = String,
+        datasetFamily      = String,
+        repository         = String,
+        baseRevision       = String,
+        declaredLanguage   = String,
+        population         = String,
+        split              = String,
+        sourceTreeIdentity = String,
+        snapshot           = StorePath,
+        sourcePaths        = Vector[String]
     }
 
     /// Evaluator evidence is deliberately acquired through a separate value
@@ -116,6 +134,9 @@ pub mod Repository.Nix {
 
     pub def scaleCase(caseIndex: Int32): Result[Error, ScaleCase] \ Acquire =
         decodeScaleCase(Acquire.scaleCase(caseIndex))
+
+    pub def scaleCaseProjection(caseIndex: Int32): Result[Error, ScaleCaseProjection] \ Acquire =
+        decodeScaleCaseProjection(Acquire.scaleCase(caseIndex))
 
     pub def scaleIssues(): Result[Error, ScaleIssueEvidence] \ Acquire =
         decodeScaleIssues(Acquire.scaleIssues())
@@ -250,6 +271,26 @@ pub mod Repository.Nix {
         }
     }
 
+    pub def decodeScaleCaseProjection(wire: Wire): Result[Error, ScaleCaseProjection] = {
+        let Wire.Wire(payload) = wire;
+        match Json.parse(payload) {
+            case Err(error) => Err(Error.Wire(ToString.toString(error)))
+            case Ok(JObject(fields)) => match intField("version", fields) {
+                case Err(error) => Err(error)
+                case Ok(version) if version != 1 => Err(Error.UnsupportedVersion(version))
+                case Ok(_) => match Map.get("error", fields) {
+                    case Some(value) => nativeScaleCaseProjectionError(value)
+                    case None => forM (
+                        text <- stringField("text", fields);
+                        paths <- stringVectorField("store_paths", fields);
+                        result <- decodeScaleCaseProjectionText(text, paths)
+                    ) yield result
+                }
+            }
+            case Ok(_) => Err(Error.Wire("expected a JSON object"))
+        }
+    }
+
     pub def decodeScaleIssues(wire: Wire): Result[Error, ScaleIssueEvidence] = {
         let Wire.Wire(payload) = wire;
         match Json.parse(payload) {
@@ -376,6 +417,7 @@ pub mod Repository.Nix {
                 declaredLanguage <- stringField("declared_benchmark_language", fields);
                 population <- stringField("population", fields);
                 split <- stringField("repository_group_split", fields);
+                sourceTreeIdentity <- stringField("sourceTreeIdentity", fields);
                 snapshot <- stringField("snapshot", fields);
                 sources <- sourceVectorField("sources", fields);
                 _ <- if (Vector.toSet(paths) == Set#{snapshot}) Ok(()) else Err(Error.IncompleteContext)
@@ -388,11 +430,46 @@ pub mod Repository.Nix {
                 declaredLanguage = declaredLanguage,
                 population = population,
                 split = split,
+                sourceTreeIdentity = sourceTreeIdentity,
                 snapshot = StorePath.StorePath(snapshot),
                 sources = sources
             }
             case Ok(_) => Err(Error.Wire("realised scale case must be an object"))
         }
+
+    def decodeScaleCaseProjectionText(
+        text: String,
+        paths: Vector[String]
+    ): Result[Error, ScaleCaseProjection] = match Json.parse(text) {
+        case Err(error) => Err(Error.Wire("realised scale case: ${ToString.toString(error)}"))
+        case Ok(JObject(fields)) => forM (
+            manifestIndex <- intField("manifest_index", fields);
+            instanceId <- stringField("instance_id", fields);
+            datasetFamily <- stringField("dataset_family", fields);
+            repository <- stringField("repository", fields);
+            baseRevision <- stringField("base_revision", fields);
+            declaredLanguage <- stringField("declared_benchmark_language", fields);
+            population <- stringField("population", fields);
+            split <- stringField("repository_group_split", fields);
+            sourceTreeIdentity <- stringField("sourceTreeIdentity", fields);
+            snapshot <- stringField("snapshot", fields);
+            sourcePaths <- sourcePathVectorField("sources", fields);
+            _ <- if (Vector.toSet(paths) == Set#{snapshot}) Ok(()) else Err(Error.IncompleteContext)
+        ) yield {
+            manifestIndex = manifestIndex,
+            instanceId = instanceId,
+            datasetFamily = datasetFamily,
+            repository = repository,
+            baseRevision = baseRevision,
+            declaredLanguage = declaredLanguage,
+            population = population,
+            split = split,
+            sourceTreeIdentity = sourceTreeIdentity,
+            snapshot = StorePath.StorePath(snapshot),
+            sourcePaths = sourcePaths
+        }
+        case Ok(_) => Err(Error.Wire("realised scale case must be an object"))
+    }
 
     def decodeScaleIssueEvidence(text: String, paths: Vector[String]): Result[Error, ScaleIssueEvidence] =
         match Json.parse(text) {
@@ -473,6 +550,17 @@ pub mod Repository.Nix {
         case _ => Err(Error.Wire("error must be an object"))
     }
 
+    def nativeScaleCaseProjectionError(value: Json): Result[Error, ScaleCaseProjection] = match value {
+        case JObject(fields) => match stringField("kind", fields) {
+            case Err(error) => Err(error)
+            case Ok(kind) => match stringField("message", fields) {
+                case Err(error) => Err(error)
+                case Ok(message) => Err(Error.Native(kind, message))
+            }
+        }
+        case _ => Err(Error.Wire("error must be an object"))
+    }
+
     def nativeScaleIssuesError(value: Json): Result[Error, ScaleIssueEvidence] = match value {
         case JObject(fields) => match stringField("kind", fields) {
             case Err(error) => Err(error)
@@ -510,6 +598,18 @@ pub mod Repository.Nix {
         case Err(error) => Err(error)
         case Ok(JArray(values)) => Vector.traverse(decodeSource, values)
         case Ok(_) => Err(Error.Wire("${name}: expected array"))
+    }
+
+    def sourcePathVectorField(name: String, fields: Map[String, Json]): Result[Error, Vector[String]] =
+        match field(name, fields) {
+            case Err(error) => Err(error)
+            case Ok(JArray(values)) => Vector.traverse(decodeSourcePath, values)
+            case Ok(_) => Err(Error.Wire("${name}: expected array"))
+        }
+
+    def decodeSourcePath(value: Json): Result[Error, String] = match value {
+        case JObject(fields) => stringField("path", fields)
+        case _ => Err(Error.Wire("source must be an object"))
     }
 
     def decodeSource(value: Json): Result[Error, Source] \ Acquire = match value {

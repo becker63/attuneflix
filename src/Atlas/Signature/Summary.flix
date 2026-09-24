@@ -1,0 +1,293 @@
+/// Compact, regenerable summaries over the immutable Atlas observation table.
+/// Raw observations remain the scientific evidence. This module owns the
+/// declared reductions used by reports; Java only moves typed columns through
+/// Arrow/Parquet.
+pub mod Atlas.Signature.Summary {
+    use Util.Json
+    use Util.Json.Json.{JBool, JNull, JString}
+    use Util.Json.FromJson
+    use Util.Json.ToJson
+
+    type alias Datum = {
+        signatureProtocol  = String,
+        atlasProtocol      = String,
+        repository         = String,
+        baseRevision       = String,
+        sourceTreeIdentity = String,
+        factIdentity       = String,
+        snapshotId         = String,
+        seedDomain         = String,
+        depth              = Int32,
+        lastAtom           = String,
+        outputCardinality  = Float64,
+        expansionRatio     = Option[Float64],
+        reachFraction      = Float64,
+        extinct            = Bool,
+        firstExtinction    = Option[Int32],
+        semanticStateId    = String,
+        sameAsInput        = Bool
+    }
+
+    type alias Group = {
+        scope      = String,
+        seedDomain = String,
+        depth      = Option[Int32],
+        lastAtom   = Option[String]
+    }
+
+    type alias Metric = {name = String, value = Float64, sampleCount = Int32}
+
+    pub def schema(): ScientificTable.Schema = {
+        format = "attune-atlas-signature-summary-v1",
+        columns = Vector#{
+            text("signature_protocol"), text("atlas_protocol"), text("repository"),
+            text("base_revision"), text("source_tree_identity"), text("fact_identity"),
+            text("snapshot_id"), text("scope"), text("seed_domain"),
+            optionalInt32("depth"), optionalText("last_atom"), text("metric"),
+            float64("value"), int64("sample_count")
+        }
+    }
+
+    /// Produce domain, domain/depth, and domain/depth/direction groups. Empty
+    /// impossible type combinations are omitted rather than reported as zero.
+    pub def summarize(rows: Vector[ScientificTable.Row]): Result[String, Vector[ScientificTable.Row]] =
+        Vector.traverse(decode, rows)
+            |> Result.map(data -> Vector.flatMap(group -> summarizeGroup(data, group), groups(data)))
+
+    def groups(data: Vector[Datum]): Vector[Group] = {
+        let domains = Vector#{"file", "symbol"};
+        let atoms = Vector#{"defines", "defined_in", "imports", "imported_by", "calls", "callers"};
+        let domainGroups = Vector.map(domain -> {
+            scope = "seed_domain", seedDomain = domain, depth = None, lastAtom = None
+        }, domains);
+        let depthGroups = Vector.flatMap(domain -> Vector.map(depth -> {
+            scope = "seed_domain_depth", seedDomain = domain,
+            depth = Some(depth), lastAtom = None
+        }, Vector.range(1, 8)), domains);
+        let directionGroups = Vector.flatMap(domain ->
+            Vector.flatMap(depth -> Vector.map(atom -> {
+                scope = "seed_domain_depth_direction", seedDomain = domain,
+                depth = Some(depth), lastAtom = Some(atom)
+            }, atoms), Vector.range(1, 8)), domains);
+        Vector.flatten(Vector#{domainGroups, depthGroups, directionGroups})
+            |> Vector.filter(group -> not Vector.isEmpty(Vector.filter(row -> matches(group, row), data)))
+    }
+
+    def summarizeGroup(data: Vector[Datum], group: Group): Vector[ScientificTable.Row] = {
+        let selected = Vector.filter(row -> matches(group, row), data);
+        let first = Vector.get(0, selected);
+        Vector.map(metric -> row(first, group, metric), metrics(selected))
+    }
+
+    def metrics(data: Vector[Datum]): Vector[Metric] = {
+        let count = Vector.length(data);
+        let outputs = Vector.map(row -> row#outputCardinality, data);
+        let expansions = Vector.filterMap(row -> row#expansionRatio, data);
+        let reaches = Vector.map(row -> row#reachFraction, data);
+        let multiplicities = stateMultiplicities(data);
+        Vector#{
+            metric("observation_count", Int32.toFloat64(count), count),
+            fraction("extinct_fraction", row -> row#extinct, data),
+            fraction("survival_fraction", row -> not row#extinct, data),
+            firstExtinctionMetric(1, data), firstExtinctionMetric(2, data),
+            firstExtinctionMetric(3, data), firstExtinctionMetric(4, data),
+            firstExtinctionMetric(5, data), firstExtinctionMetric(6, data),
+            firstExtinctionMetric(7, data),
+            distribution("output_cardinality_p50", outputs, 50),
+            distribution("output_cardinality_p90", outputs, 90),
+            distribution("output_cardinality_p99", outputs, 99),
+            distribution("expansion_ratio_p50", expansions, 50),
+            distribution("expansion_ratio_p90", expansions, 90),
+            distribution("expansion_ratio_p99", expansions, 99),
+            fractionOption("contracting_fraction", value -> value < 1.0, data),
+            fractionOption("unchanged_fraction", value -> value == 1.0, data),
+            fractionOption("expanding_fraction", value -> value > 1.0, data),
+            distribution("reach_fraction_p50", reaches, 50),
+            distribution("reach_fraction_p90", reaches, 90),
+            distribution("reach_fraction_p99", reaches, 99),
+            fraction("reach_ge_0_25_fraction", row -> row#reachFraction >= 0.25, data),
+            fraction("reach_ge_0_50_fraction", row -> row#reachFraction >= 0.50, data),
+            fraction("reach_ge_0_90_fraction", row -> row#reachFraction >= 0.90, data),
+            metric("unique_semantic_states", Int32.toFloat64(Vector.length(multiplicities)), count),
+            metric("logical_per_unique_state",
+                ratio(count, Vector.length(multiplicities)), count),
+            distribution("state_multiplicity_p50", multiplicities, 50),
+            distribution("state_multiplicity_p90", multiplicities, 90),
+            distribution("state_multiplicity_p99", multiplicities, 99),
+            metric("state_multiplicity_max", maximum(multiplicities), Vector.length(multiplicities)),
+            fraction("same_as_input_fraction", row -> row#sameAsInput, data)
+        }
+    }
+
+    def firstExtinctionMetric(depth: Int32, data: Vector[Datum]): Metric =
+        fraction("first_extinction_depth_${depth}_fraction", row -> row#firstExtinction == Some(depth), data)
+
+    def stateMultiplicities(data: Vector[Datum]): Vector[Float64] =
+        Vector.foldLeft((counts, row) ->
+            Map.insertWith((left, right) -> left + right, row#semanticStateId, 1, counts),
+            Map.empty(), data)
+        |> Map.toVector
+        |> Vector.map(match (_, count) -> Int32.toFloat64(count))
+
+    def distribution(name: String, values: Vector[Float64], percentile: Int32): Metric =
+        metric(name, quantile(values, percentile), Vector.length(values))
+
+    def fraction(name: String, predicate: Datum -> Bool, data: Vector[Datum]): Metric =
+        metric(name, ratio(Vector.count(predicate, data), Vector.length(data)), Vector.length(data))
+
+    def fractionOption(name: String, predicate: Float64 -> Bool, data: Vector[Datum]): Metric = {
+        let values = Vector.filterMap(row -> row#expansionRatio, data);
+        metric(name, ratio(Vector.count(predicate, values), Vector.length(values)), Vector.length(values))
+    }
+
+    def metric(name: String, value: Float64, sampleCount: Int32): Metric =
+        {name = name, value = value, sampleCount = sampleCount}
+
+    def quantile(values: Vector[Float64], percentile: Int32): Float64 = {
+        let sorted = mergeSort(values);
+        if (Vector.isEmpty(sorted)) 0.0
+        else Vector.get((Vector.length(sorted) - 1) * percentile / 100, sorted)
+    }
+
+    /// Flix's standard Vector quicksort can recurse linearly on already sorted
+    /// large scientific columns. This bottom-up meaning is ordinary exact
+    /// ordering with logarithmic recursive depth and a tail-recursive merge.
+    def mergeSort(values: Vector[Float64]): Vector[Float64] = {
+        let length = Vector.length(values);
+        if (length <= 1) values
+        else {
+            let middle = length / 2;
+            merge(
+                mergeSort(Vector.slice(start = 0, end = middle, values)),
+                mergeSort(Vector.slice(start = middle, end = length, values)),
+                0, 0, Nil
+            ) |> List.toVector
+        }
+    }
+
+    def merge(left: Vector[Float64], right: Vector[Float64], leftIndex: Int32,
+              rightIndex: Int32, reverse: List[Float64]): List[Float64] =
+        if (leftIndex >= Vector.length(left) and rightIndex >= Vector.length(right))
+            List.reverse(reverse)
+        else if (rightIndex >= Vector.length(right) or
+                 (leftIndex < Vector.length(left) and Vector.get(leftIndex, left) <= Vector.get(rightIndex, right)))
+            merge(left, right, leftIndex + 1, rightIndex, Vector.get(leftIndex, left) :: reverse)
+        else
+            merge(left, right, leftIndex, rightIndex + 1, Vector.get(rightIndex, right) :: reverse)
+
+    def maximum(values: Vector[Float64]): Float64 =
+        Vector.foldLeft((largest, value) -> if (value > largest) value else largest, 0.0, values)
+
+    def ratio(numerator: Int32, denominator: Int32): Float64 =
+        if (denominator == 0) 0.0 else Int32.toFloat64(numerator) / Int32.toFloat64(denominator)
+
+    def matches(group: Group, row: Datum): Bool =
+        group#seedDomain == row#seedDomain and
+        optionMatches(group#depth, row#depth) and optionMatches(group#lastAtom, row#lastAtom)
+
+    def optionMatches(expected: Option[a], actual: a): Bool with Eq[a] = match expected {
+        case None => true
+        case Some(value) => value == actual
+    }
+
+    def row(identity: Datum, group: Group, metric0: Metric): ScientificTable.Row = Map#{
+        "signature_protocol" => JString(identity#signatureProtocol),
+        "atlas_protocol" => JString(identity#atlasProtocol),
+        "repository" => JString(identity#repository),
+        "base_revision" => JString(identity#baseRevision),
+        "source_tree_identity" => JString(identity#sourceTreeIdentity),
+        "fact_identity" => JString(identity#factIdentity),
+        "snapshot_id" => JString(identity#snapshotId),
+        "scope" => JString(group#scope),
+        "seed_domain" => JString(group#seedDomain),
+        "depth" => optionalJson(group#depth),
+        "last_atom" => optionalTextJson(group#lastAtom),
+        "metric" => JString(metric0#name),
+        "value" => ToJson.toJson(metric0#value),
+        "sample_count" => ToJson.toJson(metric0#sampleCount)
+    }
+
+    def decode(row0: ScientificTable.Row): Result[String, Datum] = forM (
+        signatureProtocol <- string("signature_protocol", row0);
+        atlasProtocol <- string("atlas_protocol", row0);
+        repository <- string("repository", row0);
+        baseRevision <- string("base_revision", row0);
+        sourceTreeIdentity <- string("source_tree_identity", row0);
+        factIdentity <- string("fact_identity", row0);
+        snapshotId <- string("snapshot_id", row0);
+        seedDomain <- string("seed_domain", row0);
+        depth <- int32Value("depth", row0);
+        lastAtom <- string("last_atom", row0);
+        outputCardinality <- floatValue("output_cardinality", row0);
+        expansionRatio <- optionalFloat("expansion_ratio", row0);
+        reachFraction <- floatValue("reach_fraction", row0);
+        extinct <- boolValue("extinct", row0);
+        firstExtinction <- optionalInt("first_extinction_depth", row0);
+        semanticStateId <- string("semantic_state_id", row0);
+        sameAsInput <- boolValue("same_as_input", row0)
+    ) yield {
+        signatureProtocol = signatureProtocol, atlasProtocol = atlasProtocol,
+        repository = repository, baseRevision = baseRevision,
+        sourceTreeIdentity = sourceTreeIdentity, factIdentity = factIdentity,
+        snapshotId = snapshotId, seedDomain = seedDomain, depth = depth,
+        lastAtom = lastAtom, outputCardinality = outputCardinality,
+        expansionRatio = expansionRatio, reachFraction = reachFraction,
+        extinct = extinct, firstExtinction = firstExtinction,
+        semanticStateId = semanticStateId, sameAsInput = sameAsInput
+    }
+
+    def string(name: String, row0: ScientificTable.Row): Result[String, String] = match Map.get(name, row0) {
+        case Some(JString(value)) => Ok(value)
+        case Some(_) => Err("Atlas summary field must be text: ${name}")
+        case None => Err("Atlas summary field is missing: ${name}")
+    }
+
+    def int32Value(name: String, row0: ScientificTable.Row): Result[String, Int32] = match Map.get(name, row0) {
+        case Some(value) => FromJson.fromJson(value) |> Result.mapErr(ToString.toString)
+        case None => Err("Atlas summary field is missing: ${name}")
+    }
+
+    def floatValue(name: String, row0: ScientificTable.Row): Result[String, Float64] = match Map.get(name, row0) {
+        case Some(value) => FromJson.fromJson(value) |> Result.mapErr(ToString.toString)
+        case None => Err("Atlas summary field is missing: ${name}")
+    }
+
+    def boolValue(name: String, row0: ScientificTable.Row): Result[String, Bool] = match Map.get(name, row0) {
+        case Some(JBool(value)) => Ok(value)
+        case Some(_) => Err("Atlas summary field must be boolean: ${name}")
+        case None => Err("Atlas summary field is missing: ${name}")
+    }
+
+    def optionalFloat(name: String, row0: ScientificTable.Row): Result[String, Option[Float64]] = match Map.get(name, row0) {
+        case Some(JNull) => Ok(None)
+        case Some(value) => FromJson.fromJson(value) |> Result.map(Some) |> Result.mapErr(ToString.toString)
+        case None => Err("Atlas summary field is missing: ${name}")
+    }
+
+    def optionalInt(name: String, row0: ScientificTable.Row): Result[String, Option[Int32]] = match Map.get(name, row0) {
+        case Some(JNull) => Ok(None)
+        case Some(value) => FromJson.fromJson(value) |> Result.map(Some) |> Result.mapErr(ToString.toString)
+        case None => Err("Atlas summary field is missing: ${name}")
+    }
+
+    def optionalJson(value: Option[Int32]): Json = match value {
+        case None => JNull
+        case Some(number) => ToJson.toJson(number)
+    }
+
+    def optionalTextJson(value: Option[String]): Json = match value {
+        case None => JNull
+        case Some(text0) => JString(text0)
+    }
+
+    def text(name: String): ScientificTable.Column =
+        {name = name, kind = ScientificTable.ColumnType.Text, nullable = false}
+    def optionalText(name: String): ScientificTable.Column =
+        {name = name, kind = ScientificTable.ColumnType.Text, nullable = true}
+    def optionalInt32(name: String): ScientificTable.Column =
+        {name = name, kind = ScientificTable.ColumnType.Int32, nullable = true}
+    def int64(name: String): ScientificTable.Column =
+        {name = name, kind = ScientificTable.ColumnType.Int64, nullable = false}
+    def float64(name: String): ScientificTable.Column =
+        {name = name, kind = ScientificTable.ColumnType.Float64, nullable = false}
+}

@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# One-time projection of the completed semantic migration into one inspectable
+# Bazel fanout target. The generated BUILD file contains labels only; typed
+# Parquet metadata remains the authority for every snapshot identity.
+workspace="${ATTUNE_WORKSPACE:-$(pwd -P)}"
+root="$workspace/.attune/repository-world-v1"
+
+mapfile -t directories < <(find "$root" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort)
+if ((${#directories[@]} != 78)); then
+  echo "expected 78 unique frozen snapshot directories, found ${#directories[@]}" >&2
+  exit 1
+fi
+
+for directory in "${directories[@]}"; do
+  for file in BUILD.bazel metadata.parquet entities.parquet relations.parquet; do
+    if [[ ! -s "$root/$directory/$file" ]]; then
+      echo "missing completed world artifact: $directory/$file" >&2
+      exit 1
+    fi
+  done
+done
+
+temporary="$(mktemp "$root/.BUILD.bazel.XXXXXX")"
+trap 'rm -f "$temporary"' EXIT
+{
+  printf '%s\n\n' 'load("//build:attune.bzl", "attune_atlas_signatures")'
+  printf '%s\n' 'attune_atlas_signatures('
+  printf '%s\n' '    name = "signatures",'
+  printf '%s\n' '    signatures = ['
+  for directory in "${directories[@]}"; do
+    printf '        "//.attune/repository-world-v1/%s:signature",\n' "$directory"
+  done
+  printf '%s\n' '    ],'
+  printf '%s\n' '    visibility = ["//visibility:public"],'
+  printf '%s\n' ')'
+} > "$temporary"
+mv "$temporary" "$root/BUILD.bazel"
+trap - EXIT
+
+printf 'WORLD_CATALOG snapshots=%d target=//.attune/repository-world-v1:signatures\n' \
+  "${#directories[@]}"
