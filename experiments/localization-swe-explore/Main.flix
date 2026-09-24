@@ -31,7 +31,7 @@ def main(): Unit \ {FileSystem, IO} = {
     let computed = Localization.Tree.compute(prepared, prior, tree)
         |> Result.mapErr(ToString.toString) |> require;
     let wires = Decide.Table.read(property("attune.decisions")) |> require;
-    let outcome = JevPolicyHillclimb.frozen013Replay(prepared, prior, computed, wires)
+    let outcome = Localization.Policy.frozen013Replay(prepared, prior, computed, wires)
         |> Result.mapErr(ToString.toString) |> require;
     let replay = ScientificData.canonicalizeObject(Localization.Result.encode(prepared, outcome));
     let expected = ScientificData.readObject(property("attune.expected"));

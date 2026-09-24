@@ -9,6 +9,7 @@ exports_files([
     "Localization/EvaluationData.flix",
     "Localization/EvaluationTable.flix",
     "Localization/Evaluate.flix",
+    "Localization/Policy.flix",
     "LocalizationReplay.flix",
     "Localization/Tree.flix",
     "ScientificData.flix",

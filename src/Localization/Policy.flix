@@ -1,4 +1,7 @@
-pub mod JevPolicyHillclimb {
+/// The frozen issue-conditioned selector used by localization iteration 013.
+/// Historical search reports live under experiments/; this module contains
+/// only the policy still needed for exact retained-evidence replay.
+pub mod Localization.Policy {
     pub enum Error with ToString {
         case Tree(Localization.Tree.Error),
         case Decide(Decide.Error),
