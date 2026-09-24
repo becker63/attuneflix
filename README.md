@@ -1117,9 +1117,12 @@ typed repository set -> ArenaStateId
 (NodeId, ArenaStateId) -> ArenaStateId
 ```
 
-On the retained Axios cost-seven comparison, the old and compiled evaluators
-returned the exact same result for every one of the 2,463 File-compatible
-programs, in the same root order. The quiet measurements were:
+The later timing benchmark used a different Axios seed:
+`lib/helpers/isAxiosError.js`. On that exact seed the old experiment performed
+9,199 independent transitions and 168 shared transitions, or 54.76x
+semantic-work compression. The old and compiled evaluators returned the exact
+same result for every one of the 2,463 File-compatible programs, in the same
+root order. The quiet measurements were:
 
 ```text
 compiled Flix p50                         3.127 ms
@@ -1128,15 +1131,21 @@ isolated old shared evaluator p50        29.511 ms       9.44x
 isolated dense prototype p50              2.985 ms
 ```
 
-So the later implementation did reach roughly tenfold wall-clock territory
-against the authoritative isolated old shared measurement, while staying
-within 4.8% of the experimental dense kernel. It remained pure Flix and kept
-exact parity with both the old evaluator and the independent Datalog meaning.
-The hundreds-fold transition collapse was real; the later work converted much
-more of it into elapsed-time savings. The remaining difference between 9.44x
-wall time and 494.94x relation applications is ordinary runtime overhead, not
-missing Atlas answers. See the [compiled evaluator
-record](docs/research/jev/localization.md#compiled-evaluator-interlude).
+So this apples-to-apples benchmark compares 54.76x fewer repository-relation
+applications with a 9.44x wall-clock speedup. The remaining gap is traversal,
+lookup, interning, allocation, JVM, and bookkeeping overhead. The later
+implementation reached roughly tenfold wall-clock territory against the
+authoritative isolated old shared measurement while staying within 4.8% of
+the experimental dense kernel. It remained pure Flix and kept exact parity
+with both the old evaluator and the independent Datalog meaning.
+
+The separate 494.94x result above remains real, but it belongs to
+`test/specs/headers.spec.js`: 8,909 independent transitions became 18 shared
+transitions. Its retained old-evaluator wall speedup was 2.69x, not 9.44x.
+These cells demonstrate different amounts of recurrence in the same Axios
+snapshot; they must not be combined into one ratio. See the [compiled evaluator
+record](docs/research/jev/localization.md#compiled-evaluator-interlude) and the
+[per-seed tree-reuse table](docs/research/tree-reuse.md#axios).
 
 An engineer's version of the repository-signature question is therefore:
 
