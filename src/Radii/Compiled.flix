@@ -5,6 +5,9 @@ pub mod Radii.Compiled {
     /// Stable only within one query-local state arena.
     pub enum ArenaStateId(Int32) with Eq, Order, ToString, Hash
 
+    /// Static syntax sharing. Equal normalized subexpressions receive one
+    /// NodeId even when many logical roots contain them. This is distinct from
+    /// Atlas's runtime fact that different syntax can converge to one state.
     pub enum Node with Eq, Order, ToString, Hash {
         case Forward(Radii.Atom),
         case Backward(Radii.Atom),
@@ -65,7 +68,12 @@ pub mod Radii.Compiled {
 
     pub def rootCount(program: Program): Int32 = Vector.length(program#roots)
 
-    /// The state arena and dense memo are fresh for every call.
+    /// The state arena and dense memo are fresh for every call. `NodeId` shares
+    /// repeated syntax; `ArenaStateId` interns equal typed frontiers; the dense
+    /// `(NodeId, ArenaStateId)` table can skip a cached multi-node subtree in
+    /// one lookup. None of these private IDs changes Radii or Atlas meaning.
+    /// This is the coarse physical shortcut that can coexist with a stable
+    /// Atom-level scientific model.
     pub def evaluate(
         world: Radii.Evaluate.World,
         input: Radii.Evaluate.State,

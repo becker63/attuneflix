@@ -23,9 +23,38 @@
 /// performs no repeated repository relation applications. A compiled-node
 /// memo can recover that coarse shortcut later without enlarging Atlas's
 /// public language or changing its answers.
+///
+/// The small reuse unit buys several concrete properties:
+///
+///   * Stable identity. In this file the live Flix key is exactly
+///     `(Atlas.Atom, Atlas.State)` because one `Repository.World` is fixed by
+///     the enclosing `evaluate` call. The persisted equivalent is
+///     `(snapshot_id, canonical state_id, atom)`. No surrounding route,
+///     policy, or learned-model choice is required to interpret that work.
+///   * Route independence. Calls reached through an import route and Calls
+///     reached through a caller route reuse the same answer when their exact
+///     Symbol frontiers are equal. How the frontier was found is irrelevant.
+///   * Syntax independence. Reassociating or renormalizing a larger Radii AST
+///     cannot change what `(state, Calls)` means. Cache identity does not depend
+///     on a particular expression-tree spelling.
+///   * A fixed measuring unit. One reported physical transition always means
+///     one of the six relations was actually applied to one complete frontier.
+///     A memo hit always means that relation application was avoided.
+///   * Separate explanations. Equal prefixes are a property of program syntax;
+///     equal frontiers are a property of repository behavior. A program DAG
+///     handles the former and state/Atom recurrence handles the latter, so the
+///     repository signature can report them independently.
+///
+/// The trade is narrow and explicit. If four cached Atoms remain, atomic
+/// execution performs four cheap memo lookups where a whole-subtree memo could
+/// perform one. It does not repeat the four repository traversals. Profiling
+/// may justify a private `(compiled node, state)` shortcut, but that remains a
+/// physical optimization underneath this six-Atom scientific language.
 mod Atlas {
-    /// One directed primitive relation. Reverse and Union remain Radii
-    /// operations; they are intentionally not constructors in Atlas.
+    /// One directed primitive relation. This is both the smallest public
+    /// symbol in the Atlas grammar and the smallest counted repository
+    /// operation. Reverse and Union remain Radii operations; they are
+    /// intentionally not constructors in Atlas.
     pub enum Atom with Eq, Order, ToString, Hash {
         case Defines,
         case DefinedIn,
@@ -106,6 +135,11 @@ mod Atlas {
     /// Query-local semantic recurrence. This table does not cache arbitrary
     /// expression syntax: its key asks only what one Atom does to one exact
     /// typed state. The repository world is fixed for the enclosing call.
+    ///
+    /// A later route can therefore reuse an answer even when its prefix has no
+    /// syntax in common with the first route. Conversely, common syntax alone
+    /// does not create a hit when it arrives with a different frontier. These
+    /// are repository facts, not parser or model heuristics.
     type alias Memos[r: Region] = {
         transitions        = MutHashMap[(Atom, State), State, r],
         physicalTransitions = Ref[Int32, r],
@@ -537,6 +571,8 @@ mod Atlas {
     /// Apply one directed relation to the whole typed frontier. A cache miss is
     /// one physical transition; a hit is one transition reuse. Neither counter
     /// counts individual source edges, complete programs, or elapsed-time units.
+    /// The cache hit still advances through the exact saved intermediate state;
+    /// it merely avoids applying the repository relation again.
     def transition(world: Repository.Physical.World, atom: Atom, state: State, memos: Memos[r]): State \ r =
         match MutHashMap.get((atom, state), memos#transitions) {
             case Some(output) => {
