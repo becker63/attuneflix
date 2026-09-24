@@ -90,6 +90,25 @@ checked_test(
 )
 
 flix_check(
+    name = "repository_table_check",
+    srcs = [
+        "//build:src/AtlasRepository.flix",
+        "//build:src/RepositoryTableTest.flix",
+        "//src:Repository/Table.flix",
+        "//src:Repository/Structure.flix",
+        "//src:ScientificTable.flix",
+    ],
+    command = "test",
+    java_deps = ["//src/native/parquet:attune_parquet"],
+    threads = 2,
+)
+
+checked_test(
+    name = "repository_table_test",
+    check = ":repository_table_check",
+)
+
+flix_check(
     name = "atlas_signature_table_check",
     srcs = [
         "//build:src/AtlasSignatureTableTest.flix",

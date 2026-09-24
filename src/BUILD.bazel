@@ -9,6 +9,7 @@ exports_files([
     "Radii/Synthesize.flix",
     "Repository/Physical.flix",
     "Repository/Reference.flix",
+    "Repository/Table.flix",
     "Repository/Grit.flix",
     "Repository/Structure.flix",
     "ScientificTable.flix",
