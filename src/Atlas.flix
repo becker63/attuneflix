@@ -28,7 +28,7 @@ mod Atlas {
         complete = Int32
     }
 
-    pub enum State with Eq, Hash, ToString {
+    pub enum State with Eq, Order, Hash, ToString {
         case Files(Set[Repository.Structure.FileId])
         case Symbols(Set[Repository.Structure.SymbolId])
     }
@@ -48,7 +48,7 @@ mod Atlas {
         parent  = Int32
     }
 
-    pub type alias Signature = {
+    pub type alias Summary = {
         depth               = Int32,
         counts              = RepositoryCounts,
         logicalPrograms     = Int32,
@@ -123,7 +123,7 @@ mod Atlas {
 
     /// Execute the complete typed composition tree through one depth.
     /// The mutable transition table is region-local, so measurement is pure.
-    pub def measure(repository: Repository.World, seeds: Set[Repository.Structure.SymbolId], depth: Int32): Result[String, Signature] =
+    pub def measure(repository: Repository.World, seeds: Set[Repository.Structure.SymbolId], depth: Int32): Result[String, Summary] =
         if (depth < 1)
             Err("Atlas depth must be positive")
         else region rc {
@@ -343,6 +343,26 @@ mod Atlas {
         case Radii.Domain.Location => Vector.empty()
     }
 
+    pub def terminal(program: Program): Radii.Domain = target(program#expression)
+
+    pub def stateDomain(state: State): Radii.Domain = match state {
+        case State.Files(_)   => Radii.Domain.File
+        case State.Symbols(_) => Radii.Domain.Symbol
+    }
+
+    pub def cardinality(state: State): Int32 = match state {
+        case State.Files(values)   => Set.size(values)
+        case State.Symbols(values) => Set.size(values)
+    }
+
+    /// Build the first-class repository signature from the fixed Atlas family.
+    pub def signature(
+        repository: Repository.World,
+        input: State,
+        depth: Int32
+    ): Result[String, Atlas.Signature.Signature] =
+        Atlas.Signature.compute(repository, input, depth)
+
     def target(expression: Expr): Radii.Domain = match expression {
         case Expr.Atom(atom) => targetAtom(atom)
         case Expr.Compose(_, atom) => targetAtom(atom)
@@ -364,11 +384,6 @@ mod Atlas {
         case Atom.ImportedBy => Radii.Domain.File
         case Atom.Calls      => Radii.Domain.Symbol
         case Atom.Callers    => Radii.Domain.Symbol
-    }
-
-    def stateDomain(state: State): Radii.Domain = match state {
-        case State.Files(_)   => Radii.Domain.File
-        case State.Symbols(_) => Radii.Domain.Symbol
     }
 
     def evaluateProgram(

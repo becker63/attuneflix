@@ -57,6 +57,7 @@ flix_check(
         "//build:src/AtlasTest.flix",
         "//build:src/AtlasRepository.flix",
         "//src:Atlas.flix",
+        "//src:Atlas/Signature.flix",
         "//src:Radii.flix",
         "//src:Repository/Physical.flix",
         "//src:Repository/Structure.flix",
