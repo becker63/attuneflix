@@ -2,6 +2,7 @@ build --enable_bzlmod
 build --announce_rc
 build --local_resources=cpu=4
 build --local_resources=memory=4096
+build --jobs=4
 build --java_language_version=21
 build --tool_java_language_version=21
 build --java_runtime_version=remotejdk_21
@@ -21,4 +22,5 @@ build:buildbuddy --experimental_profile_include_primary_output
 build:buildbuddy-rbe --config=buildbuddy
 build:buildbuddy-rbe --remote_executor=grpcs://remote.buildbuddy.io
 build:buildbuddy-rbe --extra_execution_platforms=@buildbuddy_toolchain//:platform_linux_arm64
+build:buildbuddy-rbe --jobs=80
 test:buildbuddy-rbe --test_env=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin

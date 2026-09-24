@@ -1,0 +1,55 @@
+load("@grit_crates//:defs.bzl", "aliases", "all_crate_deps", "crate_edition")
+load("@rules_rust//rust:defs.bzl", "rust_shared_library", "rust_test")
+
+exports_files([
+    "Cargo.lock",
+    "Cargo.toml",
+    "attune_grit.h",
+    "cargo-bazel-lock.json",
+    "lib.rs",
+])
+
+rust_shared_library(
+    name = "attune_grit_abi",
+    srcs = ["lib.rs"],
+    aliases = aliases(package_name = "attune-grit"),
+    crate_name = "attune_grit_abi",
+    edition = crate_edition(package_name = "attune-grit"),
+    proc_macro_deps = all_crate_deps(
+        package_name = "attune-grit",
+        proc_macro = True,
+    ),
+    visibility = ["//visibility:public"],
+    deps = all_crate_deps(
+        package_name = "attune-grit",
+        normal = True,
+    ) + [
+        "@gritql_source//crates/core:marzano_core",
+        "@gritql_source//crates/language:marzano_language",
+        "@gritql_source//crates/util:marzano_util",
+    ],
+)
+
+rust_test(
+    name = "attune_grit_rust_test",
+    srcs = ["lib.rs"],
+    aliases = aliases(
+        package_name = "attune-grit",
+        normal_dev = True,
+    ),
+    crate_name = "attune_grit_abi_test",
+    edition = crate_edition(package_name = "attune-grit"),
+    proc_macro_deps = all_crate_deps(
+        package_name = "attune-grit",
+        proc_macro_dev = True,
+    ),
+    deps = all_crate_deps(
+        package_name = "attune-grit",
+        normal = True,
+        normal_dev = True,
+    ) + [
+        "@gritql_source//crates/core:marzano_core",
+        "@gritql_source//crates/language:marzano_language",
+        "@gritql_source//crates/util:marzano_util",
+    ],
+)

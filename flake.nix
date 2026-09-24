@@ -286,13 +286,16 @@
         let
           pkgs = nixpkgs.legacyPackages.${system};
           flixJdk25 = self.packages.${system}.flix;
-          bazel = pkgs.writeShellScriptBin "bazel" ''
+          buildbuddyCredential = pkgs.writeShellScriptBin "attune-buildbuddy-credential" ''
             set -eu
 
-            workspace="$PWD"
-            while [ "$workspace" != / ] && [ ! -f "$workspace/MODULE.bazel" ]; do
-              workspace="$(${pkgs.coreutils}/bin/dirname -- "$workspace")"
-            done
+            if [ "''${1:-}" != get ]; then
+              echo "unsupported credential-helper command" >&2
+              exit 1
+            fi
+            read -r _request || true
+
+            workspace="''${ATTUNE_WORKSPACE:-$PWD}"
             if [ ! -f "$workspace/.env" ]; then
               echo "ignored workspace .env not found" >&2
               exit 1
@@ -309,7 +312,6 @@
                 END { if (!found) exit 1 }
               ' "$workspace/.env"
             )
-
             case "$key" in
               ""|*[!A-Za-z0-9._~-]*)
                 echo "BUILDBUDDY_API_KEY is missing or malformed" >&2
@@ -317,18 +319,21 @@
                 ;;
             esac
 
-            auth_rc="$(${pkgs.coreutils}/bin/mktemp /tmp/attune-bazel-auth.XXXXXX)"
-            ${pkgs.coreutils}/bin/chmod 600 "$auth_rc"
-            cleanup() {
-              ${pkgs.coreutils}/bin/rm -f -- "$auth_rc"
-            }
-            trap cleanup EXIT HUP INT TERM
-            printf 'common --remote_header=x-buildbuddy-api-key=%s\ncommon --bes_header=x-buildbuddy-api-key=%s\n' \
-              "$key" "$key" > "$auth_rc"
+            printf '{"headers":{"x-buildbuddy-api-key":["%s"]}}\n' "$key"
+          '';
+          bazel = pkgs.writeShellScriptBin "bazel" ''
+            set -eu
 
+            workspace="$PWD"
+            while [ "$workspace" != / ] && [ ! -f "$workspace/MODULE.bazel" ]; do
+              workspace="$(${pkgs.coreutils}/bin/dirname -- "$workspace")"
+            done
             ${pkgs.coreutils}/bin/env -i \
               HOME="$HOME" \
               USER="''${USER:-unknown}" \
+              ATTUNE_WORKSPACE="$workspace" \
+              BAZELISK_SKIP_WRAPPER=true \
+              USE_BAZEL_VERSION=8.6.0 \
               PATH=${pkgs.lib.makeBinPath [
                 pkgs.bash
                 pkgs.bazelisk
@@ -342,8 +347,8 @@
                 pkgs.which
               ]} \
               SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt \
-              BUILDBUDDY_API_KEY="$key" \
-              ${pkgs.bazelisk}/bin/bazelisk --bazelrc="$auth_rc" "$@"
+              ${pkgs.bazelisk}/bin/bazelisk "$@" \
+                --credential_helper=remote.buildbuddy.io=${buildbuddyCredential}/bin/attune-buildbuddy-credential
           '';
         in {
           default = pkgs.mkShell {

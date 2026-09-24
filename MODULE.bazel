@@ -13,7 +13,44 @@ http_jar(
 
 bazel_dep(name = "rules_java", version = "9.9.0")
 bazel_dep(name = "rules_jvm_external", version = "7.1")
+bazel_dep(name = "rules_rust", version = "0.74.0")
 bazel_dep(name = "toolchains_buildbuddy", version = "0.0.4")
+bazel_dep(name = "llvm", version = "0.8.21")
+
+# Rust build scripts and final linking use the same declared hermetic toolchain
+# locally and on BuildBuddy. No host /nix/store compiler path enters an action.
+register_toolchains("@llvm//toolchain:all")
+
+rust = use_extension("@rules_rust//rust:extensions.bzl", "rust")
+rust.toolchain(
+    edition = "2024",
+    versions = ["1.98.0"],
+)
+use_repo(rust, "rust_toolchains")
+
+register_toolchains("@rust_toolchains//:all")
+
+crate = use_extension("@rules_rust//crate_universe:extensions.bzl", "crate")
+
+gritql_repository = use_repo_rule("//build:grit_repository.bzl", "gritql_repository")
+
+gritql_repository(
+    name = "gritql_source",
+    attune_lib = "//native/grit:lib.rs",
+    cargo_lock = "//native/grit:Cargo.lock",
+)
+
+crate.from_cargo(
+    name = "grit_crates",
+    cargo_lockfile = "@gritql_source//:Cargo.lock",
+    lockfile = "//native/grit:cargo-bazel-lock.json",
+    manifests = ["@gritql_source//:Cargo.toml"],
+    supported_platform_triples = [
+        "aarch64-unknown-linux-gnu",
+        "x86_64-unknown-linux-gnu",
+    ],
+)
+use_repo(crate, "grit_crates")
 
 buildbuddy = use_extension("@toolchains_buildbuddy//:extensions.bzl", "buildbuddy")
 buildbuddy.platform(buildbuddy_container_image = "UBUNTU22_04_IMAGE")
