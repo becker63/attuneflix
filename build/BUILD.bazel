@@ -1,1 +1,4 @@
-exports_files(["src/Repository.flix"])
+exports_files([
+    "src/InferenceBoundaryTest.flix",
+    "src/Repository.flix",
+])

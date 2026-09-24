@@ -21,3 +21,16 @@ checked_test(
     name = "core_parity_test",
     check = ":core_parity_check",
 )
+
+flix_check(
+    name = "inference_boundary_check",
+    srcs = ["//build:src/InferenceBoundaryTest.flix"],
+    command = "check",
+    java_deps = ["//native/embed:attune_inference"],
+    threads = 2,
+)
+
+checked_test(
+    name = "inference_boundary_test",
+    check = ":inference_boundary_check",
+)

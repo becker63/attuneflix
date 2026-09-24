@@ -1,21 +1,63 @@
 def _flix_check_impl(ctx):
     marker = ctx.actions.declare_file(ctx.label.name + ".checked")
-    sources = ["\"$execroot/%s\"" % source.path for source in ctx.files.srcs]
+    runtime_jars = depset(transitive = [
+        dependency[JavaInfo].transitive_runtime_jars
+        for dependency in ctx.attr.java_deps
+    ])
+    jars = runtime_jars.to_list()
+    jar_manifest = "\n".join([
+        '"%s.jar" = "url:file:lib/external/%s.jar"' % (index, index)
+        for index in range(len(jars))
+    ])
+
+    project = ctx.label.name + ".project"
+    manifest = ctx.actions.declare_file(project + "/flix.toml")
+    ctx.actions.write(
+        manifest,
+        """[package]
+name = "bazel-action"
+description = "Bazel-owned Flix action"
+version = "0.0.0"
+flix = "0.76.0"
+authors = ["Attune"]
+
+[jar-dependencies]
+%s
+""" % jar_manifest,
+    )
+
+    project_inputs = [manifest]
+    for source in ctx.files.srcs:
+        source_path = source.short_path
+        if source_path.startswith("src/"):
+            relative = source_path[len("src/"):]
+        elif "/src/" in source_path:
+            relative = source_path.split("/src/", 1)[1]
+        else:
+            relative = source.basename
+        link = ctx.actions.declare_file(project + "/src/" + relative)
+        ctx.actions.symlink(output = link, target_file = source)
+        project_inputs.append(link)
+    for index, jar in enumerate(jars):
+        link = ctx.actions.declare_file(project + "/lib/external/%s.jar" % index)
+        ctx.actions.symlink(output = link, target_file = jar)
+        project_inputs.append(link)
 
     ctx.actions.run_shell(
-        inputs = ctx.files.srcs,
+        inputs = project_inputs,
         outputs = [marker],
         tools = [ctx.executable._flix],
         command = """
 set -eu
 execroot=$PWD
-"$execroot/{flix}" {command} {sources} --threads {threads}
+cd "$execroot/{project}"
+"$execroot/{flix}" {command} --threads {threads}
 printf 'checked\n' > "$execroot/{marker}"
 """.format(
             command = ctx.attr.command,
             flix = ctx.executable._flix.path,
             marker = marker.path,
-            sources = " ".join(sources),
+            project = manifest.dirname,
             threads = ctx.attr.threads,
         ),
         mnemonic = "FlixCheck",
@@ -28,6 +70,7 @@ flix_check = rule(
     attrs = {
         "srcs": attr.label_list(allow_files = [".flix"]),
         "command": attr.string(default = "check", values = ["check", "test"]),
+        "java_deps": attr.label_list(providers = [JavaInfo]),
         "threads": attr.int(default = 2),
         "_flix": attr.label(
             default = Label("//:flix"),

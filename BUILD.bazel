@@ -1,14 +1,16 @@
 java_binary(
     name = "flix",
     main_class = "ca.uwaterloo.flix.Main",
-    runtime_deps = ["@flix_compiler//jar"],
     visibility = ["//visibility:public"],
+    runtime_deps = ["@flix_compiler//jar"],
 )
 
 test_suite(
     name = "tests",
     tests = [
+        "//native/embed:attune_inference_test",
         "//native/parquet:attune_parquet_test",
         "//test:core_parity_test",
+        "//test:inference_boundary_test",
     ],
 )
