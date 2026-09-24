@@ -888,6 +888,197 @@ The signature key is the repository, base revision, exact admitted-fact
 identity, Atlas protocol, and signature protocol. It is a property of a frozen
 repository snapshot, not a property of the model used by Localization.
 
+### Logical programs versus physical work
+
+The easiest way to understand recurrence and reuse is to treat Atlas as a
+deliberately stupid interpreter first. A state is the exact set of Files or
+Symbols currently under inspection.
+
+A **transition** is one Atlas atom applied once to one complete typed state.
+It produces the complete next state. For example, suppose the admitted call
+relation contains:
+
+```text
+handler  calls  validate
+handler  calls  save
+validate calls  normalize
+```
+
+Then this is one transition:
+
+```text
+input state                 atom          output state
+{handler, validate}  --    calls    -->  {validate, save, normalize}
+```
+
+The evaluator takes every Symbol in the input set, follows every admitted
+`calls` edge leaving those Symbols, unions the answers, and returns a new
+Symbol set. Whether it finds zero edges or ten thousand edges, applying
+`calls` to that whole set is one primitive transition.
+
+The word does **not** mean any of these:
+
+```text
+one source-code edge
+one complete Atlas program
+one model/provider call
+one unit of wall-clock time
+```
+
+A length-four Atlas program requests four transitions in sequence. Each
+output state becomes the next transition's input:
+
+```text
+seed
+  -- imported_by --> File state
+  -- defines     --> Symbol state
+  -- callers     --> Symbol state
+  -- defined_in  --> File state
+```
+
+Inside one frozen repository world, the exact physical transition identity is
+therefore:
+
+```text
+(input typed set, atom) -> output typed set
+```
+
+The repository/world identity is fixed outside that lookup. The same atom on
+a different input set is different work. A different atom on the same set is
+also different work. But the same atom on the same exact typed set must return
+the same exact result, so computing it twice would be pointless.
+
+This gives the counters precise meanings:
+
+```text
+transition request   an Atlas program asks for (input state, atom)
+physical transition the evaluator actually applies the relation on a cache miss
+transition reuse     the exact answer already exists, so no relation is applied
+
+requests = physical transitions + transition reuses
+```
+
+“18 shared primitive transitions” therefore means eighteen distinct
+state-and-atom relation applications actually ran. It does not mean eighteen
+source edges were visited, and it does not mean the whole experiment had only
+eighteen logical steps.
+
+Thousands of legal programs contain common beginnings:
+
+```text
+A = imported_by >> defines >> callers
+B = imported_by >> defines >> calls
+C = imported_by >> defines >> callers >> defined_in
+```
+
+An independent interpreter runs each program from its seed and repeats those
+beginnings:
+
+```text
+A: imported_by COMPUTE       defines COMPUTE       callers COMPUTE
+B: imported_by COMPUTE AGAIN defines COMPUTE AGAIN calls   COMPUTE
+C: imported_by COMPUTE AGAIN defines COMPUTE AGAIN callers COMPUTE AGAIN ...
+```
+
+Shared execution keeps exact answers. The lookup is mechanically shaped like:
+
+```text
+(typed input state, next atom) -> typed output state
+```
+
+The earlier AttuneRadii evaluator also memoized whole expression subtrees:
+
+```text
+(typed input state, remaining expression) -> final typed output state
+```
+
+The logical language still looks like a tree because every program exists and
+receives an answer. Physical execution becomes a DAG because common work has
+one node:
+
+```text
+                         seed
+                           |
+                     imported_by
+                           |
+                        defines
+                      /        \
+                     /          \
+                 callers       calls
+                    |
+                defined_in
+```
+
+Nothing is approximated or pruned. Independent and shared evaluation must
+return the same exact state for every program. The retained tree-reuse study
+checked that equality across all 208 completed experiment cells.
+
+One historical Axios cell makes the quantities concrete. This used the
+earlier 2,463-program File-ending AttuneRadii tier, not the current frozen
+3,279-program six-atom Atlas census:
+
+```text
+seed: test/specs/headers.spec.js
+
+logical programs                         2,463
+independent primitive transitions        8,909
+shared primitive transitions                18
+transition compression                  494.94x
+
+independent intermediate state visits    7,377
+shared unique semantic states                4
+state recurrence                       1,844.25x
+```
+
+All 2,463 answers still exist. The surprising result is that, on this Axios
+snapshot and seed, those programs repeatedly bounce among only four actual
+sets of repository entities.
+
+The same language behaves differently on another repository. For Immutable's
+`src/Map.js` seed:
+
+```text
+independent primitive transitions        9,264
+shared primitive transitions               318       29.13x compression
+
+independent intermediate state visits   11,733
+shared unique semantic states              377       31.12x recurrence
+```
+
+This is why the measurement is more than “memoization works.” Syntax reuse is
+held fixed: the same program family and evaluator are used. The repository
+changes how many syntactically different programs become the same behavior:
+
+```text
+                     execute on repository
+large program space -------------------------> effective behavior space
+
+Axios       many programs -------------------> very few exact states
+Immutable   many programs -------------------> a larger set of exact states
+```
+
+At that File tier, repository median transition compression ranged from
+83.89x for Immutable through 177.60x for Vue and 297.51x for Preact to 494.94x
+for Axios. In representative cost-seven cells, the older evaluator reported
+zero direct transition-cache hits but roughly 5,900 whole-subtree hits: it
+reused the larger deterministic answer before descending far enough to repeat
+the individual graph operations.
+
+These are work ratios, not wall-clock claims. The corresponding large-tier
+wall-clock speedups were roughly 2.7–3.6x because traversal, hashing, state
+interning, allocation, JVM work, and bookkeeping remained. That gap tells us
+where implementation overhead lives; it does not weaken the exact semantic
+collapse being measured.
+
+An engineer's version of the repository-signature question is therefore:
+
+> How many Atlas programs that look different on paper actually do the same
+> work on this repository?
+
+The programs are a fixed test signal. The repository is the circuit. Its
+extinction, expansion, reach, recurrence, and reuse profile is the measured
+response. No embedding model is involved in that response.
+
 There is already retained evidence for this. The small frozen fixture executes
 3,279 logical transitions using 30 physical transitions and 3,249 exact
 reuses. In the real-repository tree-reuse study, the largest completed File
