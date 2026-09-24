@@ -15,6 +15,18 @@ DuckDB database or second storage layer exists.
 
 ## Canonical Parquet schemas
 
+New canonical datasets declare real columns in Flix through
+`ScientificTable.Schema`. The JVM boundary accepts only the declared column
+names, primitive/list types, and nullability, then moves those values through
+Arrow into Parquet. Dataset protocol identities are ordinary required columns,
+not hidden Java metadata. The four preregistered Atlas census schemas live in
+`Atlas.Signature.Table` and are checked as executable laws.
+
+`attune-json-tree-v1` below is the retained migration representation for the
+already-frozen localization evidence. It remains readable while those
+artifacts are migrated and compared semantically, but it is not the schema for
+new Atlas data and is not the intended final representation.
+
 Most nested experiment artifacts use `attune-json-tree-v1`. Each Parquet row is
 one JSON semantic node with these columns:
 

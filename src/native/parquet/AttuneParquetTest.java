@@ -31,11 +31,12 @@ public final class AttuneParquetTest {
         Path table = directory.resolve("typed.parquet");
         String schema = "{\"format\":\"attune-test-rows-v1\",\"columns\":[" +
                 "{\"name\":\"identity\",\"type\":\"string\",\"nullable\":false}," +
+                "{\"name\":\"depth\",\"type\":\"int32\",\"nullable\":false}," +
                 "{\"name\":\"ordinal\",\"type\":\"int64\",\"nullable\":false}," +
                 "{\"name\":\"score\",\"type\":\"float64\",\"nullable\":true}," +
                 "{\"name\":\"extinct\",\"type\":\"boolean\",\"nullable\":false}," +
                 "{\"name\":\"route\",\"type\":\"list<string>\",\"nullable\":false}]}";
-        String tableRows = "[{\"identity\":\"seed-0\",\"ordinal\":0,\"score\":null," +
+        String tableRows = "[{\"identity\":\"seed-0\",\"depth\":7,\"ordinal\":0,\"score\":null," +
                 "\"extinct\":false,\"route\":[\"calls\",\"defined_in\"]}]";
         String admitted = AttuneParquet.writeTable(table.toString(), schema, tableRows);
         if (!tableRows.equals(admitted) || !tableRows.equals(AttuneParquet.readTable(table.toString(), schema))) {

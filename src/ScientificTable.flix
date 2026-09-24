@@ -8,6 +8,7 @@ pub mod ScientificTable {
 
     pub enum ColumnType with Eq, ToString {
         case Text
+        case Int32
         case Int64
         case Float64
         case Boolean
@@ -59,6 +60,7 @@ pub mod ScientificTable {
 
     def typeName(type0: ColumnType): String = match type0 {
         case ColumnType.Text     => "string"
+        case ColumnType.Int32    => "int32"
         case ColumnType.Int64    => "int64"
         case ColumnType.Float64  => "float64"
         case ColumnType.Boolean  => "boolean"

@@ -29,6 +29,7 @@ import org.apache.arrow.vector.BigIntVector;
 import org.apache.arrow.vector.BitVector;
 import org.apache.arrow.vector.FieldVector;
 import org.apache.arrow.vector.Float8Vector;
+import org.apache.arrow.vector.IntVector;
 import org.apache.arrow.vector.VarCharVector;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.complex.ListVector;
@@ -214,6 +215,7 @@ public final class AttuneParquet {
                 throw new IllegalArgumentException("invalid or duplicate typed Parquet column");
             fields.add(switch (column.type) {
                 case "string" -> field(column.name, new ArrowType.Utf8(), column.nullable, null);
+                case "int32" -> field(column.name, new ArrowType.Int(32, true), column.nullable, null);
                 case "int64" -> field(column.name, new ArrowType.Int(64, true), column.nullable, null);
                 case "float64" -> field(column.name, new ArrowType.FloatingPoint(
                         org.apache.arrow.vector.types.FloatingPointPrecision.DOUBLE), column.nullable, null);
@@ -259,6 +261,11 @@ public final class AttuneParquet {
                     throw typeError(column);
                 ((BigIntVector) vector).setSafe(row, ((Number) value).longValue());
             }
+            case "int32" -> {
+                if (!(value instanceof Byte || value instanceof Short || value instanceof Integer))
+                    throw typeError(column);
+                ((IntVector) vector).setSafe(row, ((Number) value).intValue());
+            }
             case "float64" -> {
                 if (!(value instanceof Number number)) throw typeError(column);
                 ((Float8Vector) vector).setSafe(row, number.doubleValue());
@@ -288,6 +295,7 @@ public final class AttuneParquet {
         }
         return switch (column.type) {
             case "string" -> text((VarCharVector) vector, row);
+            case "int32" -> ((IntVector) vector).get(row);
             case "int64" -> ((BigIntVector) vector).get(row);
             case "float64" -> ((Float8Vector) vector).get(row);
             case "boolean" -> ((BitVector) vector).get(row) != 0;

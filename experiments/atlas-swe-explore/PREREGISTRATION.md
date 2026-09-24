@@ -6,6 +6,13 @@ This experiment measures how frozen repository snapshots respond to the fixed
 Atlas language. It does not use issue text, embeddings, Jev, localization
 predictions, evaluator gold, or provider access.
 
+Signature protocol: `atlas-signature-swe-explore-v1`.
+
+This identity covers the population unit, issue-blind seed protocol, four
+typed output schemas, and primary measurements defined below. The Atlas
+language itself has its independent identity
+`atlas-composition-depth7-v1`.
+
 ## Population and unit
 
 The population is every structurally valid snapshot represented by the frozen
