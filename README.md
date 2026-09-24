@@ -1099,8 +1099,44 @@ the individual graph operations.
 These are work ratios, not wall-clock claims. The corresponding large-tier
 wall-clock speedups were roughly 2.7–3.6x because traversal, hashing, state
 interning, allocation, JVM work, and bookkeeping remained. That gap tells us
-where implementation overhead lives; it does not weaken the exact semantic
-collapse being measured.
+where implementation overhead lived in that first evaluator; it does not
+weaken the exact semantic collapse being measured.
+
+Attune later removed much of that overhead. The production Flix evaluator compiles
+the fixed family once into a node DAG, interns each exact typed set into a
+query-local integer arena, and stores `(compiled node, arena state)` answers in
+dense region-local rows. It no longer walks a boxed expression tree or rebuilds
+large result maps on the hot path:
+
+```text
+fixed logical family                    3,279 routes
+compiled physical program               3,282 DAG nodes
+
+one query:
+typed repository set -> ArenaStateId
+(NodeId, ArenaStateId) -> ArenaStateId
+```
+
+On the retained Axios cost-seven comparison, the old and compiled evaluators
+returned the exact same result for every one of the 2,463 File-compatible
+programs, in the same root order. The quiet measurements were:
+
+```text
+compiled Flix p50                         3.127 ms
+same-process old evaluator p50           16.542 ms       5.29x
+isolated old shared evaluator p50        29.511 ms       9.44x
+isolated dense prototype p50              2.985 ms
+```
+
+So the later implementation did reach roughly tenfold wall-clock territory
+against the authoritative isolated old shared measurement, while staying
+within 4.8% of the experimental dense kernel. It remained pure Flix and kept
+exact parity with both the old evaluator and the independent Datalog meaning.
+The hundreds-fold transition collapse was real; the later work converted much
+more of it into elapsed-time savings. The remaining difference between 9.44x
+wall time and 494.94x relation applications is ordinary runtime overhead, not
+missing Atlas answers. See the [compiled evaluator
+record](docs/research/jev/localization.md#compiled-evaluator-interlude).
 
 An engineer's version of the repository-signature question is therefore:
 

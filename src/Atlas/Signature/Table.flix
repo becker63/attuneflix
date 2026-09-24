@@ -1,6 +1,26 @@
 /// Canonical typed Parquet schemas for the Atlas census. These declarations
 /// are the scientific data model; the Arrow boundary only realizes them.
 pub mod Atlas.Signature.Table {
+    use Util.Json
+    use Util.Json.Json.{JArray, JBool, JNull, JString}
+    use Util.Json.ToJson
+
+    pub type alias SnapshotIdentity = {
+        signatureProtocol  = String,
+        atlasProtocol      = String,
+        repository         = String,
+        baseRevision       = String,
+        sourceTreeIdentity = String,
+        factIdentity       = String,
+        snapshotId         = String
+    }
+
+    pub type alias SeedIdentity = {
+        domain  = Radii.Domain,
+        identity = String,
+        ordinal = Int32
+    }
+
     pub def observations(): ScientificTable.Schema = {
         format = "attune-atlas-signature-observations-v1",
         columns = Vector#{
@@ -36,7 +56,7 @@ pub mod Atlas.Signature.Table {
             int64("physical_transition_reuses"),
             float64("logical_per_unique_state"),
             float64("logical_per_physical_evaluation"),
-            int64("memo_cells"), int64("compiled_dag_nodes")
+            int64("memo_cells"), optionalInt64("compiled_dag_nodes")
         })
     }
 
@@ -49,6 +69,103 @@ pub mod Atlas.Signature.Table {
             text("snapshot_id")
         }
     }
+
+    /// Materialize one exact row per logical Atlas route. The route and state
+    /// digests are scientific identities, not evaluator allocation IDs.
+    pub def observationRows(
+        snapshot: SnapshotIdentity,
+        seed: SeedIdentity,
+        signature: Atlas.Signature.Signature
+    ): Vector[ScientificTable.Row] \ IO =
+        Vector.map(observation -> observationRow(snapshot, seed, observation),
+            signature#observations)
+
+    /// Physical work for this seed. Every transition-table miss inserts one
+    /// memo cell, hence `memo_cells == physical_transition_evaluations` for
+    /// this evaluator. There is no separate compiled Atlas DAG counter yet.
+    pub def physicalRow(
+        snapshot: SnapshotIdentity,
+        seed: SeedIdentity,
+        signature: Atlas.Signature.Signature
+    ): ScientificTable.Row = {
+        let evaluations = signature#physicalTransitions;
+        let reuses = signature#transitionReuses;
+        let logical = signature#logicalPrograms;
+        let unique = signature#uniqueStates;
+        Map#{
+            "signature_protocol" => JString(snapshot#signatureProtocol),
+            "atlas_protocol" => JString(snapshot#atlasProtocol),
+            "repository" => JString(snapshot#repository),
+            "base_revision" => JString(snapshot#baseRevision),
+            "source_tree_identity" => JString(snapshot#sourceTreeIdentity),
+            "fact_identity" => JString(snapshot#factIdentity),
+            "snapshot_id" => JString(snapshot#snapshotId),
+            "seed_domain" => JString(Atlas.Signature.domainName(seed#domain)),
+            "seed_identity" => JString(seed#identity),
+            "seed_ordinal" => ToJson.toJson(seed#ordinal),
+            "logical_routes" => ToJson.toJson(logical),
+            "unique_semantic_states" => ToJson.toJson(unique),
+            "physical_transition_requests" => ToJson.toJson(evaluations + reuses),
+            "physical_transition_evaluations" => ToJson.toJson(evaluations),
+            "physical_transition_reuses" => ToJson.toJson(reuses),
+            "logical_per_unique_state" => ToJson.toJson(ratio(logical, unique)),
+            "logical_per_physical_evaluation" => ToJson.toJson(ratio(logical, evaluations)),
+            "memo_cells" => ToJson.toJson(evaluations),
+            "compiled_dag_nodes" => JNull
+        }
+    }
+
+    def observationRow(
+        snapshot: SnapshotIdentity,
+        seed: SeedIdentity,
+        observation: Atlas.Signature.Observation
+    ): ScientificTable.Row \ IO = {
+        let routeId = Atlas.Signature.routeId(observation#program);
+        let stateId = Atlas.Signature.stateId(observation#output);
+        let atoms = Vector.map(Atlas.Signature.atomName, observation#program#steps);
+        Map#{
+            "signature_protocol" => JString(snapshot#signatureProtocol),
+            "atlas_protocol" => JString(snapshot#atlasProtocol),
+            "repository" => JString(snapshot#repository),
+            "base_revision" => JString(snapshot#baseRevision),
+            "source_tree_identity" => JString(snapshot#sourceTreeIdentity),
+            "fact_identity" => JString(snapshot#factIdentity),
+            "snapshot_id" => JString(snapshot#snapshotId),
+            "seed_domain" => JString(Atlas.Signature.domainName(seed#domain)),
+            "seed_identity" => JString(seed#identity),
+            "seed_ordinal" => ToJson.toJson(seed#ordinal),
+            "route_id" => JString(routeId),
+            "route_atoms" => JArray(Vector.map(JString, atoms)),
+            "depth" => ToJson.toJson(observation#depth),
+            "first_atom" => JString(Vector.get(0, atoms)),
+            "last_atom" => JString(Vector.get(Vector.length(atoms) - 1, atoms)),
+            "terminal_domain" => JString(Atlas.Signature.domainName(
+                Atlas.stateDomain(observation#output))),
+            "input_cardinality" => ToJson.toJson(observation#inputCardinality),
+            "output_cardinality" => ToJson.toJson(observation#outputCardinality),
+            "domain_cardinality" => ToJson.toJson(observation#domainCardinality),
+            "expansion_ratio" => optionalFloat(observation#expansionRatio),
+            "reach_fraction" => ToJson.toJson(observation#reachFraction),
+            "extinct" => JBool(observation#extinct),
+            "first_extinction_depth" => optionalInt(observation#firstExtinctionDepth),
+            "semantic_state_id" => JString(stateId),
+            "same_as_input" => JBool(observation#sameAsInput)
+        }
+    }
+
+    def optionalFloat(value: Option[Float64]): Json = match value {
+        case None => JNull
+        case Some(number) => ToJson.toJson(number)
+    }
+
+    def optionalInt(value: Option[Int32]): Json = match value {
+        case None => JNull
+        case Some(number) => ToJson.toJson(number)
+    }
+
+    def ratio(numerator: Int32, denominator: Int32): Float64 =
+        if (denominator == 0) 0.0
+        else Int32.toFloat64(numerator) / Int32.toFloat64(denominator)
 
     def identityColumns(): Vector[ScientificTable.Column] = Vector#{
         text("signature_protocol"), text("atlas_protocol"), text("repository"),
@@ -70,6 +187,9 @@ pub mod Atlas.Signature.Table {
 
     def int64(name: String): ScientificTable.Column =
         {name = name, kind = ScientificTable.ColumnType.Int64, nullable = false}
+
+    def optionalInt64(name: String): ScientificTable.Column =
+        {name = name, kind = ScientificTable.ColumnType.Int64, nullable = true}
 
     def float64(name: String): ScientificTable.Column =
         {name = name, kind = ScientificTable.ColumnType.Float64, nullable = false}

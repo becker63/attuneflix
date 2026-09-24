@@ -1,4 +1,40 @@
 pub mod Atlas.Signature {
+    pub def atomName(atom: Atlas.Atom): String = match atom {
+        case Atlas.Atom.Defines    => "defines"
+        case Atlas.Atom.DefinedIn  => "defined_in"
+        case Atlas.Atom.Imports    => "imports"
+        case Atlas.Atom.ImportedBy => "imported_by"
+        case Atlas.Atom.Calls      => "calls"
+        case Atlas.Atom.Callers    => "callers"
+    }
+
+    pub def domainName(domain: Radii.Domain): String = match domain {
+        case Radii.Domain.File     => "file"
+        case Radii.Domain.Symbol   => "symbol"
+        case Radii.Domain.Location => "location"
+    }
+
+    /// Canonical scientific payload for one syntactic Atlas route. The
+    /// protocol prefix stays outside this value so identity version changes
+    /// are explicit rather than hidden inside the bytes.
+    pub def routePayload(program: Atlas.Program): String =
+        Vector.map(atomName, program#steps) |> Vector.join(",")
+
+    pub def routeId(program: Atlas.Program): String \ IO =
+        ScientificIdentity.versioned("atlas-route-v1", routePayload(program))
+
+    /// Canonical scientific payload for one semantic result state. Nominal
+    /// IDs are sorted explicitly; evaluator allocation order is irrelevant.
+    pub def statePayload(state: Atlas.State): String = match state {
+        case Atlas.State.Files(values) =>
+            "file:${orderedFiles(values) |> Vector.join(",")}" 
+        case Atlas.State.Symbols(values) =>
+            "symbol:${orderedSymbols(values) |> Vector.join(",")}" 
+    }
+
+    pub def stateId(state: Atlas.State): String \ IO =
+        ScientificIdentity.versioned("atlas-state-v1", statePayload(state))
+
     /// One exact observation from applying one Atlas program to one seed.
     pub type alias Observation = {
         program              = Atlas.Program,
@@ -122,4 +158,16 @@ pub mod Atlas.Signature {
         case Radii.Domain.Symbol   => Vector.length(repository#symbols)
         case Radii.Domain.Location => 0
     }
+
+    def orderedFiles(values: Set[Repository.Structure.FileId]): Vector[String] =
+        Set.toVector(values)
+            |> Vector.map(match Repository.Structure.FileId.FileId(value) -> value)
+            |> Vector.sort
+            |> Vector.map(value -> "${value}")
+
+    def orderedSymbols(values: Set[Repository.Structure.SymbolId]): Vector[String] =
+        Set.toVector(values)
+            |> Vector.map(match Repository.Structure.SymbolId.SymbolId(value) -> value)
+            |> Vector.sort
+            |> Vector.map(value -> "${value}")
 }

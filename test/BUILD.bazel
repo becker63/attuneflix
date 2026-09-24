@@ -58,11 +58,13 @@ flix_check(
         "//build:src/AtlasRepository.flix",
         "//src:Atlas.flix",
         "//src:Atlas/Signature.flix",
+        "//src:ScientificIdentity.flix",
         "//src:Radii.flix",
         "//src:Repository/Physical.flix",
         "//src:Repository/Structure.flix",
     ],
     command = "test",
+    java_deps = ["//src/native/identity:attune_identity"],
     threads = 2,
 )
 
@@ -91,13 +93,21 @@ flix_check(
     name = "atlas_signature_table_check",
     srcs = [
         "//build:src/AtlasSignatureTableTest.flix",
-        "//build:src/Atlas.flix",
-        "//build:src/Atlas/Signature.flix",
+        "//build:src/AtlasRepository.flix",
+        "//src:Atlas.flix",
+        "//src:Atlas/Signature.flix",
         "//src:Atlas/Signature/Table.flix",
+        "//src:Radii.flix",
+        "//src:Repository/Physical.flix",
+        "//src:Repository/Structure.flix",
+        "//src:ScientificIdentity.flix",
         "//src:ScientificTable.flix",
     ],
     command = "test",
-    java_deps = ["//src/native/parquet:attune_parquet"],
+    java_deps = [
+        "//src/native/identity:attune_identity",
+        "//src/native/parquet:attune_parquet",
+    ],
     threads = 2,
 )
 

@@ -110,3 +110,24 @@ def atlasSignatureExplainsExtinctionExpansionReachAndReuse(): Unit \ Assert = {
         }
     }
 }
+
+@Test
+def atlasRouteAndStateIdentitiesIgnoreEvaluationAllocation(): Unit \ {Assert, IO} = {
+    let route = Vector.get(3, Atlas.programs(2));
+    let s0 = Repository.Structure.SymbolId.SymbolId(0);
+    let s1 = Repository.Structure.SymbolId.SymbolId(1);
+    let state = Atlas.State.Symbols(Set#{s1, s0});
+
+    Assert.assertEq(expected = "defined_in,defines",
+        Atlas.Signature.routePayload(route));
+    Assert.assertEq(
+        expected = "atlas-route-v1:bae3224f1c73e0a46abcae0d3123388c1429bec99776fc0444bd02ec4d38130e",
+        Atlas.Signature.routeId(route)
+    );
+    Assert.assertEq(expected = "symbol:0,1",
+        Atlas.Signature.statePayload(state));
+    Assert.assertEq(
+        expected = "atlas-state-v1:0670ab158cc2dace3787caa847985116d1b5984c4de5dcff1ad0687800cc1c39",
+        Atlas.Signature.stateId(state)
+    )
+}

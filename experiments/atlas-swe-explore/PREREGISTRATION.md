@@ -165,6 +165,11 @@ memo_cells
 compiled_dag_nodes
 ```
 
+`compiled_dag_nodes` is nullable. The current direct Atlas evaluator exposes
+an exact transition table but does not compile a separate program DAG; null is
+the truthful value for that implementation. `memo_cells` is exact because
+every physical transition-table miss inserts exactly one cell.
+
 The current evaluator may use a query-local arena index internally, but
 persisted recurrence is computed from the exact versioned state identity.
 Physical reuse counters remain direct evaluator counters. Do not reconstruct a
