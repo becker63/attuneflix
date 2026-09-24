@@ -7,12 +7,10 @@
 /.env.*
 !/.env.example
 
-# Nix, Flix, and generated JVM bindings/dependencies
+# Nix, Flix, and Bazel outputs
 /result
 /result-*
-/.build/
 /artifact/
-/lib/external/
 *.fpkg
 /bazel-attuneflix
 /bazel-bin
@@ -20,15 +18,6 @@
 /bazel-testlogs
 /bazel-remote-grpc.log
 /execution_log.binpb.zst
-/nix/migrate-world/.jars/
-/nix/migrate-world/build/
-/nix/migrate-world/lib/
-/nix/migrate-world/src/Repository.flix
-/nix/migrate-world/src/Repository/
-/nix/migrate-world/src/ScientificData.flix
-/nix/migrate-world/src/ScientificIdentity.flix
-/nix/migrate-world/src/ScientificTable.flix
-/nix/migrate-world/artifact/
 
 # rules_rust crate-universe projections for Grit path dependencies. The
 # authoritative BUILD definitions live in build/grit_repository.bzl.

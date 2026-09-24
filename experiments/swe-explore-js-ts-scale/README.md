@@ -15,29 +15,28 @@ meaning.
 
 Local canonical evidence lives below `.attune/`:
 
-- `repository-facts-js-ts-scale-v1/*.parquet` — source observations;
+- `repository-world-v1/*/{metadata,entities,relations}.parquet` — typed worlds
+  for all 78 snapshots, migrated exactly from the retained observations;
 - `semantic-prior-js-ts-scale-v1/rankings/*.parquet` — per-case documents and
   cosine rankings; raw provider envelopes remain JSON under `observations/`;
 - `experiments/swe-explore-js-ts-scale/013-predictions/*.parquet` — frozen
   predictions retained before gold is introduced.
 
-`results-censored.parquet` is the canonical evaluator output. Flix validates the
-exact 61-case order and the 42/19 completed split while merging the bounded-life
-evaluation shards, then derives `REPORT.md` from those rows. Normal `./verify`
-explicitly clears provider credentials and every experiment/acquisition/evaluator
-gate, so it cannot make a paid call or read scale gold through inherited shell
-state. The explicit retained-evidence and timing provenance is in `USAGE.md`.
+`results-censored.parquet` is the canonical sealed evaluator output. The
+current graph exposes one keyless replay action and one bounded-lifetime
+evaluation action per completed case, followed by deterministic aggregates:
 
-`ATTUNE_SCALE_PRIOR_START=N` and `ATTUNE_SCALE_PRIOR_END=N` are recovery-only
-half-open range selectors over the same original manifest order. They skip
-cases outside the range without changing request, ranking, or
-repository-scoped observation identities.
+```text
+bazel build //.attune:localization_replay
+bazel build //.attune:localization_evaluation
+```
 
-`ATTUNE_SCALE_GENERALIZATION_START=N` and
-`ATTUNE_SCALE_GENERALIZATION_END=N` provide the same recovery-only half-open
-manifest range for prediction preparation, acquisition, and replay. They exist
-so one failed case cannot discard or prevent independent completed cases; the
-frozen policy and prediction identities are unchanged.
+The aggregate validates exact 61-case order, the 42/19 completed split, exact
+predictions, discrete evaluator equality, and the frozen `1e-10` floating
+tolerance. Bazel actions receive only declared inputs; the developer-shell
+wrapper does not pass `OPENROUTER_API_KEY`. The former environment-variable
+range runner is preserved in the pre-refactor scientific checkpoint, not at
+HEAD. Retained-evidence and timing provenance is in `USAGE.md`.
 
 ## Retained run status
 

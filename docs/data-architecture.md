@@ -5,13 +5,13 @@ AttuneFlix has one repository-wide data rule:
 > External formats vary. Internal scientific datasets are Parquet. JSON is the
 > control plane. Markdown is the human plane.
 
-During the Bazel migration, pinned Nix expressions still fetch several exact
-upstream datasets and project only the fields a capability may receive. In
-particular, solver-visible issue projections remain gold-free; evaluator gold
-is built separately. Those pins and projections are moving into Bazel rather
-than remaining an application runtime. After ingestion, Flix owns the data
-meaning and uses the small Bazel-built JVM seam in `src/native/parquet/`. No
-DuckDB database or second storage layer exists.
+Bazel owns the current data dependencies and projections. Solver-visible
+issues, retained semantic priors, retained decisions, repository worlds, and
+evaluator-only gold are separate declared inputs. The localization action has
+no dependency edge to gold; only the evaluation action receives it. Flix owns
+their meaning and uses the small Bazel-built JVM seam in
+`src/native/parquet/`. No project Nix expression, Python data helper, DuckDB
+database, or second storage layer is in the current graph.
 
 ## Canonical Parquet schemas
 
@@ -59,10 +59,12 @@ retains the SHA-256 of the historical TSV representation.
 - `experiments/jev-policy-hillclimb/iterations/*/metrics.parquet` contains each
   frozen iteration's complete metrics. Each adjacent `REPORT.md` explains its
   provenance and regeneration path.
-- `.attune/repository-facts-*/**.parquet`, semantic-prior rankings, scale
-  predictions, and evaluator outputs are local canonical scientific evidence.
-  Raw provider response envelopes remain JSON because they are immutable
-  observations whose exact response bytes are the control/replay boundary.
+- `.attune/repository-world-v1/*/{metadata,entities,relations}.parquet` is the
+  typed, semantic-path-independent world for each of the 78 frozen snapshots.
+- Semantic-prior rankings, scale predictions, retained decisions, and
+  evaluator outputs are local canonical scientific evidence. Raw provider
+  response envelopes remain JSON because their exact bytes are immutable paid
+  observations and the replay boundary.
 
 `MANIFEST.json`, the two small `route-templates.json` policy descriptors,
 protocol metadata, lockfiles, and configuration remain JSON/TOML because they
@@ -70,9 +72,11 @@ are control objects rather than datasets.
 
 ## Executable laws
 
-`nix/check-data-plane.py`, called by `./verify`, rejects tracked canonical data
-with CSV/TSV/JSONL/NDJSON, Arrow IPC, pickle, SQLite, or DuckDB extensions. It
-also rejects experiment implementation code that names direct CSV/TSV/JSONL
-inputs outside `nix/`, validates Parquet magic and schema metadata, and requires
-nearby Markdown for committed Parquet. Its self-test exercises accepted and
-rejected paths before the repository scan.
+`bazel test //...` checks the declared schemas and typed round trips through
+the Java Arrow/Parquet seam. It also checks repository-world metadata,
+entities, nominal domains, admitted relations, protocol identities, and Atlas
+signature tables. Heavy replay and evaluation are separate explicit Bazel
+builds: replay receives retained observations but no provider credential, and
+evaluation receives gold only after the frozen prediction dependency. The
+tracked graph therefore enforces the capability split instead of relying on a
+runtime mode or a Python repository scan.

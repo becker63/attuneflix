@@ -112,22 +112,23 @@ and must pass the same Level-2 parity gate.
 
 ## Native Grit packaging result
 
-Nix now builds the pinned Marzano adapter, runs its Rust tests, generates FFM
-bindings from Attune's small C header with `jextract`, and compiles the tiny
-Java façade with plain `javac`/`jar`. The generated downcall embeds the native
-library's Nix-store path, so runtime discovery does not depend on
-`LD_LIBRARY_PATH`. Only `Cargo.toml`, `Cargo.lock`, and `lib.rs` participate in
-the expensive native derivation identity; unrelated Flix, documentation, and
-editor changes cannot invalidate it.
+Bazel now owns the pinned Marzano adapter, its Rust tests, generated FFM
+bindings, Java façade, native library, and runfiles. `rules_rust` uses a pinned
+Rust toolchain and declared Cargo lock projection. A small repository rule
+fetches the exact GritQL, Tree-sitter façade, GritQL grammar, and web-tree-
+sitter archives with SHA-256 verification, then applies the three checked
+JavaScript/TypeScript feature substitutions. A second content-addressed
+repository rule supplies `jextract`; generated Java is an action output rather
+than checked-in source.
 
 Marzano's individual Tree-sitter feature flags compile, but its native
 target-language constructors are still guarded by the coarse `builtin-parser`
 cfg; explicit parser injection is gated to `wasm32`. Following the frozen
-AttuneRadii Nix reference, the vendor derivation projects that cfg onto the
-selected JavaScript and TypeScript feature flags. The patch is three explicit
-module substitutions against the pinned revision. Local verification consumes
-the resulting Nix-built library rather than maintaining a second, ambient
-Cargo execution path.
+AttuneRadii build oracle, the Bazel repository rule projects that cfg onto the
+selected JavaScript and TypeScript feature flags. Local and BuildBuddy
+verification consume the same Bazel-built library. No Nix-store path,
+`LD_LIBRARY_PATH`, ambient Cargo target, or manually staged JAR is part of the
+runtime graph.
 
 The JAR also carries the exact three admitted Grit programs as resources.
 `Grit.Program` is a closed Flix enum, so application code cannot accidentally

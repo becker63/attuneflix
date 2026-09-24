@@ -1,8 +1,10 @@
 # Time-bounded repository replication
 
-This report records the deterministic future-maintenance experiment over the
-already materialized SWE-Explore TS/JS Nix snapshots.  Repository cutoffs,
-heads, history projections, and source identities are frozen in
+This report records the historical deterministic future-maintenance experiment
+over SWE-Explore TS/JS snapshots that were originally materialized by Nix.
+That materializer is not part of current HEAD; the sentence records experiment
+provenance, not a runtime requirement. Repository cutoffs, heads, history
+projections, and source identities are frozen in
 [`replication.parquet`](replication.parquet). Each Flix run has a hard 15-minute wall-clock ceiling;
 repositories that exceed it are reported as censored rather than silently
 changing the protocol.
