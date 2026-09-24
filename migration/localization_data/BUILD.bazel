@@ -8,6 +8,7 @@ flix_fatjar(
         "//build:src/AtlasRepository.flix",
         "//src:Decide.flix",
         "//src:Localization/PredictionTable.flix",
+        "//src:Localization/IssueTable.flix",
         "//src:Localization/PriorTable.flix",
         "//src:Localization/Tree.flix",
         "//src:Radii.flix",

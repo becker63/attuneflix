@@ -7,11 +7,14 @@ use Util.Json
 use Util.Json.Json.{JArray, JNull, JObject, JString}
 use Util.Json.FromJson
 
-def main(): Unit \ IO = {
+def main(): Unit \ {Fs.FileSystem, IO} = {
     let priorPayload = ScientificData.readObject(property("attune.legacy_prior"));
     let predictionPayload = ScientificData.readObject(property("attune.legacy_prediction"));
+    let issuePayload = Fs.FileSystem.read(property("attune.legacy_issues"))
+        |> Result.mapErr(ToString.toString) |> require;
     let prior = decodePrior(property("attune.instance_id"), priorPayload) |> require;
     let prediction = decodePrediction(property("attune.instance_id"), predictionPayload) |> require;
+    let issue = decodeIssue(property("attune.instance_id"), issuePayload) |> require;
     let admittedPrior = Localization.PriorTable.write(
         property("attune.output_prior_metadata"), property("attune.output_prior_documents"),
         property("attune.output_prior_ranking"), prior);
@@ -19,6 +22,7 @@ def main(): Unit \ IO = {
         property("attune.output_prediction_summary"), property("attune.output_prediction_ranking"),
         property("attune.output_prediction_decisions"), property("attune.output_prediction_probabilities"),
         prediction);
+    let _admittedIssue = Localization.IssueTable.write(property("attune.output_issue"), issue);
     let instanceId = property("attune.instance_id");
     if (not Localization.PriorTable.exactEqual(admittedPrior, prior))
         bug!("typed semantic-prior migration round-trip mismatch: " +
@@ -29,6 +33,30 @@ def main(): Unit \ IO = {
     else println("LOCALIZATION_DATA_MIGRATION case=${instanceId}" +
         " documents=${Vector.length(prior#documents)} ranking=${Vector.length(prior#ranking)}" +
         " decisions=${Vector.length(prediction#decisions)} exact=true")
+}
+
+def decodeIssue(instanceId: String, payload: String): Result[String, ScientificTable.Row] =
+    parseObject("issue fixture", payload) |> Result.flatMap(fields -> forM (
+        version <- integer("version", fields);
+        _ <- if (version == 1) Ok(()) else Err("unsupported issue fixture version");
+        values <- array("issues", fields);
+        matches = Vector.filter(value -> issueIdentity(value) == Some(instanceId), values);
+        value <- exactlyOne("issue ${instanceId}", matches);
+        issue <- object("issue", value);
+        actual <- string("instanceId", issue);
+        _ <- equal("issue instance", instanceId, actual);
+        repository <- string("repository", issue);
+        baseRevision <- string("baseCommit", issue);
+        problem <- string("problemStatement", issue);
+        _ <- if (String.isEmpty(problem)) Err("issue text is empty") else Ok(())
+    ) yield Localization.IssueTable.row(actual, repository, baseRevision, problem))
+
+def issueIdentity(value: Json): Option[String] = match value {
+    case JObject(fields) => match Map.get("instanceId", fields) {
+        case Some(JString(value0)) => Some(value0)
+        case _ => None
+    }
+    case _ => None
 }
 
 def decodePrior(instanceId: String, payload: String): Result[String, Localization.PriorTable.Tables] =

@@ -1,8 +1,6 @@
 // One-time projection of repository-wide raw paid decision evidence into
 // small typed per-case bundles. The provider envelopes remain authoritative;
 // this migration only removes unrelated observations from each replay input.
-import java.lang.System
-
 use Fs.FileSystem
 type alias CaseInput = {
     key = String,
@@ -16,12 +14,8 @@ type alias CaseInput = {
 }
 
 def main(): Unit \ {FileSystem, IO} = {
-    let cases = read(System.getProperty("attune.case_manifest"))
-        |> Result.flatMap(parseCases)
-        |> require;
-    let rawPaths = read(System.getProperty("attune.raw_manifest"))
-        |> Result.map(lines)
-        |> require;
+    let cases = readCases() |> require;
+    let rawPaths = Experiment.paths("attune.raw_envelopes");
     let selected = collect(rawPaths, cases, 0, Map.empty()) |> require;
     let total = writeCases(cases, selected, 0, 0) |> require;
     println("LOCALIZATION_DECISION_MIGRATION cases=${Vector.length(cases)}" +
@@ -31,35 +25,35 @@ def main(): Unit \ {FileSystem, IO} = {
 def read(path: String): Result[String, String] \ FileSystem =
     FileSystem.read(path) |> Result.mapErr(ToString.toString)
 
-def parseCases(payload: String): Result[String, Vector[CaseInput]] \ IO =
-    lines(payload)
-    |> Vector.traverse(line -> {
-        let fields = String.splitOn(substr = "\t", line) |> List.toVector;
-        if (Vector.length(fields) != 7) Err("invalid localization migration case row")
-        else {
-            let summary = Vector.get(2, fields);
-            let ranking = Vector.get(3, fields);
-            let decisions = Vector.get(4, fields);
-            let probabilities = Vector.get(5, fields);
-            Localization.PredictionTable.read(summary, ranking, decisions, probabilities)
+def readCases(): Result[String, Vector[CaseInput]] \ IO = {
+    let count = Experiment.count("attune.cases");
+    let summaries = Experiment.paths("attune.prediction_summaries");
+    let rankings = Experiment.paths("attune.prediction_rankings");
+    let decisions = Experiment.paths("attune.prediction_decisions");
+    let probabilities = Experiment.paths("attune.prediction_probabilities");
+    let outputs = Experiment.paths("attune.bundle_outputs");
+    if (Vector.exists(paths -> Vector.length(paths) != count,
+        Vector#{summaries, rankings, decisions, probabilities, outputs}))
+        Err("decision migration input lists differ in length")
+    else Vector.traverse(index -> {
+            let summary = Vector.get(index, summaries);
+            let ranking = Vector.get(index, rankings);
+            let decisionRows = Vector.get(index, decisions);
+            let probabilityRows = Vector.get(index, probabilities);
+            Localization.PredictionTable.read(summary, ranking, decisionRows, probabilityRows)
                 |> Result.flatMap(Localization.PredictionTable.responseIds)
                 |> Result.map(ids -> {
-                    key = Vector.get(0, fields),
-                    baseRevision = Vector.get(1, fields),
+                    key = Experiment.property("attune.case_keys.${index}"),
+                    baseRevision = Experiment.property("attune.base_revisions.${index}"),
                     predictionSummary = summary,
                     predictionRanking = ranking,
-                    predictionDecisions = decisions,
-                    predictionProbabilities = probabilities,
-                    output = Vector.get(6, fields),
+                    predictionDecisions = decisionRows,
+                    predictionProbabilities = probabilityRows,
+                    output = Vector.get(index, outputs),
                     responseIds = ids
                 })
-        }
-    })
-
-def lines(payload: String): Vector[String] =
-    String.splitOn(substr = "\n", payload)
-    |> List.filter(line -> not String.isEmpty(line))
-    |> List.toVector
+    }, Vector.range(0, count))
+}
 
 def collect(
     paths: Vector[String],

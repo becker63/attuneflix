@@ -9,11 +9,11 @@ def main(): Unit \ {FileSystem, IO} = {
     let world = Repository.Table.read(
         property("attune.world_metadata"), property("attune.world_entities"),
         property("attune.world_relations"), identity) |> require;
-    let issuePayload = FileSystem.read(property("attune.issues"))
-        |> Result.mapErr(ToString.toString) |> require;
+    let issue = Localization.IssueTable.read(property("attune.issue"), property("attune.instance_id"))
+        |> require;
     let prepared = Localization.prepareWorld(
         property("attune.instance_id"), identity#repository, identity#baseRevision,
-        identity#snapshotId, issuePayload, world) |> require;
+        identity#snapshotId, issue, world) |> require;
     let prior = Localization.PriorTable.read(
         property("attune.prior_metadata"), property("attune.prior_documents"),
         property("attune.prior_ranking"), prepared#instanceId) |> require;

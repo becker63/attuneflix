@@ -8,6 +8,7 @@ flix_fatjar(
         "//build:src/Localization.flix",
         "//src:Decide.flix",
         "//src:Decide/Table.flix",
+        "//src:Experiment.flix",
         "//src:Localization/PredictionTable.flix",
         "//src:Localization/Tree.flix",
         "//src:Radii.flix",

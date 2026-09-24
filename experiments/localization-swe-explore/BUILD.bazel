@@ -9,6 +9,7 @@ flix_fatjar(
         "//src:Decide.flix",
         "//src:Decide/Table.flix",
         "//src:Localization/Policy.flix",
+        "//src:Localization/IssueTable.flix",
         "//src:Localization/PredictionTable.flix",
         "//src:Localization/PriorTable.flix",
         "//src:Localization/Tree.flix",
@@ -45,6 +46,7 @@ flix_fatjar(
     name = "aggregate_flix",
     srcs = [
         "Aggregate.flix",
+        "//src:Experiment.flix",
         "//src:LocalizationReplay.flix",
         "//src:ScientificTable.flix",
     ],
@@ -75,6 +77,7 @@ flix_fatjar(
         "//src:Localization/Evaluate.flix",
         "//src:Localization/EvaluationData.flix",
         "//src:Localization/EvaluationTable.flix",
+        "//src:Localization/IssueTable.flix",
         "//src:Localization/PredictionTable.flix",
         "//src:Localization/PriorTable.flix",
         "//src:Localization/Tree.flix",
@@ -112,6 +115,7 @@ flix_fatjar(
     srcs = [
         "AggregateEvaluation.flix",
         "//build:src/LocalizationNamespace.flix",
+        "//src:Experiment.flix",
         "//src:Localization/EvaluationTable.flix",
         "//src:ScientificTable.flix",
     ],

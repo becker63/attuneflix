@@ -1,15 +1,7 @@
-import java.lang.System
-
-use Fs.FileSystem
 use ScientificTable.Value
 
-def main(): Unit \ {FileSystem, IO} = {
-    let manifest = FileSystem.read(System.getProperty("attune.input_manifest"))
-        |> Result.mapErr(ToString.toString)
-        |> require;
-    let paths = String.splitOn(substr = "\n", manifest)
-        |> List.filter(path -> not String.isEmpty(path))
-        |> List.toVector;
+def main(): Unit \ IO = {
+    let paths = Experiment.paths("attune.input_proofs");
     let rows = Vector.flatMap(path ->
         ScientificTable.read(path, LocalizationReplay.schema()), paths);
     let ids = Vector.traverse(validate, rows) |> require |> Vector.toSet;
@@ -17,7 +9,7 @@ def main(): Unit \ {FileSystem, IO} = {
     else if (Set.size(ids) != 61) bug!("replay proof instance identities are not unique")
     else {
         let admitted = ScientificTable.write(
-            System.getProperty("attune.output_proof"), LocalizationReplay.schema(), rows);
+            Experiment.property("attune.output_proof"), LocalizationReplay.schema(), rows);
         if (Vector.length(admitted) != 61) bug!("aggregate replay proof write/read mismatch")
         else println("LOCALIZATION_REPLAY_AGGREGATE cases=61 exact=true")
     }

@@ -79,6 +79,7 @@ flix_fatjar(
         "//src:Atlas/Signature.flix",
         "//src:Atlas/Signature/Summary.flix",
         "//src:Atlas/Signature/Table.flix",
+        "//src:Experiment.flix",
         "//src:Radii.flix",
         "//src:Repository/Physical.flix",
         "//src:Repository/Structure.flix",

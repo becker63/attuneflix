@@ -64,6 +64,11 @@ AttunePriorInfo = provider(
     },
 )
 
+AttuneIssueInfo = provider(
+    doc = "One typed admitted localization issue.",
+    fields = {"issue": "single-row issue Parquet"},
+)
+
 AttunePredictionInfo = provider(
     doc = "One typed frozen localization prediction.",
     fields = {
@@ -86,6 +91,7 @@ AttuneLocalizationReplayInfo = provider(
 )
 
 def _localization_data_impl(ctx):
+    issue = ctx.actions.declare_file(ctx.label.name + "/issue.parquet")
     prior_metadata = ctx.actions.declare_file(ctx.label.name + "/prior-metadata.parquet")
     prior_documents = ctx.actions.declare_file(ctx.label.name + "/prior-documents.parquet")
     prior_ranking = ctx.actions.declare_file(ctx.label.name + "/prior-ranking.parquet")
@@ -98,6 +104,8 @@ def _localization_data_impl(ctx):
         ("attune.instance_id", ctx.attr.instance_id),
         ("attune.legacy_prior", ctx.file.legacy_prior.path),
         ("attune.legacy_prediction", ctx.file.legacy_prediction.path),
+        ("attune.legacy_issues", ctx.file.legacy_issues.path),
+        ("attune.output_issue", issue.path),
         ("attune.output_prior_metadata", prior_metadata.path),
         ("attune.output_prior_documents", prior_documents.path),
         ("attune.output_prior_ranking", prior_ranking.path),
@@ -108,6 +116,7 @@ def _localization_data_impl(ctx):
     ]:
         args.add(_jvm_property(name, value))
     outputs = [
+        issue,
         prior_metadata,
         prior_documents,
         prior_ranking,
@@ -119,7 +128,7 @@ def _localization_data_impl(ctx):
     ctx.actions.run(
         executable = ctx.executable.tool,
         arguments = [args],
-        inputs = [ctx.file.legacy_prior, ctx.file.legacy_prediction],
+        inputs = [ctx.file.legacy_prior, ctx.file.legacy_prediction, ctx.file.legacy_issues],
         outputs = outputs,
         mnemonic = "AttuneLocalizationDataMigration",
         progress_message = "Migrating frozen localization data %{label}",
@@ -131,6 +140,7 @@ def _localization_data_impl(ctx):
             documents = prior_documents,
             ranking = prior_ranking,
         ),
+        AttuneIssueInfo(issue = issue),
         AttunePredictionInfo(
             summary = prediction_summary,
             ranking = prediction_ranking,
@@ -145,6 +155,7 @@ attune_localization_data = rule(
         "instance_id": attr.string(mandatory = True),
         "legacy_prior": attr.label(allow_single_file = [".parquet"], mandatory = True),
         "legacy_prediction": attr.label(allow_single_file = [".parquet"], mandatory = True),
+        "legacy_issues": attr.label(allow_single_file = [".json"], mandatory = True),
         "tool": attr.label(executable = True, cfg = "exec", mandatory = True),
     },
 )
@@ -184,6 +195,11 @@ AttuneAtlasLocalizationInfo = provider(
 
 def _jvm_property(name, value):
     return "--jvm_flag=-D%s=%s" % (name, value)
+
+def _add_indexed(args, prefix, files):
+    args.add(_jvm_property(prefix + ".count", str(len(files))))
+    for index, file in enumerate(files):
+        args.add(_jvm_property("%s.%d" % (prefix, index), file.path))
 
 def _world_info(ctx, metadata, entities, relations, identity = None):
     return AttuneWorldInfo(
@@ -365,28 +381,12 @@ def _atlas_signatures_impl(ctx):
     observations = [signature.observations for signature in signatures]
     physical = [signature.physical for signature in signatures]
     snapshots = [signature.snapshot for signature in signatures]
-    catalog = ctx.actions.declare_file(ctx.label.name + ".snapshots.tsv")
-    ctx.actions.write(
-        output = catalog,
-        content = "repository\tbase_revision\tsource_tree_identity\tfact_identity\tsnapshot_id\n" +
-                  "\n".join([
-                      "\t".join([
-                          signature.repository,
-                          signature.base_revision,
-                          signature.source_tree_identity,
-                          signature.fact_identity,
-                          signature.snapshot_id,
-                      ])
-                      for signature in signatures
-                  ]) + "\n",
-    )
     return [
-        DefaultInfo(files = depset(observations + physical + snapshots + [catalog])),
+        DefaultInfo(files = depset(observations + physical + snapshots)),
         OutputGroupInfo(
             observations = depset(observations),
             physical = depset(physical),
             snapshots = depset(snapshots),
-            snapshot_catalog = depset([catalog]),
         ),
     ]
 
@@ -420,26 +420,20 @@ attune_atlas_signature_summaries = rule(
 
 def _atlas_aggregate_impl(ctx):
     summaries = [target[AttuneSignatureSummaryInfo] for target in ctx.attr.summaries]
-    manifest = ctx.actions.declare_file(ctx.label.name + "/inputs.tsv")
     aggregate_summaries = ctx.actions.declare_file(ctx.label.name + "/summaries.parquet")
     aggregate_snapshots = ctx.actions.declare_file(ctx.label.name + "/snapshots.parquet")
     aggregate_physical = ctx.actions.declare_file(ctx.label.name + "/physical.parquet")
-    ctx.actions.write(
-        output = manifest,
-        content = "".join([
-            "%s\t%s\t%s\n" % (summary.summary.path, summary.snapshot.path, summary.physical.path)
-            for summary in summaries
-        ]),
-    )
     args = ctx.actions.args()
+    _add_indexed(args, "attune.input_summaries", [summary.summary for summary in summaries])
+    _add_indexed(args, "attune.input_snapshots", [summary.snapshot for summary in summaries])
+    _add_indexed(args, "attune.input_physical", [summary.physical for summary in summaries])
     for name, value in [
-        ("attune.input_manifest", manifest.path),
         ("attune.output_summaries", aggregate_summaries.path),
         ("attune.output_snapshots", aggregate_snapshots.path),
         ("attune.output_physical", aggregate_physical.path),
     ]:
         args.add(_jvm_property(name, value))
-    inputs = [manifest]
+    inputs = []
     for summary in summaries:
         inputs.extend([summary.summary, summary.snapshot, summary.physical])
     ctx.actions.run(
@@ -502,34 +496,39 @@ def _decision_bundles_impl(ctx):
     if len(ctx.attr.case_keys) != len(ctx.attr.predictions) or len(ctx.attr.case_keys) != len(ctx.attr.base_revisions):
         fail("case_keys, base_revisions, and predictions must have identical lengths")
     outputs = {}
-    case_manifest = ctx.actions.declare_file(ctx.label.name + "/cases.tsv")
-    raw_manifest = ctx.actions.declare_file(ctx.label.name + "/raw.tsv")
-    case_lines = []
+    keys = []
+    revisions = []
+    summaries = []
+    rankings = []
+    decisions = []
+    probabilities = []
+    output_files = []
     for index, key in enumerate(ctx.attr.case_keys):
         prediction = ctx.attr.predictions[index][AttunePredictionInfo]
         output = ctx.actions.declare_file(ctx.label.name + "/" + key + ".parquet")
         outputs[key] = output
-        case_lines.append("%s\t%s\t%s\t%s\t%s\t%s\t%s\n" % (
-            key,
-            ctx.attr.base_revisions[index],
-            prediction.summary.path,
-            prediction.ranking.path,
-            prediction.decisions.path,
-            prediction.probabilities.path,
-            output.path,
-        ))
-    ctx.actions.write(case_manifest, "".join(case_lines))
-    ctx.actions.write(raw_manifest, "".join([
-        raw.path + "\n"
-        for raw in ctx.files.raw_envelopes
-    ]))
+        keys.append(key)
+        revisions.append(ctx.attr.base_revisions[index])
+        summaries.append(prediction.summary)
+        rankings.append(prediction.ranking)
+        decisions.append(prediction.decisions)
+        probabilities.append(prediction.probabilities)
+        output_files.append(output)
     args = ctx.actions.args()
-    args.add(_jvm_property("attune.case_manifest", case_manifest.path))
-    args.add(_jvm_property("attune.raw_manifest", raw_manifest.path))
+    args.add(_jvm_property("attune.cases.count", str(len(keys))))
+    for index, key in enumerate(keys):
+        args.add(_jvm_property("attune.case_keys.%d" % index, key))
+        args.add(_jvm_property("attune.base_revisions.%d" % index, revisions[index]))
+    _add_indexed(args, "attune.prediction_summaries", summaries)
+    _add_indexed(args, "attune.prediction_rankings", rankings)
+    _add_indexed(args, "attune.prediction_decisions", decisions)
+    _add_indexed(args, "attune.prediction_probabilities", probabilities)
+    _add_indexed(args, "attune.bundle_outputs", output_files)
+    _add_indexed(args, "attune.raw_envelopes", ctx.files.raw_envelopes)
     ctx.actions.run(
         executable = ctx.executable.tool,
         arguments = [args],
-        inputs = [case_manifest, raw_manifest] + ctx.files.raw_envelopes + [
+        inputs = ctx.files.raw_envelopes + [
             file
             for target in ctx.attr.predictions
             for file in [
@@ -582,6 +581,7 @@ def _localization_replay_impl(ctx):
     decisions = ctx.attr.decisions[AttuneDecisionBundleInfo]
     prior = ctx.attr.data[AttunePriorInfo]
     expected = ctx.attr.data[AttunePredictionInfo]
+    issue = ctx.attr.data[AttuneIssueInfo]
     if not world.identity:
         fail("localization replay requires the canonical migrated world identity")
     summary = ctx.actions.declare_file(ctx.label.name + "/prediction-summary.parquet")
@@ -595,7 +595,7 @@ def _localization_replay_impl(ctx):
         ("attune.world_metadata", world.metadata.path),
         ("attune.world_entities", world.entities.path),
         ("attune.world_relations", world.relations.path),
-        ("attune.issues", ctx.file.issues.path),
+        ("attune.issue", issue.issue.path),
         ("attune.instance_id", ctx.attr.instance_id),
         ("attune.prior_metadata", prior.metadata.path),
         ("attune.prior_documents", prior.documents.path),
@@ -620,7 +620,7 @@ def _localization_replay_impl(ctx):
             world.metadata,
             world.entities,
             world.relations,
-            ctx.file.issues,
+            issue.issue,
             prior.metadata,
             prior.documents,
             prior.ranking,
@@ -650,25 +650,22 @@ attune_localization_replay = rule(
     attrs = {
         "world": attr.label(providers = [AttuneWorldInfo], mandatory = True),
         "decisions": attr.label(providers = [AttuneDecisionBundleInfo], mandatory = True),
-        "issues": attr.label(allow_single_file = [".json"], mandatory = True),
         "instance_id": attr.string(mandatory = True),
-        "data": attr.label(providers = [AttunePriorInfo, AttunePredictionInfo], mandatory = True),
+        "data": attr.label(providers = [AttuneIssueInfo, AttunePriorInfo, AttunePredictionInfo], mandatory = True),
         "tool": attr.label(executable = True, cfg = "exec", mandatory = True),
     },
 )
 
 def _localization_replays_impl(ctx):
     replays = [target[AttuneLocalizationReplayInfo] for target in ctx.attr.replays]
-    manifest = ctx.actions.declare_file(ctx.label.name + "/proofs.txt")
     proof = ctx.actions.declare_file(ctx.label.name + "/proof.parquet")
-    ctx.actions.write(manifest, "".join([replay.proof.path + "\n" for replay in replays]))
     args = ctx.actions.args()
-    args.add(_jvm_property("attune.input_manifest", manifest.path))
+    _add_indexed(args, "attune.input_proofs", [replay.proof for replay in replays])
     args.add(_jvm_property("attune.output_proof", proof.path))
     ctx.actions.run(
         executable = ctx.executable.tool,
         arguments = [args],
-        inputs = [manifest] + [replay.proof for replay in replays],
+        inputs = [replay.proof for replay in replays],
         outputs = [proof],
         mnemonic = "AttuneLocalizationReplayAggregate",
         progress_message = "Checking exact localization replay across %{label}",
@@ -690,6 +687,7 @@ def _localization_evaluation_impl(ctx):
     world = ctx.attr.world[AttuneWorldInfo]
     replay = ctx.attr.replay[AttuneLocalizationReplayInfo]
     prior = ctx.attr.data[AttunePriorInfo]
+    issue = ctx.attr.data[AttuneIssueInfo]
     metrics = ctx.actions.declare_file(ctx.label.name + "/metrics.parquet")
     regions = ctx.actions.declare_file(ctx.label.name + "/regions.parquet")
     telemetry = ctx.actions.declare_file(ctx.label.name + "/telemetry.parquet")
@@ -697,7 +695,7 @@ def _localization_evaluation_impl(ctx):
     args = ctx.actions.args()
     for name, value in [
         ("attune.instance_id", ctx.attr.instance_id),
-        ("attune.issues", ctx.file.issues.path),
+        ("attune.issue", issue.issue.path),
         ("attune.prior_metadata", prior.metadata.path),
         ("attune.prior_documents", prior.documents.path),
         ("attune.prior_ranking", prior.ranking.path),
@@ -722,7 +720,7 @@ def _localization_evaluation_impl(ctx):
         executable = ctx.executable.tool,
         arguments = [args],
         inputs = [
-            ctx.file.issues,
+            issue.issue,
             prior.metadata,
             prior.documents,
             prior.ranking,
@@ -756,8 +754,7 @@ attune_localization_evaluation = rule(
     implementation = _localization_evaluation_impl,
     attrs = {
         "instance_id": attr.string(mandatory = True),
-        "issues": attr.label(allow_single_file = True, mandatory = True),
-        "data": attr.label(providers = [AttunePriorInfo, AttunePredictionInfo], mandatory = True),
+        "data": attr.label(providers = [AttuneIssueInfo, AttunePriorInfo, AttunePredictionInfo], mandatory = True),
         "replay": attr.label(providers = [AttuneLocalizationReplayInfo], mandatory = True),
         "gold": attr.label(allow_single_file = [".parquet"], mandatory = True),
         "geometry": attr.label(allow_single_file = [".parquet"], mandatory = True),
@@ -769,30 +766,23 @@ attune_localization_evaluation = rule(
 
 def _localization_evaluations_impl(ctx):
     evaluations = [target[AttuneLocalizationEvaluationInfo] for target in ctx.attr.evaluations]
-    manifest = ctx.actions.declare_file(ctx.label.name + "/inputs.tsv")
     metrics = ctx.actions.declare_file(ctx.label.name + "/metrics.parquet")
     regions = ctx.actions.declare_file(ctx.label.name + "/regions.parquet")
     telemetry = ctx.actions.declare_file(ctx.label.name + "/telemetry.parquet")
     proof = ctx.actions.declare_file(ctx.label.name + "/proof.parquet")
-    ctx.actions.write(manifest, "".join([
-        "%s\t%s\t%s\t%s\n" % (
-            evaluation.metrics.path,
-            evaluation.regions.path,
-            evaluation.telemetry.path,
-            evaluation.proof.path,
-        )
-        for evaluation in evaluations
-    ]))
     args = ctx.actions.args()
+    _add_indexed(args, "attune.input_metrics", [evaluation.metrics for evaluation in evaluations])
+    _add_indexed(args, "attune.input_regions", [evaluation.regions for evaluation in evaluations])
+    _add_indexed(args, "attune.input_telemetry", [evaluation.telemetry for evaluation in evaluations])
+    _add_indexed(args, "attune.input_proofs", [evaluation.proof for evaluation in evaluations])
     for name, value in [
-        ("attune.input_manifest", manifest.path),
         ("attune.output_metrics", metrics.path),
         ("attune.output_regions", regions.path),
         ("attune.output_telemetry", telemetry.path),
         ("attune.output_proof", proof.path),
     ]:
         args.add(_jvm_property(name, value))
-    inputs = [manifest]
+    inputs = []
     for evaluation in evaluations:
         inputs.extend([
             evaluation.metrics,
