@@ -70,13 +70,36 @@ mod JevOracleTest {
     type alias Best = {
         path = String,
         score = Score,
-        regions = Vector[SourceRegion]
+        regions = Vector[SourceRegion],
+        telemetry = OracleTelemetry
     }
 
     type alias CandidateBest = {
         path = String,
         f1 = Float64,
         regions = Vector[SourceRegion]
+    }
+
+    type alias EvaluationContext = {
+        counts = Map[String, Int32],
+        coreLines = Set[(String, Int32)],
+        optionalLines = Set[(String, Int32)],
+        usefulLines = Set[(String, Int32)],
+        documentRegions = Vector[Option[SourceRegion]]
+    }
+
+    type alias OracleTelemetry = {
+        logicalRoutes = Int32,
+        uniqueStates = Int32,
+        uniqueProjections = Int32,
+        scoreEvaluations = Int32
+    }
+
+    type alias CandidateSearch = {
+        best = CandidateBest,
+        states = Set[Radii.Compiled.ArenaStateId],
+        projections = Set[Vector[(String, Int32, Int32)]],
+        telemetry = OracleTelemetry
     }
 
     type alias Row = {
@@ -251,6 +274,10 @@ mod JevOracleTest {
                 case Ok(()) => ()
                 case Err(error) => Assert.fail(ToString.toString(error))
             }
+            case Some("optimized-parity") => match executeEvaluatorParity() {
+                case Ok(()) => ()
+                case Err(error) => Assert.fail(ToString.toString(error))
+            }
             case Some(value) => Assert.fail("unknown ATTUNE_JEV_EVALUATE: ${value}")
         }
 
@@ -324,6 +351,7 @@ mod JevOracleTest {
         computed: Localization.Tree.Computed,
         gold: Gold
     ): Vector[RouteDatum] = {
+        let evaluation = evaluationContext(prepared, gold);
         let context = diagnosticScoreContext(prepared#sources, gold);
         let rootRanking = prior#ranking;
         let root = {
@@ -332,9 +360,9 @@ mod JevOracleTest {
             state = computed#input,
             preview = diagnosticPreview(prepared#world, prior, computed#input),
             terminal = true,
-            score = diagnosticScore(regionsFor(prepared, rootRanking), gold, context)
+            score = diagnosticScore(regionsFor(evaluation, rootRanking), gold, context)
         };
-        routeDataFrom(prepared, prior, computed, gold, context, 0, Vector#{root})
+        routeDataFrom(prepared, prior, computed, gold, evaluation, context, 0, Vector#{root})
     }
 
     def routeDataFrom(
@@ -342,6 +370,7 @@ mod JevOracleTest {
         prior: Localization.Tree.Prior,
         computed: Localization.Tree.Computed,
         gold: Gold,
+        evaluation: EvaluationContext,
         context: DiagnosticScoreContext,
         index: Int32,
         result: Vector[RouteDatum]
@@ -359,10 +388,10 @@ mod JevOracleTest {
                 state = state,
                 preview = diagnosticPreview(prepared#world, prior, state),
                 terminal = terminal,
-                score = if (terminal) diagnosticScore(regionsFor(prepared, ranking), gold, context)
+                score = if (terminal) diagnosticScore(regionsFor(evaluation, ranking), gold, context)
                     else Vector.get(0, result)#score
             };
-            routeDataFrom(prepared, prior, computed, gold, context, index + 1,
+            routeDataFrom(prepared, prior, computed, gold, evaluation, context, index + 1,
                 Vector.append(result, Vector#{datum}))
         }
 
@@ -1208,6 +1237,20 @@ mod JevOracleTest {
         _ <- Result.mapErr(error -> Error.File(ToString.toString(error)), written)
     ) yield printScaleAggregate(rows)
 
+    /// Temporary migration proof: the optimized first case must decode to the
+    /// exact frozen scientific row, independent of Parquet serialization.
+    def executeEvaluatorParity(): Result[Error, Unit] \ {Env, FileSystem, IO} = forM (
+        candidatePath <- requiredEnv("ATTUNE_EVALUATOR_PARITY_CANDIDATE");
+        frozenPayload <- read(
+            ".attune/experiments/swe-explore-js-ts-scale/evaluation-shards/0-10.parquet");
+        candidatePayload <- read(candidatePath);
+        frozen <- decodeResultRows(frozenPayload);
+        candidate <- decodeResultRows(candidatePayload);
+        _ <- if (Vector.length(candidate) == 1 and
+            rowJson(Vector.get(0, candidate)) == rowJson(Vector.get(0, frozen))) Ok(())
+            else Err(Error.OfficialParity("optimized evaluator changed the frozen first row"))
+    ) yield println("EVALUATOR_OPTIMIZATION_PARITY cases=1 exact=true")
+
     def scaleShardPaths(): Vector[String] = Vector#{
         ".attune/experiments/swe-explore-js-ts-scale/evaluation-shards/0-10.parquet",
         ".attune/experiments/swe-explore-js-ts-scale/evaluation-shards/10-22.parquet",
@@ -1341,11 +1384,13 @@ mod JevOracleTest {
                         |> Option.toOk(Error.MissingGold(prepared#instanceId));
                     computed <- Localization.Tree.compute(prepared, prior, tree)
                         |> Result.mapErr(Error.Tree);
-                    priorRegions = regionsFor(prepared, prior#ranking);
-                    selectedRegions = regionsFor(prepared, ranking);
-                    priorScore = score(priorRegions, expected, prepared#sources);
-                    selectedScore = score(selectedRegions, expected, prepared#sources);
-                    oracle = structuralOracle(prepared, prior, computed, expected);
+                    context = evaluationContext(prepared, expected);
+                    priorRegions = regionsFor(context, prior#ranking);
+                    selectedRegions = regionsFor(context, ranking);
+                    priorScore = score(priorRegions, expected, context);
+                    selectedScore = score(selectedRegions, expected, context);
+                    oracle = structuralOracle(prior, computed, expected, context);
+                    _ = printOracleTelemetry(prepared#instanceId, oracle#telemetry);
                     row = {
                         instanceId = prepared#instanceId,
                         repository = prepared#repository,
@@ -1412,8 +1457,9 @@ mod JevOracleTest {
                     expected <- Vector.find(item -> item#instanceId == prepared#instanceId, gold)
                         |> Option.toOk(Error.MissingGold(prepared#instanceId));
                     frozen <- decodeFrozen(prepared#instanceId, frozenPayload);
-                    candidateRegions = regionsFor(prepared, ranking);
-                    candidateScore = score(candidateRegions, expected, prepared#sources)
+                    context = evaluationContext(prepared, expected);
+                    candidateRegions = regionsFor(context, ranking);
+                    candidateScore = score(candidateRegions, expected, context)
                 ) yield {
                     instanceId = prepared#instanceId,
                     repository = prepared#repository,
@@ -1458,11 +1504,12 @@ mod JevOracleTest {
                         |> Option.toOk(Error.MissingGold(prepared#instanceId));
                     computed <- Localization.Tree.compute(prepared, prior, tree)
                         |> Result.mapErr(Error.Tree);
-                    priorRegions = regionsFor(prepared, prior#ranking);
-                    jevRegions = regionsFor(prepared, jevRanking);
-                    priorScore = score(priorRegions, expected, prepared#sources);
-                    jevScore = score(jevRegions, expected, prepared#sources);
-                    oracle = structuralOracle(prepared, prior, computed, expected)
+                    context = evaluationContext(prepared, expected);
+                    priorRegions = regionsFor(context, prior#ranking);
+                    jevRegions = regionsFor(context, jevRanking);
+                    priorScore = score(priorRegions, expected, context);
+                    jevScore = score(jevRegions, expected, context);
+                    oracle = structuralOracle(prior, computed, expected, context)
                 ) yield {
                     instanceId = prepared#instanceId,
                     repository = prepared#repository,
@@ -1488,57 +1535,105 @@ mod JevOracleTest {
     /// Root is a legitimate stop state. Every Symbol-ending frozen Atlas path
     /// then competes by official line F1; stable route order breaks ties.
     def structuralOracle(
-        prepared: Localization.Prepared,
         prior: Localization.Tree.Prior,
         computed: Localization.Tree.Computed,
-        gold: Gold
+        gold: Gold,
+        context: EvaluationContext
     ): Best = {
-        let rootRegions = regionsFor(prepared, prior#ranking);
+        let rootRegions = regionsFor(context, prior#ranking);
         let root: CandidateBest = {
             path = "root",
-            f1 = lineF1(rootRegions, gold, prepared#sources),
+            f1 = lineF1(rootRegions, context),
             regions = rootRegions
         };
-        let winner = bestRoute(prepared, prior, computed, gold, 0, root);
+        let initial: CandidateSearch = {
+            best = root,
+            states = Set.empty(),
+            projections = Set#{projectionKey(rootRegions)},
+            telemetry = {
+                logicalRoutes = 0,
+                uniqueStates = 0,
+                uniqueProjections = 0,
+                scoreEvaluations = 1
+            }
+        };
+        let search = bestRoute(context, prior, computed, 0, initial);
+        let winner = search#best;
         {
             path = winner#path,
-            score = score(winner#regions, gold, prepared#sources),
-            regions = winner#regions
+            score = score(winner#regions, gold, context),
+            regions = winner#regions,
+            telemetry = search#telemetry
         }
     }
 
     def bestRoute(
-        prepared: Localization.Prepared,
+        context: EvaluationContext,
         prior: Localization.Tree.Prior,
         computed: Localization.Tree.Computed,
-        gold: Gold,
         index: Int32,
-        best: CandidateBest
-    ): CandidateBest =
-        if (index >= Vector.length(computed#tree#routes)) best
+        search: CandidateSearch
+    ): CandidateSearch =
+        if (index >= Vector.length(computed#tree#routes)) search
         else {
             let route = Vector.get(index, computed#tree#routes);
-            let next = if (snd(Radii.endpoints(route#expression)) != Radii.Domain.Symbol) best
+            let next = if (snd(Radii.endpoints(route#expression)) != Radii.Domain.Symbol) search
                 else {
                     let id = Vector.get(index, computed#evaluation#outputs);
-                    let state = Radii.Compiled.state(computed#evaluation, id);
-                    let ranking = Localization.Tree.promote(prior#ranking, state);
-                    let spans = regionsFor(prepared, ranking);
-                    let candidate = {
-                        path = pathText(route#steps),
-                        f1 = lineF1(spans, gold, prepared#sources),
-                        regions = spans
+                    let counted = {
+                        best = search#best,
+                        states = search#states,
+                        projections = search#projections,
+                        telemetry = {logicalRoutes = search#telemetry#logicalRoutes + 1,
+                            uniqueStates = search#telemetry#uniqueStates,
+                            uniqueProjections = search#telemetry#uniqueProjections,
+                            scoreEvaluations = search#telemetry#scoreEvaluations}
                     };
-                    if (candidate#f1 > best#f1) candidate else best
+                    if (Set.memberOf(id, search#states)) counted
+                    else {
+                        let state = Radii.Compiled.state(computed#evaluation, id);
+                        let ranking = Localization.Tree.promote(prior#ranking, state);
+                        let spans = regionsFor(context, ranking);
+                        let key = projectionKey(spans);
+                        let unique = {
+                            best = search#best,
+                            states = Set.insert(id, search#states),
+                            projections = search#projections,
+                            telemetry = {logicalRoutes = counted#telemetry#logicalRoutes,
+                                uniqueStates = counted#telemetry#uniqueStates + 1,
+                                uniqueProjections = counted#telemetry#uniqueProjections,
+                                scoreEvaluations = counted#telemetry#scoreEvaluations}
+                        };
+                        if (Set.memberOf(key, search#projections)) unique
+                        else {
+                            let candidate = {
+                                path = pathText(route#steps),
+                                f1 = lineF1(spans, context),
+                                regions = spans
+                            };
+                            {
+                                best = if (candidate#f1 > search#best#f1) candidate else search#best,
+                                states = unique#states,
+                                projections = Set.insert(key, search#projections),
+                                telemetry = {logicalRoutes = unique#telemetry#logicalRoutes,
+                                    uniqueStates = unique#telemetry#uniqueStates,
+                                    uniqueProjections = unique#telemetry#uniqueProjections + 1,
+                                    scoreEvaluations = unique#telemetry#scoreEvaluations + 1}
+                            }
+                        }
+                    }
                 };
-            bestRoute(prepared, prior, computed, gold, index + 1, next)
+            bestRoute(context, prior, computed, index + 1, next)
         }
 
-    def regionsFor(prepared: Localization.Prepared, ranking: Vector[Localization.Ranked]): Vector[SourceRegion] =
-        regionsFrom(prepared, ranking, 0, Set.empty(), Vector.empty())
+    def projectionKey(regions: Vector[SourceRegion]): Vector[(String, Int32, Int32)] =
+        Vector.map(region0 -> (region0#path, region0#start, region0#end), regions)
+
+    def regionsFor(context: EvaluationContext, ranking: Vector[Localization.Ranked]): Vector[SourceRegion] =
+        regionsFrom(context, ranking, 0, Set.empty(), Vector.empty())
 
     def regionsFrom(
-        prepared: Localization.Prepared,
+        context: EvaluationContext,
         ranking: Vector[Localization.Ranked],
         index: Int32,
         seen: Set[(String, Int32, Int32)],
@@ -1547,17 +1642,14 @@ mod JevOracleTest {
         if (Vector.length(result) >= 5 or index >= Vector.length(ranking)) result
         else {
             let item = Vector.get(index, ranking);
-            let document = Vector.get(item#ordinal, prepared#documents);
-            let source = Vector.find(value -> value#path == document#path, preparedSources(prepared));
-            match source {
-            case None => regionsFrom(prepared, ranking, index + 1, seen, result)
-                case Some(value) => {
-                    let span = byteRegion(document, value#content);
+            match Vector.get(item#ordinal, context#documentRegions) {
+                case None => regionsFrom(context, ranking, index + 1, seen, result)
+                case Some(span) => {
                     let key = (span#path, span#start, span#end);
                     if (Set.memberOf(key, seen))
-                        regionsFrom(prepared, ranking, index + 1, seen, result)
+                        regionsFrom(context, ranking, index + 1, seen, result)
                     else
-                        regionsFrom(prepared, ranking, index + 1, Set.insert(key, seen),
+                        regionsFrom(context, ranking, index + 1, Set.insert(key, seen),
                             Vector.append(result, Vector#{span}))
                 }
             }
@@ -1569,8 +1661,34 @@ mod JevOracleTest {
     def preparedSources(prepared: Localization.Prepared): Vector[Repository.Source] =
         prepared#sources
 
-    def byteRegion(document: Localization.Document, source: String): SourceRegion = {
-        let bytes = String.toBytes(source);
+    /// All source-byte projection and invariant gold geometry for one case.
+    /// The official formulas consume this immutable value; Java owns none of
+    /// the scientific interpretation.
+    def evaluationContext(prepared: Localization.Prepared, gold: Gold): EvaluationContext = {
+        let sourceBytePairs = Vector.map(source -> (source#path, String.toBytes(source#content)),
+            preparedSources(prepared));
+        let sourceBytes = Vector.toMap(sourceBytePairs);
+        let sourceCounts = Vector.map(pair -> (fst(pair), sourceLineCountBytes(snd(pair))),
+            sourceBytePairs) |> Vector.toMap;
+        let counts = Vector.foldLeft((result, span0) ->
+            Map.insertWith(Int32.max, span0#path, Int32.max(1, span0#end), result),
+            sourceCounts,
+            gold#coreRegions ++ gold#optionalRegions);
+        let core = lines(gold#coreRegions, counts);
+        let optional = lines(gold#optionalRegions, counts);
+        let documentRegions = Vector.map(document ->
+            Map.get(document#path, sourceBytes) |> Option.map(bytes -> byteRegion(document, bytes)),
+            prepared#documents);
+        {
+            counts = counts,
+            coreLines = core,
+            optionalLines = optional,
+            usefulLines = Set.union(core, optional),
+            documentRegions = documentRegions
+        }
+    }
+
+    def byteRegion(document: Localization.Document, bytes: Vector[Int8]): SourceRegion = {
         let final = if (document#endByte <= document#startByte)
             document#startByte else document#endByte - 1;
         {
@@ -1593,12 +1711,11 @@ mod JevOracleTest {
     def score(
         predictions: Vector[SourceRegion],
         gold: Gold,
-        sources: Vector[Repository.Source]
+        context: EvaluationContext
     ): Score = {
-        let counts = lineCounts(sources, gold);
+        let counts = context#counts;
         let predictedLines = lines(predictions, counts);
-        let coreLines = lines(gold#coreRegions, counts);
-        let optionalLines = lines(gold#optionalRegions, counts);
+        let coreLines = context#coreLines;
         let overlap = Set.size(Set.intersection(predictedLines, coreLines));
         let precision = ratio(overlap, Set.size(predictedLines));
         let recall = ratio(overlap, Set.size(coreLines));
@@ -1615,7 +1732,7 @@ mod JevOracleTest {
             not Vector.exists(optional -> overlaps(predicted, optional, counts), gold#optionalRegions),
             predictions);
         let weighted = weightedCoverage(gold#coreRegions, gold#mainFiles, predictedLines, counts);
-        let usefulLines = Set.union(coreLines, optionalLines);
+        let usefulLines = context#usefulLines;
         let gains = Vector.mapWithIndex((index, span0) ->
             regionGain(index, span0, coreLines, gold#mainFiles, counts), predictions);
         {
@@ -1640,12 +1757,10 @@ mod JevOracleTest {
 
     def lineF1(
         predictions: Vector[SourceRegion],
-        gold: Gold,
-        sources: Vector[Repository.Source]
+        context: EvaluationContext
     ): Float64 = {
-        let counts = lineCounts(sources, gold);
-        let predictedLines = lines(predictions, counts);
-        let coreLines = lines(gold#coreRegions, counts);
+        let predictedLines = lines(predictions, context#counts);
+        let coreLines = context#coreLines;
         let overlap = Set.size(Set.intersection(predictedLines, coreLines));
         let precision = ratio(overlap, Set.size(predictedLines));
         let recall = ratio(overlap, Set.size(coreLines));
@@ -1664,6 +1779,10 @@ mod JevOracleTest {
 
     def sourceLineCount(source: String): Int32 = {
         let bytes = String.toBytes(source);
+        sourceLineCountBytes(bytes)
+    }
+
+    def sourceLineCountBytes(bytes: Vector[Int8]): Int32 = {
         let length = Vector.length(bytes);
         if (length == 0) 0
         else countLineBreaks(bytes, 0, 0) +
@@ -2077,6 +2196,13 @@ mod JevOracleTest {
             "\tprior_f1=${row#prior#f1}\tjev_f1=${row#jev#f1}\toracle_f1=${row#oracle#f1}" +
             "\tprior_hit=${row#prior#hitFile}\tjev_hit=${row#jev#hitFile}\toracle_hit=${row#oracle#hitFile}" +
             "\toracle_path=${row#oraclePath}")
+
+    def printOracleTelemetry(instanceId: String, telemetry: OracleTelemetry): Unit \ IO =
+        println("ORACLE_COMPRESSION\t${instanceId}" +
+            "\tlogical_routes=${telemetry#logicalRoutes}" +
+            "\tunique_states=${telemetry#uniqueStates}" +
+            "\tunique_projections=${telemetry#uniqueProjections}" +
+            "\tscore_evaluations=${telemetry#scoreEvaluations}")
 
     def printAggregate(rows: Vector[Row]): Unit \ IO = {
         let count = Int32.toFloat64(Vector.length(rows));
