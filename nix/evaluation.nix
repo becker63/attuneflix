@@ -12,7 +12,7 @@ let
   };
   parquetHelper = pkgs.writers.writePython3 "attune-parquet" {
     libraries = [ pkgs.python3Packages.pyarrow ];
-  } (builtins.readFile ../native/parquet/attune_parquet.py);
+  } (builtins.readFile ../src/native/parquet/attune_parquet.py);
 
   wanted = [
     "axios__axios-4731"

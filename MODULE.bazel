@@ -47,14 +47,14 @@ jextract_repository(name = "jextract")
 
 gritql_repository(
     name = "gritql_source",
-    attune_lib = "//native/grit:lib.rs",
-    cargo_lock = "//native/grit:Cargo.lock",
+    attune_lib = "//src/native/grit:lib.rs",
+    cargo_lock = "//src/native/grit:Cargo.lock",
 )
 
 crate.from_cargo(
     name = "grit_crates",
     cargo_lockfile = "@gritql_source//:Cargo.lock",
-    lockfile = "//native/grit:cargo-bazel-lock.json",
+    lockfile = "//src/native/grit:cargo-bazel-lock.json",
     manifests = ["@gritql_source//:Cargo.toml"],
     supported_platform_triples = [
         "aarch64-unknown-linux-gnu",

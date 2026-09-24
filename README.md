@@ -165,7 +165,7 @@ or {
 }
 ```
 
-The complete frozen frontends are under [`grit/`](grit/). They cover named
+The complete frozen frontends are under [`src/grit/`](src/grit/). They cover named
 functions, methods, arrow-function bindings, static imports, CommonJS imports,
 and calls for JavaScript, JSX, TypeScript, and TSX. Grit observes syntax;
 AttuneFlix assigns repository identities and admits only unambiguous edges.
@@ -459,6 +459,143 @@ repository signature. Bazel and BuildBuddy add a separate outer layer: if the
 declared snapshot, facts, Atlas program, evaluator, and protocol are unchanged,
 the whole deterministic action can be reused across runs. In-process DAG reuse
 and cross-run build-cache reuse are measured separately.
+
+### Why repositories have local grammar
+
+Code is not random. Developers repeat names, layouts, call shapes, import
+directions, and ways of extending a system. A repository develops house rules.
+
+Three older results give this idea useful footing. [On the Naturalness of
+Software](https://doi.org/10.1109/ICSE.2012.6227135) found that human-written
+code is much more repetitive and predictable than the space of all possible
+programs. [On the Localness of
+Software](https://doi.org/10.1145/2635868.2635875) found that nearby code and
+the current project are even more predictable because they repeat their own
+choices. [The Plastic Surgery
+Hypothesis](https://doi.org/10.1145/2635868.2635898) found a related fact about
+change: much of the material needed for a change already exists in the program
+being changed.
+
+AttuneFlix turns that line of thought into a machine we can run:
+
+```text
+possible programs
+      |
+      | human software is repetitive
+      v
+small regular part of program space
+      |
+      | each repository repeats its own local choices
+      v
+repository-local grammar
+      |
+      | run the same complete finite Atlas language
+      v
+extinction + expansion + reach + recurrence + reuse
+      |
+      v
+measured repository signature
+```
+
+Each word in the second-to-last box is a separate measurement:
+
+- **Extinction** asks whether a frontier becomes empty. For every seed and
+  typed Atlas program, record whether anything remains and the first depth at
+  which nothing remains. Early extinction exposes hard package boundaries,
+  missing structural links, and small isolated components. A repository where
+  `calls >> calls` usually dies behaves differently from one where call paths
+  survive through depth seven.
+- **Expansion** asks how quickly a frontier grows or shrinks. Record the input
+  size, output size, and output/input ratio for each step. This catches fan-out:
+  one imported file may lead to fifty defining symbols, while fifty callers
+  may collapse onto three containing files. Expansion is an amount of growth,
+  not a claim that the result covers much of the repository.
+- **Reach** asks what fraction of the compatible repository domain the
+  frontier covers. A result containing 100 symbols is broad in a 150-symbol
+  project and narrow in a 50,000-symbol project. Atlas therefore records
+  normalized File and Symbol reach as well as raw cardinality. It also keeps
+  directions separate: `imports` and `imported_by`, or `calls` and `callers`,
+  often describe very different repository shapes.
+- **Recurrence** asks when different logical programs produce the same exact
+  typed set. If `A >> calls` and `B >> defined_in >> defines` both reach the
+  same symbols, Atlas counts two logical observations but one semantic state.
+  The number of routes per state and the depths at which states recur measure
+  how strongly the repository folds the finite language back onto itself.
+- **Reuse** asks how much execution recurrence makes unnecessary. Shared
+  prefixes are evaluated once, and an identical `(semantic state, next atom)`
+  transition is evaluated once even when many routes request it. Atlas records
+  logical routes, unique states, populated transition cells, and actual
+  physical evaluations. This is why MUI could turn 3,279 logical prefixes into
+  only 15 physical transitions for one measured case.
+
+These values stay separated by seed domain, atom direction, route, and depth.
+The signature is a small table of behavior, not one magic score. Extinction
+and reach describe the repository. Recurrence describes how its structural
+paths meet again. Reuse describes the work the evaluator can avoid because of
+that recurrence.
+
+The papers do not prove the last three boxes. That is the part AttuneFlix is
+measuring. A repository repeatedly chooses the same package layouts, import
+directions, registration hooks, caller shapes, definition placement, extension
+points, and boundaries. Together those choices act like a small local grammar.
+Atlas applies the same finite set of typed programs to every snapshot and
+records what that repository lets the programs do.
+
+This is not a model describing a repository. It is a program we can run again:
+
+```text
+same admitted facts
++ same Atlas protocol
++ same seed protocol
+--------------------
+= same signature
+```
+
+The output is inspectable all the way down. A route extinguishes because a
+particular typed set became empty. A route expands because a named relation
+reaches more files or symbols. Two routes recur because they produce the same
+exact set. A physical transition is reused because its typed input state and
+operation are identical. The signature records these events rather than
+hiding them in a learned representation.
+
+The early evidence already separates repositories with ordinary counts. MUI
+was wide and modular, with many local structural islands and extreme
+recurrence. Vue had a compact, regular library layout with much denser
+propagation. Darkreader also had dense reach but a different profile. NodeBB
+had broad static reach around a plugin system while important runtime
+connections were selected through strings and conventions. These are not style
+scores. We got them by reading source next to measured Atlas behavior. The
+counts, limits, and source-level interpretations are in the
+[repository-signature evidence](docs/research/repository-signatures.md).
+
+That creates useful work outside localization. Some examples are:
+
+- **AI-slop detector.** Agent-written code can compile and pass tests while
+  ignoring the way the repository normally works. Compare a proposed diff with
+  the repository's existing local grammar. If it introduces an unusual
+  dependency direction, bypasses the normal extension hook, or creates a new
+  disconnected island, report the exact structural break as a deterministic
+  lint finding. The same check catches human-written slop. It measures
+  architectural divergence; it does not guess authorship.
+- **Test selection.** Use changed entities and the repository's measured
+  reachability to select the tests whose structural neighborhoods can be
+  affected. This could avoid running unrelated tests while retaining an
+  explicit conservative fallback when the admitted graph is incomplete.
+- **Repository evolution.** Compare signatures across frozen revisions to see
+  which structural habits remain stable, which drift, and when a new local
+  grammar appears.
+- **Programming-community studies.** Apply the same ruler across related
+  projects to measure repeated architectural habits without reducing the
+  comparison to framework names, file counts, or subjective style labels.
+- **Build and analysis planning.** Recurrence and physical compression expose
+  which structural queries share work. That information can guide memoization,
+  incremental analysis, and action boundaries independently of localization.
+
+These are experiments to run, not tools AttuneFlix already ships. The census
+comes first. It checks whether signatures stay stable, separate repositories,
+and say more than file and symbol counts. Localization is the first application
+because its evaluator lets us check whether these local grammars expose useful
+code under a fixed context budget.
 
 The frozen baseline is:
 
@@ -885,7 +1022,7 @@ test/                        permanent semantic laws
 experiments/                 frozen protocols, Parquet results, and reports
 docs/architecture/           implementation details
 docs/research/               research history and interpretation
-native/                      foreign runtime boundaries during migration
+src/native/                  narrow foreign runtime boundaries
 nix/                         pinned historical/build inputs during migration
 ```
 

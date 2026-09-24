@@ -23,7 +23,7 @@ java_test(
     name = "attune_inference_test",
     srcs = ["AttuneInferenceTest.java"],
     javacopts = ["--release=21"],
-    main_class = "attune.embed.AttuneInferenceTest",
+    main_class = "attune.inference.AttuneInferenceTest",
     use_testrunner = False,
     deps = [
         ":attune_inference",

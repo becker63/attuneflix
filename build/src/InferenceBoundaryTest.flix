@@ -1,4 +1,4 @@
-import attune.embed.AttuneDecision
+import attune.inference.AttuneDecision
 
 @Test
 def keylessNativeInferenceBoundaryReturnsConfigurationError(): Unit \ {Assert, IO} = {

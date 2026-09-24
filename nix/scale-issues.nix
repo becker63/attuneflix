@@ -19,7 +19,7 @@ let
   manifest = ../experiments/swe-explore-js-ts-scale/MANIFEST.json;
   parquetHelper = pkgs.writers.writePython3 "attune-parquet" {
     libraries = [ pkgs.python3Packages.pyarrow ];
-  } (builtins.readFile ../native/parquet/attune_parquet.py);
+  } (builtins.readFile ../src/native/parquet/attune_parquet.py);
 
   # Format conversion only. The output is the solver-visible issue projection:
   # no patch, tests, changed-file labels, trajectory, or SWE-Explore gold.

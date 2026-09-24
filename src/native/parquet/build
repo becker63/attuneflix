@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-root=$(cd "$(dirname "$0")/../.." && pwd)
+root=$(cd "$(dirname "$0")/../../.." && pwd)
 cd "$root"
 
 jar_file="$root/.build/parquet/attune-parquet.jar"
@@ -16,4 +16,4 @@ javac \
   --release 21 \
   -cp "$jar_file" \
   -d .build/parquet/test-classes \
-  native/parquet/AttuneParquetTest.java
+  src/native/parquet/AttuneParquetTest.java

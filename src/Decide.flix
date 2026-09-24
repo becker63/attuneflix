@@ -1,5 +1,5 @@
 mod Decide {
-    import attune.embed.AttuneDecision
+    import attune.inference.AttuneDecision
 
     use Fs.FileSystem
     use Util.Json

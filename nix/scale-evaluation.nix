@@ -14,7 +14,7 @@ let
   manifest = ../experiments/swe-explore-js-ts-scale/MANIFEST.json;
   parquetHelper = pkgs.writers.writePython3 "attune-parquet" {
     libraries = [ pkgs.python3Packages.pyarrow ];
-  } (builtins.readFile ../native/parquet/attune_parquet.py);
+  } (builtins.readFile ../src/native/parquet/attune_parquet.py);
 
   # This capability is deliberately separate from scale-case.nix and
   # scale-issues.nix. Solver construction cannot receive this output.

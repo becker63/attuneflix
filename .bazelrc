@@ -7,6 +7,10 @@ build --java_language_version=25
 build --tool_java_language_version=25
 build --java_runtime_version=remotejdk_25
 build --tool_java_runtime_version=remotejdk_25
+# crate_universe writes these path-dependency projections beside the workspace
+# even though build/grit_repository.bzl supplies their real pinned sources in
+# @gritql_source. They are not main-repository packages.
+build --deleted_packages=resources/language-metavariables/tree-sitter-javascript,resources/language-metavariables/tree-sitter-typescript,vendor/tree-sitter-facade,vendor/tree-sitter-gritql,vendor/web-tree-sitter
 test --test_output=errors
 
 # Authentication is supplied by the local credential helper from ignored .env.

@@ -53,11 +53,11 @@
             hash = "sha256-uMMDDS2+lH2//7pvyPH4IpUDpZB61UxODxSCi3E00VQ=";
           };
           nativeRustSource = pkgs.lib.fileset.toSource {
-            root = ./native/grit;
+            root = ./src/native/grit;
             fileset = pkgs.lib.fileset.unions [
-              ./native/grit/Cargo.toml
-              ./native/grit/Cargo.lock
-              ./native/grit/lib.rs
+              ./src/native/grit/Cargo.toml
+              ./src/native/grit/Cargo.lock
+              ./src/native/grit/lib.rs
             ];
           };
           gritCargoDepsRaw = pkgs.rustPlatform.fetchCargoVendor {
@@ -101,8 +101,8 @@
             java_src="$TMPDIR/java"
             resources="$TMPDIR/resources/grit"
             mkdir -p "$generated" "$classes" "$java_src" "$resources" "$out/share/java"
-            cp ${./native/grit/AttuneGritNative.java} "$java_src/AttuneGritNative.java"
-            cp ${./native/grit/AttuneGrit.java} "$java_src/AttuneGrit.java"
+            cp ${./src/native/grit/AttuneGritNative.java} "$java_src/AttuneGritNative.java"
+            cp ${./src/native/grit/AttuneGrit.java} "$java_src/AttuneGrit.java"
             for relation in defines imports calls; do
               mkdir -p "$resources/$relation"
               for dialect in javascript jsx typescript tsx; do
@@ -119,7 +119,7 @@
               --include-function attune_grit_buffer_free \
               --library ":${attuneGritNative}/lib/libattune_grit_abi.so" \
               --output "$generated" \
-              ${./native/grit/attune_grit.h}
+              ${./src/native/grit/attune_grit.h}
 
             javac \
               --release 23 \
@@ -145,7 +145,7 @@
             classes="$TMPDIR/classes"
             java_src="$TMPDIR/java"
             mkdir -p "$generated" "$classes" "$java_src" "$out/share/java"
-            cp ${./native/nix/AttuneNix.java} "$java_src/AttuneNix.java"
+            cp ${./src/native/nix/AttuneNix.java} "$java_src/AttuneNix.java"
 
             jextract \
               -I "$(clang -print-resource-dir)/include" \
@@ -192,7 +192,7 @@
               -l :${nixFetchersCLib}/lib/libnixfetchersc.so \
               -l :${nixFlakeCLib}/lib/libnixflakec.so \
               --output "$generated" \
-              ${./native/nix/attune_nix.h}
+              ${./src/native/nix/attune_nix.h}
 
             javac \
               --release 23 \
@@ -204,8 +204,8 @@
               --file "$out/share/java/attune-nix.jar" \
               -C "$classes" .
           '';
-          attuneEmbedJar = pkgs.stdenvNoCC.mkDerivation {
-            pname = "attune-embed-jar";
+          attuneInferenceJar = pkgs.stdenvNoCC.mkDerivation {
+            pname = "attune-inference-jar";
             version = "0.1.0";
             dontUnpack = true;
             nativeBuildInputs = [ pkgs.jdk25 pkgs.setJavaClassPath pkgs.stripJavaArchivesHook ];
@@ -213,8 +213,8 @@
             buildPhase = ''
               runHook preBuild
               mkdir -p classes source
-              cp ${./native/embed/AttuneEmbed.java} source/AttuneEmbed.java
-              cp ${./native/embed/AttuneDecision.java} source/AttuneDecision.java
+              cp ${./src/native/inference/AttuneEmbed.java} source/AttuneEmbed.java
+              cp ${./src/native/inference/AttuneDecision.java} source/AttuneDecision.java
               javac --release 21 -cp "$CLASSPATH" -d classes source/*.java
               runHook postBuild
             '';
@@ -229,14 +229,14 @@
               IFS="$old_ifs"
               rm -f bundle/META-INF/MANIFEST.MF bundle/META-INF/*.SF bundle/META-INF/*.RSA bundle/META-INF/*.DSA
               cp -R classes/. bundle/
-              jar --create --file "$out/share/java/attune-embed.jar" -C bundle .
+              jar --create --file "$out/share/java/attune-inference.jar" -C bundle .
               runHook postInstall
             '';
             };
           attuneParquetJar = pkgs.maven.buildMavenPackage {
             pname = "attune-parquet";
             version = "0.1.0";
-            src = ./native/parquet;
+            src = ./src/native/parquet;
             mvnJdk = pkgs.jdk25;
             mvnHash = "sha256-3rahVXZqAoR7Qp7UeVvvrqyAcXxHj8aYRXGZnngUxVA=";
             installPhase = ''
@@ -274,7 +274,7 @@
           attune-grit-native = attuneGritNative;
           attune-grit-jar = attuneGritJar;
           attune-nix-jar = attuneNixJar;
-          attune-embed-jar = attuneEmbedJar;
+          attune-inference-jar = attuneInferenceJar;
           attune-parquet-jar = attuneParquetJar;
           flix = flixJdk25;
           flix-hover-provider = hoverProvider;

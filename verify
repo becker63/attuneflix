@@ -26,10 +26,10 @@ unset OPENROUTER_API_KEY \
 
 python nix/check-data-plane.py --self-test
 python nix/check-data-plane.py
-./native/grit/build
-./native/nix/build
-./native/embed/build
-./native/parquet/build
+./src/native/grit/build
+./src/native/nix/build
+./src/native/inference/build
+./src/native/parquet/build
 java --enable-native-access=ALL-UNNAMED \
   -cp .build/grit/attune-grit.jar:.build/grit/test-classes \
   attune.grit.AttuneGritTest

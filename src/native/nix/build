@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-root=$(cd "$(dirname "$0")/../.." && pwd)
+root=$(cd "$(dirname "$0")/../../.." && pwd)
 cd "$root"
 
 classes="$root/.build/nix/test-classes"
@@ -12,5 +12,5 @@ package=$(nix build path:.#attune-nix-jar --out-link "$root_link" --print-out-pa
 rm -rf "$classes"
 mkdir -p "$classes"
 install -Dm644 "$package/share/java/attune-nix.jar" "$jar_file"
-javac --release 23 -cp "$jar_file" -d "$classes" native/nix/AttuneNixTest.java
+javac --release 23 -cp "$jar_file" -d "$classes" src/native/nix/AttuneNixTest.java
 install -Dm644 "$jar_file" lib/external/attune-nix.jar

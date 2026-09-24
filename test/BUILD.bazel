@@ -26,7 +26,7 @@ flix_check(
     name = "inference_boundary_check",
     srcs = ["//build:src/InferenceBoundaryTest.flix"],
     command = "check",
-    java_deps = ["//native/embed:attune_inference"],
+    java_deps = ["//src/native/inference:attune_inference"],
     threads = 2,
 )
 
@@ -42,7 +42,7 @@ flix_check(
         "//src:Repository/Grit.flix",
     ],
     command = "check",
-    java_deps = ["//native/grit:attune_grit"],
+    java_deps = ["//src/native/grit:attune_grit"],
     threads = 2,
 )
 

@@ -1,5 +1,5 @@
 mod Localization {
-    import attune.embed.AttuneEmbed
+    import attune.inference.AttuneEmbed
 
     use Fs.FileSystem
     use Util.Json

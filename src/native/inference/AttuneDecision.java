@@ -1,4 +1,4 @@
-package attune.embed;
+package attune.inference;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;

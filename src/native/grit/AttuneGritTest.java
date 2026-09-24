@@ -39,7 +39,7 @@ public final class AttuneGritTest {
         for (String relation : List.of("calls", "defines", "imports")) {
             for (String dialect : List.of("javascript", "jsx", "typescript", "tsx")) {
                 String packaged = AttuneGrit.program(dialect, relation);
-                Path visible = Path.of("grit", relation, dialect + ".grit");
+                Path visible = Path.of("src", "grit", relation, dialect + ".grit");
                 require(packaged.equals(Files.readString(visible)),
                         "packaged entry point differs: " + visible);
             }

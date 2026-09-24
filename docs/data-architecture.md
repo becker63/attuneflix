@@ -5,12 +5,13 @@ AttuneFlix has one repository-wide data rule:
 > External formats vary. Internal scientific datasets are Parquet. JSON is the
 > control plane. Markdown is the human plane.
 
-Pinned Nix expressions fetch exact upstream bytes and project only the fields a
-capability may receive. In particular, solver-visible issue projections remain
-gold-free; evaluator gold is built by a separate Nix expression. After that
-boundary, Flix reads and writes Parquet through `ScientificData.flix` and the
-Nix-pinned helper in `native/parquet/`. No DuckDB database or second storage
-layer exists.
+During the Bazel migration, pinned Nix expressions still fetch several exact
+upstream datasets and project only the fields a capability may receive. In
+particular, solver-visible issue projections remain gold-free; evaluator gold
+is built separately. Those pins and projections are moving into Bazel rather
+than remaining an application runtime. After ingestion, Flix owns the data
+meaning and uses the small Bazel-built JVM seam in `src/native/parquet/`. No
+DuckDB database or second storage layer exists.
 
 ## Canonical Parquet schemas
 

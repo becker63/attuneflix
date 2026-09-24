@@ -10,8 +10,8 @@
 .build/
 artifact/
 lib/external/
-native/grit/target/
-native/grit/cargo-bazel-lock.json
+src/native/grit/target/
+src/native/grit/cargo-bazel-lock.json
 resources/language-metavariables/tree-sitter-javascript/BUILD.bazel
 resources/language-metavariables/tree-sitter-typescript/BUILD.bazel
 vendor/tree-sitter-facade/BUILD.bazel

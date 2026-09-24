@@ -34,7 +34,7 @@ java_library(
         "AttuneGritNative.java",
     ],
     javacopts = ["--release=23"],
-    resources = ["//grit:programs"],
+    resources = ["//src/grit:programs"],
     visibility = ["//visibility:public"],
 )
 
@@ -43,12 +43,12 @@ java_test(
     srcs = ["AttuneGritTest.java"],
     data = [
         ":attune_grit_abi",
-        "//grit:programs",
+        "//src/grit:programs",
     ],
     javacopts = ["--release=23"],
     jvm_flags = [
         "--enable-native-access=ALL-UNNAMED",
-        "-Djava.library.path=$${JAVA_RUNFILES}/_main/native/grit",
+        "-Djava.library.path=$${JAVA_RUNFILES}/_main/src/native/grit",
     ],
     main_class = "attune.grit.AttuneGritTest",
     use_testrunner = False,

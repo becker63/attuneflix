@@ -15,7 +15,7 @@ let
   };
   parquetHelper = pkgs.writers.writePython3 "attune-parquet" {
     libraries = [ pkgs.python3Packages.pyarrow ];
-  } (builtins.readFile ../native/parquet/attune_parquet.py);
+  } (builtins.readFile ../src/native/parquet/attune_parquet.py);
 
   cases = [
     { instanceId = "axios__axios-4731"; repository = "axios/axios"; baseCommit = "c30252f685e8f4326722de84923fcbc8cf557f06"; sha256 = "sha256-CKbfznOvFk//B1LhMFpw56rjAt6VmVDdmoiqI5kbJYA="; }

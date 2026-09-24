@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-root=$(cd "$(dirname "$0")/../.." && pwd)
+root=$(cd "$(dirname "$0")/../../.." && pwd)
 cd "$root"
 
 classes="$root/.build/grit/test-classes"
@@ -12,7 +12,7 @@ package=$(nix build path:.#attune-grit-jar --out-link "$root_link" --print-out-p
 rm -rf "$classes"
 mkdir -p "$classes"
 install -Dm644 "$package/share/java/attune-grit.jar" "$jar_file"
-javac --release 21 -cp "$jar_file" -d "$classes" native/grit/AttuneGritTest.java
+javac --release 21 -cp "$jar_file" -d "$classes" src/native/grit/AttuneGritTest.java
 
 # Flix caches URL JAR dependencies by name and does not notice that a local
 # build product changed. Keep its managed external copy byte-for-byte current.

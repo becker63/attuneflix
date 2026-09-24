@@ -8,5 +8,5 @@ authors     = ["Attune"]
 [jar-dependencies]
 "attune-grit.jar" = "url:file:.build/grit/attune-grit.jar"
 "attune-nix.jar" = "url:file:.build/nix/attune-nix.jar"
-"attune-embed.jar" = "url:file:.build/embed/attune-embed.jar"
+"attune-inference.jar" = "url:file:.build/inference/attune-inference.jar"
 "attune-parquet.jar" = "url:file:.build/parquet/attune-parquet.jar"

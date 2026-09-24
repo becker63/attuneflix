@@ -27,7 +27,7 @@
 /vendor/web-tree-sitter/BUILD.bazel
 
 # Rust/Zed build output
-/native/grit/target/
+/src/native/grit/target/
 /zed/target/
 /zed/extension.wasm
 /zed/grammars/
