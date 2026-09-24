@@ -538,7 +538,20 @@ It can reach the same file frontier another way:
 {checks.js, db.js}
 ```
 
-That is enough to explain the five measurements.
+That is enough to explain the five measurements. They are not five names for
+the same idea. They look at five different levels of the run:
+
+```text
+one route ends in {}                         extinction
+one step changes 1 item into 2              expansion
+one result contains 2 of 200 symbols        reach
+two different routes return the same set    recurrence
+the evaluator avoids doing that work twice  reuse
+```
+
+The first three describe structural behavior. Recurrence compares the answers
+produced by different Atlas programs. Reuse describes what the evaluator can
+avoid computing because of that overlap.
 
 #### Extinction: where does a route die?
 
@@ -548,11 +561,15 @@ If neither `validate` nor `save` calls another admitted symbol, then:
 {handler} --calls--> {validate, save} --calls--> {}
 ```
 
-The route became empty at depth two. Atlas records that depth. If most call
-routes die after one or two steps, the admitted call graph is shallow or split
-into small islands. If they remain non-empty through depth seven, calls keep
-connecting the repository. “Extinction” therefore means exactly “this set is
-now empty,” not a model score or a judgment about code quality.
+The route became empty after its second operation. Atlas records that first
+empty depth. Once a frontier is empty, every longer continuation of that route
+also stays empty: there is nothing left to follow.
+
+Across many seeds, this produces a survival curve. If 90 of 100 seeded call
+routes are already empty by depth two, call structure usually dies early. If
+90 remain non-empty through depth seven, calls keep carrying Atlas through the
+repository. “Extinction” therefore means exactly “this typed set is now
+empty,” not a model score or a judgment about code quality.
 
 #### Expansion: how much did this one step grow or shrink the set?
 
@@ -566,8 +583,8 @@ expansion        2 / 1 = 2x
 
 A later step might turn 50 symbols into three files, an expansion of `3 / 50`.
 Atlas keeps both the raw sizes and this ratio. Expansion measures fan-out and
-collapse between adjacent steps. It does not care how large the whole
-repository is.
+collapse between adjacent steps. It is local to that one arrow. It does not
+care how large the whole repository is.
 
 #### Reach: how much of the repository did the set cover?
 
@@ -586,6 +603,17 @@ divided by all admitted files; Symbol reach is divided by all admitted
 symbols. Directions remain separate because `imports` can stay narrow while
 `imported_by` reaches most of a repository.
 
+This is the difference between expansion and reach:
+
+```text
+expansion = output size / input size       "did this step grow?"
+reach     = output size / repository size  "is this result broad here?"
+```
+
+A step can expand 10x and still have tiny reach in a large repository. A step
+can also shrink and retain broad reach when its input already covered most of
+the repository.
+
 #### Recurrence: did two different routes arrive at the same set?
 
 The example has two programs:
@@ -595,11 +623,14 @@ calls      >> defined_in  = {checks.js, db.js}
 defined_in >> imports     = {checks.js, db.js}
 ```
 
-They are different programs but their result is the same exact typed set. That
-is one recurrent semantic state. Atlas records how many logical routes exist,
-how many different sets they actually produce, and how many routes collapse
-onto each set. High recurrence means the repository makes many structural
-questions converge on the same few answers.
+They are different programs but their result is the same exact typed set. The
+program text is different; the answer is not. Atlas therefore records two
+logical route observations and one unique semantic state. It also records how
+many routes collapse onto that state and at which depths they meet.
+
+Recurrence is a fact about the repository under the Atlas language, even if we
+use a deliberately slow evaluator. High recurrence means many different
+structural questions converge on the same few exact answers.
 
 #### Reuse: once routes meet, how much work can the machine skip?
 
@@ -615,6 +646,18 @@ After recurrence, both routes ask the same next question: apply `defines` to
 the same two-file set. The answer must be identical, so the evaluator computes
 it once and reuses it. Shared route prefixes are reused for the same reason.
 
+Reuse is therefore not another repository property hiding behind a new word.
+It is the execution consequence of shared prefixes and recurrence:
+
+```text
+recurrence   two Atlas programs have the same exact typed answer
+reuse        the physical evaluator notices and skips duplicate work
+```
+
+We measure both because a repository may have strong semantic recurrence
+while a poor evaluator fails to exploit it. Conversely, the evaluator cannot
+claim semantic recurrence merely because it cached some implementation detail.
+
 This is how one measured MUI case reduced 3,279 logical route prefixes to 15
 actual relation evaluations. The number does not mean Atlas skipped programs.
 It means Atlas answered every program while noticing that most requests were
@@ -624,11 +667,13 @@ The signature keeps these measurements separated by File/Symbol seed, route,
 direction, and depth. It is a table, not one magic score:
 
 ```text
-extinction   which routes become empty, and when
-expansion    how one step changes the frontier size
-reach        what fraction of the repository is covered
-recurrence   how often different routes produce the same exact frontier
-reuse        how many relation evaluations recurrence lets us avoid
+measurement  compares                                      plain question
+-----------  --------------------------------------------  ------------------------------
+extinction   a route result with the empty set             did the route die, and when?
+expansion    one step's output with that step's input      did this arrow grow or shrink?
+reach        one result with its whole typed domain        how broad is the answer here?
+recurrence   outputs of different logical programs         did different routes meet?
+reuse        logical requests with physical evaluations    how much repeated work was skipped?
 ```
 
 The papers do not prove the last three boxes. That is the part AttuneFlix is
