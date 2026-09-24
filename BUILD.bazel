@@ -12,6 +12,7 @@ test_suite(
         "//src/native/grit:attune_grit_test",
         "//src/native/parquet:attune_parquet_test",
         "//test:core_parity_test",
+        "//test:atlas_grammar_test",
         "//test:grit_boundary_test",
         "//test:inference_boundary_test",
     ],

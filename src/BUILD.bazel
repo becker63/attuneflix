@@ -1,4 +1,5 @@
 exports_files([
+    "Atlas.flix",
     "Radii.flix",
     "Radii/Compiled.flix",
     "Radii/Evaluate.flix",

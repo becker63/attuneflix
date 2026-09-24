@@ -14,14 +14,29 @@ mod Atlas {
         case Compose(Expr, Atom)
     }
 
+    /// One member of the finite Atlas measurement language.
+    ///
+    /// The expression type has only Atom and Compose, so an Atlas Program
+    /// cannot silently acquire Radii's Reverse or Union constructors.
+    pub type alias Program = {
+        steps      = Vector[Atom],
+        expression = Expr
+    }
+
     pub type alias Counts = {
         logical = Int32,
         complete = Int32
     }
 
-    enum State with Eq, Hash {
+    pub enum State with Eq, Hash, ToString {
         case Files(Set[Repository.Structure.FileId])
         case Symbols(Set[Repository.Structure.SymbolId])
+    }
+
+    pub type alias Evaluation = {
+        outputs             = Vector[State],
+        physicalTransitions = Int32,
+        transitionReuses    = Int32
     }
 
     pub type alias RepositoryCounts = {
@@ -69,6 +84,42 @@ mod Atlas {
 
     /// Count the fixed composition-only grammar without allocating 3,279 paths.
     pub def counts(depth: Int32): Counts = loop(depth, 1, 0, 0, 0)
+
+    /// Enumerate every well-typed Atlas program through `maxDepth`.
+    ///
+    /// Results are ordered first by depth, then by the stable atom order in
+    /// `compatible`. A non-positive bound names the empty language.
+    pub def programs(maxDepth: Int32): Vector[Program] =
+        enumerateLevels(1, maxDepth, Vector.empty(), Vector.empty())
+
+    /// Evaluate a declared Atlas family over one exact typed seed.
+    ///
+    /// Mutation and memo tables cannot escape the region. Outputs retain the
+    /// same stable order as `programs`; repeated exact transitions execute
+    /// only once.
+    pub def evaluate(
+        repository: Repository.World,
+        input: State,
+        family: Vector[Program]
+    ): Result[String, Evaluation] = region rc {
+        let physical = Repository.Physical.fromBasis(
+            repository#defines,
+            repository#imports,
+            repository#calls,
+            repository#parents
+        );
+        let memos: Memos[rc] = {
+            transitions = MutHashMap.empty(rc),
+            physicalTransitions = Ref.fresh(rc, 0),
+            transitionReuses = Ref.fresh(rc, 0)
+        };
+        Vector.traverse(program -> evaluateProgram(physical, input, program, memos), family)
+            |> Result.map(outputs -> {
+                outputs = outputs,
+                physicalTransitions = Ref.get(memos#physicalTransitions),
+                transitionReuses = Ref.get(memos#transitionReuses)
+            })
+    }
 
     /// Execute the complete typed composition tree through one depth.
     /// The mutable transition table is region-local, so measurement is pure.
@@ -258,6 +309,111 @@ mod Atlas {
                 complete + nextSymbols
             )
         }
+
+    def enumerateLevels(
+        current: Int32,
+        maxDepth: Int32,
+        previous: Vector[Program],
+        all: Vector[Program]
+    ): Vector[Program] =
+        if (current > maxDepth)
+            all
+        else {
+            let exact = if (current == 1)
+                Vector.map(atom -> {
+                    steps = Vector#{atom},
+                    expression = Expr.Atom(atom)
+                }, compatible(Radii.Domain.Symbol))
+            else
+                Vector.flatMap(program -> Vector.map(atom -> {
+                    steps = Vector.append(program#steps, Vector#{atom}),
+                    expression = Expr.Compose(program#expression, atom)
+                }, compatible(target(program#expression))), previous);
+            enumerateLevels(
+                current + 1,
+                maxDepth,
+                exact,
+                Vector.append(all, exact)
+            )
+        }
+
+    def compatible(domain: Radii.Domain): Vector[Atom] = match domain {
+        case Radii.Domain.Symbol => Vector#{Atom.DefinedIn, Atom.Calls, Atom.Callers}
+        case Radii.Domain.File   => Vector#{Atom.Defines, Atom.Imports, Atom.ImportedBy}
+        case Radii.Domain.Location => Vector.empty()
+    }
+
+    def target(expression: Expr): Radii.Domain = match expression {
+        case Expr.Atom(atom) => targetAtom(atom)
+        case Expr.Compose(_, atom) => targetAtom(atom)
+    }
+
+    def targetAtom(atom: Atom): Radii.Domain = match atom {
+        case Atom.Defines    => Radii.Domain.Symbol
+        case Atom.DefinedIn  => Radii.Domain.File
+        case Atom.Imports    => Radii.Domain.File
+        case Atom.ImportedBy => Radii.Domain.File
+        case Atom.Calls      => Radii.Domain.Symbol
+        case Atom.Callers    => Radii.Domain.Symbol
+    }
+
+    def sourceAtom(atom: Atom): Radii.Domain = match atom {
+        case Atom.Defines    => Radii.Domain.File
+        case Atom.DefinedIn  => Radii.Domain.Symbol
+        case Atom.Imports    => Radii.Domain.File
+        case Atom.ImportedBy => Radii.Domain.File
+        case Atom.Calls      => Radii.Domain.Symbol
+        case Atom.Callers    => Radii.Domain.Symbol
+    }
+
+    def stateDomain(state: State): Radii.Domain = match state {
+        case State.Files(_)   => Radii.Domain.File
+        case State.Symbols(_) => Radii.Domain.Symbol
+    }
+
+    def evaluateProgram(
+        world: Repository.Physical.World,
+        input: State,
+        program: Program,
+        memos: Memos[r]
+    ): Result[String, State] \ r =
+        match expressionOf(program#steps) {
+            case None => Err("Atlas program must contain at least one atom")
+            case Some(expression) =>
+                if (expression != program#expression)
+                    Err("Atlas program steps and expression disagree")
+                else evaluateSteps(world, input, program#steps, memos)
+        }
+
+    def evaluateSteps(
+        world: Repository.Physical.World,
+        input: State,
+        steps: Vector[Atom],
+        memos: Memos[r]
+    ): Result[String, State] \ r = match Vector.head(steps) {
+        case None => Ok(input)
+        case Some(atom) =>
+            if (stateDomain(input) != sourceAtom(atom))
+                Err("ill-typed Atlas program")
+            else {
+                let output = transition(world, atom, input, memos);
+                evaluateSteps(
+                    world,
+                    output,
+                    Vector.slice(start = 1, end = Vector.length(steps), steps),
+                    memos
+                )
+            }
+    }
+
+    def expressionOf(steps: Vector[Atom]): Option[Expr] = match Vector.head(steps) {
+        case None => None
+        case Some(atom) => Some(Vector.foldLeft(
+            (expression, next) -> Expr.Compose(expression, next),
+            Expr.Atom(atom),
+            Vector.slice(start = 1, end = Vector.length(steps), steps)
+        ))
+    }
 
     def search(
         world: Repository.Physical.World,

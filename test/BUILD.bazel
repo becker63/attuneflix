@@ -50,3 +50,22 @@ checked_test(
     name = "grit_boundary_test",
     check = ":grit_boundary_check",
 )
+
+flix_check(
+    name = "atlas_grammar_check",
+    srcs = [
+        "//build:src/AtlasTest.flix",
+        "//build:src/AtlasRepository.flix",
+        "//src:Atlas.flix",
+        "//src:Radii.flix",
+        "//src:Repository/Physical.flix",
+        "//src:Repository/Structure.flix",
+    ],
+    command = "test",
+    threads = 2,
+)
+
+checked_test(
+    name = "atlas_grammar_test",
+    check = ":atlas_grammar_check",
+)

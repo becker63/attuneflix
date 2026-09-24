@@ -497,42 +497,139 @@ extinction + expansion + reach + recurrence + reuse
 measured repository signature
 ```
 
-Each word in the second-to-last box is a separate measurement:
+First, one term: a **frontier** is only the current set of files or symbols.
+An Atlas atom takes one frontier and returns the next one.
 
-- **Extinction** asks whether a frontier becomes empty. For every seed and
-  typed Atlas program, record whether anything remains and the first depth at
-  which nothing remains. Early extinction exposes hard package boundaries,
-  missing structural links, and small isolated components. A repository where
-  `calls >> calls` usually dies behaves differently from one where call paths
-  survive through depth seven.
-- **Expansion** asks how quickly a frontier grows or shrinks. Record the input
-  size, output size, and output/input ratio for each step. This catches fan-out:
-  one imported file may lead to fifty defining symbols, while fifty callers
-  may collapse onto three containing files. Expansion is an amount of growth,
-  not a claim that the result covers much of the repository.
-- **Reach** asks what fraction of the compatible repository domain the
-  frontier covers. A result containing 100 symbols is broad in a 150-symbol
-  project and narrow in a 50,000-symbol project. Atlas therefore records
-  normalized File and Symbol reach as well as raw cardinality. It also keeps
-  directions separate: `imports` and `imported_by`, or `calls` and `callers`,
-  often describe very different repository shapes.
-- **Recurrence** asks when different logical programs produce the same exact
-  typed set. If `A >> calls` and `B >> defined_in >> defines` both reach the
-  same symbols, Atlas counts two logical observations but one semantic state.
-  The number of routes per state and the depths at which states recur measure
-  how strongly the repository folds the finite language back onto itself.
-- **Reuse** asks how much execution recurrence makes unnecessary. Shared
-  prefixes are evaluated once, and an identical `(semantic state, next atom)`
-  transition is evaluated once even when many routes request it. Atlas records
-  logical routes, unique states, populated transition cells, and actual
-  physical evaluations. This is why MUI could turn 3,279 logical prefixes into
-  only 15 physical transitions for one measured case.
+Imagine this small repository:
 
-These values stay separated by seed domain, atom direction, route, and depth.
-The signature is a small table of behavior, not one magic score. Extinction
-and reach describe the repository. Recurrence describes how its structural
-paths meet again. Reuse describes the work the evaluator can avoid because of
-that recurrence.
+```text
+app.js                         checks.js             db.js
+  handler()                      validate()            save()
+
+app.js imports checks.js and db.js
+handler calls validate and save
+```
+
+Starting from the one-symbol frontier `{handler}`, Atlas can run:
+
+```text
+{handler}
+    |
+    | calls
+    v
+{validate, save}
+    |
+    | defined_in
+    v
+{checks.js, db.js}
+```
+
+It can reach the same file frontier another way:
+
+```text
+{handler}
+    |
+    | defined_in
+    v
+{app.js}
+    |
+    | imports
+    v
+{checks.js, db.js}
+```
+
+That is enough to explain the five measurements.
+
+#### Extinction: where does a route die?
+
+If neither `validate` nor `save` calls another admitted symbol, then:
+
+```text
+{handler} --calls--> {validate, save} --calls--> {}
+```
+
+The route became empty at depth two. Atlas records that depth. If most call
+routes die after one or two steps, the admitted call graph is shallow or split
+into small islands. If they remain non-empty through depth seven, calls keep
+connecting the repository. “Extinction” therefore means exactly “this set is
+now empty,” not a model score or a judgment about code quality.
+
+#### Expansion: how much did this one step grow or shrink the set?
+
+The first `calls` step above changes one symbol into two:
+
+```text
+input size       1
+output size      2
+expansion        2 / 1 = 2x
+```
+
+A later step might turn 50 symbols into three files, an expansion of `3 / 50`.
+Atlas keeps both the raw sizes and this ratio. Expansion measures fan-out and
+collapse between adjacent steps. It does not care how large the whole
+repository is.
+
+#### Reach: how much of the repository did the set cover?
+
+Suppose the repository has 200 admitted symbols. Reaching `{validate, save}`
+means:
+
+```text
+reached symbols     2
+all symbols       200
+reach             2 / 200 = 1%
+```
+
+The same two-symbol result would have 20% reach in a ten-symbol repository.
+That is why Atlas stores both cardinality and normalized reach. File reach is
+divided by all admitted files; Symbol reach is divided by all admitted
+symbols. Directions remain separate because `imports` can stay narrow while
+`imported_by` reaches most of a repository.
+
+#### Recurrence: did two different routes arrive at the same set?
+
+The example has two programs:
+
+```text
+calls      >> defined_in  = {checks.js, db.js}
+defined_in >> imports     = {checks.js, db.js}
+```
+
+They are different programs but their result is the same exact typed set. That
+is one recurrent semantic state. Atlas records how many logical routes exist,
+how many different sets they actually produce, and how many routes collapse
+onto each set. High recurrence means the repository makes many structural
+questions converge on the same few answers.
+
+#### Reuse: once routes meet, how much work can the machine skip?
+
+Now extend both programs with `defines`:
+
+```text
+calls      >> defined_in  --\
+                               +--> {checks.js, db.js} --defines--> {validate, save}
+defined_in >> imports     --/                              computed once
+```
+
+After recurrence, both routes ask the same next question: apply `defines` to
+the same two-file set. The answer must be identical, so the evaluator computes
+it once and reuses it. Shared route prefixes are reused for the same reason.
+
+This is how one measured MUI case reduced 3,279 logical route prefixes to 15
+actual relation evaluations. The number does not mean Atlas skipped programs.
+It means Atlas answered every program while noticing that most requests were
+exact repeats of work it had already done.
+
+The signature keeps these measurements separated by File/Symbol seed, route,
+direction, and depth. It is a table, not one magic score:
+
+```text
+extinction   which routes become empty, and when
+expansion    how one step changes the frontier size
+reach        what fraction of the repository is covered
+recurrence   how often different routes produce the same exact frontier
+reuse        how many relation evaluations recurrence lets us avoid
+```
 
 The papers do not prove the last three boxes. That is the part AttuneFlix is
 measuring. A repository repeatedly chooses the same package layouts, import

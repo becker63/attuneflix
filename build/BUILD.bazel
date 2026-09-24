@@ -2,6 +2,8 @@ exports_files([
     "grit_repository.bzl",
     "jextract.bzl",
     "jextract_repository.bzl",
+    "src/AtlasRepository.flix",
+    "src/AtlasTest.flix",
     "src/InferenceBoundaryTest.flix",
     "src/Repository.flix",
 ])
