@@ -781,7 +781,9 @@ See the [repository-signature evidence](docs/research/repository-signatures.md),
 [original MUI/Vue/Darkreader record](migration/attuneradii/spec.md#45-structural-mixinglocalness--permanent-conceptual-model),
 and [replication study](docs/replication/README.md). The full SWE-Explore Atlas
 census will produce one typed Parquet signature per unique frozen snapshot.
-Only after that data is sealed will it be joined to localization outcomes.
+Its [seed, schema, metric, and analysis protocol is preregistered
+here](experiments/atlas-swe-explore/PREREGISTRATION.md). Only after that data is
+sealed will it be joined to localization outcomes.
 
 ## What the frozen localization experiment found
 
