@@ -156,6 +156,21 @@ mod Decide {
         f: Unit -> a \ ef
     ): a \ (ef - Choice) = runWithReplay(observations, f)
 
+    /// Exact replay from already admitted provider wires. The caller owns the
+    /// immutable load boundary, so a policy with many decisions never rereads
+    /// its bundle. Every request is still reconstructed and decoded against
+    /// its exact current alternatives before the response is admitted.
+    pub def runWithWireReplay(
+        wires: Map[Radii.Evaluate.DecisionId, Wire],
+        f: Unit -> a \ ef
+    ): a \ (ef - Choice) =
+        run { f() } with handler Choice {
+            def policy(request0, k) = k(
+                Map.get(request0#decision, wires)
+                |> Option.toOk(Error.MissingReplay(request0#decision))
+                |> Result.flatMap(wire -> decode(request0, wire)))
+        }
+
     pub def runWithNative(f: Unit -> a \ ef): a \ (ef - Choice) + IO =
         run { f() } with handler Choice {
             def policy(request0, k) = k(decideNative(request0))

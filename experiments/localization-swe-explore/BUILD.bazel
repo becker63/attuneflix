@@ -1,0 +1,42 @@
+load("//build:flix.bzl", "flix_fatjar")
+
+flix_fatjar(
+    name = "replay_flix",
+    srcs = [
+        "Main.flix",
+        "//build:src/AtlasRepository.flix",
+        "//build:src/Localization.flix",
+        "//experiments/jev-policy-hillclimb:lib/JevPolicyHillclimb.flix",
+        "//src:Decide.flix",
+        "//src:Decide/Table.flix",
+        "//src:Localization/Result.flix",
+        "//src:Localization/Tree.flix",
+        "//src:Radii.flix",
+        "//src:Radii/Compiled.flix",
+        "//src:Radii/Evaluate.flix",
+        "//src:Repository/Identity.flix",
+        "//src:Repository/Physical.flix",
+        "//src:Repository/Structure.flix",
+        "//src:Repository/Table.flix",
+        "//src:ScientificData.flix",
+        "//src:ScientificIdentity.flix",
+        "//src:ScientificTable.flix",
+    ],
+    java_deps = [
+        "//src/native/identity:attune_identity",
+        "//src/native/inference:attune_inference",
+        "//src/native/parquet:attune_parquet",
+    ],
+    threads = 2,
+)
+
+java_binary(
+    name = "replay",
+    jvm_flags = [
+        "--add-opens=java.base/java.nio=ALL-UNNAMED",
+        "--enable-native-access=ALL-UNNAMED",
+    ],
+    main_class = "Main",
+    visibility = ["//visibility:public"],
+    runtime_deps = [":replay_flix"],
+)

@@ -28,7 +28,7 @@ mod LocalizationTreeTest {
             instanceId = "fixture",
             repository = "attune/fixture",
             baseCommit = "abc",
-            snapshot = Repository.Nix.StorePath.StorePath("/nix/store/fixture"),
+            snapshotId = "repository-snapshot-v1:fixture",
             issue = {
                 instanceId = "fixture",
                 repository = "attune/fixture",

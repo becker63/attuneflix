@@ -68,7 +68,9 @@ mod Localization {
         instanceId = String,
         repository = String,
         baseCommit = String,
-        snapshot   = Repository.Nix.StorePath,
+        /// Semantic snapshot identity. A materialization pathname is not part
+        /// of localization meaning and must not leak into replay identity.
+        snapshotId = String,
         issue      = Issue,
         world      = Repository.World,
         sources    = Vector[Repository.Source],
@@ -224,7 +226,7 @@ mod Localization {
         instanceId = case_#instanceId,
         repository = case_#repository,
         baseCommit = case_#baseCommit,
-        snapshot = case_#snapshot,
+        snapshotId = Repository.Nix.path(case_#snapshot),
         issue = issue,
         world = world,
         sources = case_#sources,
@@ -253,7 +255,7 @@ mod Localization {
         instanceId = case_#instanceId,
         repository = case_#repository,
         baseCommit = case_#baseCommit,
-        snapshot = case_#snapshot,
+        snapshotId = Repository.Nix.path(case_#snapshot),
         issue = issue,
         world = world,
         sources = case_#sources,
@@ -286,11 +288,35 @@ mod Localization {
         instanceId = case_#instanceId,
         repository = case_#repository,
         baseCommit = case_#baseRevision,
-        snapshot = case_#snapshot,
+        snapshotId = Repository.Nix.path(case_#snapshot),
         issue = issue,
         world = world,
         sources = sources,
         documents = corpus
+    }
+
+    /// Warm replay preparation. Typed admitted facts and the gold-free issue
+    /// projection are already declared Bazel inputs, so no source checkout or
+    /// Nix materialization is needed. The frozen policy only consumes the
+    /// issue, nominal world, and separately retained prior ranking.
+    pub def prepareWorld(
+        instanceId: String,
+        repository: String,
+        baseCommit: String,
+        snapshotId: String,
+        issuePayload: String,
+        world: Repository.World
+    ): Result[Error, Prepared] = forM (
+        issue <- decodeIssue(instanceId, repository, baseCommit, issuePayload)
+    ) yield {
+        instanceId = instanceId,
+        repository = repository,
+        baseCommit = baseCommit,
+        snapshotId = snapshotId,
+        issue = issue,
+        world = world,
+        sources = Vector.empty(),
+        documents = Vector.empty()
     }
 
     pub def runWithNative(f: Unit -> a \ ef): a \ (ef - Embed) + IO =

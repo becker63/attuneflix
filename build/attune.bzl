@@ -45,6 +45,24 @@ AttuneAtlasAggregateInfo = provider(
     },
 )
 
+AttuneDecisionBundlesInfo = provider(
+    doc = "Typed per-case projections of immutable paid decision evidence.",
+    fields = {"bundles": "dictionary from stable case key to bundle Parquet"},
+)
+
+AttuneDecisionBundleInfo = provider(
+    doc = "One typed keyless replay bundle.",
+    fields = {"bundle": "decision bundle Parquet"},
+)
+
+AttuneLocalizationReplayInfo = provider(
+    doc = "One exact keyless localization replay result.",
+    fields = {
+        "prediction": "canonical replayed prediction Parquet",
+        "proof": "typed exact-equality and execution telemetry Parquet",
+    },
+)
+
 def _jvm_property(name, value):
     return "--jvm_flag=-D%s=%s" % (name, value)
 
@@ -273,16 +291,16 @@ def _atlas_signatures_impl(ctx):
     ctx.actions.write(
         output = catalog,
         content = "repository\tbase_revision\tsource_tree_identity\tfact_identity\tsnapshot_id\n" +
-            "\n".join([
-                "\t".join([
-                    signature.repository,
-                    signature.base_revision,
-                    signature.source_tree_identity,
-                    signature.fact_identity,
-                    signature.snapshot_id,
-                ])
-                for signature in signatures
-            ]) + "\n",
+                  "\n".join([
+                      "\t".join([
+                          signature.repository,
+                          signature.base_revision,
+                          signature.source_tree_identity,
+                          signature.fact_identity,
+                          signature.snapshot_id,
+                      ])
+                      for signature in signatures
+                  ]) + "\n",
     )
     return [
         DefaultInfo(files = depset(observations + physical + snapshots + [catalog])),
@@ -398,6 +416,129 @@ attune_atlas_report = rule(
     implementation = _atlas_report_impl,
     attrs = {
         "aggregate": attr.label(providers = [AttuneAtlasAggregateInfo], mandatory = True),
+        "tool": attr.label(executable = True, cfg = "exec", mandatory = True),
+    },
+)
+
+def _decision_bundles_impl(ctx):
+    if len(ctx.attr.case_keys) != len(ctx.files.predictions) or len(ctx.attr.case_keys) != len(ctx.attr.base_revisions):
+        fail("case_keys, base_revisions, and predictions must have identical lengths")
+    outputs = {}
+    case_manifest = ctx.actions.declare_file(ctx.label.name + "/cases.tsv")
+    raw_manifest = ctx.actions.declare_file(ctx.label.name + "/raw.tsv")
+    case_lines = []
+    for index, key in enumerate(ctx.attr.case_keys):
+        output = ctx.actions.declare_file(ctx.label.name + "/" + key + ".parquet")
+        outputs[key] = output
+        case_lines.append("%s\t%s\t%s\t%s\n" % (
+            key,
+            ctx.attr.base_revisions[index],
+            ctx.files.predictions[index].path,
+            output.path,
+        ))
+    ctx.actions.write(case_manifest, "".join(case_lines))
+    ctx.actions.write(raw_manifest, "".join([
+        raw.path + "\n"
+        for raw in ctx.files.raw_envelopes
+    ]))
+    args = ctx.actions.args()
+    args.add(_jvm_property("attune.case_manifest", case_manifest.path))
+    args.add(_jvm_property("attune.raw_manifest", raw_manifest.path))
+    ctx.actions.run(
+        executable = ctx.executable.tool,
+        arguments = [args],
+        inputs = [case_manifest, raw_manifest] + ctx.files.predictions + ctx.files.raw_envelopes,
+        outputs = outputs.values(),
+        mnemonic = "AttuneDecisionBundleMigration",
+        progress_message = "Projecting paid observations into typed per-case replay bundles %{label}",
+    )
+    return [
+        DefaultInfo(files = depset(outputs.values())),
+        AttuneDecisionBundlesInfo(bundles = outputs),
+    ]
+
+attune_decision_bundles = rule(
+    implementation = _decision_bundles_impl,
+    attrs = {
+        "case_keys": attr.string_list(mandatory = True),
+        "base_revisions": attr.string_list(mandatory = True),
+        "predictions": attr.label_list(allow_files = [".parquet"], mandatory = True),
+        "raw_envelopes": attr.label_list(allow_files = [".json"], mandatory = True),
+        "tool": attr.label(executable = True, cfg = "exec", mandatory = True),
+    },
+)
+
+def _decision_bundle_impl(ctx):
+    bundles = ctx.attr.bundles[AttuneDecisionBundlesInfo].bundles
+    if ctx.attr.case_key not in bundles:
+        fail("unknown localization case key: " + ctx.attr.case_key)
+    bundle = bundles[ctx.attr.case_key]
+    return [
+        DefaultInfo(files = depset([bundle])),
+        AttuneDecisionBundleInfo(bundle = bundle),
+    ]
+
+attune_decision_bundle = rule(
+    implementation = _decision_bundle_impl,
+    attrs = {
+        "bundles": attr.label(providers = [AttuneDecisionBundlesInfo], mandatory = True),
+        "case_key": attr.string(mandatory = True),
+    },
+)
+
+def _localization_replay_impl(ctx):
+    world = ctx.attr.world[AttuneWorldInfo]
+    decisions = ctx.attr.decisions[AttuneDecisionBundleInfo]
+    if not world.identity:
+        fail("localization replay requires the canonical migrated world identity")
+    prediction = ctx.actions.declare_file(ctx.label.name + "/prediction.parquet")
+    proof = ctx.actions.declare_file(ctx.label.name + "/proof.parquet")
+    args = ctx.actions.args()
+    for name, value in [
+        ("attune.world_identity", world.identity.path),
+        ("attune.world_metadata", world.metadata.path),
+        ("attune.world_entities", world.entities.path),
+        ("attune.world_relations", world.relations.path),
+        ("attune.issues", ctx.file.issues.path),
+        ("attune.instance_id", ctx.attr.instance_id),
+        ("attune.prior", ctx.file.prior.path),
+        ("attune.decisions", decisions.bundle.path),
+        ("attune.expected", ctx.file.expected.path),
+        ("attune.output_prediction", prediction.path),
+        ("attune.output_proof", proof.path),
+    ]:
+        args.add(_jvm_property(name, value))
+    ctx.actions.run(
+        executable = ctx.executable.tool,
+        arguments = [args],
+        inputs = [
+            world.identity,
+            world.metadata,
+            world.entities,
+            world.relations,
+            ctx.file.issues,
+            ctx.file.prior,
+            decisions.bundle,
+            ctx.file.expected,
+        ],
+        outputs = [prediction, proof],
+        mnemonic = "AttuneLocalizationReplay",
+        progress_message = "Replaying frozen localization case %{label}",
+    )
+    return [
+        DefaultInfo(files = depset([prediction, proof])),
+        AttuneLocalizationReplayInfo(prediction = prediction, proof = proof),
+    ]
+
+attune_localization_replay = rule(
+    implementation = _localization_replay_impl,
+    attrs = {
+        "world": attr.label(providers = [AttuneWorldInfo], mandatory = True),
+        "decisions": attr.label(providers = [AttuneDecisionBundleInfo], mandatory = True),
+        "issues": attr.label(allow_single_file = [".json"], mandatory = True),
+        "instance_id": attr.string(mandatory = True),
+        "prior": attr.label(allow_single_file = [".parquet"], mandatory = True),
+        "expected": attr.label(allow_single_file = [".parquet"], mandatory = True),
         "tool": attr.label(executable = True, cfg = "exec", mandatory = True),
     },
 )

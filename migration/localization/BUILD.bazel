@@ -1,0 +1,33 @@
+load("//build:flix.bzl", "flix_fatjar")
+
+flix_fatjar(
+    name = "decision_bundle_flix",
+    srcs = [
+        "Main.flix",
+        "//build:src/Repository.flix",
+        "//src:Decide.flix",
+        "//src:Decide/Table.flix",
+        "//src:Radii.flix",
+        "//src:Radii/Evaluate.flix",
+        "//src:Repository/Physical.flix",
+        "//src:Repository/Structure.flix",
+        "//src:ScientificData.flix",
+        "//src:ScientificTable.flix",
+    ],
+    java_deps = [
+        "//src/native/inference:attune_inference",
+        "//src/native/parquet:attune_parquet",
+    ],
+    threads = 2,
+)
+
+java_binary(
+    name = "decision_bundle",
+    jvm_flags = [
+        "--add-opens=java.base/java.nio=ALL-UNNAMED",
+        "--enable-native-access=ALL-UNNAMED",
+    ],
+    main_class = "Main",
+    visibility = ["//visibility:public"],
+    runtime_deps = [":decision_bundle_flix"],
+)
