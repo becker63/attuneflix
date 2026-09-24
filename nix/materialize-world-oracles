@@ -89,7 +89,7 @@ done
 # fact_identity and snapshot_id are computed from content and admitted meaning.
 build_tmp="$(mktemp "$workspace/.attune/BUILD.bazel.XXXXXX")"
 {
-  printf 'load("//build:attune.bzl", "attune_atlas_aggregate", "attune_atlas_report", "attune_atlas_signature", "attune_atlas_signature_summaries", "attune_atlas_signature_summary", "attune_atlas_signatures", "attune_decision_bundle", "attune_decision_bundles", "attune_localization_replay", "attune_world_migration")\n\n'
+  printf 'load("//build:attune.bzl", "attune_atlas_aggregate", "attune_atlas_report", "attune_atlas_signature", "attune_atlas_signature_summaries", "attune_atlas_signature_summary", "attune_atlas_signatures", "attune_decision_bundle", "attune_decision_bundles", "attune_localization_replay", "attune_localization_replays", "attune_world_migration")\n\n'
   targets=()
   signatures=()
   summaries=()
@@ -215,10 +215,15 @@ build_tmp="$(mktemp "$workspace/.attune/BUILD.bazel.XXXXXX")"
     printf '    world = ":%s",\n' "${replay_worlds[$offset]}"
     printf ')\n'
   done
-  printf '\nfilegroup(\n    name = "localization_replay",\n    srcs = [\n'
+  printf '\nfilegroup(\n    name = "localization_replay_cases",\n    srcs = [\n'
   for replay_target in "${replay_targets[@]}"; do
     printf '        "%s",\n' "$replay_target"
   done
   printf '    ],\n    visibility = ["//visibility:public"],\n)\n'
+  printf '\nattune_localization_replays(\n    name = "localization_replay",\n    replays = [\n'
+  for replay_target in "${replay_targets[@]}"; do
+    printf '        "%s",\n' "$replay_target"
+  done
+  printf '    ],\n    tool = "//experiments/localization-swe-explore:aggregate",\n    visibility = ["//visibility:public"],\n)\n'
 } > "$build_tmp"
 mv "$build_tmp" "$workspace/.attune/BUILD.bazel"

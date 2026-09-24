@@ -59,12 +59,17 @@ The execution result is at least as important as the score:
 | Exact keyless replay, migration-era sequential runner | none | no new tokens | $0 | 41.00s/case |
 | Same five-case replay before retained-store load-once | none | no new tokens | $0 | 1,943.99s |
 | Same five-case replay after retained-store load-once | none | no new tokens | $0 | **95.62s (20.33x faster)** |
+| Exact keyless replay, 61 independent BuildBuddy actions, cold | none | no new tokens | $0 | **57.69s total; 56.35s critical path** |
+| Same 61-case Bazel graph, unchanged warm rerun | none | no new tokens | $0 | **1.19s Bazel wall time** |
 
 The semantic prior also retained 27,858,287 embedding input tokens. Its
 provider returned no cost field, so total spend is correctly reported as
 $0.581381 of Jev cost plus unknown embedding cost. The provider envelopes did
 not retain request latency; the wall times above are complete measured
-processes, not invented provider percentiles. The [sealed report](experiments/swe-explore-js-ts-scale/REPORT.md)
+processes, not invented provider percentiles. The distributed cold replay used
+62 remote actions and turned roughly 41 minutes of measured sequential case
+work into less than one minute of wall time; all 61 predictions remained
+exactly equal. The [sealed report](experiments/swe-explore-js-ts-scale/REPORT.md)
 contains every metric and case, and the [usage record](experiments/swe-explore-js-ts-scale/USAGE.md)
 contains the token, cost, latency, and memory evidence.
 

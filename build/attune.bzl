@@ -63,6 +63,11 @@ AttuneLocalizationReplayInfo = provider(
     },
 )
 
+AttuneLocalizationReplaysInfo = provider(
+    doc = "Aggregate exact-equality proof for every admissible localization case.",
+    fields = {"proof": "61-row typed replay proof Parquet"},
+)
+
 def _jvm_property(name, value):
     return "--jvm_flag=-D%s=%s" % (name, value)
 
@@ -539,6 +544,35 @@ attune_localization_replay = rule(
         "instance_id": attr.string(mandatory = True),
         "prior": attr.label(allow_single_file = [".parquet"], mandatory = True),
         "expected": attr.label(allow_single_file = [".parquet"], mandatory = True),
+        "tool": attr.label(executable = True, cfg = "exec", mandatory = True),
+    },
+)
+
+def _localization_replays_impl(ctx):
+    replays = [target[AttuneLocalizationReplayInfo] for target in ctx.attr.replays]
+    manifest = ctx.actions.declare_file(ctx.label.name + "/proofs.txt")
+    proof = ctx.actions.declare_file(ctx.label.name + "/proof.parquet")
+    ctx.actions.write(manifest, "".join([replay.proof.path + "\n" for replay in replays]))
+    args = ctx.actions.args()
+    args.add(_jvm_property("attune.input_manifest", manifest.path))
+    args.add(_jvm_property("attune.output_proof", proof.path))
+    ctx.actions.run(
+        executable = ctx.executable.tool,
+        arguments = [args],
+        inputs = [manifest] + [replay.proof for replay in replays],
+        outputs = [proof],
+        mnemonic = "AttuneLocalizationReplayAggregate",
+        progress_message = "Checking exact localization replay across %{label}",
+    )
+    return [
+        DefaultInfo(files = depset([proof])),
+        AttuneLocalizationReplaysInfo(proof = proof),
+    ]
+
+attune_localization_replays = rule(
+    implementation = _localization_replays_impl,
+    attrs = {
+        "replays": attr.label_list(providers = [AttuneLocalizationReplayInfo], mandatory = True),
         "tool": attr.label(executable = True, cfg = "exec", mandatory = True),
     },
 )

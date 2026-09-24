@@ -44,7 +44,7 @@ def main(): Unit \ {FileSystem, IO} = {
             let elapsed = System.nanoTime() - started;
             let expectedId = ScientificIdentity.versioned("localization-prediction-v1", expected);
             let replayId = ScientificIdentity.versioned("localization-prediction-v1", replay);
-            let proof = ScientificTable.write(property("attune.output_proof"), proofSchema(), Vector#{Map#{
+            let proof = ScientificTable.write(property("attune.output_proof"), LocalizationReplay.schema(), Vector#{Map#{
                 "protocol" => JString("attune-keyless-localization-replay-v1"),
                 "instance_id" => JString(prepared#instanceId),
                 "repository" => JString(prepared#repository),
@@ -68,35 +68,7 @@ def main(): Unit \ {FileSystem, IO} = {
     }
 }
 
-def proofSchema(): ScientificTable.Schema = {
-    format = "attune-localization-replay-proof-v1",
-    columns = Vector#{
-        text("protocol"), text("instance_id"), text("repository"),
-        text("base_revision"), text("snapshot_id"),
-        text("expected_prediction_id"), text("replay_prediction_id"),
-        boolean("exact_equal"), int32("decision_occurrences"),
-        int32("unique_decisions"), int32("states_interned"),
-        int32("memo_entries"), int32("memo_slots"), int64("replay_nanos")
-    }
-}
-
 def property(name: String): String \ IO = System.getProperty(name)
-
-def text(name: String): ScientificTable.Column = {
-    name = name, kind = ScientificTable.ColumnType.Text, nullable = false
-}
-
-def boolean(name: String): ScientificTable.Column = {
-    name = name, kind = ScientificTable.ColumnType.Boolean, nullable = false
-}
-
-def int32(name: String): ScientificTable.Column = {
-    name = name, kind = ScientificTable.ColumnType.Int32, nullable = false
-}
-
-def int64(name: String): ScientificTable.Column = {
-    name = name, kind = ScientificTable.ColumnType.Int64, nullable = false
-}
 
 def require(result: Result[String, a]): a = match result {
     case Ok(value) => value

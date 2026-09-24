@@ -11,6 +11,7 @@ flix_fatjar(
         "//src:Decide/Table.flix",
         "//src:Localization/Result.flix",
         "//src:Localization/Tree.flix",
+        "//src:LocalizationReplay.flix",
         "//src:Radii.flix",
         "//src:Radii/Compiled.flix",
         "//src:Radii/Evaluate.flix",
@@ -39,4 +40,28 @@ java_binary(
     main_class = "Main",
     visibility = ["//visibility:public"],
     runtime_deps = [":replay_flix"],
+)
+
+flix_fatjar(
+    name = "aggregate_flix",
+    srcs = [
+        "Aggregate.flix",
+        "//src:LocalizationReplay.flix",
+        "//src:ScientificTable.flix",
+    ],
+    java_deps = ["//src/native/parquet:attune_parquet"],
+    threads = 2,
+)
+
+java_binary(
+    name = "aggregate",
+    jvm_flags = [
+        "--add-opens=java.base/java.nio=ALL-UNNAMED",
+        "--enable-native-access=ALL-UNNAMED",
+    ],
+    # A top-level Flix `main` is emitted as the JVM class Main. The source
+    # filename is not part of the generated entry-point identity.
+    main_class = "Main",
+    visibility = ["//visibility:public"],
+    runtime_deps = [":aggregate_flix"],
 )
