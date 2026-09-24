@@ -33,9 +33,13 @@ Flix owns:
 - Atlas and Localization;
 - experiment and evaluation semantics.
 
-The current embedding transport still uses LangChain4j. It is migration debt,
-not part of the scientific interface. Removing it in favor of JDK `HttpClient`
-and Jackson requires a differential check of the exact request texts, model,
-batch order, vector order, token usage, admitted errors, and retained replay.
-Changing the Java package or HTTP client does not invalidate a semantically
-identical retained observation.
+The seam uses only JDK `HttpClient` and Jackson. Embedding requests retain the
+frozen 64-text batch boundary, input and vector order, retry count, and token
+usage projection. Decision requests return the provider body unchanged. Java
+does not interpret either result beyond the provider wire envelope; Flix
+admits it or rejects it.
+
+LangChain4j was removed after exact keyless replay had sealed every retained
+observation. Changing this HTTP implementation does not invalidate a
+semantically identical retained observation, and it does not authorize a new
+provider call.

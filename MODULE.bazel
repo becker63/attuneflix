@@ -73,10 +73,6 @@ maven.install(
     artifacts = [
         "com.fasterxml.jackson.core:jackson-databind:2.22.1",
         "com.knuddels:jtokkit:1.1.0",
-        "dev.langchain4j:langchain4j-core:1.18.1",
-        "dev.langchain4j:langchain4j-http-client:1.18.1",
-        "dev.langchain4j:langchain4j-http-client-jdk:1.18.1",
-        "dev.langchain4j:langchain4j-open-ai:1.18.1",
         "org.apache.arrow:arrow-dataset:19.0.0",
         "org.apache.arrow:arrow-memory-unsafe:19.0.0",
         "org.jspecify:jspecify:1.0.0",

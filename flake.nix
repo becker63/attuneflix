@@ -57,10 +57,15 @@
             while [ "$workspace" != / ] && [ ! -f "$workspace/MODULE.bazel" ]; do
               workspace="$(${pkgs.coreutils}/bin/dirname -- "$workspace")"
             done
+            repin_environment=
+            if [ "''${REPIN:-}" = 1 ]; then
+              repin_environment=REPIN=1
+            fi
             exec ${pkgs.coreutils}/bin/env -i \
               HOME="$HOME" \
               USER="''${USER:-unknown}" \
               ATTUNE_WORKSPACE="$workspace" \
+              $repin_environment \
               BAZELISK_SKIP_WRAPPER=true \
               USE_BAZEL_VERSION=8.6.0 \
               PATH=${pkgs.lib.makeBinPath [

@@ -5,17 +5,13 @@ java_library(
     srcs = [
         "AttuneDecision.java",
         "AttuneEmbed.java",
+        "OpenRouter.java",
     ],
     javacopts = ["--release=21"],
     visibility = ["//visibility:public"],
-    runtime_deps = ["@maven//:org_slf4j_slf4j_nop"],
     deps = [
         "@maven//:com_fasterxml_jackson_core_jackson_core",
         "@maven//:com_fasterxml_jackson_core_jackson_databind",
-        "@maven//:dev_langchain4j_langchain4j_core",
-        "@maven//:dev_langchain4j_langchain4j_http_client",
-        "@maven//:dev_langchain4j_langchain4j_http_client_jdk",
-        "@maven//:dev_langchain4j_langchain4j_open_ai",
     ],
 )
 
