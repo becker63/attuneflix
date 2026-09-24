@@ -5,7 +5,6 @@ attune_world_files(
     base_revision = "a5e37d3fe77abd2279bea864bf57f8d641e1777b",
     entities = "entities.parquet",
     fact_identity = "repository-facts-v2:19ca3522e690b6a76b8b1c0be493fc6139020a064200a0045c0d9a926e2b3f49",
-    identity = "identity.json",
     metadata = "metadata.parquet",
     relations = "relations.parquet",
     repository = "protonmail/webclients",

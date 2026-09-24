@@ -20,7 +20,6 @@ exports_files([
     "Repository/Reference.flix",
     "Repository/Table.flix",
     "Repository/Grit.flix",
-    "Repository/Identity.flix",
     "Repository/Structure.flix",
     "ScientificTable.flix",
 ])

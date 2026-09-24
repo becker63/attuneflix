@@ -101,7 +101,7 @@ def atlasCensusUsesTypedFileAndSymbolSeedFamilies(): Unit \ {Assert, IO} = {
     Assert.assertEq(expected = Vector#{Radii.Domain.File, Radii.Domain.Symbol},
         Vector.map(seed -> seed#domain, seeds));
     Assert.assertEq(expected = 3279, Vector.length(Atlas.programsFrom(Radii.Domain.File, 7)));
-    match Atlas.signature(world, Vector.get(0, seeds)#state, 1) {
+    match Atlas.Signature.compute(world, Vector.get(0, seeds)#state, 1) {
         case Err(error) => Assert.fail(error)
         case Ok(signature) => Assert.assertEq(expected = 3, signature#logicalPrograms)
     }

@@ -5,7 +5,6 @@ attune_world_files(
     base_revision = "9dfb7c231f98a2d3bf48a99577d8a55cfdb2480b",
     entities = "entities.parquet",
     fact_identity = "repository-facts-v2:1b78d142efea6cd7fb529ae559a006a911cf88225360609daef0b8014eafd364",
-    identity = "identity.json",
     metadata = "metadata.parquet",
     relations = "relations.parquet",
     repository = "tutao/tutanota",

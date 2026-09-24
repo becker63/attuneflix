@@ -5,7 +5,6 @@ attune_world_files(
     base_revision = "b17a932342bfdeeaf1dc0fbe4f436c83e258d6c8",
     entities = "entities.parquet",
     fact_identity = "repository-facts-v2:29401b007867ecfe1d2e584d85cee27bca36fb98c170e8acd651bef7db589ae3",
-    identity = "identity.json",
     metadata = "metadata.parquet",
     relations = "relations.parquet",
     repository = "preactjs/preact",

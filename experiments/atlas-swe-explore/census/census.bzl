@@ -137,6 +137,7 @@ def atlas_census():
     )
     attune_atlas_aggregate(
         name = "atlas_data",
+        population = "//experiments/swe-explore-js-ts-scale:population",
         summaries = summaries,
         tool = "//experiments/atlas-swe-explore:aggregate",
         visibility = ["//visibility:public"],

@@ -5,7 +5,6 @@ attune_world_files(
     base_revision = "67d6596d40b1807b9cd8eb0d9282932ea77be3c0",
     entities = "entities.parquet",
     fact_identity = "repository-facts-v2:4068ab896a977849dec438d6616d0df0eea483c136bc546c5e4c107ef396fa53",
-    identity = "identity.json",
     metadata = "metadata.parquet",
     relations = "relations.parquet",
     repository = "vuejs/core",

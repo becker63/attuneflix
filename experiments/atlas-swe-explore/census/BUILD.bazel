@@ -1,6 +1,8 @@
 load(":census.bzl", "atlas_census")
 
-# The manifest order is scientific data. The macro expands it into ordinary,
+# The checked label order is a Bazel projection of typed population data. The
+# aggregate action verifies every repository and revision against Parquet. The
+# macro expands it into ordinary,
 # independently queryable Bazel targets: one world, signature, and summary per
 # frozen SWE-Explore case, followed by deterministic aggregate/report actions.
 atlas_census()

@@ -5,7 +5,6 @@ attune_world_files(
     base_revision = "02e38d8ccf7811af27a9c15ddbadf4d26cfc0eab",
     entities = "entities.parquet",
     fact_identity = "repository-facts-v2:910f2f4e1c1118eff6ca872c821b5232ddc6606ac7028d841d10a2918413c68e",
-    identity = "identity.json",
     metadata = "metadata.parquet",
     relations = "relations.parquet",
     repository = "facebook/docusaurus",

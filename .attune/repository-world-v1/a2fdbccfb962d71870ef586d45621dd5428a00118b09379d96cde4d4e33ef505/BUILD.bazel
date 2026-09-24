@@ -5,7 +5,6 @@ attune_world_files(
     base_revision = "16e92a4d8cb66c10c46eb9d94d9e2b82d612108a",
     entities = "entities.parquet",
     fact_identity = "repository-facts-v2:736b6ce4774ea1bbfd26f7ed30666d9a2f0f66ee103f3549d1eb2a7c54f2a819",
-    identity = "identity.json",
     metadata = "metadata.parquet",
     relations = "relations.parquet",
     repository = "element-hq/element-web",

@@ -10,6 +10,10 @@ def main(): Unit \ IO = {
             let summaries = List.reverse(tables#summaries) |> List.toVector |> Vector.flatten;
             let snapshots = List.reverse(tables#snapshots) |> List.toVector |> Vector.flatten;
             let physical = List.reverse(tables#physical) |> List.toVector |> Vector.flatten;
+            let population = Population.Table.read(
+                Experiment.property("attune.population_metadata"),
+                Experiment.property("attune.population_cases")) |> Experiment.require;
+            let _populationProof = validatePopulation(population#cases, snapshots) |> Experiment.require;
             let writtenSummaries = ScientificTable.write(
                 Experiment.property("attune.output_summaries"),
                 Atlas.Signature.Summary.schema(), summaries);
@@ -26,6 +30,22 @@ def main(): Unit \ IO = {
                 " physical=${Vector.length(writtenPhysical)}")
             }
     }
+
+def validatePopulation(
+    cases: Vector[Population.Case],
+    snapshots: Vector[ScientificTable.Row]
+): Result[String, Unit] = {
+    if (Vector.length(cases) != Vector.length(snapshots))
+        Err("Atlas projection and typed population have different lengths")
+    else Vector.zip(cases, snapshots)
+        |> Vector.traverse(match (case0, snapshot) -> forM (
+            repository <- ScientificTable.text(snapshot, "repository");
+            revision <- ScientificTable.text(snapshot, "base_revision");
+            _ <- if (repository == case0#repository) Ok(()) else Err("Atlas population repository drift");
+            _ <- if (revision == case0#baseRevision) Ok(()) else Err("Atlas population revision drift")
+        ) yield ())
+        |> Result.map(_ -> ())
+}
 
 type alias Tables = {
     summaries = List[Vector[ScientificTable.Row]],

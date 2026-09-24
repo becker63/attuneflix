@@ -5,7 +5,6 @@ attune_world_files(
     base_revision = "8d9f8d50b923d5f8a673590ae138bc5d86a3a256",
     entities = "entities.parquet",
     fact_identity = "repository-facts-v2:82000e7e4dd012b98e3e6fb40879b286e6e74ee7e46ecc77f6ead78c6ebaac71",
-    identity = "identity.json",
     metadata = "metadata.parquet",
     relations = "relations.parquet",
     repository = "mrdoob/three.js",

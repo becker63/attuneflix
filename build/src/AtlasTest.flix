@@ -82,7 +82,7 @@ def atlasSignatureExplainsExtinctionExpansionReachAndReuse(): Unit \ Assert = {
         unresolvedImports = 0,
         unresolvedCalls = 0
     };
-    match Atlas.signature(world, Atlas.State.Symbols(Set.singleton(s0)), 2) {
+    match Atlas.Signature.compute(world, Atlas.State.Symbols(Set.singleton(s0)), 2) {
         case Err(error) => Assert.fail(error)
         case Ok(signature) => {
             Assert.assertEq(expected = (2, 12, 6, 12, 9), (

@@ -5,7 +5,6 @@ attune_world_files(
     base_revision = "5134505bf93013c5fa7df66704df8d04becb7f7d",
     entities = "entities.parquet",
     fact_identity = "repository-facts-v2:691ffa7d9fa31f8cc1f5762e8b2743e2e2d6ed3991fe37cd8d11ba182b42a436",
-    identity = "identity.json",
     metadata = "metadata.parquet",
     relations = "relations.parquet",
     repository = "babel/babel",

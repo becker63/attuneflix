@@ -4,7 +4,6 @@ AttuneWorldInfo = provider(
         "metadata": "world metadata Parquet",
         "entities": "world entity Parquet",
         "relations": "world basis-relation Parquet",
-        "identity": "canonical JSON identity emitted with the world, or None",
         "repository": "repository identity",
         "base_revision": "frozen base revision",
         "source_tree_identity": "implementation-independent source-tree identity",
@@ -138,12 +137,11 @@ def _add_indexed(args, prefix, files):
     for index, file in enumerate(files):
         args.add(_jvm_property("%s.%d" % (prefix, index), file.path))
 
-def _world_info(ctx, metadata, entities, relations, identity = None):
+def _world_info(ctx, metadata, entities, relations):
     return AttuneWorldInfo(
         metadata = metadata,
         entities = entities,
         relations = relations,
-        identity = identity,
         repository = ctx.attr.repository,
         base_revision = ctx.attr.base_revision,
         source_tree_identity = ctx.attr.source_tree_identity,
@@ -186,14 +184,12 @@ def _world_files_impl(ctx):
             ctx.file.metadata,
             ctx.file.entities,
             ctx.file.relations,
-            ctx.file.identity,
         ])),
         _world_info(
             ctx,
             ctx.file.metadata,
             ctx.file.entities,
             ctx.file.relations,
-            ctx.file.identity,
         ),
     ]
 
@@ -203,7 +199,6 @@ attune_world_files = rule(
         "metadata": attr.label(allow_single_file = [".parquet"], mandatory = True),
         "entities": attr.label(allow_single_file = [".parquet"], mandatory = True),
         "relations": attr.label(allow_single_file = [".parquet"], mandatory = True),
-        "identity": attr.label(allow_single_file = [".json"], mandatory = True),
         "repository": attr.string(mandatory = True),
         "base_revision": attr.string(mandatory = True),
         "source_tree_identity": attr.string(mandatory = True),
@@ -230,9 +225,8 @@ def _atlas_signature_impl(ctx):
     physical = ctx.actions.declare_file(ctx.label.name + "/physical.parquet")
     snapshot = ctx.actions.declare_file(ctx.label.name + "/snapshot.parquet")
     args = ctx.actions.args()
-    command = "signature-dynamic" if world.identity else "signature"
     for name, value in [
-        ("attune.command", command),
+        ("attune.command", "signature"),
         ("attune.repository", world.repository),
         ("attune.base_revision", world.base_revision),
         ("attune.source_tree_identity", world.source_tree_identity),
@@ -248,9 +242,6 @@ def _atlas_signature_impl(ctx):
     ]:
         args.add(_jvm_property(name, value))
     inputs = [world.metadata, world.entities, world.relations]
-    if world.identity:
-        args.add(_jvm_property("attune.world_identity", world.identity.path))
-        inputs.append(world.identity)
     ctx.actions.run(
         executable = ctx.executable.tool,
         arguments = [args],
@@ -357,6 +348,7 @@ attune_atlas_signature_summaries = rule(
 
 def _atlas_aggregate_impl(ctx):
     summaries = [target[AttuneSignatureSummaryInfo] for target in ctx.attr.summaries]
+    population = ctx.attr.population[AttunePopulationInfo]
     aggregate_summaries = ctx.actions.declare_file(ctx.label.name + "/summaries.parquet")
     aggregate_snapshots = ctx.actions.declare_file(ctx.label.name + "/snapshots.parquet")
     aggregate_physical = ctx.actions.declare_file(ctx.label.name + "/physical.parquet")
@@ -365,12 +357,14 @@ def _atlas_aggregate_impl(ctx):
     _add_indexed(args, "attune.input_snapshots", [summary.snapshot for summary in summaries])
     _add_indexed(args, "attune.input_physical", [summary.physical for summary in summaries])
     for name, value in [
+        ("attune.population_metadata", population.metadata.path),
+        ("attune.population_cases", population.cases.path),
         ("attune.output_summaries", aggregate_summaries.path),
         ("attune.output_snapshots", aggregate_snapshots.path),
         ("attune.output_physical", aggregate_physical.path),
     ]:
         args.add(_jvm_property(name, value))
-    inputs = []
+    inputs = [population.metadata, population.cases]
     for summary in summaries:
         inputs.extend([summary.summary, summary.snapshot, summary.physical])
     ctx.actions.run(
@@ -393,6 +387,7 @@ def _atlas_aggregate_impl(ctx):
 attune_atlas_aggregate = rule(
     implementation = _atlas_aggregate_impl,
     attrs = {
+        "population": attr.label(providers = [AttunePopulationInfo], mandatory = True),
         "summaries": attr.label_list(providers = [AttuneSignatureSummaryInfo]),
         "tool": attr.label(executable = True, cfg = "exec", mandatory = True),
     },

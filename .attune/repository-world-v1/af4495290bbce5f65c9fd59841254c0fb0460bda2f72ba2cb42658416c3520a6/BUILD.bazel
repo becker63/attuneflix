@@ -5,7 +5,6 @@ attune_world_files(
     base_revision = "85740c3e7a1fa48346dfcbd4497f463ccb1c1b05",
     entities = "entities.parquet",
     fact_identity = "repository-facts-v2:f0bc043a312899a2da6fec50c2e1f130591e861e35a2de1aa11eb3dbc879e678",
-    identity = "identity.json",
     metadata = "metadata.parquet",
     relations = "relations.parquet",
     repository = "axios/axios",

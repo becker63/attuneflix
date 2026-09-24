@@ -1,4 +1,4 @@
-def main(): Unit \ {Fs.FileSystem, IO} = {
+def main(): Unit \ IO = {
     CensusMain.execute()
 }
 
@@ -9,20 +9,17 @@ mod CensusMain {
     import java.lang.System
     import java.lang.Integer
 
-    use Fs.FileSystem
-
     type alias Output = {
         observations = Vector[ScientificTable.Row],
         physical     = Vector[ScientificTable.Row]
     }
 
-    pub def execute(): Unit \ {FileSystem, IO} = {
+    pub def execute(): Unit \ IO = {
         let command = System.getProperty("attune.command");
         match command {
             case "protocol" => printProtocol()
             case "fixture" => writeFixture()
             case "signature" => writeSignature()
-            case "signature-dynamic" => writeDynamicSignature()
             case _ => bug!("unknown Atlas census command: ${command}")
         }
     }
@@ -68,15 +65,6 @@ mod CensusMain {
         println("logical_programs=${counts#logical}");
         println("symbol_ending_programs=${counts#complete}")
     }
-
-    def writeDynamicSignature(): Unit \ {FileSystem, IO} =
-        match FileSystem.read(property("attune.world_identity")) |> Result.mapErr(ToString.toString) {
-            case Err(error) => bug!(error)
-            case Ok(payload) => match Repository.Identity.decode(payload) {
-                case Err(error) => bug!(error)
-                case Ok(identity) => writeSignatureFor(identity)
-            }
-        }
 
     def writeSignature(): Unit \ IO =
         writeSignatureFor({
@@ -138,7 +126,7 @@ mod CensusMain {
     ): Result[String, Output] \ IO = match seeds {
         case Nil => Ok(output)
         case seed :: rest => forM (
-            signature <- Atlas.signature(world, seed#state, 7);
+            signature <- Atlas.Signature.compute(world, seed#state, 7);
             identity = {
                 domain = seed#domain,
                 identity = seed#identity,

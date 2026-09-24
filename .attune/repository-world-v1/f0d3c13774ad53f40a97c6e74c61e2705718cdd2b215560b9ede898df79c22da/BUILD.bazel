@@ -5,7 +5,6 @@ attune_world_files(
     base_revision = "77434b3cbbc8ee21206f4cc6965e1c9b09cc92b6",
     entities = "entities.parquet",
     fact_identity = "repository-facts-v2:c2fbd2896eaaba9cc5a34634d157be0de96f48e55aa234b130036584bc50218c",
-    identity = "identity.json",
     metadata = "metadata.parquet",
     relations = "relations.parquet",
     repository = "immutable-js/immutable-js",

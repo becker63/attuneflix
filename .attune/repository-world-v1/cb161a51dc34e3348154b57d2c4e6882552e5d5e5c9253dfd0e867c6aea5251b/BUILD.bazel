@@ -5,7 +5,6 @@ attune_world_files(
     base_revision = "e0149462b3f4e7c843d89701ad9edd2e744d7593",
     entities = "entities.parquet",
     fact_identity = "repository-facts-v2:0033a31857b92242266ca73d276ca5b63eaa7748d37cf4f84952bc4ea444a5ba",
-    identity = "identity.json",
     metadata = "metadata.parquet",
     relations = "relations.parquet",
     repository = "NodeBB/NodeBB",
