@@ -11,6 +11,7 @@
 artifact/
 lib/external/
 native/grit/target/
+native/grit/cargo-bazel-lock.json
 zed/target/
 zed/grammars/
 zed/extension.wasm
