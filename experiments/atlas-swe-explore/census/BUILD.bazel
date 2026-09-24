@@ -1,0 +1,6 @@
+load(":census.bzl", "atlas_census")
+
+# The manifest order is scientific data. The macro expands it into ordinary,
+# independently queryable Bazel targets: one world, signature, and summary per
+# frozen SWE-Explore case, followed by deterministic aggregate/report actions.
+atlas_census()

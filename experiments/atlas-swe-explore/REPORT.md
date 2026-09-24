@@ -118,7 +118,7 @@ separately labelled post-hoc analysis.
 
 The canonical generated artifacts are:
 
-- `//.attune:signatures`: immutable per-snapshot raw observations;
-- `//.attune:signature_summaries`: compact per-snapshot typed summaries;
-- `//.attune:atlas_data`: aggregate summaries, snapshots, and physical rows;
-- `//.attune:atlas_report`: this report plus typed repository summaries.
+- `//experiments/atlas-swe-explore/census:signatures`: immutable per-snapshot raw observations;
+- `//experiments/atlas-swe-explore/census:signature_summaries`: compact per-snapshot typed summaries;
+- `//experiments/atlas-swe-explore/census:atlas_data`: aggregate summaries, snapshots, and physical rows;
+- `//experiments/atlas-swe-explore/census:report`: this report plus typed repository summaries.

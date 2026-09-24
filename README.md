@@ -1701,8 +1701,8 @@ With Bazel already on `PATH`, no project Nix evaluation is needed:
 bazel test //...
 bazel build //.attune:localization_replay
 bazel build //.attune:localization_evaluation
-bazel build //.attune:signatures
-bazel build //.attune:atlas_report
+bazel build //experiments/atlas-swe-explore/census:signatures
+bazel build //experiments/atlas-swe-explore/census:report
 ```
 
 Heavy frozen experiments are explicit build targets, not part of the normal
