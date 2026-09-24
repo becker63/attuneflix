@@ -1,0 +1,36 @@
+load("//build:flix.bzl", "flix_fatjar")
+
+flix_fatjar(
+    name = "signature_flix",
+    srcs = [
+        "Main.flix",
+        "//build:src/AtlasRepository.flix",
+        "//src:Atlas.flix",
+        "//src:Atlas/Signature.flix",
+        "//src:Atlas/Signature/Table.flix",
+        "//src:Radii.flix",
+        "//src:Repository/Physical.flix",
+        "//src:Repository/Structure.flix",
+        "//src:ScientificIdentity.flix",
+        "//src:ScientificTable.flix",
+    ],
+    java_deps = [
+        "//src/native/identity:attune_identity",
+        "//src/native/parquet:attune_parquet",
+    ],
+    threads = 2,
+)
+
+java_binary(
+    name = "signature",
+    main_class = "Main",
+    runtime_deps = [":signature_flix"],
+)
+
+genrule(
+    name = "protocol",
+    srcs = [],
+    outs = ["protocol.txt"],
+    cmd = "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin $(location :signature) > $@",
+    tools = [":signature"],
+)

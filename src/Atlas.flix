@@ -1,5 +1,31 @@
+/// Atlas is the deliberately small repository ruler built on top of Radii.
+///
+/// Radii may describe general relational expressions. Atlas admits only six
+/// directed relations and composition, so one program is just a well-typed
+/// sequence of Atoms. Keeping that restriction in the type means the census
+/// can exhaust the complete language through a fixed depth without hidden
+/// beam choices, normalization choices, or a recursive Union explosion.
+///
+/// An Atom is also the smallest meaningful deterministic execution unit:
+///
+///     (exact typed frontier, one Atom) -> exact next typed frontier
+///
+/// For example, applying Calls once to a set of 100 Symbols is one transition,
+/// even if it follows 10,000 admitted call edges. The result depends only on
+/// the frozen repository world, the complete input set, and the Atom. It does
+/// not depend on the route that reached the set or the route that follows it.
+///
+/// This cleanly separates two kinds of reuse. A compiled program DAG may share
+/// common syntax/prefixes. The Atom memo below shares runtime semantic work
+/// when different routes converge on the same exact set. The older evaluator
+/// could also jump across a cached multi-Atom subtree in one lookup; atomic
+/// reuse may walk several cached intermediate states instead, but it still
+/// performs no repeated repository relation applications. A compiled-node
+/// memo can recover that coarse shortcut later without enlarging Atlas's
+/// public language or changing its answers.
 mod Atlas {
-    /// The measurement grammar is a distinct type: Reverse and Union do not exist.
+    /// One directed primitive relation. Reverse and Union remain Radii
+    /// operations; they are intentionally not constructors in Atlas.
     pub enum Atom with Eq, Order, ToString, Hash {
         case Defines,
         case DefinedIn,
@@ -14,7 +40,8 @@ mod Atlas {
         case Compose(Expr, Atom)
     }
 
-    /// One member of the finite Atlas measurement language.
+    /// One member of the finite Atlas measurement language: an ordered list
+    /// of Atoms plus the equivalent closed expression used for type checking.
     ///
     /// The expression type has only Atom and Compose, so an Atlas Program
     /// cannot silently acquire Radii's Reverse or Union constructors.
@@ -76,6 +103,9 @@ mod Atlas {
         ranking = FileRanking
     }
 
+    /// Query-local semantic recurrence. This table does not cache arbitrary
+    /// expression syntax: its key asks only what one Atom does to one exact
+    /// typed state. The repository world is fixed for the enclosing call.
     type alias Memos[r: Region] = {
         transitions        = MutHashMap[(Atom, State), State, r],
         physicalTransitions = Ref[Int32, r],
@@ -504,6 +534,9 @@ mod Atlas {
         }
     }
 
+    /// Apply one directed relation to the whole typed frontier. A cache miss is
+    /// one physical transition; a hit is one transition reuse. Neither counter
+    /// counts individual source edges, complete programs, or elapsed-time units.
     def transition(world: Repository.Physical.World, atom: Atom, state: State, memos: Memos[r]): State \ r =
         match MutHashMap.get((atom, state), memos#transitions) {
             case Some(output) => {
