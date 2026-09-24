@@ -1615,7 +1615,7 @@ independent implementations by design:
                    \       /
                exact parity
                        |
-        Radii.Compiled.Program / Evaluation
+          Radii.Evaluate.Program / Evaluation
               region-memoized DAG
                        |
         Decide.Request -> Decide.Observation
@@ -1632,8 +1632,8 @@ Those labels are current Flix names, not conceptual placeholders:
   catalog.
 - [`Repository.Physical.World`](src/Repository/Physical.flix) is the indexed
   physical representation of the same relations.
-- [`Radii.Compiled.Program`](src/Radii/Compiled.flix) is the shared program
-  DAG; `Radii.Compiled.Evaluation` contains its query-local state arena and
+- [`Radii.Evaluate.Program`](src/Radii/Evaluate.flix) is the shared program
+  DAG; `Radii.Evaluate.Evaluation` contains its query-local state arena and
   memo counts.
 - [`Decide.Request`](src/Decide.flix) and `Decide.Observation` are the typed
   learned-choice boundary. This boundary will move under `Localization`

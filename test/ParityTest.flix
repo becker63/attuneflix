@@ -100,23 +100,11 @@ mod ParityTest {
             Radii.Evaluate.State.Locations(Set#{location(0), location(1), location(2), location(3)}) :: Nil
     }
 
-    def physicalOne(world: Radii.Evaluate.World, expr: Radii.Expr, input: Radii.Evaluate.State): Result[String, Radii.Evaluate.State] =
-        match Radii.Evaluate.evaluateAll(world, input, expr :: Nil) {
+    def physicalOne(world: Radii.Evaluate.World, expr: Radii.Expr, input: Radii.Evaluate.State): Result[String, Radii.Evaluate.State] = {
+        let program = Radii.Evaluate.compile(expr :: Nil);
+        match Radii.Evaluate.evaluate(world, input, program) {
             case Err(error) => Err(error)
-            case Ok(evaluation) => match Map.get(Radii.normalize(expr), evaluation#results) {
-                case None => Err("physical evaluator omitted compatible expression")
-                case Some(output) => Ok(output)
-            }
-        }
-
-    def compiledOne(world: Radii.Evaluate.World, expr: Radii.Expr, input: Radii.Evaluate.State): Result[String, Radii.Evaluate.State] = {
-        let program = Radii.Compiled.compile(expr :: Nil);
-        match Radii.Compiled.evaluate(world, input, program) {
-            case Err(error) => Err(error)
-            case Ok(evaluation) => match Map.get(Radii.normalize(expr), Radii.Compiled.materializeLegacy(program, evaluation)) {
-                case None => Err("compiled evaluator omitted compatible expression")
-                case Some(output) => Ok(output)
-            }
+            case Ok(evaluation) => Ok(Radii.Evaluate.state(evaluation, Vector.get(0, evaluation#outputs)))
         }
     }
 
@@ -133,7 +121,6 @@ mod ParityTest {
                 expected = expected,
                 physicalOne(physical, expr, input)
             );
-            Assert.assertEq(expected = expected, compiledOne(physical, expr, input));
             1 + assertInputs(reference, physical, expr, rest)
         }
     }

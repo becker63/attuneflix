@@ -6,7 +6,6 @@ flix_check(
         "ParityTest.flix",
         "//build:src/Repository.flix",
         "//src:Radii.flix",
-        "//src:Radii/Compiled.flix",
         "//src:Radii/Evaluate.flix",
         "//src:Radii/Synthesize.flix",
         "//src:Repository/Physical.flix",
@@ -76,14 +75,14 @@ checked_test(
 flix_check(
     name = "atlas_grammar_check",
     srcs = [
-        "//build:src/AtlasTest.flix",
         "//build:src/AtlasRepository.flix",
+        "//build:src/AtlasTest.flix",
         "//src:Atlas.flix",
         "//src:Atlas/Signature.flix",
-        "//src:ScientificIdentity.flix",
         "//src:Radii.flix",
         "//src:Repository/Physical.flix",
         "//src:Repository/Structure.flix",
+        "//src:ScientificIdentity.flix",
     ],
     command = "test",
     java_deps = ["//src/native/identity:attune_identity"],
@@ -116,8 +115,8 @@ flix_check(
     srcs = [
         "//build:src/AtlasRepository.flix",
         "//build:src/RepositoryTableTest.flix",
-        "//src:Repository/Table.flix",
         "//src:Repository/Structure.flix",
+        "//src:Repository/Table.flix",
         "//src:ScientificIdentity.flix",
         "//src:ScientificTable.flix",
     ],
@@ -137,8 +136,8 @@ checked_test(
 flix_check(
     name = "atlas_signature_table_check",
     srcs = [
-        "//build:src/AtlasSignatureTableTest.flix",
         "//build:src/AtlasRepository.flix",
+        "//build:src/AtlasSignatureTableTest.flix",
         "//src:Atlas.flix",
         "//src:Atlas/Signature.flix",
         "//src:Atlas/Signature/Table.flix",

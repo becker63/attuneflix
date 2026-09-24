@@ -20,13 +20,13 @@ pub mod Localization.Tree {
 
     pub type alias Tree = {
         routes = Vector[Route],
-        program = Radii.Compiled.Program
+        program = Radii.Evaluate.Program
     }
 
     pub type alias Computed = {
         tree = Tree,
         input = Radii.Evaluate.State,
-        evaluation = Radii.Compiled.Evaluation
+        evaluation = Radii.Evaluate.Evaluation
     }
 
     pub type alias Outcome = {
@@ -34,7 +34,7 @@ pub mod Localization.Tree {
         finalState = Radii.Evaluate.State,
         ranking = Vector[Localization.Ranked],
         decisions = Vector[Decide.Observation],
-        metrics = Radii.Compiled.Metrics
+        metrics = Radii.Evaluate.Metrics
     }
 
     pub enum Error with Eq, ToString {
@@ -56,7 +56,7 @@ pub mod Localization.Tree {
         let routes = enumerate(maxDepth());
         {
             routes = routes,
-            program = Radii.Compiled.compile(
+            program = Radii.Evaluate.compile(
                 Vector.map(route -> route#expression, routes) |> Vector.toList)
         }
     }
@@ -90,7 +90,7 @@ pub mod Localization.Tree {
         _ <- if (prepared#baseCommit == prior#baseCommit) Ok(())
              else Err(Error.PriorCommitMismatch(prepared#baseCommit, prior#baseCommit));
         centers <- centerState(prepared#world, prior#ranking);
-        evaluation <- Radii.Compiled.evaluate(semanticWorld(prepared), centers, tree#program)
+        evaluation <- Radii.Evaluate.evaluate(semanticWorld(prepared), centers, tree#program)
             |> Result.mapErr(Error.Compile)
     ) yield {tree = tree, input = centers, evaluation = evaluation}
 
@@ -178,7 +178,7 @@ pub mod Localization.Tree {
                 |> Result.map(route -> {
                     let index = routeIndex(childPath, computed#tree);
                     let id = Vector.get(index, computed#evaluation#outputs);
-                    {atom = atom, route = route, state = Radii.Compiled.state(computed#evaluation, id)}
+                    {atom = atom, route = route, state = Radii.Evaluate.state(computed#evaluation, id)}
                 })
         }, atoms)
     }
@@ -346,7 +346,7 @@ pub mod Localization.Tree {
         |> Result.map(_ -> {
             let index = routeIndex(path, computed#tree);
             let id = Vector.get(index, computed#evaluation#outputs);
-            Radii.Compiled.state(computed#evaluation, id)
+            Radii.Evaluate.state(computed#evaluation, id)
         })
 
     def routeIndex(path: Vector[Radii.Atom], tree: Tree): Int32 =

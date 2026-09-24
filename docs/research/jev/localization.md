@@ -186,27 +186,29 @@ separate six-directed-atom, composition-only, depth-7 grammar; and
 `CENTER_COUNT = 8`. No Jev question or benchmark gold is used during this
 implementation interlude.
 
-The production port is deliberately Flix-only. `Radii.Compiled` compiles a
+The production port is deliberately Flix-only. `Radii.Evaluate` compiles a
 stable ordered `Radii.Expr` family into shared `NodeId` nodes. Each call then
-creates a fresh region containing a `Radii.Evaluate.State -> ArenaStateId` interner,
-a state arena, and lazily allocated per-node dense rows. The compact result is
-a vector of `ArenaStateId` values aligned with `Program.roots`, plus the arena.
-`materializeLegacy` is retained only for parity/debugging. `Radii.Evaluate.StateId`
-continues to mean the existing semantic Decide identity; it is not the compact
-arena-relative integer.
+creates a fresh region containing a `Radii.Evaluate.State -> ArenaStateId`
+interner, a state arena, and lazily allocated per-node dense rows. The compact
+result is a vector of `ArenaStateId` values aligned with `Program.roots`, plus
+the arena. `Radii.Evaluate.StateId` continues to mean the durable semantic
+Decide identity; it is not the compact arena-relative integer.
 
-No Java evaluator helper or new JVM dependency was retained. The production
-module is 286 Flix LOC, versus 651 Flix LOC plus 161 Java LOC in the isolated
-multi-ablation implementation. The old `Radii.Evaluate.evaluateAll` remains the
-differential oracle during migration. Atlas and its separate grammar were not
-changed.
+No Java evaluator helper or new JVM dependency was retained. The initial
+compiled port was 294 Flix LOC, versus 651 Flix LOC plus 161 Java LOC in the
+isolated multi-ablation implementation. After differential migration, the old
+expression-memo evaluator and its legacy materializer were deleted. The one
+current physical module is 369 Flix LOC including world identity and all
+primitive relation applications. Independent Datalog in
+`Repository.Reference` is now the permanent differential oracle. Atlas and
+its separate six-atom grammar were not changed.
 
 Parity gates passed:
 
 ```text
 public atoms                              12
 normalized expressions through cost 4    79
-synthetic three-way comparisons        1,185
+synthetic Datalog/physical comparisons 1,185
 synthetic mismatches                        0
 
 Axios input                    FILE 37, lib/helpers/isAxiosError.js

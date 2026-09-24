@@ -75,7 +75,7 @@ pub mod Localization.Evaluate {
 
     type alias CandidateSearch = {
         best = CandidateBest,
-        states = Set[Radii.Compiled.ArenaStateId],
+        states = Set[Radii.Evaluate.ArenaStateId],
         projections = Set[Vector[(String, Int32, Int32)]],
         telemetry = OracleTelemetry
     }
@@ -222,7 +222,7 @@ pub mod Localization.Evaluate {
                     };
                     if (Set.memberOf(id, search#states)) counted
                     else {
-                        let state = Radii.Compiled.state(computed#evaluation, id);
+                        let state = Radii.Evaluate.state(computed#evaluation, id);
                         let spans = regionsFor(context, Localization.Tree.promote(prior#ranking, state));
                         let key = projectionKey(spans);
                         let unique = {

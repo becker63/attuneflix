@@ -238,7 +238,7 @@ The architecture permanently retains both implementations:
 Repository.Structure / Repository.Reference
     typed Flix Datalog oracle; defines meaning
 
-Repository.Physical + Radii.Compiled
+Repository.Physical + Radii.Evaluate
     indexed relation application and compact DAG; defines execution
 ```
 
@@ -359,8 +359,8 @@ retention, or experiment semantics moved into Java.
 - Removed generated `repomix-output.xml` and ignored future copies.
 - Moved all `@Test` modules out of production source.
 - Replaced peer nouns `Policy`, `Synthesis`, `Semantics`, and
-  `CompiledSemantics` with `Radii`, `Radii.Synthesize`, `Radii.Evaluate`, and
-  `Radii.Compiled`.
+  `CompiledSemantics` with `Radii`, `Radii.Synthesize`, and the current
+  `Radii.Evaluate` physical evaluator.
 - Nested Grit, Nix, physical relations, Datalog reference semantics, and typed
   repository structure beneath `Repository`.
 - Nested the frozen decision tree beneath `Localization`.
