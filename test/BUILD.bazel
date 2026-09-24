@@ -93,6 +93,37 @@ checked_test(
 )
 
 flix_check(
+    name = "localization_sandwich_check",
+    srcs = [
+        "//build:src/AtlasRepository.flix",
+        "//build:src/LocalizationTest.flix",
+        "//src:Atlas.flix",
+        "//src:Atlas/Signature.flix",
+        "//src:Localization.flix",
+        "//src:Localization/IssueTable.flix",
+        "//src:Localization/PredictionTable.flix",
+        "//src:Localization/PriorTable.flix",
+        "//src:Localization/Sandwich.flix",
+        "//src:Radii.flix",
+        "//src:Repository/Physical.flix",
+        "//src:Repository/Structure.flix",
+        "//src:ScientificIdentity.flix",
+        "//src:ScientificTable.flix",
+    ],
+    command = "test",
+    java_deps = [
+        "//src/native/identity:attune_identity",
+        "//src/native/parquet:attune_parquet",
+    ],
+    threads = 2,
+)
+
+checked_test(
+    name = "localization_sandwich_test",
+    check = ":localization_sandwich_check",
+)
+
+flix_check(
     name = "scientific_table_check",
     srcs = [
         "//build:src/ScientificTableTest.flix",

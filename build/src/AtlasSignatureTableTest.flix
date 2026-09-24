@@ -1,5 +1,4 @@
-use Util.Json.Json.{JNull, JString}
-use Util.Json.ToJson
+use ScientificTable.Value
 
 def names(schema: ScientificTable.Schema): Vector[String] =
     Vector.map(column -> column#name, schema#columns)
@@ -70,22 +69,22 @@ def atlasCensusRowsCarryExactRouteStateAndWorkIdentities(): Unit \ {Assert, IO} 
 
     let row = Vector.get(0,
         Atlas.Signature.Table.observationRows(snapshot, seed, signature));
-    Assert.assertEq(expected = Some(JString("calls")), Map.get("first_atom", row));
+    Assert.assertEq(expected = Some(Value.Text("calls")), Map.get("first_atom", row));
     Assert.assertEq(
-        expected = Some(JString("atlas-route-v1:f46f5990ebfadcab199107258b9dadd8711bd7946d8d00091a1073effcf2a843")),
+        expected = Some(Value.Text("atlas-route-v1:f46f5990ebfadcab199107258b9dadd8711bd7946d8d00091a1073effcf2a843")),
         Map.get("route_id", row)
     );
     Assert.assertEq(
-        expected = Some(JString("atlas-state-v1:66e0d95773bf3d8a754abbc13eae77b72ab23e7eb15eca9f92b1d2b644bcdde7")),
+        expected = Some(Value.Text("atlas-state-v1:66e0d95773bf3d8a754abbc13eae77b72ab23e7eb15eca9f92b1d2b644bcdde7")),
         Map.get("semantic_state_id", row)
     );
-    Assert.assertEq(expected = Some(JNull), Map.get("first_extinction_depth", row));
+    Assert.assertEq(expected = Some(Value.Null), Map.get("first_extinction_depth", row));
 
     let physical = Atlas.Signature.Table.physicalRow(snapshot, seed, signature);
-    Assert.assertEq(expected = Some(ToJson.toJson(9)),
+    Assert.assertEq(expected = Some(Value.Int64(9i64)),
         Map.get("physical_transition_requests", physical));
-    Assert.assertEq(expected = Some(ToJson.toJson(4)), Map.get("memo_cells", physical));
-    Assert.assertEq(expected = Some(JNull), Map.get("compiled_dag_nodes", physical))
+    Assert.assertEq(expected = Some(Value.Int64(4i64)), Map.get("memo_cells", physical));
+    Assert.assertEq(expected = Some(Value.Null), Map.get("compiled_dag_nodes", physical))
 }
 
 @Test

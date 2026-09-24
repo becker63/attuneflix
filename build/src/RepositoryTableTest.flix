@@ -1,4 +1,4 @@
-use Util.Json.Json.JString
+use ScientificTable.Value
 
 def repositoryTableFixture(): Repository.World = {
     let f0 = Repository.Structure.FileId.FileId(0);
@@ -59,7 +59,7 @@ def repositoryWorldTypedRowsRoundTripExactly(): Unit \ Assert = {
 def repositoryWorldRejectsSnapshotIdentityDrift(): Unit \ Assert = {
     let identity = repositoryTableIdentity();
     let encoded = Repository.Table.rows(identity, repositoryTableFixture());
-    let badMetadata = Map.insert("snapshot_id", JString("wrong"), Vector.get(0, encoded#metadata));
+    let badMetadata = Map.insert("snapshot_id", Value.Text("wrong"), Vector.get(0, encoded#metadata));
     match Repository.Table.world(identity, {
         metadata = Vector#{badMetadata},
         entities = encoded#entities,

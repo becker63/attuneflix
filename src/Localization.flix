@@ -1,6 +1,4 @@
-/// Replay-only Localization surface. The frozen policy consumes no source
-/// checkout and no embedding transport: its declared inputs are the gold-free
-/// issue row, typed admitted world, and retained prior ranking.
+/// Typed, gold-free values at the localization boundary.
 mod Localization {
     pub enum IssueText(String) with Eq
 
@@ -10,11 +8,18 @@ mod Localization {
         ordinal  = Int32
     }
 
+    pub type alias Prior = {
+        instanceId = String,
+        repository = String,
+        baseCommit = String,
+        ranking    = Vector[Ranked]
+    }
+
     pub type alias Issue = {
         instanceId = String,
         repository = String,
         baseCommit = String,
-        text = IssueText
+        text       = IssueText
     }
 
     pub type alias Prepared = {
@@ -26,7 +31,7 @@ mod Localization {
         world      = Repository.World
     }
 
-    pub def prepareWorld(
+    pub def prepare(
         instanceId: String,
         repository: String,
         baseCommit: String,
@@ -45,5 +50,4 @@ mod Localization {
         issue = issue,
         world = world
     }
-
 }

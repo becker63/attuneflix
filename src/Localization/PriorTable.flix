@@ -76,7 +76,7 @@ pub mod Localization.PriorTable {
         documentsPath: String,
         rankingPath: String,
         expectedInstance: String
-    ): Result[String, Localization.Tree.Prior] \ IO = {
+    ): Result[String, Localization.Prior] \ IO = {
         let tables = {
             metadata = ScientificTable.read(metadataPath, metadata()),
             documents = ScientificTable.read(documentsPath, documents()),
@@ -85,7 +85,7 @@ pub mod Localization.PriorTable {
         prior(tables, expectedInstance)
     }
 
-    pub def prior(tables: Tables, expectedInstance: String): Result[String, Localization.Tree.Prior] = forM (
+    pub def prior(tables: Tables, expectedInstance: String): Result[String, Localization.Prior] = forM (
         row <- exactlyOne("semantic-prior metadata", tables#metadata);
         _ <- requireProtocol(row);
         instanceId <- string("instance_id", row);

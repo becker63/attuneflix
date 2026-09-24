@@ -1,17 +1,5 @@
-load("//experiments/localization-swe-explore:graph.bzl", "frozen_localization")
-
-# The graph is public source; paid provider observations and evaluator gold are
-# private retained evidence. A clean checkout therefore remains buildable, while
-# a laboratory checkout exposes the complete frozen 61-case graph. The graph
-# consumes only the admitted typed artifacts; raw envelopes and migration inputs
-# are not on the replay path.
-frozen_localization(
-    enabled = len(glob(
-        [
-            "evaluation-inputs/gold.parquet",
-            "localization-v1/00/issue.parquet",
-            "localization-v1/77/decision-bundle.parquet",
-        ],
-        allow_empty = True,
-    )) == 3,
+filegroup(
+    name = "retained_localization_evidence",
+    srcs = glob(["localization-v1/**/*.parquet"], allow_empty = True),
+    visibility = ["//visibility:private"],
 )

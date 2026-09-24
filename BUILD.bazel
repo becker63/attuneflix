@@ -18,6 +18,7 @@ test_suite(
         "//test:grit_boundary_test",
         "//test:inference_boundary_test",
         "//test:identity_test",
+        "//test:localization_sandwich_test",
         "//test:repository_table_test",
         "//test:scientific_table_test",
     ],
