@@ -13,8 +13,11 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.Consumer;
 import org.apache.arrow.dataset.file.DatasetFileWriter;
 import org.apache.arrow.dataset.file.FileFormat;
 import org.apache.arrow.dataset.file.FileSystemDatasetFactory;
@@ -24,6 +27,7 @@ import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.vector.BigIntVector;
 import org.apache.arrow.vector.BitVector;
+import org.apache.arrow.vector.FieldVector;
 import org.apache.arrow.vector.Float8Vector;
 import org.apache.arrow.vector.VarCharVector;
 import org.apache.arrow.vector.VectorSchemaRoot;
@@ -35,12 +39,13 @@ import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.FieldType;
 import org.apache.arrow.vector.types.pojo.Schema;
 
-/** Thin Arrow Java seam. Flix owns the meaning of these tree rows. */
+/** Thin Arrow Java seam. Flix owns every scientific schema and row meaning. */
 public final class AttuneParquet {
     static { System.setProperty("arrow.allocation.manager.type", "Unsafe"); }
 
     private static final ObjectMapper JSON = new ObjectMapper();
     private static final TypeReference<List<Row>> ROWS = new TypeReference<>() {};
+    private static final TypeReference<List<Map<String, Object>>> TABLE_ROWS = new TypeReference<>() {};
     private static final String FORMAT = "attune-json-tree-v1";
     private static final Schema SCHEMA = new Schema(List.of(
             field("path", new ArrowType.List(), false,
@@ -55,6 +60,50 @@ public final class AttuneParquet {
             Map.of("attune.format", FORMAT));
 
     private AttuneParquet() {}
+
+    /** Writes rows using an exact Flix-declared schema, then returns admitted rows. */
+    public static String writeTable(String name, String schemaPayload, String rowsPayload) {
+        try {
+            TableSpec spec = JSON.readValue(schemaPayload, TableSpec.class);
+            List<Map<String, Object>> rows = JSON.readValue(rowsPayload, TABLE_ROWS);
+            Schema schema = tableSchema(spec);
+            write(name, schema, root -> fillTable(root, spec, rows));
+            return readTable(name, schemaPayload);
+        } catch (Exception error) {
+            throw new IllegalStateException("cannot write typed Parquet table: " + name, error);
+        }
+    }
+
+    /** Reads only a table whose physical schema and identity exactly match the declaration. */
+    public static String readTable(String name, String schemaPayload) {
+        try (BufferAllocator allocator = new RootAllocator()) {
+            TableSpec spec = JSON.readValue(schemaPayload, TableSpec.class);
+            Schema expected = tableSchema(spec);
+            Path path = Path.of(name).toAbsolutePath();
+            try (var factory = new FileSystemDatasetFactory(allocator, NativeMemoryPool.getDefault(),
+                         FileFormat.PARQUET, path.toUri().toString());
+                 var dataset = factory.finish();
+                 var scanner = dataset.newScan(new ScanOptions(32_768));
+                 var reader = scanner.scanBatches()) {
+                if (!expected.getFields().equals(scanner.schema().getFields()))
+                    throw new IllegalArgumentException("typed Parquet schema does not match " + spec.format +
+                            ": expected=" + expected + ", actual=" + scanner.schema());
+                List<Map<String, Object>> rows = new ArrayList<>();
+                while (reader.loadNextBatch()) {
+                    var root = reader.getVectorSchemaRoot();
+                    for (int row = 0; row < root.getRowCount(); row++) {
+                        Map<String, Object> values = new LinkedHashMap<>();
+                        for (ColumnSpec column : spec.columns)
+                            values.put(column.name, read(root.getVector(column.name), column, row));
+                        rows.add(values);
+                    }
+                }
+                return JSON.writeValueAsString(rows);
+            }
+        } catch (Exception error) {
+            throw new IllegalStateException("cannot read typed Parquet table: " + name, error);
+        }
+    }
 
     public static String readRows(String name) {
         try (BufferAllocator allocator = new RootAllocator()) {
@@ -109,33 +158,7 @@ public final class AttuneParquet {
     public static String writeRows(String name, String payload) {
         try {
             List<Row> rows = JSON.readValue(payload, ROWS);
-            Path target = Path.of(name).toAbsolutePath();
-            Files.createDirectories(target.getParent());
-            Path directory = Files.createTempDirectory(target.getParent(), ".parquet-");
-            try (BufferAllocator allocator = new RootAllocator();
-                 VectorSchemaRoot root = VectorSchemaRoot.create(SCHEMA, allocator)) {
-                fill(root, rows);
-                var bytes = new ByteArrayOutputStream();
-                try (var writer = new ArrowStreamWriter(root, null, Channels.newChannel(bytes))) {
-                    writer.start(); writer.writeBatch(); writer.end();
-                }
-                try (var reader = new ArrowStreamReader(new ByteArrayInputStream(bytes.toByteArray()), allocator)) {
-                    DatasetFileWriter.write(allocator, reader, FileFormat.PARQUET,
-                            directory.toUri().toString(), new String[0], 1, "part-{i}.parquet");
-                    reader.getVectorSchemaRoot().clear();
-                }
-                root.clear();
-                awaitNativeRelease(allocator);
-                try (var files = Files.walk(directory)) {
-                    List<Path> output = files.filter(Files::isRegularFile)
-                            .filter(p -> p.toString().endsWith(".parquet")).toList();
-                    if (output.size() != 1) throw new IOException("Arrow writer did not produce one file");
-                    Files.move(output.getFirst(), target, StandardCopyOption.ATOMIC_MOVE,
-                            StandardCopyOption.REPLACE_EXISTING);
-                }
-            } finally {
-                remove(directory);
-            }
+            write(name, SCHEMA, root -> fill(root, rows));
             return readRows(name);
         } catch (Exception error) {
             throw new IllegalStateException("cannot write Parquet rows: " + name, error);
@@ -179,6 +202,135 @@ public final class AttuneParquet {
         root.setRowCount(rows.size());
     }
 
+    private static Schema tableSchema(TableSpec spec) {
+        if (spec.format == null || spec.format.isBlank())
+            throw new IllegalArgumentException("typed Parquet format identity is empty");
+        if (spec.columns == null || spec.columns.isEmpty())
+            throw new IllegalArgumentException("typed Parquet table has no columns");
+        Set<String> names = new java.util.HashSet<>();
+        List<Field> fields = new ArrayList<>();
+        for (ColumnSpec column : spec.columns) {
+            if (column.name == null || column.name.isBlank() || !names.add(column.name))
+                throw new IllegalArgumentException("invalid or duplicate typed Parquet column");
+            fields.add(switch (column.type) {
+                case "string" -> field(column.name, new ArrowType.Utf8(), column.nullable, null);
+                case "int64" -> field(column.name, new ArrowType.Int(64, true), column.nullable, null);
+                case "float64" -> field(column.name, new ArrowType.FloatingPoint(
+                        org.apache.arrow.vector.types.FloatingPointPrecision.DOUBLE), column.nullable, null);
+                case "boolean" -> field(column.name, new ArrowType.Bool(), column.nullable, null);
+                case "list<string>" -> field(column.name, new ArrowType.List(), column.nullable,
+                        List.of(field("element", new ArrowType.Utf8(), true, null)));
+                default -> throw new IllegalArgumentException("unsupported typed Parquet column: " + column.type);
+            });
+        }
+        // Arrow Dataset preserves the physical Parquet fields but does not
+        // expose footer metadata on read. Scientific protocol/version values
+        // therefore remain explicit typed columns owned and checked by Flix.
+        return new Schema(fields);
+    }
+
+    private static void fillTable(VectorSchemaRoot root, TableSpec spec, List<Map<String, Object>> rows) {
+        root.allocateNew();
+        Set<String> names = spec.columns.stream().map(ColumnSpec::name).collect(java.util.stream.Collectors.toSet());
+        for (int row = 0; row < rows.size(); row++) {
+            Map<String, Object> values = rows.get(row);
+            if (!values.keySet().equals(names))
+                throw new IllegalArgumentException("typed Parquet row columns do not match schema");
+            for (ColumnSpec column : spec.columns)
+                write(root.getVector(column.name), column, row, values.get(column.name));
+        }
+        for (var vector : root.getFieldVectors()) vector.setValueCount(rows.size());
+        root.setRowCount(rows.size());
+    }
+
+    private static void write(FieldVector vector, ColumnSpec column, int row, Object value) {
+        if (value == null) {
+            if (!column.nullable) throw new IllegalArgumentException("null in required column: " + column.name);
+            vector.setNull(row);
+            return;
+        }
+        switch (column.type) {
+            case "string" -> {
+                if (!(value instanceof String text)) throw typeError(column);
+                set((VarCharVector) vector, row, text);
+            }
+            case "int64" -> {
+                if (!(value instanceof Byte || value instanceof Short || value instanceof Integer || value instanceof Long))
+                    throw typeError(column);
+                ((BigIntVector) vector).setSafe(row, ((Number) value).longValue());
+            }
+            case "float64" -> {
+                if (!(value instanceof Number number)) throw typeError(column);
+                ((Float8Vector) vector).setSafe(row, number.doubleValue());
+            }
+            case "boolean" -> {
+                if (!(value instanceof Boolean bool)) throw typeError(column);
+                ((BitVector) vector).setSafe(row, bool ? 1 : 0);
+            }
+            case "list<string>" -> {
+                if (!(value instanceof List<?> values)) throw typeError(column);
+                var writer = ((ListVector) vector).getWriter();
+                writer.setPosition(row); writer.startList();
+                for (Object item : values) {
+                    if (!(item instanceof String text)) throw typeError(column);
+                    writer.writeVarChar(text);
+                }
+                writer.endList();
+            }
+            default -> throw typeError(column);
+        }
+    }
+
+    private static Object read(FieldVector vector, ColumnSpec column, int row) {
+        if (vector.isNull(row)) {
+            if (!column.nullable) throw new IllegalArgumentException("null in required column: " + column.name);
+            return null;
+        }
+        return switch (column.type) {
+            case "string" -> text((VarCharVector) vector, row);
+            case "int64" -> ((BigIntVector) vector).get(row);
+            case "float64" -> ((Float8Vector) vector).get(row);
+            case "boolean" -> ((BitVector) vector).get(row) != 0;
+            case "list<string>" -> ((List<?>) ((ListVector) vector).getObject(row)).stream()
+                    .map(Object::toString).toList();
+            default -> throw typeError(column);
+        };
+    }
+
+    private static IllegalArgumentException typeError(ColumnSpec column) {
+        return new IllegalArgumentException("invalid value for " + column.name + ": " + column.type);
+    }
+
+    private static void write(String name, Schema schema, Consumer<VectorSchemaRoot> fill) throws IOException {
+        Path target = Path.of(name).toAbsolutePath();
+        Files.createDirectories(target.getParent());
+        Path directory = Files.createTempDirectory(target.getParent(), ".parquet-");
+        try (BufferAllocator allocator = new RootAllocator();
+             VectorSchemaRoot root = VectorSchemaRoot.create(schema, allocator)) {
+            fill.accept(root);
+            var bytes = new ByteArrayOutputStream();
+            try (var writer = new ArrowStreamWriter(root, null, Channels.newChannel(bytes))) {
+                writer.start(); writer.writeBatch(); writer.end();
+            }
+            try (var reader = new ArrowStreamReader(new ByteArrayInputStream(bytes.toByteArray()), allocator)) {
+                DatasetFileWriter.write(allocator, reader, FileFormat.PARQUET,
+                        directory.toUri().toString(), new String[0], 1, "part-{i}.parquet");
+                reader.getVectorSchemaRoot().clear();
+            }
+            root.clear();
+            awaitNativeRelease(allocator);
+            try (var files = Files.walk(directory)) {
+                List<Path> output = files.filter(Files::isRegularFile)
+                        .filter(path -> path.toString().endsWith(".parquet")).toList();
+                if (output.size() != 1) throw new IOException("Arrow writer did not produce one file");
+                Files.move(output.getFirst(), target, StandardCopyOption.ATOMIC_MOVE,
+                        StandardCopyOption.REPLACE_EXISTING);
+            }
+        } finally {
+            remove(directory);
+        }
+    }
+
     private static Field field(String name, ArrowType type, boolean nullable, List<Field> children) {
         return new Field(name, new FieldType(nullable, type, null), children);
     }
@@ -206,4 +358,6 @@ public final class AttuneParquet {
 
     private record Row(List<String> path, String type, String string,
                        Long integer, Double floating, Boolean bool) {}
+    private record ColumnSpec(String name, String type, boolean nullable) {}
+    private record TableSpec(String format, List<ColumnSpec> columns) {}
 }

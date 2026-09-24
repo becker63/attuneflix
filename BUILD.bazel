@@ -15,5 +15,6 @@ test_suite(
         "//test:atlas_grammar_test",
         "//test:grit_boundary_test",
         "//test:inference_boundary_test",
+        "//test:scientific_table_test",
     ],
 )

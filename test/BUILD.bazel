@@ -70,3 +70,19 @@ checked_test(
     name = "atlas_grammar_test",
     check = ":atlas_grammar_check",
 )
+
+flix_check(
+    name = "scientific_table_check",
+    srcs = [
+        "//build:src/ScientificTableTest.flix",
+        "//src:ScientificTable.flix",
+    ],
+    command = "test",
+    java_deps = ["//src/native/parquet:attune_parquet"],
+    threads = 2,
+)
+
+checked_test(
+    name = "scientific_table_test",
+    check = ":scientific_table_check",
+)

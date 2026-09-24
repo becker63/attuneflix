@@ -6,4 +6,5 @@ exports_files([
     "src/AtlasTest.flix",
     "src/InferenceBoundaryTest.flix",
     "src/Repository.flix",
+    "src/ScientificTableTest.flix",
 ])
