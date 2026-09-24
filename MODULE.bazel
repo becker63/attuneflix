@@ -4,11 +4,37 @@ module(
 )
 
 http_jar = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_jar")
+http_file = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_file")
 
 http_jar(
     name = "flix_compiler",
     sha256 = "d8d9a3870e199c03ed6364ea9430f56f67bfd38c332c411628a6a7cb88b2b0b4",
     urls = ["https://github.com/flix/flix/releases/download/v0.76.0/flix.jar"],
+)
+
+# Raw benchmark sources are evaluator/acquisition inputs, not solver inputs.
+# They are lazy external repositories: ordinary build, test, replay, and Atlas
+# targets do not download them. Revisions and hashes come from the frozen Nix
+# acquisition oracle that Bazel replaced.
+http_file(
+    name = "swe_explore_dataset",
+    downloaded_file_path = "bench.final.public.jsonl",
+    sha256 = "dc4f114ececd0bfb987361c26ae5e2440456e2cccb36adfccb09ea5385aec202",
+    urls = ["https://huggingface.co/datasets/SWE-Explore-Bench/SWE-Explore-Bench/resolve/bdb0ae45d7c337d9e1dc3ebfe2a0af6bc7c1fbd9/bench.final.public.jsonl"],
+)
+
+http_file(
+    name = "swe_bench_multilingual_dataset",
+    downloaded_file_path = "test-00000-of-00001.parquet",
+    sha256 = "28b7f874e48496399077d276f9f2b163a077ddf0a70dc507c148d58da826baa9",
+    urls = ["https://huggingface.co/datasets/SWE-bench/SWE-bench_Multilingual/resolve/7566cd247075886ef34453ff5582908c0255f5e6/data/test-00000-of-00001.parquet"],
+)
+
+http_file(
+    name = "swe_bench_pro_dataset",
+    downloaded_file_path = "test.csv",
+    sha256 = "d2823b3c45341ac43586f49c9e49ee34f9fb10c4f5eddca40289750439513c2a",
+    urls = ["https://huggingface.co/datasets/ScaleAI/SWE-bench_Pro/resolve/a3f0ce9b3057b4656c77656c0317a482d4bf9c20/test.csv"],
 )
 
 bazel_dep(name = "rules_java", version = "9.9.0")

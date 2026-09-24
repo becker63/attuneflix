@@ -1,0 +1,29 @@
+package(default_visibility = ["//visibility:public"])
+
+# Exact raw sources used to derive the frozen population and evaluator data.
+# Localization has no dependency on this package. Its only issue input is the
+# separately projected, gold-free control artifact in the optional .attune
+# graph.
+alias(
+    name = "swe_explore_raw",
+    actual = "@swe_explore_dataset//file",
+)
+
+alias(
+    name = "swe_bench_multilingual_raw",
+    actual = "@swe_bench_multilingual_dataset//file",
+)
+
+alias(
+    name = "swe_bench_pro_raw",
+    actual = "@swe_bench_pro_dataset//file",
+)
+
+filegroup(
+    name = "raw_sources",
+    srcs = [
+        ":swe_bench_multilingual_raw",
+        ":swe_bench_pro_raw",
+        ":swe_explore_raw",
+    ],
+)

@@ -13,6 +13,11 @@ their meaning and uses the small Bazel-built JVM seam in
 `src/native/parquet/`. No project Nix expression, Python data helper, DuckDB
 database, or second storage layer is in the current graph.
 
+The three raw benchmark sources are lazy, hash-verified Bazel repositories
+under `//data/evaluation`. They retain the exact SWE-Explore, SWE-bench
+Multilingual, and SWE-bench Pro revisions used by the frozen population. They
+are not dependencies of `bazel test //...`, keyless replay, or Atlas census.
+
 ## Canonical Parquet schemas
 
 New canonical datasets declare real columns in Flix through
