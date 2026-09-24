@@ -5,9 +5,9 @@
 /// never an input to localization or replay actions.
 pub mod Localization.EvaluationData {
     use Util.Json
-    use Util.Json.Json.{JArray, JNull, JNumber, JObject, JString}
+    use Util.Json.Json.{JArray, JObject, JString}
     use Util.Json.FromJson
-    use Util.Json.ToJson
+    use ScientificTable.Value
 
     pub type alias SourceRegion = {
         path  = String,
@@ -93,11 +93,11 @@ pub mod Localization.EvaluationData {
         let bytes = Vector.map(source -> (source#path, String.toBytes(source#content)), sources)
             |> Vector.toMap;
         let sourceRows = Vector.map(source -> Map#{
-            "protocol" => JString("attune-localization-evaluation-geometry-v1"),
-            "instance_id" => JString(instanceId), "row_kind" => JString("source"),
-            "ordinal" => JNull, "path" => JString(source#path),
-            "line_count" => ToJson.toJson(sourceLineCount(source#content)),
-            "start_line" => JNull, "end_line" => JNull
+            "protocol" => Value.Text("attune-localization-evaluation-geometry-v1"),
+            "instance_id" => Value.Text(instanceId), "row_kind" => Value.Text("source"),
+            "ordinal" => Value.Null, "path" => Value.Text(source#path),
+            "line_count" => Value.Int32(sourceLineCount(source#content)),
+            "start_line" => Value.Null, "end_line" => Value.Null
         }, sources);
         Vector.traverse(document -> match Map.get(document#path, bytes) {
             case None => Err("missing document source: ${document#path}")
@@ -109,12 +109,12 @@ pub mod Localization.EvaluationData {
                     let final = if (document#endByte <= document#startByte)
                         document#startByte else document#endByte - 1;
                     Ok(Map#{
-                        "protocol" => JString("attune-localization-evaluation-geometry-v1"),
-                        "instance_id" => JString(instanceId), "row_kind" => JString("document"),
-                        "ordinal" => ToJson.toJson(document#ordinal), "path" => JString(document#path),
-                        "line_count" => JNull,
-                        "start_line" => ToJson.toJson(lineAt(document#startByte, content)),
-                        "end_line" => ToJson.toJson(lineAt(final, content))
+                        "protocol" => Value.Text("attune-localization-evaluation-geometry-v1"),
+                        "instance_id" => Value.Text(instanceId), "row_kind" => Value.Text("document"),
+                        "ordinal" => Value.Int32(document#ordinal), "path" => Value.Text(document#path),
+                        "line_count" => Value.Null,
+                        "start_line" => Value.Int32(lineAt(document#startByte, content)),
+                        "end_line" => Value.Int32(lineAt(final, content))
                     })
                 }
             }
@@ -211,16 +211,16 @@ pub mod Localization.EvaluationData {
     })
 
     def goldFile(instanceId: String, kind: String, path: String): ScientificTable.Row = Map#{
-        "protocol" => JString("attune-swe-explore-gold-v1"),
-        "instance_id" => JString(instanceId), "row_kind" => JString(kind),
-        "path" => JString(path), "start_line" => JNull, "end_line" => JNull
+        "protocol" => Value.Text("attune-swe-explore-gold-v1"),
+        "instance_id" => Value.Text(instanceId), "row_kind" => Value.Text(kind),
+        "path" => Value.Text(path), "start_line" => Value.Null, "end_line" => Value.Null
     }
 
     def goldRegion(instanceId: String, kind: String, span0: SourceRegion): ScientificTable.Row = Map#{
-        "protocol" => JString("attune-swe-explore-gold-v1"),
-        "instance_id" => JString(instanceId), "row_kind" => JString(kind),
-        "path" => JString(span0#path), "start_line" => ToJson.toJson(span0#start),
-        "end_line" => ToJson.toJson(span0#end)
+        "protocol" => Value.Text("attune-swe-explore-gold-v1"),
+        "instance_id" => Value.Text(instanceId), "row_kind" => Value.Text(kind),
+        "path" => Value.Text(span0#path), "start_line" => Value.Int32(span0#start),
+        "end_line" => Value.Int32(span0#end)
     }
 
     def readGoldRows(instanceId: String, rows: Vector[ScientificTable.Row]): Result[String, Gold] = forM (
@@ -315,17 +315,15 @@ pub mod Localization.EvaluationData {
             if (Int8.toInt32(Vector.get(index, bytes)) == 10) count + 1 else count)
 
     def stringValue(name: String, row: ScientificTable.Row): Option[String] = match Map.get(name, row) {
-        case Some(JString(value)) => Some(value)
+        case Some(Value.Text(value)) => Some(value)
         case _ => None
     }
 
     def string(name: String, row: ScientificTable.Row): Result[String, String] =
         stringValue(name, row) |> Option.toOk("${name}: expected text")
 
-    def int32(name: String, row: ScientificTable.Row): Result[String, Int32] = match Map.get(name, row) {
-        case Some(JNumber(value)) => FromJson.fromJson(JNumber(value)) |> Result.mapErr(ToString.toString)
-        case _ => Err("${name}: expected int32")
-    }
+    def int32(name: String, row: ScientificTable.Row): Result[String, Int32] =
+        ScientificTable.int32(row, name)
 
     def field(name: String, fields: Map[String, Json]): Result[String, Json] =
         Map.get(name, fields) |> Option.toOk("missing ${name}")

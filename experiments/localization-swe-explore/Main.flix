@@ -1,8 +1,7 @@
 import java.lang.System
 
 use Fs.FileSystem
-use Util.Json.Json.{JBool, JString}
-use Util.Json.ToJson
+use ScientificTable.Value
 
 def main(): Unit \ {FileSystem, IO} = {
     let started = System.nanoTime();
@@ -58,20 +57,20 @@ def main(): Unit \ {FileSystem, IO} = {
             // admission already proven semantically equal above.
             let replayId = Localization.PredictionTable.identity(readBack);
             let proof = ScientificTable.write(property("attune.output_proof"), LocalizationReplay.schema(), Vector#{Map#{
-                "protocol" => JString("attune-keyless-localization-replay-v1"),
-                "instance_id" => JString(prepared#instanceId),
-                "repository" => JString(prepared#repository),
-                "base_revision" => JString(prepared#baseCommit),
-                "snapshot_id" => JString(prepared#snapshotId),
-                "expected_prediction_id" => JString(expectedId),
-                "replay_prediction_id" => JString(replayId),
-                "exact_equal" => JBool(true),
-                "decision_occurrences" => ToJson.toJson(Vector.length(outcome#decisions)),
-                "unique_decisions" => ToJson.toJson(Map.size(wires)),
-                "states_interned" => ToJson.toJson(outcome#metrics#statesInterned),
-                "memo_entries" => ToJson.toJson(outcome#metrics#memoEntries),
-                "memo_slots" => ToJson.toJson(outcome#metrics#memoSlots),
-                "replay_nanos" => ToJson.toJson(elapsed)
+                "protocol" => Value.Text("attune-keyless-localization-replay-v1"),
+                "instance_id" => Value.Text(prepared#instanceId),
+                "repository" => Value.Text(prepared#repository),
+                "base_revision" => Value.Text(prepared#baseCommit),
+                "snapshot_id" => Value.Text(prepared#snapshotId),
+                "expected_prediction_id" => Value.Text(expectedId),
+                "replay_prediction_id" => Value.Text(replayId),
+                "exact_equal" => Value.Boolean(true),
+                "decision_occurrences" => Value.Int32(Vector.length(outcome#decisions)),
+                "unique_decisions" => Value.Int32(Map.size(wires)),
+                "states_interned" => Value.Int32(outcome#metrics#statesInterned),
+                "memo_entries" => Value.Int32(outcome#metrics#memoEntries),
+                "memo_slots" => Value.Int32(outcome#metrics#memoSlots),
+                "replay_nanos" => Value.Int64(elapsed)
             }});
             if (Vector.length(proof) != 1) bug!("replay proof write/read mismatch")
             else println("LOCALIZATION_REPLAY case=${prepared#instanceId}" +

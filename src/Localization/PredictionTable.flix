@@ -4,10 +4,7 @@
 /// into ordinary columns. Exact replay compares these semantic rows directly;
 /// JSON-tree serialization is not part of current prediction identity.
 pub mod Localization.PredictionTable {
-    use Util.Json
-    use Util.Json.Json.{JArray, JObject, JString}
-    use Util.Json.FromJson
-    use Util.Json.ToJson
+    use ScientificTable.Value
 
     pub type alias Tables = {
         summary = Vector[ScientificTable.Row],
@@ -142,12 +139,11 @@ pub mod Localization.PredictionTable {
         floating("probability", left) == floating("probability", right)
 
     pub def identity(tables: Tables): String \ IO =
-        ScientificIdentity.versioned("localization-prediction-v2", Json.toCompactString(JObject(Map#{
-            "summary" => JArray(Vector.map(JObject, tables#summary)),
-            "ranking" => JArray(Vector.map(JObject, tables#ranking)),
-            "decisions" => JArray(Vector.map(JObject, tables#decisions)),
-            "probabilities" => JArray(Vector.map(JObject, tables#probabilities))
-        })))
+        ScientificIdentity.versioned("localization-prediction-v2",
+            "summary=" + ScientificTable.canonicalRows(tables#summary) +
+            "\nranking=" + ScientificTable.canonicalRows(tables#ranking) +
+            "\ndecisions=" + ScientificTable.canonicalRows(tables#decisions) +
+            "\nprobabilities=" + ScientificTable.canonicalRows(tables#probabilities))
 
     pub def rankingIdentities(instanceId: String, tables: Tables): Result[String, Vector[String]] = forM (
         actual <- tableInstance(tables);
@@ -171,17 +167,17 @@ pub mod Localization.PredictionTable {
         memoEntries: Int32,
         memoSlots: Int32
     ): ScientificTable.Row = Map#{
-        "protocol" => JString(protocol()), "condition" => JString(condition),
-        "instance_id" => JString(instanceId), "repository" => JString(repository),
-        "base_revision" => JString(baseRevision), "path" => ToJson.toJson(path),
-        "decision_count" => ToJson.toJson(decisionCount),
-        "states_interned" => ToJson.toJson(statesInterned),
-        "memo_entries" => ToJson.toJson(memoEntries), "memo_slots" => ToJson.toJson(memoSlots)
+        "protocol" => Value.Text(protocol()), "condition" => Value.Text(condition),
+        "instance_id" => Value.Text(instanceId), "repository" => Value.Text(repository),
+        "base_revision" => Value.Text(baseRevision), "path" => Value.TextList(path),
+        "decision_count" => Value.Int32(decisionCount),
+        "states_interned" => Value.Int32(statesInterned),
+        "memo_entries" => Value.Int32(memoEntries), "memo_slots" => Value.Int32(memoSlots)
     }
 
     pub def rankingRow(instanceId: String, rank: Int32, semanticId: String): ScientificTable.Row = Map#{
-        "protocol" => JString(protocol()), "instance_id" => JString(instanceId),
-        "rank" => ToJson.toJson(rank), "semantic_id" => JString(semanticId)
+        "protocol" => Value.Text(protocol()), "instance_id" => Value.Text(instanceId),
+        "rank" => Value.Int32(rank), "semantic_id" => Value.Text(semanticId)
     }
 
     pub def decisionRow(
@@ -197,12 +193,12 @@ pub mod Localization.PredictionTable {
         outputTokens: Option[Int32],
         cost: Option[Float64]
     ): ScientificTable.Row = Map#{
-        "protocol" => JString(protocol()), "instance_id" => JString(instanceId),
-        "ordinal" => ToJson.toJson(ordinal), "choice" => JString(choice),
-        "choice_index" => ToJson.toJson(choiceIndex), "confidence" => ToJson.toJson(confidence),
-        "provider" => JString(provider), "actual_model" => JString(actualModel),
-        "response_id" => JString(responseId), "input_tokens" => ToJson.toJson(inputTokens),
-        "output_tokens" => ToJson.toJson(outputTokens), "cost" => ToJson.toJson(cost)
+        "protocol" => Value.Text(protocol()), "instance_id" => Value.Text(instanceId),
+        "ordinal" => Value.Int32(ordinal), "choice" => Value.Text(choice),
+        "choice_index" => Value.Int32(choiceIndex), "confidence" => Value.Float64(confidence),
+        "provider" => Value.Text(provider), "actual_model" => Value.Text(actualModel),
+        "response_id" => Value.Text(responseId), "input_tokens" => optionalInt(inputTokens),
+        "output_tokens" => optionalInt(outputTokens), "cost" => optionalFloat(cost)
     }
 
     pub def probabilityRow(
@@ -211,9 +207,9 @@ pub mod Localization.PredictionTable {
         action: String,
         probability: Float64
     ): ScientificTable.Row = Map#{
-        "protocol" => JString(protocol()), "instance_id" => JString(instanceId),
-        "decision_ordinal" => ToJson.toJson(decisionOrdinal), "action" => JString(action),
-        "probability" => ToJson.toJson(probability)
+        "protocol" => Value.Text(protocol()), "instance_id" => Value.Text(instanceId),
+        "decision_ordinal" => Value.Int32(decisionOrdinal), "action" => Value.Text(action),
+        "probability" => Value.Float64(probability)
     }
 
     def validate(tables: Tables): Result[String, Tables] = forM (
@@ -292,38 +288,30 @@ pub mod Localization.PredictionTable {
     def equal(name: String, expected: String, actual: String): Result[String, Unit] =
         if (expected == actual) Ok(()) else Err("${name} mismatch")
 
-    def string(name: String, fields: Map[String, Json]): Result[String, String] =
-        match Map.get(name, fields) {
-            case Some(JString(value)) => Ok(value)
-            case Some(_) => Err("${name} must be text")
-            case None => Err("missing ${name}")
-        }
+    def string(name: String, row: ScientificTable.Row): Result[String, String] =
+        ScientificTable.text(row, name)
 
-    def integer(name: String, fields: Map[String, Json]): Result[String, Int32] =
-        match Map.get(name, fields) {
-            case Some(value) => FromJson.fromJson(value) |> Result.mapErr(ToString.toString)
-            case None => Err("missing ${name}")
-        }
+    def integer(name: String, row: ScientificTable.Row): Result[String, Int32] =
+        ScientificTable.int32(row, name)
 
-    def floating(name: String, fields: Map[String, Json]): Result[String, Float64] =
-        match Map.get(name, fields) {
-            case Some(value) => FromJson.fromJson(value) |> Result.mapErr(ToString.toString)
-            case None => Err("missing ${name}")
-        }
+    def floating(name: String, row: ScientificTable.Row): Result[String, Float64] =
+        ScientificTable.float64(row, name)
 
-    def optionalInteger(name: String, fields: Map[String, Json]): Result[String, Option[Int32]] =
-        match Map.get(name, fields) {
-            case Some(Util.Json.Json.JNull) => Ok(None)
-            case Some(value) => FromJson.fromJson(value) |> Result.map(Some) |> Result.mapErr(ToString.toString)
-            case None => Err("missing ${name}")
-        }
+    def optionalInteger(name: String, row: ScientificTable.Row): Result[String, Option[Int32]] =
+        ScientificTable.optionalInt32(row, name)
 
-    def optionalFloating(name: String, fields: Map[String, Json]): Result[String, Option[Float64]] =
-        match Map.get(name, fields) {
-            case Some(Util.Json.Json.JNull) => Ok(None)
-            case Some(value) => FromJson.fromJson(value) |> Result.map(Some) |> Result.mapErr(ToString.toString)
-            case None => Err("missing ${name}")
-        }
+    def optionalFloating(name: String, row: ScientificTable.Row): Result[String, Option[Float64]] =
+        ScientificTable.optionalFloat64(row, name)
+
+    def optionalInt(value: Option[Int32]): ScientificTable.Value = match value {
+        case Some(value0) => Value.Int32(value0)
+        case None => Value.Null
+    }
+
+    def optionalFloat(value: Option[Float64]): ScientificTable.Value = match value {
+        case Some(value0) => Value.Float64(value0)
+        case None => Value.Null
+    }
 
     def text(name: String): ScientificTable.Column =
         {name = name, kind = ScientificTable.ColumnType.Text, nullable = false}

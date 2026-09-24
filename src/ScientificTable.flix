@@ -4,7 +4,9 @@ pub mod ScientificTable {
     import attune.parquet.AttuneParquet
 
     use Util.Json
-    use Util.Json.Json.{JArray, JBool, JObject, JString}
+    use Util.Json.Json.{JArray, JBool, JNull, JNumber, JObject, JString}
+    use Util.Json.FromJson
+    use Util.Json.ToJson
 
     pub enum ColumnType with Eq, ToString {
         case Text
@@ -28,20 +30,97 @@ pub mod ScientificTable {
         columns = Vector[Column]
     }
 
-    /// JSON is only the in-memory FFI envelope. The durable representation is
-    /// the exact primitive/list columns declared by `Schema`.
-    pub type alias Row = Map[String, Json]
+    /// The closed set of values admitted by Attune's typed scientific tables.
+    /// JSON exists only below this enum as the Java FFI wire envelope.
+    pub enum Value with Eq, ToString {
+        case Text(String)
+        case Int32(Int32)
+        case Int64(Int64)
+        case Float64(Float64)
+        case Boolean(Bool)
+        case TextList(Vector[String])
+        case Null
+    }
+
+    pub type alias Row = Map[String, Value]
 
     pub def read(path: String, schema: Schema): Vector[Row] \ IO =
         AttuneParquet.readTable(path, schemaPayload(schema))
-            |> decodeRows
+            |> decodeRows(schema)
             |> require
 
     /// Returns the admitted rows read back from the completed atomic write.
     pub def write(path: String, schema: Schema, rows: Vector[Row]): Vector[Row] \ IO =
-        AttuneParquet.writeTable(path, schemaPayload(schema), rowsPayload(rows))
-            |> decodeRows
+        AttuneParquet.writeTable(path, schemaPayload(schema), canonicalRows(rows))
+            |> decodeRows(schema)
             |> require
+
+    pub def text(row: Row, name: String): Result[String, String] = match Map.get(name, row) {
+        case Some(Value.Text(value)) => Ok(value)
+        case Some(_) => Err("${name} must be text")
+        case None => Err("missing ${name}")
+    }
+
+    pub def int32(row: Row, name: String): Result[String, Int32] = match Map.get(name, row) {
+        case Some(Value.Int32(value)) => Ok(value)
+        case Some(_) => Err("${name} must be int32")
+        case None => Err("missing ${name}")
+    }
+
+    pub def int64(row: Row, name: String): Result[String, Int64] = match Map.get(name, row) {
+        case Some(Value.Int64(value)) => Ok(value)
+        case Some(_) => Err("${name} must be int64")
+        case None => Err("missing ${name}")
+    }
+
+    pub def float64(row: Row, name: String): Result[String, Float64] = match Map.get(name, row) {
+        case Some(Value.Float64(value)) => Ok(value)
+        case Some(_) => Err("${name} must be float64")
+        case None => Err("missing ${name}")
+    }
+
+    /// Numeric projection used only by analyses whose declared metric is a
+    /// Float64 but whose source count is an integer column.
+    pub def number(row: Row, name: String): Result[String, Float64] = match Map.get(name, row) {
+        case Some(Value.Int32(value)) => Ok(Int32.toFloat64(value))
+        case Some(Value.Int64(value)) => Ok(Int64.toFloat64(value))
+        case Some(Value.Float64(value)) => Ok(value)
+        case Some(_) => Err("${name} must be numeric")
+        case None => Err("missing ${name}")
+    }
+
+    pub def boolean(row: Row, name: String): Result[String, Bool] = match Map.get(name, row) {
+        case Some(Value.Boolean(value)) => Ok(value)
+        case Some(_) => Err("${name} must be boolean")
+        case None => Err("missing ${name}")
+    }
+
+    pub def textList(row: Row, name: String): Result[String, Vector[String]] = match Map.get(name, row) {
+        case Some(Value.TextList(value)) => Ok(value)
+        case Some(_) => Err("${name} must be list<string>")
+        case None => Err("missing ${name}")
+    }
+
+    pub def optionalInt32(row: Row, name: String): Result[String, Option[Int32]] = match Map.get(name, row) {
+        case Some(Value.Int32(value)) => Ok(Some(value))
+        case Some(Value.Null) => Ok(None)
+        case Some(_) => Err("${name} must be nullable int32")
+        case None => Err("missing ${name}")
+    }
+
+    pub def optionalFloat64(row: Row, name: String): Result[String, Option[Float64]] = match Map.get(name, row) {
+        case Some(Value.Float64(value)) => Ok(Some(value))
+        case Some(Value.Null) => Ok(None)
+        case Some(_) => Err("${name} must be nullable float64")
+        case None => Err("missing ${name}")
+    }
+
+    pub def optionalText(row: Row, name: String): Result[String, Option[String]] = match Map.get(name, row) {
+        case Some(Value.Text(value)) => Ok(Some(value))
+        case Some(Value.Null) => Ok(None)
+        case Some(_) => Err("${name} must be nullable text")
+        case None => Err("missing ${name}")
+    }
 
     pub def schemaPayload(schema: Schema): String =
         JObject(Map#{
@@ -49,8 +128,22 @@ pub mod ScientificTable {
             "columns" => JArray(Vector.map(columnJson, schema#columns))
         }) |> Json.toCompactString
 
-    def rowsPayload(rows: Vector[Row]): String =
-        JArray(Vector.map(JObject, rows)) |> Json.toCompactString
+    /// Stable wire encoding for identities which cover typed table rows.
+    /// Domain modules receive a string, never JSON values.
+    pub def canonicalRows(rows: Vector[Row]): String =
+        JArray(Vector.map(row -> JObject(Map.toVector(row)
+            |> Vector.map(match (name, value) -> (name, valueJson(value)))
+            |> Vector.toMap), rows)) |> Json.toCompactString
+
+    def valueJson(value: Value): Json = match value {
+        case Value.Text(value0) => JString(value0)
+        case Value.Int32(value0) => ToJson.toJson(value0)
+        case Value.Int64(value0) => ToJson.toJson(value0)
+        case Value.Float64(value0) => ToJson.toJson(value0)
+        case Value.Boolean(value0) => JBool(value0)
+        case Value.TextList(values) => JArray(Vector.map(JString, values))
+        case Value.Null => JNull
+    }
 
     def columnJson(column: Column): Json = JObject(Map#{
         "name" => JString(column#name),
@@ -67,13 +160,39 @@ pub mod ScientificTable {
         case ColumnType.TextList => "list<string>"
     }
 
-    def decodeRows(payload: String): Result[String, Vector[Row]] = match Json.parse(payload) {
+    def decodeRows(schema: Schema, payload: String): Result[String, Vector[Row]] = match Json.parse(payload) {
         case Err(error) => Err(ToString.toString(error))
         case Ok(JArray(values)) => Vector.traverse(match value -> match value {
-            case JObject(fields) => Ok(fields)
+            case JObject(fields) => decodeRow(schema, fields)
             case _ => Err("typed Parquet row must be an object")
         }, values)
         case Ok(_) => Err("typed Parquet seam returned a non-array")
+    }
+
+    def decodeRow(schema: Schema, fields: Map[String, Json]): Result[String, Row] =
+        Vector.traverse(column -> match Map.get(column#name, fields) {
+            case None => Err("typed Parquet row is missing ${column#name}")
+            case Some(value) => decodeValue(column, value)
+                |> Result.map(decoded -> (column#name, decoded))
+        }, schema#columns)
+        |> Result.map(Vector.toMap)
+
+    def decodeValue(column: Column, value: Json): Result[String, Value] = match value {
+        case JNull if column#nullable => Ok(Value.Null)
+        case JString(value0) if column#kind == ColumnType.Text => Ok(Value.Text(value0))
+        case JNumber(_) if column#kind == ColumnType.Int32 =>
+            FromJson.fromJson(value) |> Result.map(Value.Int32) |> Result.mapErr(ToString.toString)
+        case JNumber(_) if column#kind == ColumnType.Int64 =>
+            FromJson.fromJson(value) |> Result.map(Value.Int64) |> Result.mapErr(ToString.toString)
+        case JNumber(_) if column#kind == ColumnType.Float64 =>
+            FromJson.fromJson(value) |> Result.map(Value.Float64) |> Result.mapErr(ToString.toString)
+        case JBool(value0) if column#kind == ColumnType.Boolean => Ok(Value.Boolean(value0))
+        case JArray(values) if column#kind == ColumnType.TextList =>
+            Vector.traverse(match item -> match item {
+                case JString(value0) => Ok(value0)
+                case _ => Err("${column#name} contains a non-text value")
+            }, values) |> Result.map(Value.TextList)
+        case _ => Err("${column#name} does not match its declared typed Parquet column")
     }
 
     def require(result: Result[String, a]): a = match result {

@@ -1,7 +1,7 @@
 import java.lang.System
 
 use Fs.FileSystem
-use Util.Json.Json.{JBool, JString}
+use ScientificTable.Value
 
 def main(): Unit \ {FileSystem, IO} = {
     let manifest = FileSystem.read(System.getProperty("attune.input_manifest"))
@@ -27,8 +27,8 @@ def validate(row: ScientificTable.Row): Result[String, String] =
     match (Map.get("protocol", row), Map.get("instance_id", row),
         Map.get("expected_prediction_id", row), Map.get("replay_prediction_id", row),
         Map.get("exact_equal", row)) {
-        case (Some(JString("attune-keyless-localization-replay-v1")), Some(JString(instanceId)),
-            Some(JString(expected)), Some(JString(replay)), Some(JBool(true)))
+        case (Some(Value.Text("attune-keyless-localization-replay-v1")), Some(Value.Text(instanceId)),
+            Some(Value.Text(expected)), Some(Value.Text(replay)), Some(Value.Boolean(true)))
             if expected == replay => Ok(instanceId)
         case _ => Err("invalid or unequal localization replay proof")
     }

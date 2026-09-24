@@ -8,6 +8,7 @@
 pub mod Decide.Table {
     use Util.Json
     use Util.Json.Json.{JObject, JString}
+    use ScientificTable.Value
 
     pub def schema(): ScientificTable.Schema = {
         format = "attune-decision-bundle-v1",
@@ -27,20 +28,20 @@ pub mod Decide.Table {
             case Ok(JObject(fields)) => forM (
                 version <- integer("version", fields);
                 _ <- if (version == 1) Ok(()) else Err("unsupported decision envelope version");
-                provider <- string("provider", fields);
+                provider <- rawString("provider", fields);
                 _ <- if (provider == Decide.provider()) Ok(()) else Err("decision provider mismatch");
-                model <- string("model", fields);
+                model <- rawString("model", fields);
                 _ <- if (model == Decide.model()) Ok(()) else Err("decision model mismatch");
-                decision <- string("decision_id", fields);
-                response <- string("response", fields);
+                decision <- rawString("decision_id", fields);
+                response <- rawString("response", fields);
                 responseId <- providerResponseId(response)
             ) yield Map#{
-                "bundle_protocol" => JString(protocol()),
-                "provider" => JString(provider),
-                "model" => JString(model),
-                "decision_id" => JString(decision),
-                "response_id" => JString(responseId),
-                "response" => JString(response)
+                "bundle_protocol" => Value.Text(protocol()),
+                "provider" => Value.Text(provider),
+                "model" => Value.Text(model),
+                "decision_id" => Value.Text(decision),
+                "response_id" => Value.Text(responseId),
+                "response" => Value.Text(response)
             }
             case Ok(_) => Err("decision envelope must be an object")
         }
@@ -59,21 +60,21 @@ pub mod Decide.Table {
     }
 
     pub def responseId(row0: ScientificTable.Row): Result[String, String] =
-        string("response_id", row0)
+        ScientificTable.text(row0, "response_id")
 
     pub def decisionId(row0: ScientificTable.Row): Result[String, String] =
-        string("decision_id", row0)
+        ScientificTable.text(row0, "decision_id")
 
     def decodeRow(row0: ScientificTable.Row): Result[String, (Radii.Evaluate.DecisionId, Decide.Wire)] = forM (
-        actualProtocol <- string("bundle_protocol", row0);
+        actualProtocol <- ScientificTable.text(row0, "bundle_protocol");
         _ <- if (actualProtocol == protocol()) Ok(()) else Err("decision bundle protocol mismatch");
-        provider <- string("provider", row0);
+        provider <- ScientificTable.text(row0, "provider");
         _ <- if (provider == Decide.provider()) Ok(()) else Err("decision bundle provider mismatch");
-        model <- string("model", row0);
+        model <- ScientificTable.text(row0, "model");
         _ <- if (model == Decide.model()) Ok(()) else Err("decision bundle model mismatch");
-        identity <- string("decision_id", row0);
-        response <- string("response", row0);
-        expectedResponseId <- string("response_id", row0);
+        identity <- ScientificTable.text(row0, "decision_id");
+        response <- ScientificTable.text(row0, "response");
+        expectedResponseId <- ScientificTable.text(row0, "response_id");
         actualResponseId <- providerResponseId(response);
         _ <- if (actualResponseId == expectedResponseId) Ok(()) else Err("decision response identity mismatch")
     ) yield (Radii.Evaluate.DecisionId.DecisionId(identity), Decide.Wire.Wire(response))
@@ -81,11 +82,11 @@ pub mod Decide.Table {
     def providerResponseId(payload: String): Result[String, String] =
         match Json.parse(payload) {
             case Err(error) => Err(ToString.toString(error))
-            case Ok(JObject(fields)) => string("id", fields)
+            case Ok(JObject(fields)) => rawString("id", fields)
             case Ok(_) => Err("provider decision response must be an object")
         }
 
-    def string(name: String, fields: Map[String, Json]): Result[String, String] =
+    def rawString(name: String, fields: Map[String, Json]): Result[String, String] =
         match Map.get(name, fields) {
             case Some(JString(value)) => Ok(value)
             case Some(_) => Err("${name} must be text")

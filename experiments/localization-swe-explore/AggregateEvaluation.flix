@@ -1,8 +1,7 @@
 import java.lang.System
 
 use Fs.FileSystem
-use Util.Json.Json.{JBool, JString}
-use Util.Json.FromJson
+use ScientificTable.Value
 
 def main(): Unit \ {FileSystem, IO} = {
     let manifest = FileSystem.read(System.getProperty("attune.input_manifest"))
@@ -64,9 +63,7 @@ def addTelemetry(total: TelemetryTotals, row: ScientificTable.Row): TelemetryTot
 }
 
 def int64(name: String, row: ScientificTable.Row): Int64 =
-    Map.get(name, row) |> Option.toOk("missing telemetry value: ${name}")
-    |> Result.flatMap(value -> FromJson.fromJson(value) |> Result.mapErr(ToString.toString))
-    |> require
+    ScientificTable.int32(row, name) |> Result.map(Int32.toInt64) |> require
 
 def parseInput(line: String): Result[String, Input] = {
     let fields = String.splitOn(substr = "\t", line) |> List.toVector;
@@ -95,8 +92,8 @@ def load(inputs: Vector[Input], index: Int32,
 def validateProof(row: ScientificTable.Row): Result[String, String] =
     match (Map.get("protocol", row), Map.get("instance_id", row),
         Map.get("exact_discrete", row), Map.get("metrics_within_tolerance", row)) {
-        case (Some(JString("attune-localization-evaluation-parity-v1")), Some(JString(instanceId)),
-            Some(JBool(true)), Some(JBool(true))) => Ok(instanceId)
+        case (Some(Value.Text("attune-localization-evaluation-parity-v1")), Some(Value.Text(instanceId)),
+            Some(Value.Boolean(true)), Some(Value.Boolean(true))) => Ok(instanceId)
         case _ => Err("invalid official evaluation parity proof")
     }
 

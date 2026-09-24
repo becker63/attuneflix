@@ -4,10 +4,7 @@
 /// their deterministic, reusable projection: one protocol row, the exact
 /// document corpus, and the exact ranked field consumed by Atlas.
 pub mod Localization.PriorTable {
-    use Util.Json
-    use Util.Json.Json.{JNull, JString}
-    use Util.Json.FromJson
-    use Util.Json.ToJson
+    use ScientificTable.Value
 
     pub type alias Tables = {
         metadata = Vector[ScientificTable.Row],
@@ -121,13 +118,13 @@ pub mod Localization.PriorTable {
         inputTokens: Option[Int32],
         totalTokens: Option[Int32]
     ): ScientificTable.Row = Map#{
-        "protocol" => JString(protocol()), "instance_id" => JString(instanceId),
-        "repository" => JString(repository), "base_revision" => JString(baseRevision),
-        "provider" => JString(provider), "model" => JString(model),
-        "instruction" => JString(instruction), "text_limit" => ToJson.toJson(textLimit),
-        "dimension" => ToJson.toJson(dimension), "issue_revision" => JString(issueRevision),
-        "replayed" => ToJson.toJson(replayed), "live" => ToJson.toJson(live),
-        "input_tokens" => ToJson.toJson(inputTokens), "total_tokens" => ToJson.toJson(totalTokens)
+        "protocol" => Value.Text(protocol()), "instance_id" => Value.Text(instanceId),
+        "repository" => Value.Text(repository), "base_revision" => Value.Text(baseRevision),
+        "provider" => Value.Text(provider), "model" => Value.Text(model),
+        "instruction" => Value.Text(instruction), "text_limit" => Value.Int32(textLimit),
+        "dimension" => Value.Int32(dimension), "issue_revision" => Value.Text(issueRevision),
+        "replayed" => Value.Int32(replayed), "live" => Value.Int32(live),
+        "input_tokens" => optionalInt(inputTokens), "total_tokens" => optionalInt(totalTokens)
     }
 
     pub def documentRow(
@@ -140,10 +137,10 @@ pub mod Localization.PriorTable {
         startByte: Int32,
         endByte: Int32
     ): ScientificTable.Row = Map#{
-        "protocol" => JString(protocol()), "instance_id" => JString(instanceId),
-        "ordinal" => ToJson.toJson(ordinal), "semantic_id" => JString(semanticId),
-        "node_id" => JString(nodeId), "path" => JString(path), "name" => JString(name),
-        "start_byte" => ToJson.toJson(startByte), "end_byte" => ToJson.toJson(endByte)
+        "protocol" => Value.Text(protocol()), "instance_id" => Value.Text(instanceId),
+        "ordinal" => Value.Int32(ordinal), "semantic_id" => Value.Text(semanticId),
+        "node_id" => Value.Text(nodeId), "path" => Value.Text(path), "name" => Value.Text(name),
+        "start_byte" => Value.Int32(startByte), "end_byte" => Value.Int32(endByte)
     }
 
     pub def rankingRow(
@@ -153,9 +150,9 @@ pub mod Localization.PriorTable {
         score: Float64,
         documentOrdinal: Int32
     ): ScientificTable.Row = Map#{
-        "protocol" => JString(protocol()), "instance_id" => JString(instanceId),
-        "rank" => ToJson.toJson(rank), "semantic_id" => JString(semanticId),
-        "score" => ToJson.toJson(score), "document_ordinal" => ToJson.toJson(documentOrdinal)
+        "protocol" => Value.Text(protocol()), "instance_id" => Value.Text(instanceId),
+        "rank" => Value.Int32(rank), "semantic_id" => Value.Text(semanticId),
+        "score" => Value.Float64(score), "document_ordinal" => Value.Int32(documentOrdinal)
     }
 
     def validateDocument(instanceId: String, row: ScientificTable.Row): Result[String, Unit] = forM (
@@ -216,24 +213,19 @@ pub mod Localization.PriorTable {
     def equal(name: String, expected: String, actual: String): Result[String, Unit] =
         if (expected == actual) Ok(()) else Err("${name} mismatch")
 
-    def string(name: String, fields: Map[String, Json]): Result[String, String] =
-        match Map.get(name, fields) {
-            case Some(JString(value)) => Ok(value)
-            case Some(_) => Err("${name} must be text")
-            case None => Err("missing ${name}")
-        }
+    def string(name: String, row: ScientificTable.Row): Result[String, String] =
+        ScientificTable.text(row, name)
 
-    def integer(name: String, fields: Map[String, Json]): Result[String, Int32] =
-        match Map.get(name, fields) {
-            case Some(value) => FromJson.fromJson(value) |> Result.mapErr(ToString.toString)
-            case None => Err("missing ${name}")
-        }
+    def integer(name: String, row: ScientificTable.Row): Result[String, Int32] =
+        ScientificTable.int32(row, name)
 
-    def floating(name: String, fields: Map[String, Json]): Result[String, Float64] =
-        match Map.get(name, fields) {
-            case Some(value) => FromJson.fromJson(value) |> Result.mapErr(ToString.toString)
-            case None => Err("missing ${name}")
-        }
+    def floating(name: String, row: ScientificTable.Row): Result[String, Float64] =
+        ScientificTable.float64(row, name)
+
+    def optionalInt(value: Option[Int32]): ScientificTable.Value = match value {
+        case Some(value0) => Value.Int32(value0)
+        case None => Value.Null
+    }
 
     def text(name: String): ScientificTable.Column =
         {name = name, kind = ScientificTable.ColumnType.Text, nullable = false}

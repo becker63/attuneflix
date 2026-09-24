@@ -1,9 +1,7 @@
 import java.lang.System
 
 use Fs.FileSystem
-use Util.Json.Json.{JString}
-use Util.Json.FromJson
-use Util.Json.ToJson
+use ScientificTable.Value
 
 type alias Summary = {
     repository = String, snapshot = String, scope = String, domain = String,
@@ -249,19 +247,19 @@ def repositorySchema(): ScientificTable.Schema = {
 }
 
 def repositoryRow(row: RepositoryResult): ScientificTable.Row = Map#{
-    "repository" => JString(row#repository), "snapshot_count" => ToJson.toJson(row#snapshots),
-    "file_count_p50" => ToJson.toJson(row#files), "symbol_count_p50" => ToJson.toJson(row#symbols),
-    "file_extinction" => ToJson.toJson(row#fileExtinction),
-    "symbol_extinction" => ToJson.toJson(row#symbolExtinction),
-    "file_reach_p90" => ToJson.toJson(row#fileReach), "symbol_reach_p90" => ToJson.toJson(row#symbolReach),
-    "file_recurrence" => ToJson.toJson(row#fileRecurrence),
-    "symbol_recurrence" => ToJson.toJson(row#symbolRecurrence),
-    "import_asymmetry" => ToJson.toJson(row#importAsymmetry),
-    "call_asymmetry" => ToJson.toJson(row#callAsymmetry),
-    "physical_compression" => ToJson.toJson(row#physicalCompression),
-    "reuse_fraction" => ToJson.toJson(row#reuseFraction),
-    "feature_range_mean" => ToJson.toJson(row#driftMean),
-    "feature_range_max" => ToJson.toJson(row#driftMax)
+    "repository" => Value.Text(row#repository), "snapshot_count" => Value.Int64(Int32.toInt64(row#snapshots)),
+    "file_count_p50" => Value.Float64(row#files), "symbol_count_p50" => Value.Float64(row#symbols),
+    "file_extinction" => Value.Float64(row#fileExtinction),
+    "symbol_extinction" => Value.Float64(row#symbolExtinction),
+    "file_reach_p90" => Value.Float64(row#fileReach), "symbol_reach_p90" => Value.Float64(row#symbolReach),
+    "file_recurrence" => Value.Float64(row#fileRecurrence),
+    "symbol_recurrence" => Value.Float64(row#symbolRecurrence),
+    "import_asymmetry" => Value.Float64(row#importAsymmetry),
+    "call_asymmetry" => Value.Float64(row#callAsymmetry),
+    "physical_compression" => Value.Float64(row#physicalCompression),
+    "reuse_fraction" => Value.Float64(row#reuseFraction),
+    "feature_range_mean" => Value.Float64(row#driftMean),
+    "feature_range_max" => Value.Float64(row#driftMax)
 }
 
 def decodeSummary(row: ScientificTable.Row): Result[String, Summary] = forM (
@@ -286,22 +284,12 @@ def decodePhysical(row: ScientificTable.Row): Result[String, Physical] = forM (
 ) yield {repository = repository, snapshot = snapshot, logicalPerEvaluation = compression,
     requests = requests, reuses = reuses}
 
-def string(name: String, row: ScientificTable.Row): Result[String, String] = match Map.get(name, row) {
-    case Some(JString(value)) => Ok(value) case _ => Err("missing text field: ${name}")
-}
-def number(name: String, row: ScientificTable.Row): Result[String, Float64] = match Map.get(name, row) {
-    case Some(value) => FromJson.fromJson(value) |> Result.mapErr(ToString.toString)
-    case None => Err("missing numeric field: ${name}")
-}
-def optionalString(name: String, row: ScientificTable.Row): Result[String, Option[String]] = match Map.get(name, row) {
-    case Some(Util.Json.Json.JNull) => Ok(None) case Some(JString(value)) => Ok(Some(value))
-    case _ => Err("invalid optional text field: ${name}")
-}
-def optionalInt(name: String, row: ScientificTable.Row): Result[String, Option[Int32]] = match Map.get(name, row) {
-    case Some(Util.Json.Json.JNull) => Ok(None)
-    case Some(value) => FromJson.fromJson(value) |> Result.map(Some) |> Result.mapErr(ToString.toString)
-    case None => Err("missing optional integer field: ${name}")
-}
+def string(name: String, row: ScientificTable.Row): Result[String, String] = ScientificTable.text(row, name)
+def number(name: String, row: ScientificTable.Row): Result[String, Float64] = ScientificTable.number(row, name)
+def optionalString(name: String, row: ScientificTable.Row): Result[String, Option[String]] =
+    ScientificTable.optionalText(row, name)
+def optionalInt(name: String, row: ScientificTable.Row): Result[String, Option[Int32]] =
+    ScientificTable.optionalInt32(row, name)
 
 def middle(rows: Vector[a], accessor: a -> Float64): Float64 = Vector.map(accessor, rows) |> median
 def median(values: Vector[Float64]): Float64 = {

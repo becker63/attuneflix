@@ -7,7 +7,7 @@ pub mod Localization.Evaluate {
     use Util.Json
     use Util.Json.Json.{JArray, JBool, JNumber, JObject, JString}
     use Util.Json.FromJson
-    use Util.Json.ToJson
+    use ScientificTable.Value
 
     pub type alias SourceRegion = Localization.EvaluationData.SourceRegion
     pub type alias Gold = Localization.EvaluationData.Gold
@@ -143,12 +143,12 @@ pub mod Localization.Evaluate {
     })
 
     pub def telemetryRows(row: ResultRow): Vector[ScientificTable.Row] = Vector#{Map#{
-        "protocol" => JString("attune-localization-oracle-telemetry-v1"),
-        "instance_id" => JString(row#instanceId),
-        "logical_routes" => ToJson.toJson(row#telemetry#logicalRoutes),
-        "unique_states" => ToJson.toJson(row#telemetry#uniqueStates),
-        "unique_projections" => ToJson.toJson(row#telemetry#uniqueProjections),
-        "score_evaluations" => ToJson.toJson(row#telemetry#scoreEvaluations)
+        "protocol" => Value.Text("attune-localization-oracle-telemetry-v1"),
+        "instance_id" => Value.Text(row#instanceId),
+        "logical_routes" => Value.Int32(row#telemetry#logicalRoutes),
+        "unique_states" => Value.Int32(row#telemetry#uniqueStates),
+        "unique_projections" => Value.Int32(row#telemetry#uniqueProjections),
+        "score_evaluations" => Value.Int32(row#telemetry#scoreEvaluations)
     }}
 
     /// Strict discrete parity and the established 1e-10 floating tolerance.
@@ -164,9 +164,9 @@ pub mod Localization.Evaluate {
             sameScore(expected#oracle, row#oracle)) Ok(())
             else Err("frozen evaluator metric parity mismatch")
     ) yield Map#{
-        "protocol" => JString("attune-localization-evaluation-parity-v1"),
-        "instance_id" => JString(instanceId), "exact_discrete" => JBool(true),
-        "metrics_within_tolerance" => JBool(true), "tolerance" => ToJson.toJson(0.0000000001)
+        "protocol" => Value.Text("attune-localization-evaluation-parity-v1"),
+        "instance_id" => Value.Text(instanceId), "exact_discrete" => Value.Boolean(true),
+        "metrics_within_tolerance" => Value.Boolean(true), "tolerance" => Value.Float64(0.0000000001)
     }
 
     def evaluationContext(gold: Gold, geometry: Geometry): Context = {
@@ -479,28 +479,28 @@ pub mod Localization.Evaluate {
         row: ResultRow, baseRevision: String, snapshotId: String,
         condition: String, oraclePath: String, value: Score
     ): ScientificTable.Row = Map#{
-        "protocol" => JString("attune-localization-evaluation-v1"),
-        "instance_id" => JString(row#instanceId), "repository" => JString(row#repository),
-        "base_revision" => JString(baseRevision), "snapshot_id" => JString(snapshotId),
-        "condition" => JString(condition), "oracle_path" => JString(oraclePath),
-        "precision" => ToJson.toJson(value#precision), "recall" => ToJson.toJson(value#recall),
-        "f1_score" => ToJson.toJson(value#f1), "hit_file_rate" => ToJson.toJson(value#hitFile),
-        "noise_file_rate" => ToJson.toJson(value#noiseFile), "hit_region_rate" => ToJson.toJson(value#hitRegion),
-        "noise_region_rate" => ToJson.toJson(value#noiseRegion),
-        "weighted_core_coverage" => ToJson.toJson(value#weightedCoreCoverage),
-        "context_efficiency" => ToJson.toJson(value#contextEfficiency),
-        "ndcg_at_100" => ToJson.toJson(value#ndcg100), "ndcg_at_300" => ToJson.toJson(value#ndcg300),
-        "ndcg_at_500" => ToJson.toJson(value#ndcg500), "recall_at_100" => ToJson.toJson(value#recall100),
-        "recall_at_300" => ToJson.toJson(value#recall300), "recall_at_500" => ToJson.toJson(value#recall500),
-        "first_useful_hit" => ToJson.toJson(value#firstUsefulHit)
+        "protocol" => Value.Text("attune-localization-evaluation-v1"),
+        "instance_id" => Value.Text(row#instanceId), "repository" => Value.Text(row#repository),
+        "base_revision" => Value.Text(baseRevision), "snapshot_id" => Value.Text(snapshotId),
+        "condition" => Value.Text(condition), "oracle_path" => Value.Text(oraclePath),
+        "precision" => Value.Float64(value#precision), "recall" => Value.Float64(value#recall),
+        "f1_score" => Value.Float64(value#f1), "hit_file_rate" => Value.Float64(value#hitFile),
+        "noise_file_rate" => Value.Float64(value#noiseFile), "hit_region_rate" => Value.Float64(value#hitRegion),
+        "noise_region_rate" => Value.Float64(value#noiseRegion),
+        "weighted_core_coverage" => Value.Float64(value#weightedCoreCoverage),
+        "context_efficiency" => Value.Float64(value#contextEfficiency),
+        "ndcg_at_100" => Value.Float64(value#ndcg100), "ndcg_at_300" => Value.Float64(value#ndcg300),
+        "ndcg_at_500" => Value.Float64(value#ndcg500), "recall_at_100" => Value.Float64(value#recall100),
+        "recall_at_300" => Value.Float64(value#recall300), "recall_at_500" => Value.Float64(value#recall500),
+        "first_useful_hit" => Value.Float64(value#firstUsefulHit)
     }
 
     def conditionRegions(instanceId: String, condition: String, regions: Vector[SourceRegion]): Vector[ScientificTable.Row] =
         Vector.mapWithIndex((ordinal, span0) -> Map#{
-            "protocol" => JString("attune-localization-evaluation-v1"),
-            "instance_id" => JString(instanceId), "condition" => JString(condition),
-            "ordinal" => ToJson.toJson(ordinal), "path" => JString(span0#path),
-            "start_line" => ToJson.toJson(span0#start), "end_line" => ToJson.toJson(span0#end)
+            "protocol" => Value.Text("attune-localization-evaluation-v1"),
+            "instance_id" => Value.Text(instanceId), "condition" => Value.Text(condition),
+            "ordinal" => Value.Int32(ordinal), "path" => Value.Text(span0#path),
+            "start_line" => Value.Int32(span0#start), "end_line" => Value.Int32(span0#end)
         }, regions)
 
     type alias Frozen = {

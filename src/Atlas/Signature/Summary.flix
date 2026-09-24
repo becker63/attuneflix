@@ -3,10 +3,7 @@
 /// declared reductions used by reports; Java only moves typed columns through
 /// Arrow/Parquet.
 pub mod Atlas.Signature.Summary {
-    use Util.Json
-    use Util.Json.Json.{JBool, JNull, JString}
-    use Util.Json.FromJson
-    use Util.Json.ToJson
+    use ScientificTable.Value
 
     type alias Datum = {
         signatureProtocol  = String,
@@ -191,20 +188,20 @@ pub mod Atlas.Signature.Summary {
     }
 
     def row(identity: Datum, group: Group, metric0: Metric): ScientificTable.Row = Map#{
-        "signature_protocol" => JString(identity#signatureProtocol),
-        "atlas_protocol" => JString(identity#atlasProtocol),
-        "repository" => JString(identity#repository),
-        "base_revision" => JString(identity#baseRevision),
-        "source_tree_identity" => JString(identity#sourceTreeIdentity),
-        "fact_identity" => JString(identity#factIdentity),
-        "snapshot_id" => JString(identity#snapshotId),
-        "scope" => JString(group#scope),
-        "seed_domain" => JString(group#seedDomain),
-        "depth" => optionalJson(group#depth),
-        "last_atom" => optionalTextJson(group#lastAtom),
-        "metric" => JString(metric0#name),
-        "value" => ToJson.toJson(metric0#value),
-        "sample_count" => ToJson.toJson(metric0#sampleCount)
+        "signature_protocol" => Value.Text(identity#signatureProtocol),
+        "atlas_protocol" => Value.Text(identity#atlasProtocol),
+        "repository" => Value.Text(identity#repository),
+        "base_revision" => Value.Text(identity#baseRevision),
+        "source_tree_identity" => Value.Text(identity#sourceTreeIdentity),
+        "fact_identity" => Value.Text(identity#factIdentity),
+        "snapshot_id" => Value.Text(identity#snapshotId),
+        "scope" => Value.Text(group#scope),
+        "seed_domain" => Value.Text(group#seedDomain),
+        "depth" => optionalIntValue(group#depth),
+        "last_atom" => optionalTextValue(group#lastAtom),
+        "metric" => Value.Text(metric0#name),
+        "value" => Value.Float64(metric0#value),
+        "sample_count" => Value.Int64(Int32.toInt64(metric0#sampleCount))
     }
 
     def decode(row0: ScientificTable.Row): Result[String, Datum] = forM (
@@ -236,48 +233,32 @@ pub mod Atlas.Signature.Summary {
         semanticStateId = semanticStateId, sameAsInput = sameAsInput
     }
 
-    def string(name: String, row0: ScientificTable.Row): Result[String, String] = match Map.get(name, row0) {
-        case Some(JString(value)) => Ok(value)
-        case Some(_) => Err("Atlas summary field must be text: ${name}")
-        case None => Err("Atlas summary field is missing: ${name}")
+    def string(name: String, row0: ScientificTable.Row): Result[String, String] =
+        ScientificTable.text(row0, name)
+
+    def int32Value(name: String, row0: ScientificTable.Row): Result[String, Int32] =
+        ScientificTable.int32(row0, name)
+
+    def floatValue(name: String, row0: ScientificTable.Row): Result[String, Float64] =
+        ScientificTable.number(row0, name)
+
+    def boolValue(name: String, row0: ScientificTable.Row): Result[String, Bool] =
+        ScientificTable.boolean(row0, name)
+
+    def optionalFloat(name: String, row0: ScientificTable.Row): Result[String, Option[Float64]] =
+        ScientificTable.optionalFloat64(row0, name)
+
+    def optionalInt(name: String, row0: ScientificTable.Row): Result[String, Option[Int32]] =
+        ScientificTable.optionalInt32(row0, name)
+
+    def optionalIntValue(value: Option[Int32]): ScientificTable.Value = match value {
+        case None => Value.Null
+        case Some(number) => Value.Int32(number)
     }
 
-    def int32Value(name: String, row0: ScientificTable.Row): Result[String, Int32] = match Map.get(name, row0) {
-        case Some(value) => FromJson.fromJson(value) |> Result.mapErr(ToString.toString)
-        case None => Err("Atlas summary field is missing: ${name}")
-    }
-
-    def floatValue(name: String, row0: ScientificTable.Row): Result[String, Float64] = match Map.get(name, row0) {
-        case Some(value) => FromJson.fromJson(value) |> Result.mapErr(ToString.toString)
-        case None => Err("Atlas summary field is missing: ${name}")
-    }
-
-    def boolValue(name: String, row0: ScientificTable.Row): Result[String, Bool] = match Map.get(name, row0) {
-        case Some(JBool(value)) => Ok(value)
-        case Some(_) => Err("Atlas summary field must be boolean: ${name}")
-        case None => Err("Atlas summary field is missing: ${name}")
-    }
-
-    def optionalFloat(name: String, row0: ScientificTable.Row): Result[String, Option[Float64]] = match Map.get(name, row0) {
-        case Some(JNull) => Ok(None)
-        case Some(value) => FromJson.fromJson(value) |> Result.map(Some) |> Result.mapErr(ToString.toString)
-        case None => Err("Atlas summary field is missing: ${name}")
-    }
-
-    def optionalInt(name: String, row0: ScientificTable.Row): Result[String, Option[Int32]] = match Map.get(name, row0) {
-        case Some(JNull) => Ok(None)
-        case Some(value) => FromJson.fromJson(value) |> Result.map(Some) |> Result.mapErr(ToString.toString)
-        case None => Err("Atlas summary field is missing: ${name}")
-    }
-
-    def optionalJson(value: Option[Int32]): Json = match value {
-        case None => JNull
-        case Some(number) => ToJson.toJson(number)
-    }
-
-    def optionalTextJson(value: Option[String]): Json = match value {
-        case None => JNull
-        case Some(text0) => JString(text0)
+    def optionalTextValue(value: Option[String]): ScientificTable.Value = match value {
+        case None => Value.Null
+        case Some(text0) => Value.Text(text0)
     }
 
     def text(name: String): ScientificTable.Column =

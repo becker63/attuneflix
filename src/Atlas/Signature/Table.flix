@@ -1,9 +1,7 @@
 /// Canonical typed Parquet schemas for the Atlas census. These declarations
 /// are the scientific data model; the Arrow boundary only realizes them.
 pub mod Atlas.Signature.Table {
-    use Util.Json
-    use Util.Json.Json.{JArray, JBool, JNull, JString}
-    use Util.Json.ToJson
+    use ScientificTable.Value
 
     pub type alias SnapshotIdentity = {
         signatureProtocol  = String,
@@ -108,25 +106,25 @@ pub mod Atlas.Signature.Table {
         let logical = signature#logicalPrograms;
         let unique = signature#uniqueStates;
         Map#{
-            "signature_protocol" => JString(snapshot#signatureProtocol),
-            "atlas_protocol" => JString(snapshot#atlasProtocol),
-            "repository" => JString(snapshot#repository),
-            "base_revision" => JString(snapshot#baseRevision),
-            "source_tree_identity" => JString(snapshot#sourceTreeIdentity),
-            "fact_identity" => JString(snapshot#factIdentity),
-            "snapshot_id" => JString(snapshot#snapshotId),
-            "seed_domain" => JString(Atlas.Signature.domainName(seed#domain)),
-            "seed_identity" => JString(seed#identity),
-            "seed_ordinal" => ToJson.toJson(seed#ordinal),
-            "logical_routes" => ToJson.toJson(logical),
-            "unique_semantic_states" => ToJson.toJson(unique),
-            "physical_transition_requests" => ToJson.toJson(evaluations + reuses),
-            "physical_transition_evaluations" => ToJson.toJson(evaluations),
-            "physical_transition_reuses" => ToJson.toJson(reuses),
-            "logical_per_unique_state" => ToJson.toJson(ratio(logical, unique)),
-            "logical_per_physical_evaluation" => ToJson.toJson(ratio(logical, evaluations)),
-            "memo_cells" => ToJson.toJson(evaluations),
-            "compiled_dag_nodes" => JNull
+            "signature_protocol" => Value.Text(snapshot#signatureProtocol),
+            "atlas_protocol" => Value.Text(snapshot#atlasProtocol),
+            "repository" => Value.Text(snapshot#repository),
+            "base_revision" => Value.Text(snapshot#baseRevision),
+            "source_tree_identity" => Value.Text(snapshot#sourceTreeIdentity),
+            "fact_identity" => Value.Text(snapshot#factIdentity),
+            "snapshot_id" => Value.Text(snapshot#snapshotId),
+            "seed_domain" => Value.Text(Atlas.Signature.domainName(seed#domain)),
+            "seed_identity" => Value.Text(seed#identity),
+            "seed_ordinal" => Value.Int32(seed#ordinal),
+            "logical_routes" => Value.Int64(Int32.toInt64(logical)),
+            "unique_semantic_states" => Value.Int64(Int32.toInt64(unique)),
+            "physical_transition_requests" => Value.Int64(Int32.toInt64(evaluations + reuses)),
+            "physical_transition_evaluations" => Value.Int64(Int32.toInt64(evaluations)),
+            "physical_transition_reuses" => Value.Int64(Int32.toInt64(reuses)),
+            "logical_per_unique_state" => Value.Float64(ratio(logical, unique)),
+            "logical_per_physical_evaluation" => Value.Float64(ratio(logical, evaluations)),
+            "memo_cells" => Value.Int64(Int32.toInt64(evaluations)),
+            "compiled_dag_nodes" => Value.Null
         }
     }
 
@@ -135,20 +133,20 @@ pub mod Atlas.Signature.Table {
         repository: Repository.World,
         manifestCaseCount: Int32
     ): ScientificTable.Row = Map#{
-        "signature_protocol" => JString(snapshot#signatureProtocol),
-        "atlas_protocol" => JString(snapshot#atlasProtocol),
-        "repository" => JString(snapshot#repository),
-        "base_revision" => JString(snapshot#baseRevision),
-        "source_tree_identity" => JString(snapshot#sourceTreeIdentity),
-        "fact_identity" => JString(snapshot#factIdentity),
-        "snapshot_id" => JString(snapshot#snapshotId),
-        "file_count" => ToJson.toJson(Vector.length(repository#files)),
-        "symbol_count" => ToJson.toJson(Vector.length(repository#symbols)),
-        "defines_count" => ToJson.toJson(Set.size(repository#defines)),
-        "imports_count" => ToJson.toJson(Set.size(repository#imports)),
-        "calls_count" => ToJson.toJson(Set.size(repository#calls)),
-        "parent_count" => ToJson.toJson(Set.size(repository#parents)),
-        "manifest_case_count" => ToJson.toJson(manifestCaseCount)
+        "signature_protocol" => Value.Text(snapshot#signatureProtocol),
+        "atlas_protocol" => Value.Text(snapshot#atlasProtocol),
+        "repository" => Value.Text(snapshot#repository),
+        "base_revision" => Value.Text(snapshot#baseRevision),
+        "source_tree_identity" => Value.Text(snapshot#sourceTreeIdentity),
+        "fact_identity" => Value.Text(snapshot#factIdentity),
+        "snapshot_id" => Value.Text(snapshot#snapshotId),
+        "file_count" => Value.Int64(Int32.toInt64(Vector.length(repository#files))),
+        "symbol_count" => Value.Int64(Int32.toInt64(Vector.length(repository#symbols))),
+        "defines_count" => Value.Int64(Int32.toInt64(Set.size(repository#defines))),
+        "imports_count" => Value.Int64(Int32.toInt64(Set.size(repository#imports))),
+        "calls_count" => Value.Int64(Int32.toInt64(Set.size(repository#calls))),
+        "parent_count" => Value.Int64(Int32.toInt64(Set.size(repository#parents))),
+        "manifest_case_count" => Value.Int64(Int32.toInt64(manifestCaseCount))
     }
 
     def observationRow(
@@ -160,43 +158,43 @@ pub mod Atlas.Signature.Table {
         let routeId = Atlas.Signature.routeId(observation#program);
         let atoms = Vector.map(Atlas.Signature.atomName, observation#program#steps);
         Map#{
-            "signature_protocol" => JString(snapshot#signatureProtocol),
-            "atlas_protocol" => JString(snapshot#atlasProtocol),
-            "repository" => JString(snapshot#repository),
-            "base_revision" => JString(snapshot#baseRevision),
-            "source_tree_identity" => JString(snapshot#sourceTreeIdentity),
-            "fact_identity" => JString(snapshot#factIdentity),
-            "snapshot_id" => JString(snapshot#snapshotId),
-            "seed_domain" => JString(Atlas.Signature.domainName(seed#domain)),
-            "seed_identity" => JString(seed#identity),
-            "seed_ordinal" => ToJson.toJson(seed#ordinal),
-            "route_id" => JString(routeId),
-            "route_atoms" => JArray(Vector.map(JString, atoms)),
-            "depth" => ToJson.toJson(observation#depth),
-            "first_atom" => JString(Vector.get(0, atoms)),
-            "last_atom" => JString(Vector.get(Vector.length(atoms) - 1, atoms)),
-            "terminal_domain" => JString(Atlas.Signature.domainName(
+            "signature_protocol" => Value.Text(snapshot#signatureProtocol),
+            "atlas_protocol" => Value.Text(snapshot#atlasProtocol),
+            "repository" => Value.Text(snapshot#repository),
+            "base_revision" => Value.Text(snapshot#baseRevision),
+            "source_tree_identity" => Value.Text(snapshot#sourceTreeIdentity),
+            "fact_identity" => Value.Text(snapshot#factIdentity),
+            "snapshot_id" => Value.Text(snapshot#snapshotId),
+            "seed_domain" => Value.Text(Atlas.Signature.domainName(seed#domain)),
+            "seed_identity" => Value.Text(seed#identity),
+            "seed_ordinal" => Value.Int32(seed#ordinal),
+            "route_id" => Value.Text(routeId),
+            "route_atoms" => Value.TextList(atoms),
+            "depth" => Value.Int32(observation#depth),
+            "first_atom" => Value.Text(Vector.get(0, atoms)),
+            "last_atom" => Value.Text(Vector.get(Vector.length(atoms) - 1, atoms)),
+            "terminal_domain" => Value.Text(Atlas.Signature.domainName(
                 Atlas.stateDomain(observation#output))),
-            "input_cardinality" => ToJson.toJson(observation#inputCardinality),
-            "output_cardinality" => ToJson.toJson(observation#outputCardinality),
-            "domain_cardinality" => ToJson.toJson(observation#domainCardinality),
+            "input_cardinality" => Value.Int64(Int32.toInt64(observation#inputCardinality)),
+            "output_cardinality" => Value.Int64(Int32.toInt64(observation#outputCardinality)),
+            "domain_cardinality" => Value.Int64(Int32.toInt64(observation#domainCardinality)),
             "expansion_ratio" => optionalFloat(observation#expansionRatio),
-            "reach_fraction" => ToJson.toJson(observation#reachFraction),
-            "extinct" => JBool(observation#extinct),
+            "reach_fraction" => Value.Float64(observation#reachFraction),
+            "extinct" => Value.Boolean(observation#extinct),
             "first_extinction_depth" => optionalInt(observation#firstExtinctionDepth),
-            "semantic_state_id" => JString(stateId0),
-            "same_as_input" => JBool(observation#sameAsInput)
+            "semantic_state_id" => Value.Text(stateId0),
+            "same_as_input" => Value.Boolean(observation#sameAsInput)
         }
     }
 
-    def optionalFloat(value: Option[Float64]): Json = match value {
-        case None => JNull
-        case Some(number) => ToJson.toJson(number)
+    def optionalFloat(value: Option[Float64]): ScientificTable.Value = match value {
+        case None => Value.Null
+        case Some(number) => Value.Float64(number)
     }
 
-    def optionalInt(value: Option[Int32]): Json = match value {
-        case None => JNull
-        case Some(number) => ToJson.toJson(number)
+    def optionalInt(value: Option[Int32]): ScientificTable.Value = match value {
+        case None => Value.Null
+        case Some(number) => Value.Int32(number)
     }
 
     def ratio(numerator: Int32, denominator: Int32): Float64 =

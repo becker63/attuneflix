@@ -5,10 +5,7 @@
 /// Atlas. A warm structural action therefore does not need source text, a
 /// checkout path, Nix, or Marzano.
 pub mod Repository.Table {
-    use Util.Json
-    use Util.Json.Json.{JNull, JString}
-    use Util.Json.FromJson
-    use Util.Json.ToJson
+    use ScientificTable.Value
 
     pub type alias Identity = {
         repository         = String,
@@ -135,19 +132,19 @@ pub mod Repository.Table {
     })
 
     def metadataRow(identity: Identity, world: Repository.World): ScientificTable.Row = Map#{
-        "repository" => JString(identity#repository),
-        "base_revision" => JString(identity#baseRevision),
-        "source_tree_identity" => JString(identity#sourceTreeIdentity),
-        "fact_identity" => JString(identity#factIdentity),
-        "snapshot_id" => JString(identity#snapshotId),
-        "file_count" => ToJson.toJson(Vector.length(world#files)),
-        "symbol_count" => ToJson.toJson(Vector.length(world#symbols)),
-        "defines_count" => ToJson.toJson(Set.size(world#defines)),
-        "imports_count" => ToJson.toJson(Set.size(world#imports)),
-        "calls_count" => ToJson.toJson(Set.size(world#calls)),
-        "parent_count" => ToJson.toJson(Set.size(world#parents)),
-        "unresolved_imports" => ToJson.toJson(world#unresolvedImports),
-        "unresolved_calls" => ToJson.toJson(world#unresolvedCalls)
+        "repository" => Value.Text(identity#repository),
+        "base_revision" => Value.Text(identity#baseRevision),
+        "source_tree_identity" => Value.Text(identity#sourceTreeIdentity),
+        "fact_identity" => Value.Text(identity#factIdentity),
+        "snapshot_id" => Value.Text(identity#snapshotId),
+        "file_count" => Value.Int32(Vector.length(world#files)),
+        "symbol_count" => Value.Int32(Vector.length(world#symbols)),
+        "defines_count" => Value.Int32(Set.size(world#defines)),
+        "imports_count" => Value.Int32(Set.size(world#imports)),
+        "calls_count" => Value.Int32(Set.size(world#calls)),
+        "parent_count" => Value.Int32(Set.size(world#parents)),
+        "unresolved_imports" => Value.Int32(world#unresolvedImports),
+        "unresolved_calls" => Value.Int32(world#unresolvedCalls)
     }
 
     def worldPayload(world: Repository.World): String = {
@@ -183,19 +180,19 @@ pub mod Repository.Table {
 
     def fileRows(snapshotId: String, files0: Vector[String]): Vector[ScientificTable.Row] =
         Vector.mapWithIndex((ordinal, path) -> Map#{
-            "snapshot_id" => JString(snapshotId), "domain" => JString("file"),
-            "entity_id" => ToJson.toJson(ordinal), "ordinal" => ToJson.toJson(ordinal),
-            "path" => JString(path), "name" => JNull,
-            "start_byte" => JNull, "end_byte" => JNull
+            "snapshot_id" => Value.Text(snapshotId), "domain" => Value.Text("file"),
+            "entity_id" => Value.Int32(ordinal), "ordinal" => Value.Int32(ordinal),
+            "path" => Value.Text(path), "name" => Value.Null,
+            "start_byte" => Value.Null, "end_byte" => Value.Null
         }, files0)
 
     def symbolRows(snapshotId: String, symbols0: Vector[Repository.Symbol]): Vector[ScientificTable.Row] =
         Vector.mapWithIndex((ordinal, symbol) -> Map#{
-            "snapshot_id" => JString(snapshotId), "domain" => JString("symbol"),
-            "entity_id" => ToJson.toJson(ordinal), "ordinal" => ToJson.toJson(ordinal),
-            "path" => JString(symbol#path), "name" => JString(symbol#name),
-            "start_byte" => ToJson.toJson(symbol#startByte),
-            "end_byte" => ToJson.toJson(symbol#endByte)
+            "snapshot_id" => Value.Text(snapshotId), "domain" => Value.Text("symbol"),
+            "entity_id" => Value.Int32(ordinal), "ordinal" => Value.Int32(ordinal),
+            "path" => Value.Text(symbol#path), "name" => Value.Text(symbol#name),
+            "start_byte" => Value.Int32(symbol#startByte),
+            "end_byte" => Value.Int32(symbol#endByte)
         }, symbols0)
 
     def relationRows(snapshotId: String, world: Repository.World): Vector[ScientificTable.Row] =
@@ -212,9 +209,9 @@ pub mod Repository.Table {
 
     def relationRow(snapshotId: String, relation: String, sourceDomain: String,
                     source: Int32, targetDomain: String, target: Int32): ScientificTable.Row = Map#{
-        "snapshot_id" => JString(snapshotId), "relation" => JString(relation),
-        "source_domain" => JString(sourceDomain), "source_id" => ToJson.toJson(source),
-        "target_domain" => JString(targetDomain), "target_id" => ToJson.toJson(target)
+        "snapshot_id" => Value.Text(snapshotId), "relation" => Value.Text(relation),
+        "source_domain" => Value.Text(sourceDomain), "source_id" => Value.Int32(source),
+        "target_domain" => Value.Text(targetDomain), "target_id" => Value.Int32(target)
     }
 
     def requireMetadata(expected: Identity, rows0: Vector[ScientificTable.Row]): Result[String, Unit] =
@@ -290,17 +287,12 @@ pub mod Repository.Table {
     /// without feeding an already-sorted large vector to Flix's recursive
     /// quicksort. Noncanonical readers retain the same sorting semantics.
     def canonicalOrdinals(entries: Vector[(Int32, a)]): Vector[(Int32, a)] =
-        if (ordinalsOrdered(entries, 1)) entries
+        if (ordinalsOrdered(entries)) entries
         else Vector.sortBy(match (ordinal, _) -> ordinal, entries)
 
-    def ordinalsOrdered(entries: Vector[(Int32, a)], index: Int32): Bool =
-        if (index >= Vector.length(entries)) true
-        else {
-            let (previous, _) = Vector.get(index - 1, entries);
-            let (current, _) = Vector.get(index, entries);
-            if (previous <= current) ordinalsOrdered(entries, index + 1)
-            else false
-        }
+    def ordinalsOrdered(entries: Vector[(Int32, a)]): Bool =
+        Vector.forAll(match (index, entry) -> fst(entry) == index,
+            Vector.mapWithIndex((index, entry) -> (index, entry), entries))
 
     def requireOrdinals(entries: Vector[(Int32, a)]): Result[String, Unit] =
         match Vector.find(match (index, entry) -> let (ordinal, _) = entry; ordinal != index,
@@ -360,21 +352,16 @@ pub mod Repository.Table {
             if (actual == expected) Ok(()) else Err("repository world identity mismatch: ${name}"))
 
     def requireNull(name: String, row: ScientificTable.Row): Result[String, Unit] = match Map.get(name, row) {
-        case Some(JNull) => Ok(())
+        case Some(Value.Null) => Ok(())
         case Some(_) => Err("repository world field must be null: ${name}")
         case None => Err("missing repository world field: ${name}")
     }
 
-    def string(name: String, row: ScientificTable.Row): Result[String, String] = match Map.get(name, row) {
-        case Some(JString(value)) => Ok(value)
-        case Some(_) => Err("repository world field must be text: ${name}")
-        case None => Err("missing repository world field: ${name}")
-    }
+    def string(name: String, row: ScientificTable.Row): Result[String, String] =
+        ScientificTable.text(row, name)
 
-    def int(name: String, row: ScientificTable.Row): Result[String, Int32] = match Map.get(name, row) {
-        case Some(value) => FromJson.fromJson(value) |> Result.mapErr(ToString.toString)
-        case None => Err("missing repository world field: ${name}")
-    }
+    def int(name: String, row: ScientificTable.Row): Result[String, Int32] =
+        ScientificTable.int32(row, name)
 
     def file(value: Int32): Repository.Structure.FileId = Repository.Structure.FileId.FileId(value)
     def symbol(value: Int32): Repository.Structure.SymbolId = Repository.Structure.SymbolId.SymbolId(value)

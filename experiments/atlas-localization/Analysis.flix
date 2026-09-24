@@ -1,9 +1,7 @@
 import java.lang.System
 
 use Fs.FileSystem
-use Util.Json.Json.{JBool, JString}
-use Util.Json.FromJson
-use Util.Json.ToJson
+use ScientificTable.Value
 
 type alias Metric = {
     instanceId = String, repository = String, revision = String, snapshot = String,
@@ -261,38 +259,38 @@ def caseSchema(): ScientificTable.Schema = {
 }
 
 def caseRow(row: Case): ScientificTable.Row = Map#{
-    "protocol" => JString("attune-atlas-localization-posthoc-v1"),
-    "instance_id" => JString(row#instanceId), "repository" => JString(row#repository),
-    "base_revision" => JString(row#revision), "snapshot_id" => JString(row#snapshot),
-    "prior_f1" => ToJson.toJson(row#priorF1), "iteration_013_f1" => ToJson.toJson(row#selectedF1),
-    "structural_oracle_f1" => ToJson.toJson(row#oracleF1),
-    "iteration_013_delta" => ToJson.toJson(row#selectedDelta),
-    "oracle_headroom" => ToJson.toJson(row#headroom),
-    "captured_headroom" => ToJson.toJson(row#captured),
-    "captured_headroom_defined" => JBool(row#capturedDefined),
-    "prior_precision" => ToJson.toJson(row#priorPrecision),
-    "iteration_013_precision" => ToJson.toJson(row#selectedPrecision),
-    "precision_delta" => ToJson.toJson(row#precisionDelta),
-    "prior_recall" => ToJson.toJson(row#priorRecall),
-    "iteration_013_recall" => ToJson.toJson(row#selectedRecall),
-    "recall_delta" => ToJson.toJson(row#recallDelta),
-    "prior_context_efficiency" => ToJson.toJson(row#priorContext),
-    "iteration_013_context_efficiency" => ToJson.toJson(row#selectedContext),
-    "context_efficiency_delta" => ToJson.toJson(row#contextDelta),
-    "file_extinction" => ToJson.toJson(row#fileExtinction),
-    "symbol_extinction" => ToJson.toJson(row#symbolExtinction),
-    "file_reach_p90" => ToJson.toJson(row#fileReach),
-    "symbol_reach_p90" => ToJson.toJson(row#symbolReach),
-    "file_recurrence" => ToJson.toJson(row#fileRecurrence),
-    "symbol_recurrence" => ToJson.toJson(row#symbolRecurrence),
-    "physical_compression" => ToJson.toJson(row#physicalCompression),
-    "physical_reuse_fraction" => ToJson.toJson(row#reuseFraction),
-    "localization_logical_routes" => ToJson.toJson(row#logical),
-    "localization_unique_states" => ToJson.toJson(row#states),
-    "localization_unique_projections" => ToJson.toJson(row#projections),
-    "localization_score_evaluations" => ToJson.toJson(row#scores),
-    "localization_route_state_compression" => ToJson.toJson(row#routeStateCompression),
-    "localization_state_projection_compression" => ToJson.toJson(row#stateProjectionCompression)
+    "protocol" => Value.Text("attune-atlas-localization-posthoc-v1"),
+    "instance_id" => Value.Text(row#instanceId), "repository" => Value.Text(row#repository),
+    "base_revision" => Value.Text(row#revision), "snapshot_id" => Value.Text(row#snapshot),
+    "prior_f1" => Value.Float64(row#priorF1), "iteration_013_f1" => Value.Float64(row#selectedF1),
+    "structural_oracle_f1" => Value.Float64(row#oracleF1),
+    "iteration_013_delta" => Value.Float64(row#selectedDelta),
+    "oracle_headroom" => Value.Float64(row#headroom),
+    "captured_headroom" => Value.Float64(row#captured),
+    "captured_headroom_defined" => Value.Boolean(row#capturedDefined),
+    "prior_precision" => Value.Float64(row#priorPrecision),
+    "iteration_013_precision" => Value.Float64(row#selectedPrecision),
+    "precision_delta" => Value.Float64(row#precisionDelta),
+    "prior_recall" => Value.Float64(row#priorRecall),
+    "iteration_013_recall" => Value.Float64(row#selectedRecall),
+    "recall_delta" => Value.Float64(row#recallDelta),
+    "prior_context_efficiency" => Value.Float64(row#priorContext),
+    "iteration_013_context_efficiency" => Value.Float64(row#selectedContext),
+    "context_efficiency_delta" => Value.Float64(row#contextDelta),
+    "file_extinction" => Value.Float64(row#fileExtinction),
+    "symbol_extinction" => Value.Float64(row#symbolExtinction),
+    "file_reach_p90" => Value.Float64(row#fileReach),
+    "symbol_reach_p90" => Value.Float64(row#symbolReach),
+    "file_recurrence" => Value.Float64(row#fileRecurrence),
+    "symbol_recurrence" => Value.Float64(row#symbolRecurrence),
+    "physical_compression" => Value.Float64(row#physicalCompression),
+    "physical_reuse_fraction" => Value.Float64(row#reuseFraction),
+    "localization_logical_routes" => Value.Float64(row#logical),
+    "localization_unique_states" => Value.Float64(row#states),
+    "localization_unique_projections" => Value.Float64(row#projections),
+    "localization_score_evaluations" => Value.Float64(row#scores),
+    "localization_route_state_compression" => Value.Float64(row#routeStateCompression),
+    "localization_state_projection_compression" => Value.Float64(row#stateProjectionCompression)
 }
 
 def decodeMetric(row: ScientificTable.Row): Result[String, Metric] = forM (
@@ -323,15 +321,9 @@ def decodePhysical(row: ScientificTable.Row): Result[String, Physical] = forM (
     reuses <- number("physical_transition_reuses", row)
 ) yield {snapshot = snapshot, compression = compression, requests = requests, reuses = reuses}
 
-def string(name: String, row: ScientificTable.Row): Result[String, String] = match Map.get(name, row) {
-    case Some(JString(value)) => Ok(value)
-    case _ => Err("missing text field: ${name}")
-}
+def string(name: String, row: ScientificTable.Row): Result[String, String] = ScientificTable.text(row, name)
 
-def number(name: String, row: ScientificTable.Row): Result[String, Float64] = match Map.get(name, row) {
-    case Some(value) => FromJson.fromJson(value) |> Result.mapErr(ToString.toString)
-    case None => Err("missing numeric field: ${name}")
-}
+def number(name: String, row: ScientificTable.Row): Result[String, Float64] = ScientificTable.number(row, name)
 
 def sum[a: Type](rows: Vector[a], accessor: a -> Float64): Float64 =
     Vector.foldLeft((total, row) -> total + accessor(row), 0.0, rows)
