@@ -263,3 +263,9 @@ This census does not claim that signatures identify repository authors, define
 a taxonomy, cause localization performance, or remain stable across arbitrary
 future revisions. Architectural-drift lint, test selection, community studies,
 and localization relationships are later applications or exploratory analyses.
+
+The primary census also does not adapt its evaluator to each repository. A
+separate [physical-plan experiment](PHYSICAL-PLANS.md) freezes these signatures
+first and then tests whether `(repository signature, workload signature)` can
+choose a faster exact plan. Keeping those stages separate prevents the ruler
+from changing while the repositories are being measured.

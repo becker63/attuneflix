@@ -768,6 +768,63 @@ Iteration 013 is a two-rollout planning portfolio. The frozen 61-case run used
 serial planning loop with one compact outcome scorer is an experiment still to
 be run, not a result already achieved.
 
+### Where speed matters
+
+The 3.127 ms compiled Atlas kernel is not the current bottleneck. The frozen
+scale run averaged 229.53 seconds per successful acquisition case and 41.00
+seconds per keyless replay case. Structural precompute inside those paths was
+2.439 and 2.213 seconds respectively. Making all of that structural work five
+times faster would improve the old live path by only about 1.009x and replay by
+about 1.045x. Optimizing the kernel first would be busywork.
+
+The larger win is to remove the median 71 serial learned decisions:
+
+```text
+current iteration 013
+
+Atlas -> Jev -> Atlas -> Jev -> ... about 71 decisions
+
+target sandwich
+
+good cached prior -> complete Atlas outcomes -> dedupe -> one small judge
+```
+
+That changes the budget. The earlier clean structural stage averaged 98.8 ms
+per case. If a future warm query uses one to three 50–200 ms judgments, a
+roughly 100 ms Atlas stage becomes a visible part of latency. Reducing it to 20
+ms can then matter to the whole query.
+
+The more useful reason to make Atlas faster is not to return the same answer
+two milliseconds sooner. It is to spend cheap deterministic work before the
+learned call:
+
+```text
+try several diverse prior seed sets
+run exact structural counterfactuals
+deduplicate equal semantic outcomes
+compare context budgets and projections
+hand a few complete alternatives to one judge
+```
+
+The prior's job is therefore not simply “rank the edited file first.” It should
+find a small, diverse seed set from which Atlas can recover useful context. A
+caller or entry point can be a better seed than the final edit location when a
+short reliable Atlas route connects them. Better seeds reduce the number of
+distinct outcomes the tail must judge; recurrence reduces it again.
+
+```text
+better prior
+    -> fewer, better structural entry points
+    -> fewer distinct Atlas outcomes
+    -> fewer learned decisions and fewer tokens
+    -> enough latency budget for more exact counterfactuals
+```
+
+This is a future performance program, not a claim about current serving
+latency. The measured source is the [sealed usage record](experiments/swe-explore-js-ts-scale/USAGE.md),
+and physical-plan work is kept behind the [post-census exact-parity
+protocol](experiments/atlas-swe-explore/PHYSICAL-PLANS.md).
+
 ## Atlas works without AI
 
 Atlas does not depend on Qwen, Jev, issue text, provider access, or benchmark
@@ -806,9 +863,14 @@ pub type alias Program = {
 }
 
 pub def programs(maxDepth: Int32): Vector[Program] =
-    enumerateLevels(current = 1, maxDepth, previous = Vector#{}, all = Vector.empty())
+    programsFrom(Domain.Symbol, maxDepth)
+
+pub def programsFrom(seedDomain: Domain, maxDepth: Int32): Vector[Program] =
+    enumerateLevels(seedDomain, current = 1, maxDepth,
+        previous = Vector.empty(), all = Vector.empty())
 
 def enumerateLevels(
+    seedDomain: Domain,
     current: Int32,
     maxDepth: Int32,
     previous: Vector[Program],
@@ -817,12 +879,12 @@ def enumerateLevels(
     if (current > maxDepth)
         all
     else {
-        // At depth one, begin with every atom legal for a Symbol seed.
+        // At depth one, begin with every atom legal for the declared seed.
         let exact = if (current == 1)
             Vector.map(atom -> {
                 steps = Vector#{atom},
                 expression = Expr.Atom(atom)
-            }, compatible(Domain.Symbol))
+            }, compatible(seedDomain))
         else
             // Thereafter, extend every prior program with every atom whose
             // source domain matches the program's current terminal domain.
@@ -832,6 +894,7 @@ def enumerateLevels(
             }, compatible(target(program#expression))), previous);
 
         enumerateLevels(
+            seedDomain,
             current + 1,
             maxDepth,
             exact,
@@ -1194,6 +1257,14 @@ census will produce one typed Parquet signature per unique frozen snapshot.
 Its [seed, schema, metric, and analysis protocol is preregistered
 here](experiments/atlas-swe-explore/PREREGISTRATION.md). Only after that data is
 sealed will it be joined to localization outcomes.
+
+The signature may later drive execution as well as describe it. A repository
+with high extinction may prefer lazy demand evaluation; repeated queries over
+a small recurrent behavior space may repay a precomputed singleton basis;
+dense long-lived frontiers may eventually justify a dense or materialized
+plan. That is a separate exact-parity experiment, not part of the primary
+census. Its [workloads, initial plans, old Roaring evidence, measurements, and
+promotion rules are declared here](experiments/atlas-swe-explore/PHYSICAL-PLANS.md).
 
 ## What the frozen localization experiment found
 

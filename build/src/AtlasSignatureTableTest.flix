@@ -87,3 +87,23 @@ def atlasCensusRowsCarryExactRouteStateAndWorkIdentities(): Unit \ {Assert, IO} 
     Assert.assertEq(expected = Some(ToJson.toJson(4)), Map.get("memo_cells", physical));
     Assert.assertEq(expected = Some(JNull), Map.get("compiled_dag_nodes", physical))
 }
+
+@Test
+def atlasCensusUsesTypedFileAndSymbolSeedFamilies(): Unit \ {Assert, IO} = {
+    let f0 = Repository.Structure.FileId.FileId(0);
+    let s0 = Repository.Structure.SymbolId.SymbolId(0);
+    let world: Repository.World = {
+        files = Vector#{"src/a.ts"},
+        symbols = Vector#{{path = "src/a.ts", name = "a", startByte = 0, endByte = 1}},
+        defines = Set#{(f0, s0)}, imports = Set.empty(), calls = Set.empty(),
+        parents = Set.empty(), unresolvedImports = 0, unresolvedCalls = 0
+    };
+    let seeds = Atlas.Signature.seeds(world);
+    Assert.assertEq(expected = Vector#{Radii.Domain.File, Radii.Domain.Symbol},
+        Vector.map(seed -> seed#domain, seeds));
+    Assert.assertEq(expected = 3279, Vector.length(Atlas.programsFrom(Radii.Domain.File, 7)));
+    match Atlas.signature(world, Vector.get(0, seeds)#state, 1) {
+        case Err(error) => Assert.fail(error)
+        case Ok(signature) => Assert.assertEq(expected = 3, signature#logicalPrograms)
+    }
+}

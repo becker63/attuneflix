@@ -115,6 +115,27 @@ pub mod Atlas.Signature.Table {
         }
     }
 
+    pub def snapshotRow(
+        snapshot: SnapshotIdentity,
+        repository: Repository.World,
+        manifestCaseCount: Int32
+    ): ScientificTable.Row = Map#{
+        "signature_protocol" => JString(snapshot#signatureProtocol),
+        "atlas_protocol" => JString(snapshot#atlasProtocol),
+        "repository" => JString(snapshot#repository),
+        "base_revision" => JString(snapshot#baseRevision),
+        "source_tree_identity" => JString(snapshot#sourceTreeIdentity),
+        "fact_identity" => JString(snapshot#factIdentity),
+        "snapshot_id" => JString(snapshot#snapshotId),
+        "file_count" => ToJson.toJson(Vector.length(repository#files)),
+        "symbol_count" => ToJson.toJson(Vector.length(repository#symbols)),
+        "defines_count" => ToJson.toJson(Set.size(repository#defines)),
+        "imports_count" => ToJson.toJson(Set.size(repository#imports)),
+        "calls_count" => ToJson.toJson(Set.size(repository#calls)),
+        "parent_count" => ToJson.toJson(Set.size(repository#parents)),
+        "manifest_case_count" => ToJson.toJson(manifestCaseCount)
+    }
+
     def observationRow(
         snapshot: SnapshotIdentity,
         seed: SeedIdentity,

@@ -154,7 +154,14 @@ mod Atlas {
     /// Results are ordered first by depth, then by the stable atom order in
     /// `compatible`. A non-positive bound names the empty language.
     pub def programs(maxDepth: Int32): Vector[Program] =
-        enumerateLevels(1, maxDepth, Vector.empty(), Vector.empty())
+        programsFrom(Radii.Domain.Symbol, maxDepth)
+
+    /// Enumerate the complete family compatible with one declared seed
+    /// domain. The grammar is unchanged; only the three legal first atoms are
+    /// selected from the seed type. Census File and Symbol panels therefore
+    /// use the same rule rather than coercing one domain into the other.
+    pub def programsFrom(domain: Radii.Domain, maxDepth: Int32): Vector[Program] =
+        enumerateLevels(domain, 1, maxDepth, Vector.empty(), Vector.empty())
 
     /// Evaluate a declared Atlas family over one exact typed seed.
     ///
@@ -375,6 +382,7 @@ mod Atlas {
         }
 
     def enumerateLevels(
+        start: Radii.Domain,
         current: Int32,
         maxDepth: Int32,
         previous: Vector[Program],
@@ -387,13 +395,14 @@ mod Atlas {
                 Vector.map(atom -> {
                     steps = Vector#{atom},
                     expression = Expr.Atom(atom)
-                }, compatible(Radii.Domain.Symbol))
+                }, compatible(start))
             else
                 Vector.flatMap(program -> Vector.map(atom -> {
                     steps = Vector.append(program#steps, Vector#{atom}),
                     expression = Expr.Compose(program#expression, atom)
                 }, compatible(target(program#expression))), previous);
             enumerateLevels(
+                start,
                 current + 1,
                 maxDepth,
                 exact,

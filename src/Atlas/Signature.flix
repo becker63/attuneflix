@@ -1,4 +1,11 @@
 pub mod Atlas.Signature {
+    pub type alias Seed = {
+        domain   = Radii.Domain,
+        identity = String,
+        ordinal  = Int32,
+        state    = Atlas.State
+    }
+
     pub def atomName(atom: Atlas.Atom): String = match atom {
         case Atlas.Atom.Defines    => "defines"
         case Atlas.Atom.DefinedIn  => "defined_in"
@@ -69,7 +76,7 @@ pub mod Atlas.Signature {
         if (depth < 1)
             Err("Atlas signature depth must be positive")
         else {
-            let family = Atlas.programs(depth);
+            let family = Atlas.programsFrom(Atlas.stateDomain(input), depth);
             Atlas.evaluate(repository, input, family)
                 |> Result.flatMap(evaluation -> {
                     let outputs = Vector.zip(family, evaluation#outputs)
@@ -96,6 +103,50 @@ pub mod Atlas.Signature {
                 })
         }
     }
+
+    /// The issue-blind seed panel declared by atlas-signature-seeds-v1.
+    /// Selection hashes stable repository identities, never nominal ordinal
+    /// order, issue text, embedding rank, or filesystem enumeration order.
+    pub def seeds(repository: Repository.World): Vector[Seed] \ IO =
+        Vector.append(fileSeeds(repository#files), symbolSeeds(repository#symbols))
+
+    def fileSeeds(files: Vector[String]): Vector[Seed] \ IO =
+        Vector.mapWithIndex((ordinal, path) -> (
+            ScientificIdentity.sha256("file\u0000${path}"),
+            path,
+            ordinal,
+            Atlas.State.Files(Set.singleton(Repository.Structure.FileId.FileId(ordinal)))
+        ), files)
+            |> Vector.sortBy(match (digest, identity, _, _) -> (digest, identity))
+            |> firstEight
+            |> Vector.map(match (_, identity, ordinal, state) -> {
+                domain = Radii.Domain.File,
+                identity = identity,
+                ordinal = ordinal,
+                state = state
+            })
+
+    def symbolSeeds(symbols: Vector[Repository.Symbol]): Vector[Seed] \ IO =
+        Vector.mapWithIndex((ordinal, symbol) -> {
+            let identity = "${symbol#path}\u0000${symbol#name}\u0000${symbol#startByte}\u0000${symbol#endByte}";
+            (
+                ScientificIdentity.sha256("symbol\u0000${identity}"),
+                identity,
+                ordinal,
+                Atlas.State.Symbols(Set.singleton(Repository.Structure.SymbolId.SymbolId(ordinal)))
+            )
+        }, symbols)
+            |> Vector.sortBy(match (digest, identity, _, _) -> (digest, identity))
+            |> firstEight
+            |> Vector.map(match (_, identity, ordinal, state) -> {
+                domain = Radii.Domain.Symbol,
+                identity = identity,
+                ordinal = ordinal,
+                state = state
+            })
+
+    def firstEight(values: Vector[a]): Vector[a] =
+        Vector.slice(start = 0, end = if (Vector.length(values) < 8) Vector.length(values) else 8, values)
 
     def observation(
         repository: Repository.World,

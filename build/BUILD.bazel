@@ -1,4 +1,5 @@
 exports_files([
+    "attune.bzl",
     "grit_repository.bzl",
     "jextract.bzl",
     "jextract_repository.bzl",
