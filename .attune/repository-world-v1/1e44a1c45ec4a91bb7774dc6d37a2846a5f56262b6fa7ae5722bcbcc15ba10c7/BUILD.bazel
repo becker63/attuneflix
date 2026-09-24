@@ -1,0 +1,15 @@
+load("//build:attune.bzl", "attune_world_files")
+
+attune_world_files(
+    name = "world",
+    base_revision = "c30252f685e8f4326722de84923fcbc8cf557f06",
+    entities = "entities.parquet",
+    fact_identity = "repository-facts-v2:af2e5451129c390211c2a9c57d41d3bb159ed949d46d2036729e0d9bb08955fc",
+    identity = "identity.json",
+    metadata = "metadata.parquet",
+    relations = "relations.parquet",
+    repository = "axios/axios",
+    snapshot_id = "repository-snapshot-v1:1e44a1c45ec4a91bb7774dc6d37a2846a5f56262b6fa7ae5722bcbcc15ba10c7",
+    source_tree_identity = "source-tree-js-ts-v1:6263b0ef1ef967b350b9674f45766b073c7945e7f80863236cad126445341e8c",
+    visibility = ["//visibility:public"],
+)

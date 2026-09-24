@@ -1655,6 +1655,16 @@ Markdown is the human plane.
 See [data architecture](docs/data-architecture.md) for the executable format
 checks and current schemas.
 
+The frozen repository data plane is now 78 typed `Repository.World` artifacts
+in Parquet: metadata, nominal File/Symbol/Location entities, and admitted
+definitions/imports/calls. Their identity is `repository + revision + exact
+JS/TS source-tree digest + Grit/Marzano protocol + admitted facts`; it contains
+no Nix store path. Normal Atlas, replay, and evaluation targets read these
+tables directly. The one-time migration was checked by reproducing every Atlas
+census output byte-for-byte, then by passing all 61 replay and official-
+evaluation parity proofs. Nix remains an oracle for how the old frozen inputs
+were obtained, not a dependency of the live scientific graph.
+
 Bazel owns declared builds, tests, and deterministic derived artifacts.
 BuildBuddy remotely executes and caches that graph. Flix owns the scientific
 semantics. Java and Rust are narrow foreign-runtime seams. Nix supplies only

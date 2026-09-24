@@ -1,0 +1,15 @@
+load("//build:attune.bzl", "attune_world_files")
+
+attune_world_files(
+    name = "world",
+    base_revision = "41f29d1c8dad68d693d2e3e10e5c65b6fb780142",
+    entities = "entities.parquet",
+    fact_identity = "repository-facts-v2:941c12816728bfe75c6a1eed58a01e03651f0e1ccb2b91ab1ce6e831415e3b85",
+    identity = "identity.json",
+    metadata = "metadata.parquet",
+    relations = "relations.parquet",
+    repository = "protonmail/webclients",
+    snapshot_id = "repository-snapshot-v1:e798747366601b55aa909a8724b64a2949accb6421a45f773251055d1e0313fa",
+    source_tree_identity = "source-tree-js-ts-v1:423e4ebf55036804062a7547ca6fd806e64f0ff547c459c01021ad77bb540f36",
+    visibility = ["//visibility:public"],
+)

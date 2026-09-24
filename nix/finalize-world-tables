@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# One-time promotion of proven Bazel migration outputs into the tracked typed
+# world data plane. The old facts and Nix source path remain migration evidence;
+# normal Atlas, replay, and evaluation actions consume these files directly.
+workspace="${ATTUNE_WORKSPACE:-$(pwd -P)}"
+output_root="$workspace/.attune/repository-world-v1"
+stale_root="$workspace/.attune/repository-world-v0-path-keyed"
+mkdir -p "$output_root"
+declare -A expected_directories
+
+mapfile -t identities < <(
+  find -L "$workspace/bazel-bin/.attune" -mindepth 2 -maxdepth 2 \
+    -path '*/world_*/identity.json' -type f -print | sort -V
+)
+if ((${#identities[@]} != 78)); then
+  echo "expected 78 completed Bazel world identities, found ${#identities[@]}" >&2
+  exit 1
+fi
+
+for identity_source in "${identities[@]}"; do
+  source_directory="$(dirname "$identity_source")"
+  snapshot_id="$(jq -er '.snapshot_id | select(startswith("repository-snapshot-v1:"))' "$identity_source")"
+  directory="${snapshot_id#repository-snapshot-v1:}"
+  expected_directories[$directory]=1
+  destination="$output_root/$directory"
+  mkdir -p "$destination"
+
+  for name in identity.json metadata.parquet entities.parquet relations.parquet; do
+    source="$source_directory/$name"
+    if [[ ! -s "$source" ]]; then
+      echo "missing completed Bazel world output: $source" >&2
+      exit 1
+    fi
+    temporary="$(mktemp "$destination/$name.XXXXXX")"
+    cp --dereference -- "$source" "$temporary"
+    chmod u+rw,go+r "$temporary"
+    mv -f -- "$temporary" "$destination/$name"
+  done
+
+  repository="$(jq -er .repository "$destination/identity.json")"
+  revision="$(jq -er .base_revision "$destination/identity.json")"
+  source_tree="$(jq -er .source_tree_identity "$destination/identity.json")"
+  fact_identity="$(jq -er .fact_identity "$destination/identity.json")"
+  build_file="$(mktemp "$destination/BUILD.bazel.XXXXXX")"
+  {
+    printf '%s\n\n' 'load("//build:attune.bzl", "attune_world_files")'
+    printf '%s\n' 'attune_world_files('
+    printf '%s\n' '    name = "world",'
+    printf '    base_revision = "%s",\n' "$revision"
+    printf '%s\n' '    entities = "entities.parquet",'
+    printf '    fact_identity = "%s",\n' "$fact_identity"
+    printf '%s\n' '    identity = "identity.json",'
+    printf '%s\n' '    metadata = "metadata.parquet",'
+    printf '%s\n' '    relations = "relations.parquet",'
+    printf '    repository = "%s",\n' "$repository"
+    printf '    snapshot_id = "%s",\n' "$snapshot_id"
+    printf '    source_tree_identity = "%s",\n' "$source_tree"
+    printf '%s\n' '    visibility = ["//visibility:public"],'
+    printf '%s\n' ')'
+  } > "$build_file"
+  mv -f -- "$build_file" "$destination/BUILD.bazel"
+done
+
+mapfile -t directories < <(find "$output_root" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort)
+for directory in "${directories[@]}"; do
+  if [[ -z "${expected_directories[$directory]:-}" ]]; then
+    mkdir -p "$stale_root"
+    if [[ -e "$stale_root/$directory" ]]; then
+      echo "stale typed world archive collision: $directory" >&2
+      exit 1
+    fi
+    mv -- "$output_root/$directory" "$stale_root/$directory"
+    # This is retained migration evidence, not a package in the current graph.
+    # Keep `bazel test //...` from discovering its obsolete rule declarations.
+    if [[ -f "$stale_root/$directory/BUILD.bazel" ]]; then
+      mv -- "$stale_root/$directory/BUILD.bazel" \
+        "$stale_root/$directory/BUILD.bazel.oracle"
+    fi
+  fi
+done
+mapfile -t directories < <(find "$output_root" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort)
+if ((${#directories[@]} != 78)); then
+  echo "expected 78 typed world directories, found ${#directories[@]}" >&2
+  exit 1
+fi
+
+printf 'WORLD_TABLES snapshots=%d bytes=%s\n' \
+  "${#directories[@]}" "$(du -sb "$output_root" | cut -f1)"

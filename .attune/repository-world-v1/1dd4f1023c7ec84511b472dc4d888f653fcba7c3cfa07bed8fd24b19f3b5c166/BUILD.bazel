@@ -1,0 +1,15 @@
+load("//build:attune.bzl", "attune_world_files")
+
+attune_world_files(
+    name = "world",
+    base_revision = "9dfb7c231f98a2d3bf48a99577d8a55cfdb2480b",
+    entities = "entities.parquet",
+    fact_identity = "repository-facts-v2:1b78d142efea6cd7fb529ae559a006a911cf88225360609daef0b8014eafd364",
+    identity = "identity.json",
+    metadata = "metadata.parquet",
+    relations = "relations.parquet",
+    repository = "tutao/tutanota",
+    snapshot_id = "repository-snapshot-v1:1dd4f1023c7ec84511b472dc4d888f653fcba7c3cfa07bed8fd24b19f3b5c166",
+    source_tree_identity = "source-tree-js-ts-v1:dca10056964a01afaf45468bef15fd2a2bfcca9a02ef8e59b31339dda20d32e5",
+    visibility = ["//visibility:public"],
+)

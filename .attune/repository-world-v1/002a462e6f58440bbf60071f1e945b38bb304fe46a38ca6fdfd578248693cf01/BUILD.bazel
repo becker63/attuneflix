@@ -1,0 +1,15 @@
+load("//build:attune.bzl", "attune_world_files")
+
+attune_world_files(
+    name = "world",
+    base_revision = "5134505bf93013c5fa7df66704df8d04becb7f7d",
+    entities = "entities.parquet",
+    fact_identity = "repository-facts-v2:691ffa7d9fa31f8cc1f5762e8b2743e2e2d6ed3991fe37cd8d11ba182b42a436",
+    identity = "identity.json",
+    metadata = "metadata.parquet",
+    relations = "relations.parquet",
+    repository = "babel/babel",
+    snapshot_id = "repository-snapshot-v1:002a462e6f58440bbf60071f1e945b38bb304fe46a38ca6fdfd578248693cf01",
+    source_tree_identity = "source-tree-js-ts-v1:dfea6a8a1538c7240f8dad90b7d5765560915d07c5e381ea93002f60c00c52df",
+    visibility = ["//visibility:public"],
+)

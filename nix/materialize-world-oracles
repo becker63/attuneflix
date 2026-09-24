@@ -85,11 +85,27 @@ for index in "${indices[@]}"; do
     "$index" "$(jq -r '.source_paths | length' "$output")"
 done
 
-# Generated migration graph. The legacy Nix-store pathname is an input only;
-# fact_identity and snapshot_id are computed from content and admitted meaning.
+# Generated current graph. One-time migration can still authenticate old
+# observations against Nix materializations above, but normal graph generation
+# points at the already admitted typed worlds. No Nix path enters an action.
+declare -A typed_world_by_revision
+while IFS= read -r world_build; do
+  revision="$(sed -n 's/^    base_revision = "\([^"]*\)",$/\1/p' "$world_build")"
+  if [[ -z "$revision" ]]; then
+    echo "typed world has no base revision: $world_build" >&2
+    exit 1
+  fi
+  world_directory="$(basename "$(dirname "$world_build")")"
+  if [[ -n "${typed_world_by_revision[$revision]:-}" ]]; then
+    echo "duplicate typed world for revision $revision" >&2
+    exit 1
+  fi
+  typed_world_by_revision[$revision]="$world_directory"
+done < <(find "$workspace/.attune/repository-world-v1" -mindepth 2 -maxdepth 2 -name BUILD.bazel -type f -print | sort)
+
 build_tmp="$(mktemp "$workspace/.attune/BUILD.bazel.XXXXXX")"
 {
-  printf 'load("//build:attune.bzl", "attune_atlas_aggregate", "attune_atlas_report", "attune_atlas_signature", "attune_atlas_signature_summaries", "attune_atlas_signature_summary", "attune_atlas_signatures", "attune_decision_bundle", "attune_decision_bundles", "attune_localization_evaluation", "attune_localization_evaluations", "attune_localization_replay", "attune_localization_replays", "attune_world_migration")\n\n'
+  printf 'load("//build:attune.bzl", "attune_atlas_aggregate", "attune_atlas_report", "attune_atlas_signature", "attune_atlas_signature_summaries", "attune_atlas_signature_summary", "attune_atlas_signatures", "attune_decision_bundle", "attune_decision_bundles", "attune_localization_evaluation", "attune_localization_evaluations", "attune_localization_replay", "attune_localization_replays")\n\n'
   targets=()
   signatures=()
   summaries=()
@@ -108,6 +124,11 @@ build_tmp="$(mktemp "$workspace/.attune/BUILD.bazel.XXXXXX")"
     instance="$(jq -r '.instance_id' "$oracle")"
     population="$(jq -r '.population' "$oracle")"
     source_tree="$(jq -r '.source_tree_identity' "$oracle")"
+    world_directory="${typed_world_by_revision[$revision]:-}"
+    if [[ -z "$world_directory" ]]; then
+      echo "typed admitted world missing for manifest index $index revision $revision" >&2
+      exit 1
+    fi
     target="world_$(printf '%02d' "$index")"
     signature="signature_$(printf '%02d' "$index")"
     summary="summary_$(printf '%02d' "$index")"
@@ -133,14 +154,9 @@ build_tmp="$(mktemp "$workspace/.attune/BUILD.bazel.XXXXXX")"
       replay_revisions+=("$revision")
       predictions+=("$prediction")
     fi
-    printf 'attune_world_migration(\n'
+    printf 'alias(\n'
     printf '    name = "%s",\n' "$target"
-    printf '    base_revision = "%s",\n' "$revision"
-    printf '    oracle = "repository-world-migration-inputs/%s.json",\n' "$index"
-    printf '    repository = "%s",\n' "$repository"
-    printf '    retained_observations = "%s",\n' "$retained"
-    printf '    source_tree_identity = "%s",\n' "$source_tree"
-    printf '    tool = "//migration/world:migrate",\n'
+    printf '    actual = "//.attune/repository-world-v1/%s:world",\n' "$world_directory"
     printf ')\n\n'
     printf 'attune_atlas_signature(\n'
     printf '    name = "%s",\n' "$signature"

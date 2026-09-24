@@ -1,0 +1,15 @@
+load("//build:attune.bzl", "attune_world_files")
+
+attune_world_files(
+    name = "world",
+    base_revision = "b99b3fd955864f534b1e2649518112f7e50fef21",
+    entities = "entities.parquet",
+    fact_identity = "repository-facts-v2:c52cdd5d14bef251a3ca0974ad78aa5cb9d5b44a444e7fde044f982f0fefb61c",
+    identity = "identity.json",
+    metadata = "metadata.parquet",
+    relations = "relations.parquet",
+    repository = "mrdoob/three.js",
+    snapshot_id = "repository-snapshot-v1:0ba18a217eefcafd6ba5afe527e293f53643e7b6d5d6e3ae48cf9ad2e5e3171a",
+    source_tree_identity = "source-tree-js-ts-v1:7ca2d93376273b2410dc909ed92e0e025ce1bd47adb0cc5d1abc82fd2bf1ab08",
+    visibility = ["//visibility:public"],
+)

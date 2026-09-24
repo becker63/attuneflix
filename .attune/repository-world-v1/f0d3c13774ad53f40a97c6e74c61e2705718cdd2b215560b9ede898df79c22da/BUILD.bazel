@@ -1,0 +1,15 @@
+load("//build:attune.bzl", "attune_world_files")
+
+attune_world_files(
+    name = "world",
+    base_revision = "77434b3cbbc8ee21206f4cc6965e1c9b09cc92b6",
+    entities = "entities.parquet",
+    fact_identity = "repository-facts-v2:c2fbd2896eaaba9cc5a34634d157be0de96f48e55aa234b130036584bc50218c",
+    identity = "identity.json",
+    metadata = "metadata.parquet",
+    relations = "relations.parquet",
+    repository = "immutable-js/immutable-js",
+    snapshot_id = "repository-snapshot-v1:f0d3c13774ad53f40a97c6e74c61e2705718cdd2b215560b9ede898df79c22da",
+    source_tree_identity = "source-tree-js-ts-v1:1e9b61a2423da98af5ccc3dc0fb0a93720473f2380e8c810ac1e9489e3b6571b",
+    visibility = ["//visibility:public"],
+)

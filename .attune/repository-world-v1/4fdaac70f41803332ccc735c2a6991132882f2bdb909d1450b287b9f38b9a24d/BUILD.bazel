@@ -1,0 +1,15 @@
+load("//build:attune.bzl", "attune_world_files")
+
+attune_world_files(
+    name = "world",
+    base_revision = "00c8d1ff1498084c15408cf0014d4c7facdb5dd7",
+    entities = "entities.parquet",
+    fact_identity = "repository-facts-v2:5e9e9710738960db15ee094096289aa671e1cec5827baee9207d89da4156a6a2",
+    identity = "identity.json",
+    metadata = "metadata.parquet",
+    relations = "relations.parquet",
+    repository = "preactjs/preact",
+    snapshot_id = "repository-snapshot-v1:4fdaac70f41803332ccc735c2a6991132882f2bdb909d1450b287b9f38b9a24d",
+    source_tree_identity = "source-tree-js-ts-v1:081960e355b8bdbc08d78ead3574fb4d35bc45c64544e9e45ab96a9fdd8e1735",
+    visibility = ["//visibility:public"],
+)

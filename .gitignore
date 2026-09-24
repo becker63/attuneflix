@@ -1,5 +1,7 @@
 # Retained local evidence and credentials
-/.attune/
+/.attune/*
+!/.attune/repository-world-v1/
+!/.attune/repository-world-v1/**
 /.env
 /.env.*
 !/.env.example

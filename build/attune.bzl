@@ -167,12 +167,14 @@ def _world_files_impl(ctx):
             ctx.file.metadata,
             ctx.file.entities,
             ctx.file.relations,
+            ctx.file.identity,
         ])),
         _world_info(
             ctx,
             ctx.file.metadata,
             ctx.file.entities,
             ctx.file.relations,
+            ctx.file.identity,
         ),
     ]
 
@@ -182,6 +184,7 @@ attune_world_files = rule(
         "metadata": attr.label(allow_single_file = [".parquet"], mandatory = True),
         "entities": attr.label(allow_single_file = [".parquet"], mandatory = True),
         "relations": attr.label(allow_single_file = [".parquet"], mandatory = True),
+        "identity": attr.label(allow_single_file = [".json"], mandatory = True),
         "repository": attr.string(mandatory = True),
         "base_revision": attr.string(mandatory = True),
         "source_tree_identity": attr.string(mandatory = True),

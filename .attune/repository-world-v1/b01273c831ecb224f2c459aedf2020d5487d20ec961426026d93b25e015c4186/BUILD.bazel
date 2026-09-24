@@ -1,0 +1,15 @@
+load("//build:attune.bzl", "attune_world_files")
+
+attune_world_files(
+    name = "world",
+    base_revision = "88aee439477603da95beb8a1cc23d43b9d6d482c",
+    entities = "entities.parquet",
+    fact_identity = "repository-facts-v2:81630d421188a97bee6f9c32246d0420268a777cade8294d3b07dca38dc7e276",
+    identity = "identity.json",
+    metadata = "metadata.parquet",
+    relations = "relations.parquet",
+    repository = "NodeBB/NodeBB",
+    snapshot_id = "repository-snapshot-v1:b01273c831ecb224f2c459aedf2020d5487d20ec961426026d93b25e015c4186",
+    source_tree_identity = "source-tree-js-ts-v1:b9fd7c1dcb235354d41240cbc234441b9ed98b5cbe87181094a3c0875ecbc295",
+    visibility = ["//visibility:public"],
+)
