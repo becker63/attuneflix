@@ -1,0 +1,28 @@
+load("@rules_java//java:defs.bzl", "java_library", "java_test")
+
+java_library(
+    name = "attune_inference",
+    srcs = [
+        "AttuneDecision.java",
+        "AttuneEmbed.java",
+        "OpenRouter.java",
+    ],
+    javacopts = ["--release=21"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "@maven//:com_fasterxml_jackson_core_jackson_core",
+        "@maven//:com_fasterxml_jackson_core_jackson_databind",
+    ],
+)
+
+java_test(
+    name = "attune_inference_test",
+    srcs = ["AttuneInferenceTest.java"],
+    javacopts = ["--release=21"],
+    main_class = "attune.inference.AttuneInferenceTest",
+    use_testrunner = False,
+    deps = [
+        ":attune_inference",
+        "@maven//:com_fasterxml_jackson_core_jackson_databind",
+    ],
+)

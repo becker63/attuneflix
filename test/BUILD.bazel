@@ -1,6 +1,19 @@
 load("//build:flix.bzl", "checked_test", "flix_check")
 
 flix_check(
+    name = "inference_boundary_check",
+    srcs = ["//build:src/InferenceBoundaryTest.flix"],
+    command = "test",
+    java_deps = ["//src/native/inference:attune_inference"],
+    threads = 2,
+)
+
+checked_test(
+    name = "inference_boundary_test",
+    check = ":inference_boundary_check",
+)
+
+flix_check(
     name = "core_parity_check",
     srcs = [
         "ParityTest.flix",

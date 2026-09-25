@@ -6,6 +6,7 @@ exports_files([
     "src/AtlasRepository.flix",
     "src/AtlasSignatureTableTest.flix",
     "src/AtlasTest.flix",
+    "src/InferenceBoundaryTest.flix",
     "src/LocalizationTest.flix",
     "src/PopulationTableTest.flix",
     "src/IdentityTest.flix",
