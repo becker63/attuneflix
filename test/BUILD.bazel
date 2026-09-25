@@ -54,11 +54,12 @@ checked_test(
 flix_check(
     name = "atlas_grammar_check",
     srcs = [
-        "//build:src/AtlasRepository.flix",
         "//build:src/AtlasTest.flix",
         "//src:Atlas.flix",
         "//src:Atlas/Signature.flix",
         "//src:Radii.flix",
+        "//src:Repository.flix",
+        "//src:Repository/Grit.flix",
         "//src:Repository/Physical.flix",
         "//src:Repository/Structure.flix",
         "//src:ScientificIdentity.flix",
@@ -76,7 +77,6 @@ checked_test(
 flix_check(
     name = "localization_sandwich_check",
     srcs = [
-        "//build:src/AtlasRepository.flix",
         "//build:src/LocalizationTest.flix",
         "//src:Atlas.flix",
         "//src:Atlas/Signature.flix",
@@ -86,6 +86,8 @@ flix_check(
         "//src:Localization/PriorTable.flix",
         "//src:Localization/Sandwich.flix",
         "//src:Radii.flix",
+        "//src:Repository.flix",
+        "//src:Repository/Grit.flix",
         "//src:Repository/Physical.flix",
         "//src:Repository/Structure.flix",
         "//src:ScientificIdentity.flix",
@@ -141,8 +143,9 @@ checked_test(
 flix_check(
     name = "repository_table_check",
     srcs = [
-        "//build:src/AtlasRepository.flix",
         "//build:src/RepositoryTableTest.flix",
+        "//src:Repository.flix",
+        "//src:Repository/Grit.flix",
         "//src:Repository/Structure.flix",
         "//src:Repository/Table.flix",
         "//src:ScientificIdentity.flix",
@@ -164,12 +167,13 @@ checked_test(
 flix_check(
     name = "atlas_signature_table_check",
     srcs = [
-        "//build:src/AtlasRepository.flix",
         "//build:src/AtlasSignatureTableTest.flix",
         "//src:Atlas.flix",
         "//src:Atlas/Signature.flix",
         "//src:Atlas/Signature/Table.flix",
         "//src:Radii.flix",
+        "//src:Repository.flix",
+        "//src:Repository/Grit.flix",
         "//src:Repository/Physical.flix",
         "//src:Repository/Structure.flix",
         "//src:ScientificIdentity.flix",
