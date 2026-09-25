@@ -1,8 +1,5 @@
 pub mod Radii.Evaluate {
     pub enum WorldId(String) with Eq, Order, ToString, Hash
-    pub enum ExprId(Radii.Expr) with Eq, Order, ToString, Hash
-    pub enum StateId(State) with Eq, Order, ToString, Hash
-    pub enum DecisionId(String) with Eq, Order, ToString, Hash
 
     /// A state cannot pair a domain tag with members from another domain.
     pub enum State with Eq, Order, ToString, Hash {
@@ -25,12 +22,6 @@ pub mod Radii.Evaluate {
         parents: Repository.Structure.Parents
     ): World =
         World.World(id, Repository.Physical.fromBasis(defines, imports, calls, parents))
-
-    pub def worldId(world: World): WorldId = let World.World(id, _) = world; id
-
-    pub def exprId(expr: Radii.Expr): ExprId = ExprId.ExprId(Radii.normalize(expr))
-
-    pub def stateId(state: State): StateId = StateId.StateId(state)
 
     /// Stable only within one compiled policy family.
     pub enum NodeId(Int32) with Eq, Order, ToString, Hash
@@ -96,10 +87,6 @@ pub mod Radii.Evaluate {
         let build = compileRoots(candidates, initial);
         {nodes = build#nodes, roots = List.reverse(build#roots) |> List.toVector}
     }
-
-    pub def nodeCount(program: Program): Int32 = Vector.length(program#nodes)
-
-    pub def rootCount(program: Program): Int32 = Vector.length(program#roots)
 
     /// The state arena and dense memo are fresh for every call. `NodeId` shares
     /// repeated syntax; `ArenaStateId` interns equal typed frontiers; the dense
