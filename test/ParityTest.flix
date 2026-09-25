@@ -100,7 +100,7 @@ mod ParityTest {
             Radii.Evaluate.State.Locations(Set#{location(0), location(1), location(2), location(3)}) :: Nil
     }
 
-    def physicalOne(world: Radii.Evaluate.World, expr: Radii.Expr, input: Radii.Evaluate.State): Result[String, Radii.Evaluate.State] = {
+    def physicalOne(world: Repository.Physical.World, expr: Radii.Expr, input: Radii.Evaluate.State): Result[String, Radii.Evaluate.State] = {
         let program = Radii.Evaluate.compile(expr :: Nil);
         match Radii.Evaluate.evaluate(world, input, program) {
             case Err(error) => Err(error)
@@ -110,7 +110,7 @@ mod ParityTest {
 
     def assertInputs(
         reference: Repository.Structure.Repository,
-        physical: Radii.Evaluate.World,
+        physical: Repository.Physical.World,
         expr: Radii.Expr,
         states: List[Radii.Evaluate.State]
     ): Int32 \ Assert = match states {
@@ -127,7 +127,7 @@ mod ParityTest {
 
     def assertExpressions(
         reference: Repository.Structure.Repository,
-        physical: Radii.Evaluate.World,
+        physical: Repository.Physical.World,
         expressions: List[Radii.Expr]
     ): Int32 \ Assert = match expressions {
         case Nil => 0
@@ -142,13 +142,7 @@ mod ParityTest {
         case Nil => 0
         case basis :: rest => {
             let reference = Repository.Reference.fromBasis(basis#defines, basis#imports, basis#calls, basis#parents);
-            let physical = Radii.Evaluate.fromBasis(
-                Radii.Evaluate.WorldId.WorldId(basis#name),
-                basis#defines,
-                basis#imports,
-                basis#calls,
-                basis#parents
-            );
+            let physical = Repository.Physical.fromBasis(basis#defines, basis#imports, basis#calls, basis#parents);
             assertExpressions(reference, physical, expressions) +
                 assertExpressionsOnWorlds(expressions, rest)
         }

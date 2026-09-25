@@ -1,27 +1,10 @@
 pub mod Radii.Evaluate {
-    pub enum WorldId(String) with Eq, Order, ToString, Hash
-
     /// A state cannot pair a domain tag with members from another domain.
     pub enum State with Eq, Order, ToString, Hash {
         case Files(Set[Repository.Structure.FileId])
         case Symbols(Set[Repository.Structure.SymbolId])
         case Locations(Set[Repository.Structure.LocationId])
     }
-
-    /// Production evaluation keeps immutable identity beside the physical
-    /// world. It never solves or queries the Level-2 Datalog specification.
-    pub enum World {
-        case World(WorldId, Repository.Physical.World)
-    }
-
-    pub def fromBasis(
-        id: WorldId,
-        defines: Repository.Structure.Defines,
-        imports: Repository.Structure.Imports,
-        calls: Repository.Structure.Calls,
-        parents: Repository.Structure.Parents
-    ): World =
-        World.World(id, Repository.Physical.fromBasis(defines, imports, calls, parents))
 
     /// Stable only within one compiled policy family.
     pub enum NodeId(Int32) with Eq, Order, ToString, Hash
@@ -95,7 +78,7 @@ pub mod Radii.Evaluate {
     /// This is the coarse physical shortcut that can coexist with a stable
     /// Atom-level scientific model.
     pub def evaluate(
-        world: Radii.Evaluate.World,
+        world: Repository.Physical.World,
         input: Radii.Evaluate.State,
         program: Program
     ): Result[String, Evaluation] = region rc {
@@ -172,7 +155,7 @@ pub mod Radii.Evaluate {
     }
 
     def evaluateRoots(
-        world: Radii.Evaluate.World,
+        world: Repository.Physical.World,
         inputId: Int32,
         program: Program,
         index: Int32,
@@ -192,7 +175,7 @@ pub mod Radii.Evaluate {
         }
 
     def evaluateNode(
-        world: Radii.Evaluate.World,
+        world: Repository.Physical.World,
         nodeId: NodeId,
         inputId: Int32,
         program: Program,
@@ -211,7 +194,7 @@ pub mod Radii.Evaluate {
     }
 
     def evaluateFresh(
-        world: Radii.Evaluate.World,
+        world: Repository.Physical.World,
         node: Node,
         inputId: Int32,
         program: Program,
@@ -283,8 +266,7 @@ pub mod Radii.Evaluate {
 
     /// Shared primitive physical semantics. Datalog remains the independent
     /// Level-2 oracle for these operations.
-    pub def applyForward(world0: World, atom: Radii.Atom, input: State): Result[String, State] = {
-        let World.World(_, world) = world0;
+    pub def applyForward(world: Repository.Physical.World, atom: Radii.Atom, input: State): Result[String, State] = {
         match (atom, input) {
             case (Radii.Atom.Defines, State.Files(xs)) =>
                 Ok(State.Symbols(Repository.Physical.defines(world, xs)))
@@ -314,8 +296,7 @@ pub mod Radii.Evaluate {
         }
     }
 
-    pub def applyBackward(world0: World, atom: Radii.Atom, input: State): Result[String, State] = {
-        let World.World(_, world) = world0;
+    pub def applyBackward(world: Repository.Physical.World, atom: Radii.Atom, input: State): Result[String, State] = {
         match (atom, input) {
             case (Radii.Atom.Defines, State.Symbols(xs)) =>
                 Ok(State.Files(Repository.Physical.definedIn(world, xs)))
