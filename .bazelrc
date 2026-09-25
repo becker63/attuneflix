@@ -30,6 +30,6 @@ build:buildbuddy --experimental_profile_include_target_label
 build:buildbuddy --experimental_profile_include_primary_output
 build:buildbuddy-rbe --config=buildbuddy
 build:buildbuddy-rbe --remote_executor=grpcs://remote.buildbuddy.io
-build:buildbuddy-rbe --extra_execution_platforms=@buildbuddy_toolchain//:platform_linux_arm64
+build:buildbuddy-rbe --extra_execution_platforms=@buildbuddy_toolchain//:platform_linux_x86_64
 build:buildbuddy-rbe --jobs=80
 test:buildbuddy-rbe --test_env=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin

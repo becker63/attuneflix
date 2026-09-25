@@ -44,28 +44,6 @@ AttuneAtlasAggregateInfo = provider(
     },
 )
 
-AttunePriorInfo = provider(
-    doc = "One typed learned prior.",
-    fields = {
-        "metadata": "provider/protocol/case metadata Parquet",
-        "documents": "exact ranked document corpus Parquet",
-        "ranking": "ordered semantic-prior ranking Parquet",
-    },
-)
-
-AttuneIssueInfo = provider(
-    doc = "One typed admitted localization issue.",
-    fields = {"issue": "single-row issue Parquet"},
-)
-
-AttunePredictionInfo = provider(
-    doc = "One typed prior/Atlas/judge prediction.",
-    fields = {
-        "summary": "selection and Atlas compression summary Parquet",
-        "ranking": "ordered predicted semantic identities Parquet",
-    },
-)
-
 AttunePopulationInfo = provider(
     doc = "One typed frozen scientific population and its protocol.",
     fields = {
@@ -85,47 +63,6 @@ attune_population_files = rule(
     attrs = {
         "metadata": attr.label(allow_single_file = [".parquet"], mandatory = True),
         "cases": attr.label(allow_single_file = [".parquet"], mandatory = True),
-    },
-)
-
-def _issue_files_impl(ctx):
-    return [
-        DefaultInfo(files = depset([ctx.file.issue])),
-        AttuneIssueInfo(issue = ctx.file.issue),
-    ]
-
-attune_issue_files = rule(
-    implementation = _issue_files_impl,
-    attrs = {"issue": attr.label(allow_single_file = [".parquet"], mandatory = True)},
-)
-
-def _prior_files_impl(ctx):
-    files = [ctx.file.metadata, ctx.file.documents, ctx.file.ranking]
-    return [
-        DefaultInfo(files = depset(files)),
-        AttunePriorInfo(metadata = files[0], documents = files[1], ranking = files[2]),
-    ]
-
-attune_prior_files = rule(
-    implementation = _prior_files_impl,
-    attrs = {
-        "metadata": attr.label(allow_single_file = [".parquet"], mandatory = True),
-        "documents": attr.label(allow_single_file = [".parquet"], mandatory = True),
-        "ranking": attr.label(allow_single_file = [".parquet"], mandatory = True),
-    },
-)
-
-def _prediction_files_impl(ctx):
-    return [
-        DefaultInfo(files = depset([ctx.file.summary, ctx.file.ranking])),
-        AttunePredictionInfo(summary = ctx.file.summary, ranking = ctx.file.ranking),
-    ]
-
-attune_prediction_files = rule(
-    implementation = _prediction_files_impl,
-    attrs = {
-        "summary": attr.label(allow_single_file = [".parquet"], mandatory = True),
-        "ranking": attr.label(allow_single_file = [".parquet"], mandatory = True),
     },
 )
 

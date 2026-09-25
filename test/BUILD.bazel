@@ -22,19 +22,6 @@ checked_test(
 )
 
 flix_check(
-    name = "inference_boundary_check",
-    srcs = ["//build:src/InferenceBoundaryTest.flix"],
-    command = "check",
-    java_deps = ["//src/native/inference:attune_inference"],
-    threads = 2,
-)
-
-checked_test(
-    name = "inference_boundary_test",
-    check = ":inference_boundary_check",
-)
-
-flix_check(
     name = "grit_boundary_check",
     srcs = [
         "//build:src/Repository.flix",

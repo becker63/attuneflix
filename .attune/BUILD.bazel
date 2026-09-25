@@ -1,5 +1,0 @@
-filegroup(
-    name = "retained_localization_evidence",
-    srcs = glob(["localization-v1/**/*.parquet"], allow_empty = True),
-    visibility = ["//visibility:private"],
-)
