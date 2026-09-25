@@ -75,6 +75,13 @@ gritql_repository(
     name = "gritql_source",
     attune_lib = "//src/native/grit:lib.rs",
     cargo_lock = "//src/native/grit:Cargo.lock",
+    language_patches = [
+        "//build:grit_patches/flix.rs",
+        "//build:grit_patches/flix_binding.rs",
+        "//build:grit_patches/starlark.rs",
+        "//build:grit_patches/starlark_binding.rs",
+        "//build:grit_patches/textual_metavariable.rs",
+    ],
 )
 
 crate.from_cargo(

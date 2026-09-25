@@ -32,6 +32,27 @@ public final class AttuneGritTest {
         return values;
     }
 
+    /**
+     * The lowest-level proof that one admitted language is inside the native Grit
+     * engine: the Java facade (the Attune boundary) selects the language, the
+     * engine compiles the pattern against that language, parses the source, and
+     * returns exactly the range of the matched call.
+     */
+    private static void requireSeam(
+            String language, String declaration, String path, String source, String call) {
+        String program = "engine marzano(0.1)\nlanguage " + declaration + "\n\n"
+                + "`$callee($...)` where { log(message=\"call\", variable=$callee) }\n";
+        String wire = AttuneGrit.evaluate(language, program, path, source);
+        require(wire.contains("\"matched\":true"), language + " did not match: " + wire);
+        int start = source.indexOf(call);
+        require(start >= 0, language + ": fixture does not contain " + call);
+        require(wire.contains("\"path\":\"" + path + "\""
+                        + ",\"start_byte\":" + start
+                        + ",\"end_byte\":" + (start + call.length()) + "}"),
+                language + " returned the wrong range: " + wire);
+        require(wire.contains("\"message\":\"call\\n\""), language + " logged nothing: " + wire);
+    }
+
     public static void main(String[] args) throws Exception {
         String calls = AttuneGrit.program("typescript", "calls");
         String defines = AttuneGrit.program("typescript", "defines");
@@ -205,6 +226,26 @@ async function run(client: Client): Promise<void> {
 
         String unsupported = AttuneGrit.evaluate("made-up", calls, "invalid.ts", "");
         require(unsupported.contains("\"kind\":\"unsupported-language\""), unsupported);
+
+        // All five admitted languages run inside the same native engine. The
+        // Flix and Starlark seams select the language through this facade, the
+        // engine compiles the pattern with that language, parses the source, and
+        // returns the expected match and range.
+        requireSeam("javascript", "js", "src/helper.js", "helper(1);\n", "helper(1)");
+        requireSeam("typescript", "js(typescript)", "src/helper.ts", "helper(1);\n", "helper(1)");
+        requireSeam(
+                "java",
+                "java",
+                "src/Helper.java",
+                "class Helper {\n    void run() {\n        helper(1);\n    }\n}\n",
+                "helper(1)");
+        requireSeam("flix", "flix", "src/Main.flix", "def main(): Int32 = helper(1)\n", "helper(1)");
+        requireSeam(
+                "starlark",
+                "starlark",
+                "src/build.bzl",
+                "def _impl(ctx):\n    return helper(1)\n",
+                "helper(1)");
 
         String embeddedNul = AttuneGrit.evaluate(
                 "typescript", calls, "nul.ts", "const value = 'a\u0000b';\nverify(name);");

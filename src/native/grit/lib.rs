@@ -116,6 +116,10 @@ fn target(language: &str) -> Result<TargetLanguage, Vec<u8>> {
         // while selecting the concrete TypeScript or JSX grammar in source.
         // Keep that target contract during the behavior-preserving layout move.
         "javascript" | "jsx" | "typescript" | "tsx" => PatternLanguage::TypeScript,
+        // Attune's additional admitted languages, all inside the frozen closure.
+        "java" => PatternLanguage::Java,
+        "flix" => PatternLanguage::Flix,
+        "starlark" => PatternLanguage::Starlark,
         _ => return Err(failure("unsupported-language", language)),
     };
     TargetLanguage::try_from(pattern).map_err(|error| failure("host", error.to_string()))
@@ -345,6 +349,199 @@ language js(typescript)
         let owned = unsafe { slice::from_raw_parts(data, len) }.to_vec();
         unsafe { attune_grit_buffer_free(data, len) };
         (status, owned)
+    }
+
+    /// The narrowest proof that one admitted language is a real Grit target
+    /// language: the compiled engine, entered through the ABI, selects the
+    /// language, compiles the pattern against that language's grammar, parses
+    /// the source file, and returns exactly the range of the matched call.
+    ///
+    /// `declaration` is the GritQL `language` clause and `call` the exact source
+    /// text the pattern must match, so the expected range is derived from the
+    /// fixture instead of asserted as a magic offset.
+    fn assert_seam(language: &str, declaration: &str, path: &str, source: &str, call: &str) {
+        let program = format!(
+            "engine marzano(0.1)\nlanguage {declaration}\n\n\
+             `$callee($...)` where {{ log(message=\"call\", variable=$callee) }}\n"
+        );
+        let (status, bytes) = through_abi(
+            language.as_bytes(),
+            program.as_bytes(),
+            path.as_bytes(),
+            source.as_bytes(),
+        );
+        assert_eq!(status, ABI_OK, "{language}: {program}");
+        let value: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(value["matched"], true, "{language}: {value}");
+        let matches = value["matches"].as_array().unwrap();
+        assert_eq!(matches.len(), 1, "{language}: {value}");
+        let span = &matches[0];
+        assert_eq!(span["path"], path, "{language}: {value}");
+        let start = span["start_byte"].as_u64().unwrap() as usize;
+        let end = span["end_byte"].as_u64().unwrap() as usize;
+        assert_eq!(start, source.find(call).unwrap(), "{language}: {value}");
+        assert_eq!(end, start + call.len(), "{language}: {value}");
+        assert_eq!(source.get(start..end).unwrap(), call, "{language}: {value}");
+        assert_eq!(value["logs"].as_array().unwrap().len(), 1, "{language}: {value}");
+        assert!(value["diagnostics"].as_array().unwrap().is_empty(), "{language}: {value}");
+    }
+
+    #[test]
+    fn javascript_seam_runs_inside_the_native_engine() {
+        assert_seam(
+            "javascript",
+            "js",
+            "src/helper.js",
+            "helper(1);\n",
+            "helper(1)",
+        );
+    }
+
+    #[test]
+    fn typescript_seam_runs_inside_the_native_engine() {
+        assert_seam(
+            "typescript",
+            "js(typescript)",
+            "src/helper.ts",
+            "helper(1);\n",
+            "helper(1)",
+        );
+    }
+
+    #[test]
+    fn java_seam_runs_inside_the_native_engine() {
+        assert_seam(
+            "java",
+            "java",
+            "src/Helper.java",
+            "class Helper {\n    void run() {\n        helper(1);\n    }\n}\n",
+            "helper(1)",
+        );
+    }
+
+    #[test]
+    fn flix_seam_runs_inside_the_native_engine() {
+        assert_seam(
+            "flix",
+            "flix",
+            "src/Main.flix",
+            "def main(): Int32 = helper(1)\n",
+            "helper(1)",
+        );
+    }
+
+    #[test]
+    fn starlark_seam_runs_inside_the_native_engine() {
+        assert_seam(
+            "starlark",
+            "starlark",
+            "src/build.bzl",
+            "def _impl(ctx):\n    return helper(1)\n",
+            "helper(1)",
+        );
+    }
+
+    /// The GritQL grammar patch that admits `language flix` and
+    /// `language starlark` must not swallow identifiers that merely begin with
+    /// those words: `flixy` and `starlarky` stay ordinary names, as pattern
+    /// names and as the matched source text.
+    #[test]
+    fn language_keywords_do_not_swallow_identifiers() {
+        for (language, keyword, path, source) in [
+            (
+                "flix",
+                "flixy",
+                "src/Main.flix",
+                "def main(): Int32 = flixy(1)\n",
+            ),
+            (
+                "starlark",
+                "starlarky",
+                "src/build.bzl",
+                "def _impl(ctx):\n    return starlarky(1)\n",
+            ),
+        ] {
+            let program = format!(
+                "engine marzano(0.1)\nlanguage {language}\n\n\
+                 pattern {keyword}() {{ `{keyword}($...)` }}\n\n{keyword}()\n"
+            );
+            let (status, bytes) = through_abi(
+                language.as_bytes(),
+                program.as_bytes(),
+                path.as_bytes(),
+                source.as_bytes(),
+            );
+            assert_eq!(status, ABI_OK);
+            let value: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+            assert_eq!(value["matched"], true, "{language}: {program}\n{value}");
+            let matches = value["matches"].as_array().unwrap();
+            assert_eq!(matches.len(), 1, "{language}: {value}");
+            let start = matches[0]["start_byte"].as_u64().unwrap() as usize;
+            let end = matches[0]["end_byte"].as_u64().unwrap() as usize;
+            assert_eq!(
+                source.get(start..end).unwrap(),
+                format!("{keyword}(1)"),
+                "{language}: {value}"
+            );
+        }
+    }
+
+    /// The admitted languages are addressable the way the Grit language system
+    /// addresses them: by the name a program declares, and by the file kinds
+    /// the repository admits.
+    #[test]
+    fn admitted_languages_dispatch_by_name_and_file_kind() {
+        use marzano_language::target_language::PatternLanguage;
+
+        for (name, language) in [
+            ("javascript", PatternLanguage::JavaScript),
+            ("js", PatternLanguage::Tsx),
+            ("typescript", PatternLanguage::TypeScript),
+            ("java", PatternLanguage::Java),
+            ("flix", PatternLanguage::Flix),
+            ("starlark", PatternLanguage::Starlark),
+        ] {
+            assert_eq!(
+                PatternLanguage::from_string(name, None),
+                Some(language),
+                "language {name} is not declared to the Grit language system"
+            );
+        }
+
+        // Bazel's build files are Starlark: `.bzl`, `.bazel` (`BUILD.bazel`),
+        // and the extensionless `BUILD`/`WORKSPACE` names.
+        for kind in [
+            "bzl",
+            "bazel",
+            "star",
+            "BUILD",
+            "BUILD.bazel",
+            "WORKSPACE",
+            "WORKSPACE.bazel",
+        ] {
+            assert_eq!(
+                PatternLanguage::from_extension(kind),
+                Some(PatternLanguage::Starlark),
+                "{kind} does not dispatch to Starlark"
+            );
+        }
+        assert_eq!(
+            PatternLanguage::from_extension("flix"),
+            Some(PatternLanguage::Flix)
+        );
+        assert_eq!(
+            PatternLanguage::from_extension("java"),
+            Some(PatternLanguage::Java)
+        );
+        for extension in ["bzl", "bazel"] {
+            assert!(
+                PatternLanguage::Starlark.match_extension(extension),
+                "Starlark does not own .{extension}"
+            );
+        }
+        assert_eq!(PatternLanguage::Starlark.get_default_extension(), Some("bzl"));
+        assert!(PatternLanguage::Flix.match_extension("flix"));
+        assert!(PatternLanguage::Java.match_extension("java"));
     }
 
     #[test]

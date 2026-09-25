@@ -1,6 +1,177 @@
-"""One content-addressed materialization of Attune's frozen Grit source."""
+"""One content-addressed materialization of Attune's frozen Grit source.
+
+Grit stays pinned at `_GRIT_REVISION`; Attune's additional target languages are
+**extensions of that closure**, never a reason to move the pin:
+
+* Java is the upstream parser already inside the pin (`tree-sitter-java`), which
+  this rule deliberately stopped stripping; and
+* Flix and Starlark are two additional pinned Tree-sitter grammars materialized
+  beside the others. The Flix grammar is the repository's ONE Flix grammar: the
+  exact revision `zed/extension.toml` pins for the Zed extension.
+"""
 
 _GRIT_REVISION = "c80b3026471b229f41b279c3eb0c162dcdacfdb1"
+
+# The one Flix syntax grammar in AttuneFlix: `zed/extension.toml` pins the same
+# repository and revision for Zed. The Grit integration reuses it rather than
+# introducing a second grammar, a fork, or an independently pinned version.
+_FLIX_GRAMMAR = struct(
+    directory = "tree-sitter-flix",
+    name = "flix",
+    repository = "omarjatoi/tree-sitter-flix",
+    revision = "78cff149b2e9897456f94844872353b5ee0ca93b",
+    sha256 = "d72c059bb82487e7c19cf276fcb3a8fa0466fa692a4ebc39c911a458e11b0d3c",
+    version = "0.1.0",
+)
+
+# The maintained Starlark grammar, integrated inside the same frozen closure.
+_STARLARK_GRAMMAR = struct(
+    directory = "tree-sitter-starlark",
+    name = "starlark",
+    repository = "tree-sitter-grammars/tree-sitter-starlark",
+    revision = "a453dbf3ba433db0e5ec621a38a7e59d72e4dc69",
+    sha256 = "7b417fde027fd04bff8c68457e92072d0d88ea71988d9432bfe233633c09ab74",
+    version = "1.3.0",
+)
+
+# Repository-local files copied into the materialized Grit closure. They are the
+# Grit language implementations Attune adds to `marzano_language`, the ABI-14
+# bindings for the two new grammars, and the shared metavariable helper.
+_LANGUAGE_PATCH_DESTINATIONS = {
+    "flix.rs": "crates/language/src/flix.rs",
+    "flix_binding.rs": "resources/language-metavariables/tree-sitter-flix/bindings/rust/grit_language.rs",
+    "starlark.rs": "crates/language/src/starlark.rs",
+    "starlark_binding.rs": "resources/language-metavariables/tree-sitter-starlark/bindings/rust/grit_language.rs",
+    "textual_metavariable.rs": "crates/language/src/textual_metavariable.rs",
+}
+
+# The list-bearing wrapper nodes of the two pinned grammars, mapped to the field
+# name their declaring nodes already use. See `_copy_node_types`.
+_WRAPPER_LIST_FIELDS = {
+    "flix": {
+        "argument_list": "arguments",
+        "case_payload": "payload",
+        "formal_parameters": "parameters",
+        "lambda_parameters": "parameters",
+    },
+    "starlark": {
+        "argument_list": "arguments",
+        "lambda_parameters": "parameters",
+        "parameters": "parameters",
+    },
+}
+
+# Edits that register Flix and Starlark as ordinary Grit target languages in the
+# frozen `crates/language` crate. Java needs no registry edit: upstream Grit
+# already ships the Java language implementation and enum variant, and this
+# closure only stopped stripping its parser.
+_LANGUAGE_REGISTRY_PATCHES = [
+    (
+        "    elixir::Elixir,\n    go::Go,",
+        "    elixir::Elixir,\n    flix::Flix,\n    go::Go,",
+    ),
+    (
+        "    sql::Sql,\n    toml::Toml,",
+        "    sql::Sql,\n    starlark::Starlark,\n    toml::Toml,",
+    ),
+    ("    Json,\n    Java,", "    Json,\n    Flix,\n    Java,"),
+    ("    Sql,\n    Vue,", "    Sql,\n    Starlark,\n    Vue,"),
+    (
+        '            PatternLanguage::Css => write!(f, "css"),\n            PatternLanguage::Json => write!(f, "json"),',
+        '            PatternLanguage::Css => write!(f, "css"),\n'
+        + '            PatternLanguage::Flix => write!(f, "flix"),\n'
+        + '            PatternLanguage::Json => write!(f, "json"),',
+    ),
+    (
+        '            PatternLanguage::Sql => write!(f, "sql"),\n            PatternLanguage::Vue => write!(f, "vue"),',
+        '            PatternLanguage::Sql => write!(f, "sql"),\n'
+        + '            PatternLanguage::Starlark => write!(f, "starlark"),\n'
+        + '            PatternLanguage::Vue => write!(f, "vue"),',
+    ),
+    ("            Self::Json,\n            Self::Java,", "            Self::Json,\n            Self::Flix,\n            Self::Java,"),
+    ("            Self::Sql,\n            Self::Vue,", "            Self::Sql,\n            Self::Starlark,\n            Self::Vue,"),
+    (
+        '            "json" => Some(Self::Json),\n            "java" => Some(Self::Java),',
+        '            "json" => Some(Self::Json),\n            "flix" => Some(Self::Flix),\n            "java" => Some(Self::Java),',
+    ),
+    (
+        '            "sql" => Some(Self::Sql),\n            "vue" => Some(Self::Vue),\n            "toml" => Some(Self::Toml),',
+        '            "sql" => Some(Self::Sql),\n'
+        + '            "starlark" => Some(Self::Starlark),\n'
+        + '            "vue" => Some(Self::Vue),\n'
+        + '            "toml" => Some(Self::Toml),',
+    ),
+    (
+        '            "sql" => Some(Self::Sql),\n            "vue" => Some(Self::Vue),\n            "php" | "phps" | "phtml" | "pht" => Some(Self::Php),',
+        '            "sql" => Some(Self::Sql),\n'
+        + '            // Bazel\'s build files are Starlark: `.bzl` and `.bazel` carry the\n'
+        + '            // extension, and `BUILD`/`WORKSPACE` are named without one.\n'
+        + '            "bzl" | "star" | "bazel" | "BUILD" | "BUILD.bazel" | "WORKSPACE" | "WORKSPACE.bazel" => {\n'
+        + '                Some(Self::Starlark)\n'
+        + '            }\n'
+        + '            "vue" => Some(Self::Vue),\n'
+        + '            "php" | "phps" | "phtml" | "pht" => Some(Self::Php),',
+    ),
+    (
+        '            PatternLanguage::Java => &["java"],\n            PatternLanguage::Kotlin => &["kt", "kts"],',
+        '            PatternLanguage::Java => &["java"],\n'
+        + '            PatternLanguage::Flix => &["flix"],\n'
+        + '            PatternLanguage::Kotlin => &["kt", "kts"],',
+    ),
+    (
+        '            PatternLanguage::Sql => &["sql"],\n            PatternLanguage::Vue => &["vue"],',
+        '            PatternLanguage::Sql => &["sql"],\n'
+        + '            // Bazel/Starlark sources: `.bzl`, the `.bazel` files (`BUILD.bazel`,\n'
+        + '            // `MODULE.bazel`), and Buck2-style `.star`.\n'
+        + '            PatternLanguage::Starlark => &["bzl", "bazel", "star"],\n'
+        + '            PatternLanguage::Vue => &["vue"],',
+    ),
+    (
+        '            PatternLanguage::Java => Some("java"),\n            PatternLanguage::Kotlin => Some("kt"),',
+        '            PatternLanguage::Java => Some("java"),\n'
+        + '            PatternLanguage::Flix => Some("flix"),\n'
+        + '            PatternLanguage::Kotlin => Some("kt"),',
+    ),
+    (
+        '            PatternLanguage::Sql => Some("sql"),\n            PatternLanguage::Vue => Some("vue"),',
+        '            PatternLanguage::Sql => Some("sql"),\n'
+        + '            PatternLanguage::Starlark => Some("bzl"),\n'
+        + '            PatternLanguage::Vue => Some("vue"),',
+    ),
+    (
+        '            PatternLanguage::Java => Ok(TargetLanguage::Java(Java::new(Some(lang)))),\n            PatternLanguage::CSharp =>',
+        '            PatternLanguage::Java => Ok(TargetLanguage::Java(Java::new(Some(lang)))),\n'
+        + '            PatternLanguage::Flix => Ok(TargetLanguage::Flix(Flix::new(Some(lang)))),\n'
+        + '            PatternLanguage::CSharp =>',
+    ),
+    (
+        '            PatternLanguage::Sql => Ok(TargetLanguage::Sql(Sql::new(Some(lang)))),\n            PatternLanguage::Vue =>',
+        '            PatternLanguage::Sql => Ok(TargetLanguage::Sql(Sql::new(Some(lang)))),\n'
+        + '            PatternLanguage::Starlark => Ok(TargetLanguage::Starlark(Starlark::new(Some(lang)))),\n'
+        + '            PatternLanguage::Vue =>',
+    ),
+    (
+        "            TargetLanguage::CSharp(_)\n            | TargetLanguage::Go(_)",
+        "            TargetLanguage::CSharp(_)\n            | TargetLanguage::Flix(_)\n            | TargetLanguage::Go(_)",
+    ),
+    (
+        "            TargetLanguage::Python(_)\n            | TargetLanguage::Ruby(_)",
+        "            TargetLanguage::Python(_)\n            | TargetLanguage::Starlark(_)\n            | TargetLanguage::Ruby(_)",
+    ),
+    ("    Sql,\n    Php,\n    PhpOnly\n}", "    Sql,\n    Php,\n    PhpOnly,\n    Starlark\n}"),
+    (
+        '            TargetLanguage::Json(_) => write!(f, "json"),\n            TargetLanguage::Java(_) => write!(f, "java"),',
+        '            TargetLanguage::Json(_) => write!(f, "json"),\n'
+        + '            TargetLanguage::Flix(_) => write!(f, "flix"),\n'
+        + '            TargetLanguage::Java(_) => write!(f, "java"),',
+    ),
+    (
+        '            TargetLanguage::Sql(_) => write!(f, "sql"),\n            TargetLanguage::Vue(_) => write!(f, "vue"),',
+        '            TargetLanguage::Sql(_) => write!(f, "sql"),\n'
+        + '            TargetLanguage::Starlark(_) => write!(f, "starlark"),\n'
+        + '            TargetLanguage::Vue(_) => write!(f, "vue"),',
+    ),
+]
 
 _UNUSED_LANGUAGE_PARSERS = [
     ("tree-sitter-css", "tree-sitter-css"),
@@ -9,7 +180,6 @@ _UNUSED_LANGUAGE_PARSERS = [
     ("tree-sitter-yaml", "tree-sitter-yaml"),
     ("tree-sitter-hcl", "tree-sitter-hcl"),
     ("tree-sitter-html", "tree-sitter-html"),
-    ("tree-sitter-java", "tree-sitter-java"),
     ("tree-sitter-kotlin", "tree-sitter-kotlin"),
     ("tree-sitter-c-sharp", "tree-sitter-c-sharp"),
     ("tree-sitter-python", "tree-sitter-python"),
@@ -36,6 +206,202 @@ def _drop_nested_workspace(repository_ctx, path):
     if marker not in content:
         fail("expected nested workspace marker in %s" % path)
     repository_ctx.file(path, content.split(marker, 1)[0] + "\n")
+
+def _materialize_grammar(repository_ctx, grammar):
+    repository_ctx.download_and_extract(
+        url = "https://github.com/%s/archive/%s.tar.gz" % (grammar.repository, grammar.revision),
+        sha256 = grammar.sha256,
+        stripPrefix = "%s-%s" % (grammar.directory, grammar.revision),
+        output = "resources/language-metavariables/%s" % grammar.directory,
+    )
+
+def _patch_flix_language_abi(repository_ctx):
+    """Compile the pinned Flix grammar for the ABI the frozen Grit runtime speaks.
+
+    The pinned grammar is generated for a newer tree-sitter; the frozen closure
+    runs 0.20.10, whose language ABI is 14. Both edits are mechanical and shaped
+    to be upstreamable: the ABI version constant, and the lex-mode element type,
+    whose ABI-15 `reserved_word_set_id` the frozen runtime must not read (this
+    grammar leaves that field at zero for every state, so the ABI-14 layout is
+    the same table). The rest of the grammar, including its scanner, is the
+    pinned upstream source.
+    """
+    parser = "resources/language-metavariables/%s/src/parser.c" % _FLIX_GRAMMAR.directory
+    _replace(repository_ctx, parser, "#define LANGUAGE_VERSION 15", "#define LANGUAGE_VERSION 14")
+    header = "resources/language-metavariables/%s/src/tree_sitter/parser.h" % _FLIX_GRAMMAR.directory
+    _replace(
+        repository_ctx,
+        header,
+        """typedef struct {
+  uint16_t lex_state;
+  uint16_t external_lex_state;
+  uint16_t reserved_word_set_id;
+} TSLexerMode;""",
+        """typedef struct {
+  uint16_t lex_state;
+  uint16_t external_lex_state;
+} TSLexerMode;""",
+    )
+
+def _patch_gritql_language_names(repository_ctx):
+    """Admit `language flix` and `language starlark` in the frozen GritQL grammar.
+
+    The vendored GritQL parser spells its language names as a fixed keyword list
+    (`getgrit/tree-sitter-gritql`); upstream adds a language by regenerating the
+    grammar, which a hermetic repository rule cannot do. These are the two
+    keyword chains that regeneration would emit, appended to the generated
+    lexer: the literal chain ends on an existing language-name token, and the
+    language registry reads the declaration's *text*, so the token's own
+    spelling is inert. Everything else about the grammar is untouched.
+    """
+    parser = "vendor/tree-sitter-gritql/src/parser.c"
+    _replace(
+        repository_ctx,
+        parser,
+        """    case 7:
+      if (lookahead == 'a') ADVANCE(38);
+      END_STATE();""",
+        """    case 7:
+      if (lookahead == 'a') ADVANCE(38);
+      if (lookahead == 'l') ADVANCE(1000);
+      END_STATE();""",
+    )
+    _replace(
+        repository_ctx,
+        parser,
+        """    case 158:
+      if (lookahead == 't') ADVANCE(193);
+      END_STATE();""",
+        """    case 158:
+      if (lookahead == 'l') ADVANCE(1002);
+      if (lookahead == 't') ADVANCE(193);
+      END_STATE();""",
+    )
+    _replace(
+        repository_ctx,
+        parser,
+        """    case 269:
+      ACCEPT_TOKEN(anon_sym_start_column);
+      END_STATE();""",
+        """    case 269:
+      ACCEPT_TOKEN(anon_sym_start_column);
+      END_STATE();
+    case 1000:
+      if (lookahead == 'i') ADVANCE(1001);
+      END_STATE();
+    case 1001:
+      if (lookahead == 'x') ADVANCE(1005);
+      END_STATE();
+    case 1002:
+      if (lookahead == 'a') ADVANCE(1003);
+      END_STATE();
+    case 1003:
+      if (lookahead == 'r') ADVANCE(1004);
+      END_STATE();
+    case 1004:
+      if (lookahead == 'k') ADVANCE(1005);
+      END_STATE();
+    case 1005:
+      ACCEPT_TOKEN(anon_sym_cpp);
+      END_STATE();""",
+    )
+
+def _copy_node_types(repository_ctx):
+    """Project each pinned grammar's own node types into the Grit closure.
+
+    Grit compiles a snippet's argument and parameter lists through the fields the
+    node type declares. Both pinned grammars wrap those lists in a named
+    `argument_list` / `formal_parameters` node and declare no field on the
+    wrapper, so `` `$callee($...)` `` would compile as a literal-text leaf and
+    never match. Declaring the wrapper's contents field (the field name the
+    grammar already uses on the declaring node) keeps those snippets ordinary
+    AST patterns; it is the same shape the upstream Java node types declare for
+    `argument_list` and `formal_parameters`, and the frozen grammars themselves
+    are untouched.
+    """
+    for grammar in [_FLIX_GRAMMAR, _STARLARK_GRAMMAR]:
+        path = "resources/node-types/%s-node-types.json" % grammar.name
+        repository_ctx.file(
+            path,
+            repository_ctx.read(
+                "resources/language-metavariables/%s/src/node-types.json" % grammar.directory,
+            ),
+        )
+        _extend_node_types(repository_ctx, path, _WRAPPER_LIST_FIELDS[grammar.name])
+
+def _extend_node_types(repository_ctx, path, declarations):
+    node_types = json.decode(repository_ctx.read(path))
+    remaining = dict(declarations)
+    for node_type in node_types:
+        field = remaining.pop(node_type["type"], None)
+        if field == None:
+            continue
+        children = node_type.get("children", {})
+        node_type["fields"] = {
+            field: {
+                "multiple": True,
+                "required": False,
+                "types": children.get("types", []),
+            },
+        }
+    if remaining:
+        fail("pinned grammar no longer declares %s in %s" % (sorted(remaining.keys())[0], path))
+    repository_ctx.file(path, json.encode(node_types) + "\n")
+
+def _copy_language_sources(repository_ctx):
+    patches = {}
+    for label in repository_ctx.attr.language_patches:
+        patches[label.name.split("/")[-1]] = repository_ctx.path(label)
+    for basename, destination in _LANGUAGE_PATCH_DESTINATIONS.items():
+        if basename not in patches:
+            fail("the Grit language patch file %s is missing" % basename)
+        repository_ctx.file(destination, repository_ctx.read(patches[basename]))
+
+def _extend_language_registry(repository_ctx):
+    """Admit Java, Flix, and Starlark into `marzano_language`.
+
+    Every edit below extends the frozen Grit closure: the Java parser is simply
+    no longer stripped, and Flix and Starlark arrive as ordinary Grit target
+    languages with a Cargo/Bazel feature, a language implementation, an enum
+    variant and dispatch arms, and their own node types.
+    """
+    language_cargo = "crates/language/Cargo.toml"
+
+    # The upstream `marzano_language` manifest declares the Java parser; this
+    # closure now uses it, so it is no longer stripped. The two new grammars are
+    # declared beside the upstream parsers and admitted by the same feature.
+    _replace(
+        repository_ctx,
+        language_cargo,
+        'tree-sitter-javascript = { path = "../../resources/language-metavariables/tree-sitter-javascript", optional = true }\n',
+        'tree-sitter-javascript = { path = "../../resources/language-metavariables/tree-sitter-javascript", optional = true }\n'
+        + 'tree-sitter-flix = { path = "../../resources/language-metavariables/tree-sitter-flix", optional = true }\n'
+        + 'tree-sitter-starlark = { path = "../../resources/language-metavariables/tree-sitter-starlark", optional = true }\n',
+    )
+    _replace(
+        repository_ctx,
+        language_cargo,
+        '    "tree-sitter-gritql",\n',
+        '    "tree-sitter-gritql",\n    "tree-sitter-flix",\n    "tree-sitter-starlark",\n',
+    )
+
+    language_lib = "crates/language/src/lib.rs"
+    _replace(
+        repository_ctx,
+        language_lib,
+        "pub mod elixir;\npub mod foreign_language;",
+        "pub mod elixir;\npub mod flix;\npub mod foreign_language;",
+    )
+    _replace(
+        repository_ctx,
+        language_lib,
+        "pub mod sql;\npub mod target_language;",
+        "pub mod sql;\npub mod starlark;\nmod textual_metavariable;\npub mod target_language;",
+    )
+
+    target_language = "crates/language/src/target_language.rs"
+    for old, new in _LANGUAGE_REGISTRY_PATCHES:
+        _replace(repository_ctx, target_language, old, new)
 
 def _rust_library_build(name, crate_name, external_deps, path_deps = [], crate_features = [], compile_data = []):
     return """load("@grit_crates//:defs.bzl", "aliases", "all_crate_deps", "crate_deps", "crate_edition")
@@ -125,10 +491,23 @@ def _gritql_repository_impl(repository_ctx):
     )
     _drop_nested_workspace(repository_ctx, "vendor/tree-sitter-facade/Cargo.toml")
     _drop_nested_workspace(repository_ctx, "vendor/web-tree-sitter/Cargo.toml")
+    _patch_gritql_language_names(repository_ctx)
 
-    for module in ["javascript", "tsx", "typescript"]:
+    # Extend the frozen closure with the two additional target-language grammars
+    # and Attune's language implementations; Java needs no new grammar.
+    for grammar in [_FLIX_GRAMMAR, _STARLARK_GRAMMAR]:
+        _materialize_grammar(repository_ctx, grammar)
+    _patch_flix_language_abi(repository_ctx)
+    _copy_node_types(repository_ctx)
+    _copy_language_sources(repository_ctx)
+
+    for module, feature in [
+        ("java", "tree-sitter-java"),
+        ("javascript", "tree-sitter-javascript"),
+        ("tsx", "tree-sitter-typescript"),
+        ("typescript", "tree-sitter-typescript"),
+    ]:
         path = "crates/language/src/%s.rs" % module
-        feature = "tree-sitter-javascript" if module == "javascript" else "tree-sitter-typescript"
         _replace(
             repository_ctx,
             path,
@@ -142,9 +521,10 @@ def _gritql_repository_impl(repository_ctx):
             '#[cfg(feature = "%s")]' % feature,
         )
 
-    # Attune's frozen native boundary enables only GritQL, JavaScript, and
-    # TypeScript parsers. Cargo resolves optional path dependencies even when
-    # disabled, so make the generated manifest describe that admitted closure.
+    # Attune's frozen native boundary enables only the admitted parsers: GritQL,
+    # JavaScript, TypeScript, Java, Flix, and Starlark. Cargo resolves optional
+    # path dependencies even when disabled, so make the generated manifest
+    # describe exactly that admitted closure.
     for dependency, directory in _UNUSED_LANGUAGE_PARSERS:
         _replace(
             repository_ctx,
@@ -175,6 +555,8 @@ exclude = [
     )
     repository_ctx.file("Cargo.lock", repository_ctx.read(repository_ctx.attr.cargo_lock))
     repository_ctx.file("attune-grit/lib.rs", repository_ctx.read(repository_ctx.attr.attune_lib))
+
+    _extend_language_registry(repository_ctx)
 
     repository_ctx.file(
         "crates/grit-util/BUILD.bazel",
@@ -214,7 +596,10 @@ exclude = [
             path_deps = [
                 "//crates/grit-util:grit_util",
                 "//crates/util:marzano_util",
+                "//resources/language-metavariables/tree-sitter-flix:tree_sitter_flix",
+                "//resources/language-metavariables/tree-sitter-java:tree_sitter_java",
                 "//resources/language-metavariables/tree-sitter-javascript:tree_sitter_javascript",
+                "//resources/language-metavariables/tree-sitter-starlark:tree_sitter_starlark",
                 "//resources/language-metavariables/tree-sitter-typescript:tree_sitter_typescript",
                 "//vendor/tree-sitter-facade:tree_sitter_facade_sg",
                 "//vendor/tree-sitter-gritql:tree_sitter_gritql",
@@ -222,7 +607,10 @@ exclude = [
             crate_features = [
                 "grit-parser",
                 "tree-sitter-gritql",
+                "tree-sitter-flix",
+                "tree-sitter-java",
                 "tree-sitter-javascript",
+                "tree-sitter-starlark",
                 "tree-sitter-typescript",
             ],
             compile_data = ["//resources/node-types:all"],
@@ -291,6 +679,15 @@ rust_library(
         ),
     )
     repository_ctx.file(
+        "resources/language-metavariables/tree-sitter-java/BUILD.bazel",
+        _tree_sitter_parser_build(
+            "tree_sitter_java",
+            "tree_sitter_java",
+            "bindings/rust/lib.rs",
+            "0.20.2",
+        ),
+    )
+    repository_ctx.file(
         "resources/language-metavariables/tree-sitter-javascript/BUILD.bazel",
         _tree_sitter_parser_build(
             "tree_sitter_javascript",
@@ -306,6 +703,27 @@ rust_library(
             "tree_sitter_typescript",
             "bindings/rust/lib.rs",
             "0.20.5",
+        ),
+    )
+
+    # The two grammars Attune adds use the repository-local ABI-14 bindings
+    # instead of the upstream bindings, which target a newer tree-sitter.
+    repository_ctx.file(
+        "resources/language-metavariables/%s/BUILD.bazel" % _FLIX_GRAMMAR.directory,
+        _tree_sitter_parser_build(
+            "tree_sitter_flix",
+            "tree_sitter_flix",
+            "bindings/rust/grit_language.rs",
+            _FLIX_GRAMMAR.version,
+        ),
+    )
+    repository_ctx.file(
+        "resources/language-metavariables/%s/BUILD.bazel" % _STARLARK_GRAMMAR.directory,
+        _tree_sitter_parser_build(
+            "tree_sitter_starlark",
+            "tree_sitter_starlark",
+            "bindings/rust/grit_language.rs",
+            _STARLARK_GRAMMAR.version,
         ),
     )
     repository_ctx.file(
@@ -335,7 +753,10 @@ default-features = false
 features = [
   "grit-parser",
   "tree-sitter-gritql",
+  "tree-sitter-flix",
+  "tree-sitter-java",
   "tree-sitter-javascript",
+  "tree-sitter-starlark",
   "tree-sitter-typescript",
 ]
 
@@ -357,5 +778,9 @@ gritql_repository = repository_rule(
     attrs = {
         "attune_lib": attr.label(allow_single_file = True, mandatory = True),
         "cargo_lock": attr.label(allow_single_file = True, mandatory = True),
+        "language_patches": attr.label_list(
+            allow_files = True,
+            mandatory = True,
+        ),
     },
 )

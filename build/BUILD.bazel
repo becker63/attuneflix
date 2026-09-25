@@ -1,5 +1,10 @@
 exports_files([
     "attune.bzl",
+    "grit_patches/flix.rs",
+    "grit_patches/flix_binding.rs",
+    "grit_patches/starlark.rs",
+    "grit_patches/starlark_binding.rs",
+    "grit_patches/textual_metavariable.rs",
     "grit_repository.bzl",
     "jextract.bzl",
     "jextract_repository.bzl",
