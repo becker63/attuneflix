@@ -1,0 +1,234 @@
+# PREREGISTRATION — AttuneFlix self-signature parallelism experiment
+
+Status: preregistered. This file is committed as its own jj change BEFORE any
+after-state structural measurement runs. The preregistration change strictly
+precedes every measurement change in jj history (provable via `jj log`).
+
+- Baseline revision (before): `bcfc126` ("read buildbuddy credential from
+  environment first") — the mission's recorded starting revision, recovered
+  from VCS history and evaluated in an isolated `git worktree`; never
+  fabricated; the live worktree is never reset or mutated.
+- Intervention: this mission's cleanup (concept deletion, one-owner-per-concept
+  consolidation, tracked-Flix LOC reduction under the `< 4600` gate).
+- Cleaned revision (after): recorded exactly in `REPORT.md` at measurement
+  time (the sealed `reduction-completion` state plus this experiment's own
+  changes).
+- This preregistration revision: the jj change containing exactly this file
+  (change id and commit id recorded in `REPORT.md`).
+
+## Hypotheses
+
+**Primary hypothesis.** The cleanup reduces the repository's *coordination
+surface* — the structural expansion/blast radii from ordinary source loci, the
+overlap between neighborhoods of different semantic subsystems, and the number
+of mandatory shared hotspot files — without reducing the expressive/semantic
+architecture (the permanent story source -> admitted typed repository facts ->
+Repository.Structure/Physical -> Radii -> Atlas -> signatures/applications is
+preserved, and the frozen scientific laws are unchanged).
+
+**Secondary hypothesis.** Subsystem boundaries align with useful parallel work
+units (Repository; Radii; Atlas/signatures; Localization; tables; population;
+census/experiments; tests and test infrastructure) — partitions forced by the
+predefined path rule below, not optimized after seeing outcomes. If the
+structure indicates better partitions, that is a finding, not a failure.
+
+This is a descriptive architectural experiment over one repository and one
+intervention. It is not causal proof, and a regression on any metric is
+scientifically useful and will be reported as a finding.
+
+## The admitted self-world (attuneflix-self-admission-v1)
+
+AttuneFlix analyzes itself by admitting its own tracked sources into the same
+typed world shape the census uses, then running the frozen Atlas machinery
+(`Atlas.programsFrom`, `Atlas.evaluate`, `Repository.Physical`) over that
+world. The admitted world for a revision R is derived deterministically from
+R's tracked `.flix` files:
+
+1. **Files.** The sorted list of tracked `.flix` paths at R
+   (`git ls-files '*.flix' | sort`). `FileId` = index in this order.
+2. **Modules.** A file's *declared module* is the maximal `[A-Za-z0-9.]` token
+   following `mod `/`pub mod ` on the first line (in file order) whose trimmed
+   text starts with `mod ` or `pub mod `. Files with no such line declare no
+   module (root-namespace files).
+3. **Code text.** All lines of a file except lines whose first non-whitespace
+   characters are `//`. (Doc comments and line comments are excluded; trailing
+   comments after code remain, a documented over-approximation.)
+4. **Tokens.** Maximal runs of characters in `[A-Za-z0-9._]` within the code
+   text.
+5. **Use edge.** `(F -> G)` iff `F != G`, G declares module `M`, and some
+   token `T` of F satisfies `T == M` or `T` starts with `M ++ "."`. Reaching a
+   child name through its dotted path also uses the parent module name.
+6. **World.** `files` = the sorted paths; `symbols` = one per declaring file
+   (path = file path, name = declared module); `defines` = the one-to-one
+   file/module pairs; `imports` = the use edges; `calls` = empty (symbol-level
+   call structure is not derivable from this text-level admission — documented
+   limitation); `parents` = empty (no Atlas atom reads parents);
+   `unresolvedImports`/`unresolvedCalls` = 0.
+
+The same instrument command, with the same definitions, produces the world for
+both revisions. Facts are committed as typed Parquet using the existing
+`Repository.Table` world schema (`attune-repository-world-{metadata,entities,
+relations}-v1`), mirroring the `.attune` frozen-facts pattern.
+
+## Region partition (attuneflix-regions-v1)
+
+A pure function of the file path, fixed in advance and applied identically to
+both revisions. In the first matching rule:
+
+1. `src/Repository.flix` or prefix `src/Repository/` -> `repository`
+2. `src/Radii.flix` or prefix `src/Radii/` -> `radii`
+3. `src/Atlas.flix` or prefix `src/Atlas/` -> `atlas`
+4. `src/Localization.flix` or prefix `src/Localization/` -> `localization`
+5. `src/ScientificTable.flix` or prefix `src/ScientificTable/` -> `tables`
+6. `src/Population.flix` or prefix `src/Population/` -> `population`
+7. prefix `src/` -> `src-root`
+8. prefix `test/` -> `tests`
+9. prefix `build/src/` -> `build-src`
+10. prefix `experiments/` -> `experiments`
+
+Regions with no files at a revision are dropped from that revision's analyses.
+`tests`, `build-src` are the *test-side* regions.
+
+## Metric definitions (exact)
+
+The program family `FAM` is `Atlas.programsFrom(File, 2)`: the 12 well-typed
+composition-only Atlas programs of length <= 2 over the six frozen atoms, in
+the stable enumeration order. For a file seed `{f}` or a region seed
+`S_R = Files(R)`, outputs come from `Atlas.evaluate` over the admitted world.
+
+- **M1 `tracked_files`** = number of files.
+- **M2 `tracked_flix_loc`** = raw `wc -l` total over tracked `.flix` files
+  (the mission LOC gate command; counted outside the instrument).
+- **M3 `use_edges`** = `|imports|` in the admitted world.
+- **M4 `cross_region_edge_ratio`** = `|{(f,g) in imports : region(f) != region(g)}| / |imports|`
+  (0.0 when there are no edges).
+- **M5 file blast radius.** `b(f) = |union of outputs of every program in FAM
+  applied to {f}|`. Reported as `median` and `p90` over the multiset
+  `{b(f) : f in files}`, nearest-rank: ascending sort, 0-based index
+  `min(n-1, floor(p * n / 100))` for percentile `p`.
+- **M6 region blast radius.** `blast(R) = max over FAM of
+  |output(program, S_R)| / |S_R|`. Reported per region (artifact rows) and as
+  `max_region_blast` = max over non-empty regions.
+- **M7 cross-region neighborhood overlap.** `N(R) = S_R union (union of
+  outputs of every program in FAM applied to S_R)` (the depth-<=2 neighborhood
+  including the seed). For distinct regions A, B:
+  `jaccard(A, B) = |N(A) intersect N(B)| / |N(A) union N(B)|` (0.0 when the
+  union is empty). Overlap classes: high >= 0.5, medium > 0.2, low <= 0.2.
+  Reported as `max_pair_jaccard` and `high_overlap_pairs` (count of pairs with
+  jaccard >= 0.5).
+- **M8 shared hotspots.** For a file g,
+  `importing_regions(g) = |{region(f) : (f,g) in imports, region(f) != region(g)}|`.
+  A *shared hotspot file* is a file with `importing_regions(g) >= 2`.
+  Reported: `hotspot_count` and `max_hotspot_pressure` = max over files of
+  `importing_regions(g)`.
+- **M9 independently testable regions.** Region R is *independently testable*
+  iff there is no use edge `(f -> g)` with `g in R`, `f not in R`, and
+  `region(f)` not test-side (every non-test consumer of R's files lies inside
+  R). Reported: `independently_testable` count over non-empty regions.
+- **M10 worker partitions (documented heuristic; not optimal partitioning).**
+  Work units = non-empty regions. `w(A, B)` (A != B) = number of use edges
+  from a file of A to a file of B. Greedy agglomerative merge: start from the
+  non-empty regions sorted by name; repeatedly merge the pair (A, B) with
+  maximal `w(A, B) + w(B, A)` (tie broken by the lexicographically smallest
+  pair of names), the merged group keeping the lexicographically smaller name,
+  until `k` groups remain. Reported: `cross_group_edges_4` and
+  `cross_group_edges_8` = the sum of inter-group edge counts over all distinct
+  groups at k = 4 and k = 8 (if fewer than k regions are non-empty, no merge
+  happens and the count is over the regions themselves).
+
+The before/after table reports M1-M10 for both revisions, plus M11
+`bazel_locality` summarized qualitatively (see the report's locality table).
+
+## Bazel test/build locality table (report section)
+
+Per region: its direct source surface (files), the Bazel targets that declare
+it (`flix_check`/`flix_fatjar` srcs, read from the revision's BUILD files), a
+bounded validation target a worker can run without the entire repository, and
+shared validation hotspots (targets that compile many regions together, e.g.
+the census fatjars). Derivation: deterministic reading of the declared
+`srcs`/`deps` in the revision's tracked `BUILD.bazel` files; BuildBuddy cache
+reuse is discussed explicitly as an execution-cost effect, not architectural
+independence.
+
+## Comparison plan
+
+Identical instrument, identical definitions, zero redefinition between
+revisions. Baseline facts are derived from the baseline worktree's files by
+the committed instrument; after-state facts from the cleaned revision's
+tracked files. Artifacts are committed for both revisions; the before/after
+table uses only the metrics above. Any regression is reported as a finding.
+Factory observations (worker sessions, ownership overlaps, reconciliation
+events, validator findings) are reported from orchestrator-provided mission
+records in a separate report section and never mixed into the structural
+measurements.
+
+## Artifact schemas
+
+Typed Parquet via `ScientificTable`:
+
+- **Region signature** (`attuneflix-parallelism-region-v1`): revision (text),
+  region (text), program (text; comma-joined atom names, or `union_le2` for
+  the depth-<=2 union row), depth (int32; 0 for the union row), seed_size
+  (int32), result_size (int32), expansion (float64, nullable), reach (float64),
+  extinct (boolean), members (list\<string>; sorted file paths of the result,
+  union row includes the seed files).
+- **Region pairs** (`attuneflix-parallelism-pairs-v1`): revision, region_a,
+  region_b (text), union_size, intersection_size (int32), jaccard (float64).
+- **World facts** for each revision: the existing
+  `attune-repository-world-{metadata,entities,relations}-v1` schemas, with
+  experiment identity strings `attuneflix-self-*` and the revision recorded in
+  `base_revision`.
+
+Committed artifact paths: `experiments/atlas-parallelism/facts/<revision-role>/`
+(world triples) and `experiments/atlas-parallelism/artifacts/<revision-role>/`
+(region + pairs tables), where `<revision-role>` is `baseline` or `after`.
+
+## Protocol identities
+
+- Admission/fact identity: `repository = "attuneflix"`,
+  `fact_identity = repository-facts-v2 hash over the admitted self-world`,
+  `source_tree_identity = "attuneflix-source-tree-v1:<revision>"`,
+  `snapshot_id = repository-snapshot-v1 hash`, `base_revision = <revision>`.
+- Region protocol: `attuneflix-regions-v1`; measurement protocol:
+  `attuneflix-parallelism-v1`; program family: the frozen
+  `atlas-composition-depth7-v1` grammar truncated at depth 2.
+
+## Enshrinement plan and decision rule (steering addendum 2)
+
+If — and only if — the after-state measurements satisfy ALL of the following
+*pronounced-property* conditions, the measurement becomes a permanent oracle
+test (an ordinary tracked test wired into the authoritative suite, plain
+`./verify` runs it):
+
+- **E1 coherence:** the minimum region coherence
+  `c(R) = internal(R) / (internal(R) + outgoing(R))` (edges of R's files) over
+  non-empty regions is >= 0.50.
+- **E2 separation:** `max_pair_jaccard` <= 0.50 and `high_overlap_pairs` = 0.
+- **E3 hotspot pressure:** `max_hotspot_pressure` <= 4 and `hotspot_count`
+  <= half of `tracked_files`.
+- **E4 independent validation:** `independently_testable` >= 4 regions.
+- **E5 locality of change:** `median` file blast radius <= 0.5 x
+  `tracked_files`.
+
+Oracle thresholds are then fixed from the measured after-state values with
+this margin policy (documented with provenance in REPORT.md): ratio/median
+metrics bind at 1.5x the measured after value (2-decimal rounding);
+`independently_testable` binds at the exact measured count (no region may
+lose independence); `hotspot_count` binds at measured + 2;
+`max_hotspot_pressure` binds at measured + 1. The oracle recomputes every
+quantity in-graph from declared srcs (a deterministic facts action over the
+declared tree feeds independent per-region shard actions, and one final
+threshold-assertion action consumes the shard outputs), fails on a pronounced
+structural regression, and is named and documented as the standing
+parallelizable-monolith lint law. If the conditions do NOT hold, no oracle is
+enshrined; the measured numbers and proposed threshold analysis go back to
+the orchestrator.
+
+## Budget and reuse
+
+All experiment-specific Flix (instrument + oracle assertion logic) lives in
+`experiments/atlas-parallelism/` and shares one hard budget of ~200 raw Flix
+lines, counted in the tracked-Flix total (< 4600 gate). The instrument reuses
+`Atlas`, `Repository`, `Repository.Physical`, `Repository.Table`,
+`ScientificTable`, and `ScientificIdentity`; no new graph-analysis framework;
+no permanent `src/` inflation.
