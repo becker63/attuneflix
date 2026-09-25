@@ -112,7 +112,24 @@ mod Repository {
                 }
             }), Ok({edges = Set.empty(), rejected = 0}), facts)
 
-    def importTarget(fact: Repository.Grit.Fact, files: Map[String, Repository.Structure.FileId]): Option[Repository.Structure.FileId] = {
+    /// Language detection is the closure's admitted file-kind table, exposed so
+    /// every caller and the admission policy agree on one route.
+    pub def language(path: String): Option[Repository.Grit.Language] = Repository.Grit.language(path)
+
+    /// Import/reference resolution is explicitly per-language behind ONE
+    /// admission abstraction. The frontend hands over normalized source text;
+    /// only the rule that turns it into an admitted file differs by language.
+    def importTarget(fact: Repository.Grit.Fact, files: Map[String, Repository.Structure.FileId]): Option[Repository.Structure.FileId] =
+        match Repository.Grit.language(fact#path) {
+            case Some(Repository.Grit.Language.Java)     => dottedFile(fact#value, files, ".java")
+            case Some(Repository.Grit.Language.Flix)     => flixImport(fact#value, files)
+            case Some(Repository.Grit.Language.Starlark) => starlarkImport(fact#value, files)
+            case Some(_)                                 => javascriptImport(fact, files)
+            case None                                    => None
+        }
+
+    /// JavaScript/TypeScript relative module resolution.
+    def javascriptImport(fact: Repository.Grit.Fact, files: Map[String, Repository.Structure.FileId]): Option[Repository.Structure.FileId] = {
         let value = String.trim(fact#value);
         let length = String.length(value);
         if (length < 2)
@@ -140,6 +157,104 @@ mod Repository {
             |> Vector.append(Vector.map(suffix -> base + suffix, suffixes))
             |> Vector.append(Vector.map(suffix -> base + "/index" + suffix, suffixes))
     }
+
+    /// Flix resolves a qualified module reference to the admitted file whose
+    /// module path it names. The longest dotted prefix that names an admitted
+    /// file wins; only a unique file is admitted.
+    def flixImport(value: String, files: Map[String, Repository.Structure.FileId]): Option[Repository.Structure.FileId] =
+        match dottedName(value) {
+            case None       => None
+            case Some(name) => firstResolved(files, moduleCandidates(String.splitOn(substr = ".", name)))
+        }
+
+    def moduleCandidates(segments: List[String]): List[String] = match segments {
+        case Nil => Nil
+        case _ =>
+            String.flatten(List.intersperse("/", segments)) + ".flix"
+                :: moduleCandidates(List.take(List.length(segments) - 1, segments))
+    }
+
+    /// Java resolves a dotted type reference to its source file. The package
+    /// path is tried first, then the bare type file as a conservative fallback.
+    def dottedFile(value: String, files: Map[String, Repository.Structure.FileId], suffix: String): Option[Repository.Structure.FileId] =
+        match dottedName(value) {
+            case None       => None
+            case Some(name) =>
+                let segments = String.splitOn(substr = ".", name);
+                let full = String.flatten(List.intersperse("/", segments)) + suffix;
+                let last = match List.reverse(segments) {
+                    case head :: _ => head + suffix
+                    case Nil       => full
+                };
+                firstResolved(files, full :: last :: Nil)
+        }
+
+    /// Starlark resolves a repository-relative label that names a source file
+    /// (`//tools:defs.bzl` -> `tools/defs.bzl`). External and target-only labels
+    /// are conservatively rejected: they do not name an admitted file.
+    def starlarkImport(value: String, files: Map[String, Repository.Structure.FileId]): Option[Repository.Structure.FileId] =
+        match labelPath(String.trim(value)) {
+            case None       => None
+            case Some(path) => uniqueSuffix(files, path)
+        }
+
+    def labelPath(label: String): Option[String] =
+        if (not String.startsWith(prefix = "\"", label) or not String.endsWith(suffix = "\"", label))
+            None
+        else {
+            let unquoted = String.slice(start = 1, end = String.length(label) - 1, label);
+            if (not String.startsWith(prefix = "//", unquoted))
+                None
+            else {
+                let body = String.sliceRight(start = 2, unquoted);
+                match String.indexOf(substr = ":", body) {
+                    case None        => None
+                    case Some(index) =>
+                        let package = String.sliceLeft(end = index, body);
+                        let target = String.sliceRight(start = index + 1, body);
+                        if (String.contains(substr = ".", target))
+                            if (package == "") Some(target) else Some(package + "/" + target)
+                        else None
+                }
+            }
+        }
+
+    def firstResolved(files: Map[String, Repository.Structure.FileId], candidates: List[String]): Option[Repository.Structure.FileId] = match candidates {
+        case Nil               => None
+        case candidate :: rest => match uniqueSuffix(files, candidate) {
+            case None       => firstResolved(files, rest)
+            case Some(file) => Some(file)
+        }
+    }
+
+    def uniqueSuffix(files: Map[String, Repository.Structure.FileId], candidate: String): Option[Repository.Structure.FileId] = {
+        let matches = Vector.filterMap(entry -> {
+            let (path, file) = entry;
+            if (path == candidate or String.endsWith(suffix = "/" + candidate, path)) Some(file) else None
+        }, Map.toVector(files));
+        if (Vector.length(matches) == 1) Some(Vector.get(0, matches)) else None
+    }
+
+    /// The leading dotted name of a normalized reference value. A Flix
+    /// `use`/`import` declaration carries its keyword and may end in a brace
+    /// list; only the qualified name before it is the reference.
+    def dottedName(value: String): Option[String] = {
+        let trimmed = String.trim(value);
+        let stripped =
+            if (String.startsWith(prefix = "use ", trimmed)) String.sliceRight(start = 4, trimmed)
+            else if (String.startsWith(prefix = "import ", trimmed)) String.sliceRight(start = 7, trimmed)
+            else trimmed;
+        let name = dropTrailingDots(String.trimRight(String.takeWhile(isNameChar, stripped)));
+        if (name == "") None else Some(name)
+    }
+
+    def dropTrailingDots(name: String): String =
+        if (String.endsWith(suffix = ".", name) and String.length(name) > 0)
+            dropTrailingDots(String.sliceLeft(end = String.length(name) - 1, name))
+        else name
+
+    def isNameChar(character: Char): Bool =
+        Char.isLetterOrDigit(character) or character == '.' or character == '_'
 
     /// Physical lookup plan for call admission. The semantic rule is still:
     /// choose the narrowest enclosing definition as caller, then admit a

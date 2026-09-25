@@ -1,0 +1,71 @@
+engine marzano(0.1)
+language java
+
+// @dialect java
+// Java sources (.java) are parsed by the upstream tree-sitter-java grammar the
+// frozen Grit closure admits. Grit returns syntax matches plus logged source
+// values. Attune later assigns repository identities, resolves/admit edges, and
+// derives inverse relations; this frontend does none of those jobs.
+
+// @syntax structural
+//
+// Named definitions.
+//
+// All of these define symbols:
+//
+//   package attune.core;
+//
+//   public class Client {
+//     public Client(String name) {}
+//
+//     public boolean verify(String name) {
+//       return name.length() > 0;
+//     }
+//
+//     static class Nested {}
+//   }
+//
+//   interface Verify {
+//     boolean verify(String name);
+//   }
+//
+//   enum Colour { RED, BLUE }
+//
+//   record Point(int x, int y) {}
+//
+// Grit matches the whole declaration and logs its source name:
+//
+//   Client
+//   Client
+//   verify
+//   Nested
+//   Verify
+//   verify
+//   Colour
+//   Point
+//
+// Constructors are definitions because Attune also observes constructor
+// invocations (`new Client()`); a constructor is owned by the class name.
+//
+// Fields, enum constants, and initializer blocks are deliberately excluded:
+// they are not callable ownership, and Attune does not model field access as a
+// call edge.
+//
+// @example A class and each of its methods are separate definitions.
+// public class Client {
+//   public boolean verify(String name) { return true; }
+// }
+// @end
+
+or {
+  class_declaration(name = $name),
+  interface_declaration(name = $name),
+  enum_declaration(name = $name),
+  record_declaration(name = $name),
+  annotation_type_declaration(name = $name),
+  method_declaration(name = $name),
+  constructor_declaration(name = $name),
+  compact_constructor_declaration(name = $name)
+} as $definition where {
+  log(message="definition", variable=$name)
+}

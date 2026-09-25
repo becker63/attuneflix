@@ -1,0 +1,56 @@
+engine marzano(0.1)
+language starlark
+
+// @dialect starlark
+// Starlark sources (`.bzl`, `BUILD`, `BUILD.bazel`, `WORKSPACE`, and `.bazel`
+// files) are parsed by the pinned tree-sitter-starlark grammar inside the
+// frozen Grit closure. Grit returns syntax matches plus logged source values.
+// Attune later assigns repository identities, resolves/admit edges, and derives
+// inverse relations; this frontend does none of those jobs.
+
+// @syntax source
+//
+// `load()` relationships and Bazel label references.
+//
+// These match:
+//
+//   load("//tools:defs.bzl", "grit_rule")
+//
+//   deps = ["//src:lib"]
+//
+//   deps = [":other", "@repo//x:y"]
+//
+// `$label` is the quoted label text:
+//
+//   load("//tools:defs.bzl", ...)  -> "//tools:defs.bzl"   (import)
+//   deps = ["//src:lib"]           -> "//src:lib"          (dependency)
+//   deps = [":other"]              -> ":other"             (dependency)
+//   deps = ["@repo//x:y"]          -> "@repo//x:y"         (dependency)
+//
+// `dependency` is the one narrow vocabulary extension this frontend adds: a
+// label/dependency reference is a real repository dependency, but it is not a
+// function call, so it never enters the `calls` relation. Attune admits both
+// kinds through the ordinary Imports relation.
+//
+// The label of a `load()` call is that relationship, never a second
+// dependency. Non-label strings (`"*.txt"`, `"sample"`, a symbol name in a
+// `load` list) do not match.
+//
+// @example A load label is an import; a deps label is a dependency.
+// deps = ["//src:lib"]
+// @end
+
+or {
+  string() as $label where {
+    $label <: r"\"(?:/|@|:)[^\"]*\"",
+    $label <: within call(function = `load`)
+  } where {
+    log(message="import", variable=$label)
+  },
+  string() as $label where {
+    $label <: r"\"(?:/|@|:)[^\"]*\"",
+    $label <: not within call(function = `load`)
+  } where {
+    log(message="dependency", variable=$label)
+  }
+}

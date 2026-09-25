@@ -1,0 +1,59 @@
+engine marzano(0.1)
+language starlark
+
+// @dialect starlark
+// Starlark sources (`.bzl`, `BUILD`, `BUILD.bazel`, `WORKSPACE`, and `.bazel`
+// files) are parsed by the pinned tree-sitter-starlark grammar inside the
+// frozen Grit closure. Grit returns syntax matches plus logged source values.
+// Attune later assigns repository identities, resolves/admit edges, and derives
+// inverse relations; this frontend does none of those jobs.
+
+// @syntax source
+//
+// Callable invocations.
+//
+// All of these match:
+//
+//   grit_rule(name = "sample")
+//
+//   helper(ctx)
+//
+//   glob(["*.txt"])
+//
+//   ctx.actions.run(...)
+//
+// `$callee` is exactly the expression being called:
+//
+//   grit_rule(...)          -> grit_rule
+//   helper(ctx)             -> helper
+//   glob(["*.txt"])         -> glob
+//   ctx.actions.run(...)    -> ctx.actions.run
+//
+// Nested calls produce separate matches:
+//
+//   grit_rule(deps = glob(["*.txt"]))
+//
+// becomes:
+//
+//   grit_rule
+//   glob
+//
+// Module loading is deliberately excluded:
+//
+//   load("//tools:defs.bzl", "grit_rule")
+//
+// That relationship belongs to `imports/starlark.grit`; it loads a file rather
+// than invoking a repository callable.
+//
+// Rule names such as `grit_rule` usually come from an external repository,
+// so Attune resolves them with the same conservative unique-name rule used for
+// every language and rejects the edge when no admitted definition matches.
+//
+// @example A rule invocation records the invoked callable name.
+// grit_rule(name = "sample")
+// @end
+
+call(function = $callee) as $call where {
+  $callee <: not r"^load$",
+  log(message="call", variable=$callee)
+}

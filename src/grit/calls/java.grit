@@ -1,0 +1,58 @@
+engine marzano(0.1)
+language java
+
+// @dialect java
+// Java sources (.java) are parsed by the upstream tree-sitter-java grammar the
+// frozen Grit closure admits. Grit returns syntax matches plus logged source
+// values. Attune later assigns repository identities, resolves/admit edges, and
+// derives inverse relations; this frontend does none of those jobs.
+
+// @syntax source
+//
+// Calls between source-level callables.
+//
+// All of these match:
+//
+//   verify(name);
+//
+//   client.verify(name);
+//
+//   this.verify(name);
+//
+//   Client.create(name);
+//
+//   new Client(name);
+//
+// `$callee` is the invoked name, not the receiver expression:
+//
+//   verify(name)        -> verify
+//   client.verify(name) -> verify
+//   new Client(name)    -> Client
+//
+// Nested calls and constructor arguments produce separate matches:
+//
+//   verify(create(name));
+//
+// becomes:
+//
+//   verify
+//   create
+//
+// Explicit constructor invocations (`super(...)`, `this(...)`) and method
+// references (`Client::verify`) are deliberately excluded: they are not
+// ordinary invocations of a repository-owned callable.
+//
+// Attune later resolves the logged name to a SymbolId with the same
+// conservative unique-name rule used for every language; the frontend does not.
+//
+// @example A method call records the method name; a constructor call records
+// the constructed type name.
+// new Client(verify(name));
+// @end
+
+or {
+  method_invocation(name = $callee),
+  object_creation_expression(type = $callee)
+} as $call where {
+  log(message="call", variable=$callee)
+}

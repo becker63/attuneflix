@@ -52,6 +52,41 @@ checked_test(
 )
 
 flix_check(
+    name = "grit_acquisition_check",
+    srcs = [
+        "//build:src/GritAcquisitionTest.flix",
+        "//src:Repository.flix",
+        "//src:Repository/Grit.flix",
+        "//src:Repository/Structure.flix",
+    ],
+    command = "test",
+    threads = 2,
+)
+
+checked_test(
+    name = "grit_acquisition_test",
+    check = ":grit_acquisition_check",
+)
+
+flix_check(
+    name = "grit_acquire_check",
+    srcs = [
+        "//src:Repository/Acquire.flix",
+        "//src:Repository.flix",
+        "//src:Repository/Grit.flix",
+        "//src:Repository/Structure.flix",
+    ],
+    command = "check",
+    java_deps = ["//src/native/grit:attune_grit"],
+    threads = 2,
+)
+
+checked_test(
+    name = "grit_acquire_test",
+    check = ":grit_acquire_check",
+)
+
+flix_check(
     name = "atlas_grammar_check",
     srcs = [
         "//build:src/AtlasTest.flix",

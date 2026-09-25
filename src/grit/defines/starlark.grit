@@ -1,0 +1,60 @@
+engine marzano(0.1)
+language starlark
+
+// @dialect starlark
+// Starlark sources (`.bzl`, `BUILD`, `BUILD.bazel`, `WORKSPACE`, and `.bazel`
+// files) are parsed by the pinned tree-sitter-starlark grammar inside the
+// frozen Grit closure. Grit returns syntax matches plus logged source values.
+// Attune later assigns repository identities, resolves/admit edges, and derives
+// inverse relations; this frontend does none of those jobs.
+
+// @syntax structural
+//
+// Named definitions.
+//
+// All of these define symbols:
+//
+//   def my_macro(name, srcs = []):
+//       grit_rule(
+//           name = name,
+//           srcs = srcs,
+//       )
+//
+//   def _impl(ctx):
+//       return helper(ctx)
+//
+//   grit_rule(
+//       name = "sample",
+//       srcs = glob(["*.txt"]),
+//   )
+//
+// Grit matches the whole declaration and logs its source name:
+//
+//   my_macro
+//   _impl
+//   "sample"
+//
+// A rule-like invocation whose target name is a string literal is a named
+// Bazel target, so it defines a symbol. An invocation that merely forwards a
+// parameter (`name = name`) declares no new stable name inside this file and
+// is deliberately excluded.
+//
+// Local bindings are deliberately excluded: a Starlark assignment names a
+// value, not a callable owner.
+//
+// @example A macro and a named rule invocation are separate definitions.
+// def my_macro(name):
+//     grit_rule(name = name)
+// @end
+
+or {
+  function_definition(name = $name),
+  expression_statement() as $statement where {
+    $statement <: contains keyword_argument(name = $key, value = $name) where {
+      $key <: r"^name$",
+      $name <: string()
+    }
+  }
+} as $definition where {
+  log(message="definition", variable=$name)
+}

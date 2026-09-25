@@ -205,6 +205,57 @@ async function run(client: Client): Promise<void> {
         require(callBindings.equals(List.of("verify", "client.verify", "client?.optional", "generic", "awaited")),
                 "call surface changed: " + callBindings);
 
+        // The three polyglot frontends are real packaged entry points (byte
+        // identical to the repository-visible files) and produce their expected
+        // semantics through the same native engine as JS/TS.
+        for (String relation : List.of("defines", "imports", "calls")) {
+            for (String language : List.of("java", "flix", "starlark")) {
+                String packaged = AttuneGrit.program(language, relation);
+                Path visible = Path.of("src", "grit", relation, language + ".grit");
+                require(packaged.equals(Files.readString(visible)),
+                        "packaged entry point differs: " + visible);
+            }
+        }
+
+        String javaFixture = "package a;\n\nimport a.Other;\n\npublic class Client {\n"
+                + "    public void helper(String name) {}\n"
+                + "    public void verify(String name) { helper(name); }\n}\n";
+        require(bindings(AttuneGrit.evaluate("java", AttuneGrit.program("java", "defines"),
+                        "src/a/Client.java", javaFixture), "definition", javaFixture)
+                .equals(List.of("Client", "helper", "verify")), "java defines changed");
+        require(bindings(AttuneGrit.evaluate("java", AttuneGrit.program("java", "imports"),
+                        "src/a/Client.java", javaFixture), "import", javaFixture)
+                .equals(List.of("a.Other")), "java imports changed");
+        require(bindings(AttuneGrit.evaluate("java", AttuneGrit.program("java", "calls"),
+                        "src/a/Client.java", javaFixture), "call", javaFixture)
+                .equals(List.of("helper")), "java calls changed");
+
+        String flixFixture = "mod Demo {\n    use Repository.Structure.FileId\n\n"
+                + "    pub def helper(x: Int32): Int32 = x\n"
+                + "    pub def run(): Int32 = helper(0)\n}\n";
+        require(bindings(AttuneGrit.evaluate("flix", AttuneGrit.program("flix", "defines"),
+                        "src/Demo.flix", flixFixture), "definition", flixFixture)
+                .equals(List.of("Demo", "helper", "run")), "flix defines changed");
+        require(bindings(AttuneGrit.evaluate("flix", AttuneGrit.program("flix", "imports"),
+                        "src/Demo.flix", flixFixture), "import", flixFixture)
+                .equals(List.of("use Repository.Structure.FileId")), "flix imports changed");
+        require(bindings(AttuneGrit.evaluate("flix", AttuneGrit.program("flix", "calls"),
+                        "src/Demo.flix", flixFixture), "call", flixFixture)
+                .equals(List.of("helper")), "flix calls changed");
+
+        String starlarkFixture = "load(\"//tools:defs.bzl\", \"helper\")\n\n"
+                + "def helper(name):\n    pass\n\n"
+                + "def run():\n    helper(\"sample\")\n";
+        require(bindings(AttuneGrit.evaluate("starlark", AttuneGrit.program("starlark", "defines"),
+                        "src/pkg/BUILD", starlarkFixture), "definition", starlarkFixture)
+                .equals(List.of("helper", "run")), "starlark defines changed");
+        require(bindings(AttuneGrit.evaluate("starlark", AttuneGrit.program("starlark", "imports"),
+                        "src/pkg/BUILD", starlarkFixture), "import", starlarkFixture)
+                .equals(List.of("\"//tools:defs.bzl\"")), "starlark imports changed");
+        require(bindings(AttuneGrit.evaluate("starlark", AttuneGrit.program("starlark", "calls"),
+                        "src/pkg/BUILD", starlarkFixture), "call", starlarkFixture)
+                .equals(List.of("helper")), "starlark calls changed");
+
         for (int index = 0; index < 100; index++) {
             require(first.equals(AttuneGrit.evaluate("typescript", calls, "src/example.ts", nested)),
                     "repeated native result changed");

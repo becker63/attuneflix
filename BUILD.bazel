@@ -15,6 +15,8 @@ test_suite(
         "//test:core_parity_test",
         "//test:atlas_grammar_test",
         "//test:atlas_signature_table_test",
+        "//test:grit_acquisition_test",
+        "//test:grit_acquire_test",
         "//test:inference_boundary_test",
         "//test:identity_test",
         "//test:localization_sandwich_test",

@@ -10,6 +10,7 @@ exports_files([
     "jextract_repository.bzl",
     "src/AtlasSignatureTableTest.flix",
     "src/AtlasTest.flix",
+    "src/GritAcquisitionTest.flix",
     "src/InferenceBoundaryTest.flix",
     "src/LocalizationTest.flix",
     "src/PopulationTableTest.flix",

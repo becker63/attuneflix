@@ -1,0 +1,77 @@
+engine marzano(0.1)
+language flix
+
+// @dialect flix
+// Flix sources (.flix) are parsed by the repository's one pinned
+// tree-sitter-flix grammar (the Zed extension's pin) inside the frozen Grit
+// closure. Grit returns syntax matches plus logged source values. Attune later
+// assigns repository identities, resolves/admit edges, and derives inverse
+// relations; this frontend does none of those jobs.
+
+// @syntax structural
+//
+// Named definitions.
+//
+// All of these define symbols:
+//
+//   mod Attune.Example {
+//     enum Colour {
+//       case Red,
+//       case Blue
+//     }
+//
+//     struct Box {
+//       value = String
+//     }
+//
+//     trait Show {
+//       pub def show(x: a): String
+//     }
+//
+//     eff Logger {
+//       pub def log(message: String): Unit
+//     }
+//
+//     pub def helper(name: String): String = {
+//       let local = value -> value + name;
+//       local(name)
+//     }
+//   }
+//
+// Grit matches the whole declaration and logs its source name:
+//
+//   Attune.Example
+//   Colour
+//   Red
+//   Blue
+//   Box
+//   Show
+//   Logger
+//   helper
+//   local
+//
+// Enum cases are definitions: they are the named cases a semantic owner
+// declares, and they are what match patterns and calls name.
+//
+// Type aliases and instance declarations are deliberately excluded: an alias
+// names no new owner, and an instance is keyed by the type it implements
+// rather than by a fresh repository name.
+//
+// @example A module and each declaration inside it are separate definitions.
+// mod Example {
+//   def helper(name: String): String = name
+// }
+// @end
+
+or {
+  module_declaration(name = $name),
+  def_declaration(name = $name),
+  local_def_expression(name = $name),
+  enum_declaration(name = $name),
+  enum_case(name = $name),
+  struct_declaration(name = $name),
+  trait_declaration(name = $name),
+  effect_declaration(name = $name)
+} as $definition where {
+  log(message="definition", variable=$name)
+}

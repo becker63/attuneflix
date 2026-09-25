@@ -1,0 +1,52 @@
+engine marzano(0.1)
+language flix
+
+// @dialect flix
+// Flix sources (.flix) are parsed by the repository's one pinned
+// tree-sitter-flix grammar (the Zed extension's pin) inside the frozen Grit
+// closure. Grit returns syntax matches plus logged source values. Attune later
+// assigns repository identities, resolves/admit edges, and derives inverse
+// relations; this frontend does none of those jobs.
+
+// @syntax source
+//
+// Real Flix module references.
+//
+// All of these match, as the actual syntax nodes they are:
+//
+//   use Attune.Core.Client
+//
+//   import Repository.Structure.FileId
+//
+//   def desk(file: Repository.Structure.FileId): Unit = ...
+//
+//   instance Order[Repository.Structure.SymbolId] { ... }
+//
+// `$reference` is the source syntax node:
+//
+//   use Attune.Core.Client                      (the whole use declaration)
+//   import Repository.Structure.FileId          (the whole import declaration)
+//   Repository.Structure.FileId                 (a qualified name node)
+//
+// The v1 proxy matched every dotted textual prefix of a file; this frontend
+// matches syntax nodes only. One reference node produces exactly one fact, and
+// Attune later resolves the qualified name to a repository FileId with Flix
+// module semantics (the longest module prefix that names an admitted file).
+//
+// A declaration's own name is not a dependency: only qualified *type* names are
+// logged, so a module declaration's own name never becomes a self-reference.
+//
+// @example A use declaration and each qualified type reference are separate
+// dependency facts.
+// use Attune.Core.Client
+// @end
+
+or {
+  use_declaration() as $reference,
+  import_declaration() as $reference,
+  type_name() as $reference where {
+    $reference <: r"[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)+"
+  }
+} as $import where {
+  log(message="import", variable=$reference)
+}

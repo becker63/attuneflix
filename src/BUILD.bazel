@@ -16,6 +16,7 @@ exports_files([
     "Radii/Evaluate.flix",
     "Radii/Synthesize.flix",
     "Repository.flix",
+    "Repository/Acquire.flix",
     "Repository/Physical.flix",
     "Repository/Reference.flix",
     "Repository/Table.flix",

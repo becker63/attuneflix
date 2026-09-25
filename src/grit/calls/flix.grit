@@ -1,0 +1,50 @@
+engine marzano(0.1)
+language flix
+
+// @dialect flix
+// Flix sources (.flix) are parsed by the repository's one pinned
+// tree-sitter-flix grammar (the Zed extension's pin) inside the frozen Grit
+// closure. Grit returns syntax matches plus logged source values. Attune later
+// assigns repository identities, resolves/admit edges, and derives inverse
+// relations; this frontend does none of those jobs.
+
+// @syntax source
+//
+// Application expressions between source-level callables.
+//
+// All of these match:
+//
+//   localHelper(greeting);
+//
+//   Client.verify(name);
+//
+//   Vector.map(f, values);
+//
+//   FileId(0);
+//
+// `$callee` is exactly the expression being applied:
+//
+//   localHelper(greeting)     -> localHelper
+//   Client.verify(name)       -> Client.verify
+//   Vector.map(f, values)     -> Vector.map
+//
+// Nested applications produce separate matches:
+//
+//   println(localHelper(name));
+//
+// becomes:
+//
+//   println
+//   localHelper
+//
+// Qualified names stay in the callee text so Attune can resolve the module
+// qualified reference deterministically (never by matching dotted textual
+// prefixes of the file).
+//
+// @example An application records its callee expression.
+// Client.verify(name)
+// @end
+
+application_expression(function = $callee) as $call where {
+  log(message="call", variable=$callee)
+}

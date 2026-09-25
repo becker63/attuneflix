@@ -1,0 +1,54 @@
+engine marzano(0.1)
+language java
+
+// @dialect java
+// Java sources (.java) are parsed by the upstream tree-sitter-java grammar the
+// frozen Grit closure admits. Grit returns syntax matches plus logged source
+// values. Attune later assigns repository identities, resolves/admit edges, and
+// derives inverse relations; this frontend does none of those jobs.
+
+// @syntax source
+//
+// Static type and package references.
+//
+// All of these match:
+//
+//   import attune.core.Client;
+//
+//   import java.util.List;
+//
+//   import static java.util.Objects.requireNonNull;
+//
+//   import attune.core.*;
+//
+// Map.Entry<Key, Value> entry;
+//
+// `$reference` is the qualified name node:
+//
+//   attune.core.Client        (import declaration)
+//   java.util.List            (import declaration)
+//   java.util.Objects.requireNonNull
+//   attune.core               (wildcard import names the package)
+//   Map.Entry                 (qualified type reference)
+//
+// A single-segment import (`import Client;`) logs the bare identifier.
+//
+// These do not match:
+//
+//   package attune.core;      (the file's own package declaration)
+//   String name;              (unqualified type references stay local)
+//   attune.core.Client[] ...  (array/cast syntax still logs the type node)
+//
+// Grit leaves the dotted name as source text. Attune later resolves it to a
+// repository FileId with Java package semantics; the frontend does not.
+//
+// @example An import declaration is one dependency reference.
+// import attune.core.Client;
+// @end
+
+or {
+  import_declaration(package = $reference),
+  scoped_type_identifier() as $reference
+} as $import where {
+  log(message="import", variable=$reference)
+}
