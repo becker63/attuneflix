@@ -138,22 +138,6 @@ mod ParityTest {
         }
     }
 
-    def assertAtomsOnWorlds(atoms: List[Radii.Atom], worlds: List[Basis]): Int32 \ Assert = match worlds {
-        case Nil => 0
-        case basis :: rest => {
-            let reference = Repository.Reference.fromBasis(basis#defines, basis#imports, basis#calls, basis#parents);
-            let physical = Radii.Evaluate.fromBasis(
-                Radii.Evaluate.WorldId.WorldId(basis#name),
-                basis#defines,
-                basis#imports,
-                basis#calls,
-                basis#parents
-            );
-            assertExpressions(reference, physical, List.map(Radii.Expr.Atom, atoms)) +
-                assertAtomsOnWorlds(atoms, rest)
-        }
-    }
-
     def assertExpressionsOnWorlds(expressions: List[Radii.Expr], worlds: List[Basis]): Int32 \ Assert = match worlds {
         case Nil => 0
         case basis :: rest => {
@@ -174,7 +158,7 @@ mod ParityTest {
     def everyPublicAtomMatchesDatalog(): Unit \ Assert = {
         let atoms = publicAtoms();
         let worlds = bases();
-        let checked = assertAtomsOnWorlds(atoms, worlds);
+        let checked = assertExpressionsOnWorlds(List.map(Radii.Expr.Atom, atoms), worlds);
         Assert.assertEq(expected = 12, List.length(atoms));
         Assert.assertEq(expected = 5, List.length(worlds));
         Assert.assertEq(expected = 180, checked)

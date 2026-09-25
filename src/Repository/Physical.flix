@@ -73,10 +73,7 @@ pub mod Repository.Physical {
         }, Map.empty(), edges)
 
     def reverseIndex(edges: Repository.Structure.Relation[a, b]): Index[b, a] with Order[a], Order[b] =
-        Set.foldLeft((known, edge) -> {
-            let (source, target) = edge;
-            Map.insert(target, Set.insert(source, Map.getWithDefault(target, Set.empty(), known)), known)
-        }, Map.empty(), edges)
+        index(Set.map(match (source, target) -> (target, source), edges))
 
     def apply(edges: Index[a, b], input: Set[a]): Set[b] with Order[a], Order[b] =
         Set.foldLeft((output, source) ->

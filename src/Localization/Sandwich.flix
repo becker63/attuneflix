@@ -50,7 +50,7 @@ pub mod Localization.Sandwich {
             case Atlas.State.Symbols(_) => true
             case Atlas.State.Files(_) => false
         }, pairs);
-        unique = uniqueStates(symbolPairs, Set.empty(), Vector.empty());
+        unique = uniqueStates(symbolPairs);
         candidates = Vector.mapWithIndex((index, pair) -> {
             id = CandidateId.CandidateId(index),
             program = fst(pair),
@@ -115,18 +115,11 @@ pub mod Localization.Sandwich {
         }
     }
 
-    def uniqueStates(
-        pairs: Vector[(Atlas.Program, Atlas.State)],
-        seen: Set[Atlas.State],
-        result: Vector[(Atlas.Program, Atlas.State)]
-    ): Vector[(Atlas.Program, Atlas.State)] = match Vector.head(pairs) {
-        case None => result
-        case Some(pair) => {
-            let rest = Vector.slice(start = 1, end = Vector.length(pairs), pairs);
-            if (Set.memberOf(snd(pair), seen)) uniqueStates(rest, seen, result)
-            else uniqueStates(rest, Set.insert(snd(pair), seen), Vector.append(result, Vector#{pair}))
-        }
-    }
+    def uniqueStates(pairs: Vector[(Atlas.Program, Atlas.State)]): Vector[(Atlas.Program, Atlas.State)] =
+        Vector.foldLeft((unique, pair) -> if (Set.memberOf(snd(pair), fst(unique))) unique
+            else (Set.insert(snd(pair), fst(unique)), Vector.append(snd(unique), Vector#{pair})),
+            (Set.empty(), Vector.empty()), pairs)
+            |> snd
 
     def symbol(ordinal: Int32): Repository.Structure.SymbolId =
         Repository.Structure.SymbolId.SymbolId(ordinal)

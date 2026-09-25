@@ -123,24 +123,22 @@ pub mod Atlas.Signature {
     /// the frozen atlas-signature-seeds-v1 domain-prefix bytes, order by
     /// (digest, identity), keep the first eight, and project to Seeds.
     def panel(domain: Radii.Domain, identities: Vector[String],
-              toState: Int32 -> Atlas.State): Vector[Seed] \ IO =
-        Vector.mapWithIndex((ordinal, identity) -> (
+              toState: Int32 -> Atlas.State): Vector[Seed] \ IO = {
+        let ranked = Vector.mapWithIndex((ordinal, identity) -> (
             ScientificIdentity.sha256("${domainName(domain)}\u0000${identity}"),
             identity,
             ordinal,
             toState(ordinal)
         ), identities)
-            |> Vector.sortBy(match (digest, identity, _, _) -> (digest, identity))
-            |> firstEight
+            |> Vector.sortBy(match (digest, identity, _, _) -> (digest, identity));
+        Vector.take(8, ranked)
             |> Vector.map(match (_, identity, ordinal, state) -> {
                 domain = domain,
                 identity = identity,
                 ordinal = ordinal,
                 state = state
             })
-
-    def firstEight(values: Vector[a]): Vector[a] =
-        Vector.slice(start = 0, end = if (Vector.length(values) < 8) Vector.length(values) else 8, values)
+    }
 
     def observation(
         repository: Repository.World,

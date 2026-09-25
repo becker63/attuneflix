@@ -241,28 +241,12 @@ mod Atlas {
     ): Result[String, State] \ r =
         if (Vector.isEmpty(program#steps))
             Err("Atlas program must contain at least one atom")
-        else evaluateSteps(world, input, program#steps, memos)
-
-    def evaluateSteps(
-        world: Repository.Physical.World,
-        input: State,
-        steps: Vector[Atom],
-        memos: Memos[r]
-    ): Result[String, State] \ r = match Vector.head(steps) {
-        case None => Ok(input)
-        case Some(atom) =>
-            if (stateDomain(input) != sourceAtom(atom))
-                Err("ill-typed Atlas program")
-            else {
-                let output = transition(world, atom, input, memos);
-                evaluateSteps(
-                    world,
-                    output,
-                    Vector.slice(start = 1, end = Vector.length(steps), steps),
-                    memos
-                )
-            }
-    }
+        else
+            Vector.foldLeft((checked, atom) -> checked |> Result.flatMap(state ->
+                if (stateDomain(state) != sourceAtom(atom))
+                    Err("ill-typed Atlas program")
+                else Ok(transition(world, atom, state, memos))
+            ), Ok(input), program#steps)
 
     /// Apply one directed relation to the whole typed frontier. A cache miss is
     /// one physical transition; a hit is one transition reuse. Neither counter

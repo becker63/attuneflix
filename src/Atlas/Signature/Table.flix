@@ -79,6 +79,17 @@ pub mod Atlas.Signature.Table {
         List.reverse(reverseRows) |> List.toVector
     }
 
+    /// The seven snapshot identity columns every census row carries; one owner.
+    def identityRow(snapshot: SnapshotIdentity): Map[String, Value] = Map#{
+        "signature_protocol" => Value.Text(snapshot#signatureProtocol),
+        "atlas_protocol" => Value.Text(snapshot#atlasProtocol),
+        "repository" => Value.Text(snapshot#repository),
+        "base_revision" => Value.Text(snapshot#baseRevision),
+        "source_tree_identity" => Value.Text(snapshot#sourceTreeIdentity),
+        "fact_identity" => Value.Text(snapshot#factIdentity),
+        "snapshot_id" => Value.Text(snapshot#snapshotId)
+    }
+
     /// Physical work for this seed. Every transition-table miss inserts one
     /// memo cell, hence `memo_cells == physical_transition_evaluations` for
     /// this evaluator. There is no separate compiled Atlas DAG counter yet.
@@ -91,14 +102,7 @@ pub mod Atlas.Signature.Table {
         let reuses = signature#transitionReuses;
         let logical = signature#logicalPrograms;
         let unique = signature#uniqueStates;
-        Map#{
-            "signature_protocol" => Value.Text(snapshot#signatureProtocol),
-            "atlas_protocol" => Value.Text(snapshot#atlasProtocol),
-            "repository" => Value.Text(snapshot#repository),
-            "base_revision" => Value.Text(snapshot#baseRevision),
-            "source_tree_identity" => Value.Text(snapshot#sourceTreeIdentity),
-            "fact_identity" => Value.Text(snapshot#factIdentity),
-            "snapshot_id" => Value.Text(snapshot#snapshotId),
+        Map.union(identityRow(snapshot), Map#{
             "seed_domain" => Value.Text(Atlas.Signature.domainName(seed#domain)),
             "seed_identity" => Value.Text(seed#identity),
             "seed_ordinal" => Value.Int32(seed#ordinal),
@@ -111,21 +115,14 @@ pub mod Atlas.Signature.Table {
             "logical_per_physical_evaluation" => Value.Float64(ScientificTable.ratio(logical, evaluations)),
             "memo_cells" => Value.Int64(Int32.toInt64(evaluations)),
             "compiled_dag_nodes" => Value.Null
-        }
+        })
     }
 
     pub def snapshotRow(
         snapshot: SnapshotIdentity,
         repository: Repository.World,
         manifestCaseCount: Int32
-    ): ScientificTable.Row = Map#{
-        "signature_protocol" => Value.Text(snapshot#signatureProtocol),
-        "atlas_protocol" => Value.Text(snapshot#atlasProtocol),
-        "repository" => Value.Text(snapshot#repository),
-        "base_revision" => Value.Text(snapshot#baseRevision),
-        "source_tree_identity" => Value.Text(snapshot#sourceTreeIdentity),
-        "fact_identity" => Value.Text(snapshot#factIdentity),
-        "snapshot_id" => Value.Text(snapshot#snapshotId),
+    ): ScientificTable.Row = Map.union(identityRow(snapshot), Map#{
         "file_count" => Value.Int64(Int32.toInt64(Vector.length(repository#files))),
         "symbol_count" => Value.Int64(Int32.toInt64(Vector.length(repository#symbols))),
         "defines_count" => Value.Int64(Int32.toInt64(Set.size(repository#defines))),
@@ -133,7 +130,7 @@ pub mod Atlas.Signature.Table {
         "calls_count" => Value.Int64(Int32.toInt64(Set.size(repository#calls))),
         "parent_count" => Value.Int64(Int32.toInt64(Set.size(repository#parents))),
         "manifest_case_count" => Value.Int64(Int32.toInt64(manifestCaseCount))
-    }
+    })
 
     def observationRow(
         snapshot: SnapshotIdentity,
@@ -143,14 +140,7 @@ pub mod Atlas.Signature.Table {
     ): ScientificTable.Row \ IO = {
         let routeId = Atlas.Signature.routeId(observation#program);
         let atoms = Vector.map(Atlas.Signature.atomName, observation#program#steps);
-        Map#{
-            "signature_protocol" => Value.Text(snapshot#signatureProtocol),
-            "atlas_protocol" => Value.Text(snapshot#atlasProtocol),
-            "repository" => Value.Text(snapshot#repository),
-            "base_revision" => Value.Text(snapshot#baseRevision),
-            "source_tree_identity" => Value.Text(snapshot#sourceTreeIdentity),
-            "fact_identity" => Value.Text(snapshot#factIdentity),
-            "snapshot_id" => Value.Text(snapshot#snapshotId),
+        Map.union(identityRow(snapshot), Map#{
             "seed_domain" => Value.Text(Atlas.Signature.domainName(seed#domain)),
             "seed_identity" => Value.Text(seed#identity),
             "seed_ordinal" => Value.Int32(seed#ordinal),
@@ -170,7 +160,7 @@ pub mod Atlas.Signature.Table {
             "first_extinction_depth" => ScientificTable.optionalInt32Value(observation#firstExtinctionDepth),
             "semantic_state_id" => Value.Text(stateId0),
             "same_as_input" => Value.Boolean(observation#sameAsInput)
-        }
+        })
     }
 
     def identityColumns(): Vector[ScientificTable.Column] = Vector#{

@@ -154,28 +154,23 @@ pub mod Repository.Table {
         let symbols = Vector.mapWithIndex((ordinal, symbol) ->
             "S:${ordinal}:${field(symbol#path)}${field(symbol#name)}:${symbol#startByte}:${symbol#endByte}",
             world#symbols);
-        let defines = Set.toVector(world#defines)
-            |> Vector.map(match (source, target) ->
-                "D:${fileId(source)}:${symbolId(target)}")
-            |> Vector.sort;
-        let imports = Set.toVector(world#imports)
-            |> Vector.map(match (source, target) ->
-                "I:${fileId(source)}:${fileId(target)}")
-            |> Vector.sort;
-        let calls = Set.toVector(world#calls)
-            |> Vector.map(match (source, target) ->
-                "C:${symbolId(source)}:${symbolId(target)}")
-            |> Vector.sort;
-        let parents = Set.toVector(world#parents)
-            |> Vector.map(match (source, target) ->
-                "P:${locationId(source)}:${locationId(target)}")
-            |> Vector.sort;
+        let defines = edgePayload("D", fileId, symbolId, world#defines);
+        let imports = edgePayload("I", fileId, fileId, world#imports);
+        let calls = edgePayload("C", symbolId, symbolId, world#calls);
+        let parents = edgePayload("P", locationId, locationId, world#parents);
         Vector.flatten(Vector#{files, symbols, defines, imports, calls, parents})
             |> Vector.append(Vector#{
                 "UI:${world#unresolvedImports}", "UC:${world#unresolvedCalls}"
             })
             |> Vector.join("\n")
     }
+
+    /// Canonical sorted payload lines for one admitted edge relation.
+    def edgePayload[a: Type, b: Type](prefix: String, sourceId: a -> Int32, targetId: b -> Int32,
+                                      edges: Set[(a, b)]): Vector[String] with Order[a], Order[b] =
+        Set.toVector(edges)
+            |> Vector.map(match (source, target) -> "${prefix}:${sourceId(source)}:${targetId(target)}")
+            |> Vector.sort
 
     def field(value: String): String = "${String.length(value)}:${value}"
 

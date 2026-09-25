@@ -1,8 +1,5 @@
 use ScientificTable.Value
 
-def names(schema: ScientificTable.Schema): Vector[String] =
-    Vector.map(column -> column#name, schema#columns)
-
 @Test
 def atlasCensusSchemasAreExplicitAndStable(): Unit \ Assert = {
     let observations = Atlas.Signature.Table.observations();
@@ -15,7 +12,7 @@ def atlasCensusSchemasAreExplicitAndStable(): Unit \ Assert = {
         "output_cardinality", "domain_cardinality", "expansion_ratio",
         "reach_fraction", "extinct", "first_extinction_depth", "semantic_state_id",
         "same_as_input"
-    }, names(observations));
+    }, Vector.map(column -> column#name, observations#columns));
     Assert.assertEq(expected = 2,
         Vector.count(column -> column#nullable, observations#columns));
     Assert.assertEq(expected = 14, Vector.length(Atlas.Signature.Table.snapshots()#columns));

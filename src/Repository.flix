@@ -103,23 +103,14 @@ mod Repository {
         |> Result.map(Vector.toSet)
 
     def resolveImports(files: Map[String, Repository.Structure.FileId], facts: Vector[Repository.Grit.Fact]): Result[Error, Resolution[Repository.Structure.FileId, Repository.Structure.FileId]] =
-        resolveImportsList(files, Vector.toList(facts), Set.empty(), 0)
-
-    def resolveImportsList(
-        files: Map[String, Repository.Structure.FileId],
-        facts: List[Repository.Grit.Fact],
-        edges: Repository.Structure.Imports,
-        rejected: Int32
-    ): Result[Error, Resolution[Repository.Structure.FileId, Repository.Structure.FileId]] = match facts {
-        case Nil => Ok({edges = edges, rejected = rejected})
-        case fact :: rest => match Map.get(fact#path, files) {
-            case None => Err(Error.UnknownFactPath(fact#path))
-            case Some(source) => match importTarget(fact, files) {
-                case None => resolveImportsList(files, rest, edges, rejected + 1)
-                case Some(target) => resolveImportsList(files, rest, Set.insert((source, target), edges), rejected)
-            }
-        }
-    }
+        Vector.foldLeft((checked, fact) -> checked |> Result.flatMap(resolved ->
+            match Map.get(fact#path, files) {
+                case None => Err(Error.UnknownFactPath(fact#path))
+                case Some(source) => match importTarget(fact, files) {
+                    case None => Ok({edges = resolved#edges, rejected = resolved#rejected + 1})
+                    case Some(target) => Ok({edges = Set.insert((source, target), resolved#edges), rejected = resolved#rejected})
+                }
+            }), Ok({edges = Set.empty(), rejected = 0}), facts)
 
     def importTarget(fact: Repository.Grit.Fact, files: Map[String, Repository.Structure.FileId]): Option[Repository.Structure.FileId] = {
         let value = String.trim(fact#value);
