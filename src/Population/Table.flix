@@ -1,6 +1,7 @@
 /// Explicit Parquet schemas for the frozen population and protocol.
 pub mod Population.Table {
     use ScientificTable.Value
+    use ScientificTable.Columns.{text, optionalText, int32}
 
     pub type alias Tables = {
         metadata = Vector[ScientificTable.Row],
@@ -34,11 +35,6 @@ pub mod Population.Table {
         cases = Vector.map(caseRow, frozen#cases)
     }
 
-    pub def write(metadataPath: String, casesPath: String, tables: Tables): Tables \ IO = {
-        metadata = ScientificTable.write(metadataPath, metadata(), tables#metadata),
-        cases = ScientificTable.write(casesPath, cases(), tables#cases)
-    }
-
     pub def read(metadataPath: String, casesPath: String): Result[String, Population.Frozen] \ IO =
         frozen({
             metadata = ScientificTable.read(metadataPath, metadata()),
@@ -46,10 +42,10 @@ pub mod Population.Table {
         })
 
     pub def frozen(tables: Tables): Result[String, Population.Frozen] = forM (
-        row <- exactlyOne(tables#metadata);
+        row <- ScientificTable.exactlyOne("population metadata", tables#metadata);
         protocol0 <- decodeMetadata(row);
         cases0 <- Vector.traverse(decodeCase, tables#cases);
-        _ <- contiguous(cases0);
+        _ <- ScientificTable.requireContiguous("population ordinals must be contiguous", Vector.map(value -> (value#ordinal, value), cases0));
         _ <- if (Vector.length(cases0) == 78) Ok(()) else Err("population must contain 78 cases")
     ) yield {protocol = protocol0, cases = cases0}
 
@@ -78,7 +74,7 @@ pub mod Population.Table {
     }
 
     def decodeMetadata(row: ScientificTable.Row): Result[String, Population.Protocol] = forM (
-        _ <- requireProtocol(row);
+        _ <- ScientificTable.requireText("protocol", protocol(), row, "population");
         benchmark <- ScientificTable.text(row, "benchmark_revision");
         multilingual <- ScientificTable.text(row, "multilingual_revision");
         pro <- ScientificTable.text(row, "pro_revision");
@@ -95,7 +91,7 @@ pub mod Population.Table {
     }
 
     def decodeCase(row: ScientificTable.Row): Result[String, Population.Case] = forM (
-        _ <- requireProtocol(row);
+        _ <- ScientificTable.requireText("protocol", protocol(), row, "population");
         ordinal <- ScientificTable.int32(row, "ordinal");
         instanceId <- ScientificTable.text(row, "instance_id");
         repository <- ScientificTable.text(row, "repository");
@@ -123,18 +119,6 @@ pub mod Population.Table {
             case _ => Err("invalid population outcome")
         }
 
-    def contiguous(values: Vector[Population.Case]): Result[String, Unit] =
-        if (Vector.forAll(match (index, value) -> index == value#ordinal,
-            Vector.mapWithIndex((index, value) -> (index, value), values))) Ok(())
-        else Err("population ordinals must be contiguous")
-
-    def requireProtocol(row: ScientificTable.Row): Result[String, Unit] =
-        ScientificTable.text(row, "protocol")
-        |> Result.flatMap(actual -> if (actual == protocol()) Ok(()) else Err("population protocol mismatch"))
-
-    def exactlyOne(rows: Vector[a]): Result[String, a] =
-        if (Vector.length(rows) == 1) Ok(Vector.get(0, rows)) else Err("population metadata requires one row")
-
     def outcomeName(value: Population.Outcome): String = match value {
         case Population.Outcome.Completed => "completed"
         case Population.Outcome.Censored(_) => "censored"
@@ -144,11 +128,4 @@ pub mod Population.Table {
         case Population.Outcome.Completed => Value.Null
         case Population.Outcome.Censored(reason) => Value.Text(reason)
     }
-
-    def text(name: String): ScientificTable.Column =
-        {name = name, kind = ScientificTable.ColumnType.Text, nullable = false}
-    def optionalText(name: String): ScientificTable.Column =
-        {name = name, kind = ScientificTable.ColumnType.Text, nullable = true}
-    def int32(name: String): ScientificTable.Column =
-        {name = name, kind = ScientificTable.ColumnType.Int32, nullable = false}
 }

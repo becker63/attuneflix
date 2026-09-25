@@ -22,4 +22,5 @@ exports_files([
     "Repository/Grit.flix",
     "Repository/Structure.flix",
     "ScientificTable.flix",
+    "ScientificTable/Columns.flix",
 ])

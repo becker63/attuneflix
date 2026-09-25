@@ -6,6 +6,7 @@
 /// checkout path, Nix, or Marzano.
 pub mod Repository.Table {
     use ScientificTable.Value
+    use ScientificTable.Columns.{text, optionalText, int32, optionalInt32}
 
     pub type alias Identity = {
         repository         = String,
@@ -219,21 +220,21 @@ pub mod Repository.Table {
         else {
             let row = Vector.get(0, rows0);
             forM (
-                _ <- requireText("repository", expected#repository, row);
-                _ <- requireText("base_revision", expected#baseRevision, row);
-                _ <- requireText("source_tree_identity", expected#sourceTreeIdentity, row);
-                _ <- requireText("fact_identity", expected#factIdentity, row);
-                _ <- requireText("snapshot_id", expected#snapshotId, row)
+                _ <- ScientificTable.requireText("repository", expected#repository, row, "repository world");
+                _ <- ScientificTable.requireText("base_revision", expected#baseRevision, row, "repository world");
+                _ <- ScientificTable.requireText("source_tree_identity", expected#sourceTreeIdentity, row, "repository world");
+                _ <- ScientificTable.requireText("fact_identity", expected#factIdentity, row, "repository world");
+                _ <- ScientificTable.requireText("snapshot_id", expected#snapshotId, row, "repository world")
             ) yield ()
         }
 
     def decodeEntity(snapshotId: String, row: ScientificTable.Row): Result[String, Entity] = forM (
-        _ <- requireText("snapshot_id", snapshotId, row);
-        domain <- string("domain", row);
-        id <- int("entity_id", row);
-        ordinal <- int("ordinal", row);
+        _ <- ScientificTable.requireText("snapshot_id", snapshotId, row, "repository world");
+        domain <- ScientificTable.text(row, "domain");
+        id <- ScientificTable.int32(row, "entity_id");
+        ordinal <- ScientificTable.int32(row, "ordinal");
         _ <- if (id == ordinal) Ok(()) else Err("repository entity id/ordinal mismatch");
-        path <- string("path", row);
+        path <- ScientificTable.text(row, "path");
         entity <- match domain {
             case "file" => forM (
                 _ <- requireNull("name", row);
@@ -241,21 +242,21 @@ pub mod Repository.Table {
                 _ <- requireNull("end_byte", row)
             ) yield Entity.File(ordinal, path)
             case "symbol" => forM (
-                name <- string("name", row);
-                start <- int("start_byte", row);
-                end <- int("end_byte", row)
+                name <- ScientificTable.text(row, "name");
+                start <- ScientificTable.int32(row, "start_byte");
+                end <- ScientificTable.int32(row, "end_byte")
             ) yield Entity.Symbol(ordinal, path, name, start, end)
             case _ => Err("unknown repository entity domain: ${domain}")
         }
     ) yield entity
 
     def decodeRelation(snapshotId: String, row: ScientificTable.Row): Result[String, Relation] = forM (
-        _ <- requireText("snapshot_id", snapshotId, row);
-        relation <- string("relation", row);
-        sourceDomain <- string("source_domain", row);
-        source <- int("source_id", row);
-        targetDomain <- string("target_domain", row);
-        target <- int("target_id", row);
+        _ <- ScientificTable.requireText("snapshot_id", snapshotId, row, "repository world");
+        relation <- ScientificTable.text(row, "relation");
+        sourceDomain <- ScientificTable.text(row, "source_domain");
+        source <- ScientificTable.int32(row, "source_id");
+        targetDomain <- ScientificTable.text(row, "target_domain");
+        target <- ScientificTable.int32(row, "target_id");
         edge <- match (relation, sourceDomain, targetDomain) {
             case ("defines", "file", "symbol") => Ok(Relation.Defines(file(source), symbol(target)))
             case ("imports", "file", "file") => Ok(Relation.Imports(file(source), file(target)))
@@ -269,8 +270,9 @@ pub mod Repository.Table {
         let entries = Vector.filterMap(match entity -> match entity {
             case Entity.File(ordinal, path) => Some((ordinal, path))
             case _ => None
-        }, entities0) |> canonicalOrdinals;
-        requireOrdinals(entries) |> Result.map(_ -> Vector.map(match (_, path) -> path, entries))
+        }, entities0) |> ScientificTable.canonicalOrdinals;
+        ScientificTable.requireContiguous("repository entity ordinals must be contiguous from zero", entries)
+            |> Result.map(_ -> Vector.map(match (_, path) -> path, entries))
     }
 
     def orderedSymbols(entities0: Vector[Entity]): Result[String, Vector[Repository.Symbol]] = {
@@ -279,32 +281,15 @@ pub mod Repository.Table {
                 path = path, name = name, startByte = start, endByte = end
             }))
             case _ => None
-        }, entities0) |> canonicalOrdinals;
-        requireOrdinals(entries) |> Result.map(_ -> Vector.map(match (_, value) -> value, entries))
+        }, entities0) |> ScientificTable.canonicalOrdinals;
+        ScientificTable.requireContiguous("repository entity ordinals must be contiguous from zero", entries)
+            |> Result.map(_ -> Vector.map(match (_, value) -> value, entries))
     }
-
-    /// Typed tables are written in ordinal order. Preserve that common path
-    /// without feeding an already-sorted large vector to Flix's recursive
-    /// quicksort. Noncanonical readers retain the same sorting semantics.
-    def canonicalOrdinals(entries: Vector[(Int32, a)]): Vector[(Int32, a)] =
-        if (ordinalsOrdered(entries)) entries
-        else Vector.sortBy(match (ordinal, _) -> ordinal, entries)
-
-    def ordinalsOrdered(entries: Vector[(Int32, a)]): Bool =
-        Vector.forAll(match (index, entry) -> fst(entry) == index,
-            Vector.mapWithIndex((index, entry) -> (index, entry), entries))
-
-    def requireOrdinals(entries: Vector[(Int32, a)]): Result[String, Unit] =
-        match Vector.find(match (index, entry) -> let (ordinal, _) = entry; ordinal != index,
-            Vector.mapWithIndex((index, entry) -> (index, entry), entries)) {
-            case None => Ok(())
-            case Some(_) => Err("repository entity ordinals must be contiguous from zero")
-        }
 
     def makeWorld(files0: Vector[String], symbols0: Vector[Repository.Symbol], relations0: Vector[Relation], metadata0: Vector[ScientificTable.Row]): Result[String, Repository.World] =
         forM (
-            unresolvedImports <- int("unresolved_imports", Vector.get(0, metadata0));
-            unresolvedCalls <- int("unresolved_calls", Vector.get(0, metadata0))
+            unresolvedImports <- ScientificTable.int32(Vector.get(0, metadata0), "unresolved_imports");
+            unresolvedCalls <- ScientificTable.int32(Vector.get(0, metadata0), "unresolved_calls")
         ) yield {
             files = files0,
             symbols = symbols0,
@@ -342,14 +327,10 @@ pub mod Repository.Table {
             ("defines_count", Set.size(world#defines)), ("imports_count", Set.size(world#imports)),
             ("calls_count", Set.size(world#calls)), ("parent_count", Set.size(world#parents))
         };
-        Vector.traverse(match (name, count) -> int(name, row)
+        Vector.traverse(match (name, count) -> ScientificTable.int32(row, name)
             |> Result.flatMap(expected -> if (expected == count) Ok(()) else Err("repository world count mismatch: ${name}")), actual)
             |> Result.map(_ -> ())
     }
-
-    def requireText(name: String, expected: String, row: ScientificTable.Row): Result[String, Unit] =
-        string(name, row) |> Result.flatMap(actual ->
-            if (actual == expected) Ok(()) else Err("repository world identity mismatch: ${name}"))
 
     def requireNull(name: String, row: ScientificTable.Row): Result[String, Unit] = match Map.get(name, row) {
         case Some(Value.Null) => Ok(())
@@ -357,21 +338,10 @@ pub mod Repository.Table {
         case None => Err("missing repository world field: ${name}")
     }
 
-    def string(name: String, row: ScientificTable.Row): Result[String, String] =
-        ScientificTable.text(row, name)
-
-    def int(name: String, row: ScientificTable.Row): Result[String, Int32] =
-        ScientificTable.int32(row, name)
-
     def file(value: Int32): Repository.Structure.FileId = Repository.Structure.FileId.FileId(value)
     def symbol(value: Int32): Repository.Structure.SymbolId = Repository.Structure.SymbolId.SymbolId(value)
     def location(value: Int32): Repository.Structure.LocationId = Repository.Structure.LocationId.LocationId(value)
     def fileId(value: Repository.Structure.FileId): Int32 = let Repository.Structure.FileId.FileId(id) = value; id
     def symbolId(value: Repository.Structure.SymbolId): Int32 = let Repository.Structure.SymbolId.SymbolId(id) = value; id
     def locationId(value: Repository.Structure.LocationId): Int32 = let Repository.Structure.LocationId.LocationId(id) = value; id
-
-    def text(name: String): ScientificTable.Column = {name = name, kind = ScientificTable.ColumnType.Text, nullable = false}
-    def optionalText(name: String): ScientificTable.Column = {name = name, kind = ScientificTable.ColumnType.Text, nullable = true}
-    def int32(name: String): ScientificTable.Column = {name = name, kind = ScientificTable.ColumnType.Int32, nullable = false}
-    def optionalInt32(name: String): ScientificTable.Column = {name = name, kind = ScientificTable.ColumnType.Int32, nullable = true}
 }

@@ -1,5 +1,6 @@
 use Fs.FileSystem
 use ScientificTable.Value
+use ScientificTable.Columns.{text, int64, float64}
 
 type alias Summary = {
     repository = String, snapshot = String, scope = String, domain = String,
@@ -261,33 +262,26 @@ def repositoryRow(row: RepositoryResult): ScientificTable.Row = Map#{
 }
 
 def decodeSummary(row: ScientificTable.Row): Result[String, Summary] = forM (
-    repository <- string("repository", row); snapshot <- string("snapshot_id", row);
-    scope <- string("scope", row); domain <- string("seed_domain", row);
-    depth <- optionalInt("depth", row); atom <- optionalString("last_atom", row);
-    metric0 <- string("metric", row); value <- number("value", row)
+    repository <- ScientificTable.text(row, "repository"); snapshot <- ScientificTable.text(row, "snapshot_id");
+    scope <- ScientificTable.text(row, "scope"); domain <- ScientificTable.text(row, "seed_domain");
+    depth <- ScientificTable.optionalInt32(row, "depth"); atom <- ScientificTable.optionalText(row, "last_atom");
+    metric0 <- ScientificTable.text(row, "metric"); value <- ScientificTable.number(row, "value")
 ) yield {repository = repository, snapshot = snapshot, scope = scope, domain = domain,
     depth = depth, atom = atom, metric = metric0, value = value}
 
 def decodeSnapshot(row: ScientificTable.Row): Result[String, Snapshot] = forM (
-    repository <- string("repository", row); revision <- string("base_revision", row);
-    snapshot <- string("snapshot_id", row); files <- number("file_count", row);
-    symbols <- number("symbol_count", row)
+    repository <- ScientificTable.text(row, "repository"); revision <- ScientificTable.text(row, "base_revision");
+    snapshot <- ScientificTable.text(row, "snapshot_id"); files <- ScientificTable.number(row, "file_count");
+    symbols <- ScientificTable.number(row, "symbol_count")
 ) yield {repository = repository, revision = revision, snapshot = snapshot, files = files, symbols = symbols}
 
 def decodePhysical(row: ScientificTable.Row): Result[String, Physical] = forM (
-    repository <- string("repository", row); snapshot <- string("snapshot_id", row);
-    compression <- number("logical_per_physical_evaluation", row);
-    requests <- number("physical_transition_requests", row);
-    reuses <- number("physical_transition_reuses", row)
+    repository <- ScientificTable.text(row, "repository"); snapshot <- ScientificTable.text(row, "snapshot_id");
+    compression <- ScientificTable.number(row, "logical_per_physical_evaluation");
+    requests <- ScientificTable.number(row, "physical_transition_requests");
+    reuses <- ScientificTable.number(row, "physical_transition_reuses")
 ) yield {repository = repository, snapshot = snapshot, logicalPerEvaluation = compression,
     requests = requests, reuses = reuses}
-
-def string(name: String, row: ScientificTable.Row): Result[String, String] = ScientificTable.text(row, name)
-def number(name: String, row: ScientificTable.Row): Result[String, Float64] = ScientificTable.number(row, name)
-def optionalString(name: String, row: ScientificTable.Row): Result[String, Option[String]] =
-    ScientificTable.optionalText(row, name)
-def optionalInt(name: String, row: ScientificTable.Row): Result[String, Option[Int32]] =
-    ScientificTable.optionalInt32(row, name)
 
 def middle(rows: Vector[a], accessor: a -> Float64): Float64 = Vector.map(accessor, rows) |> median
 def median(values: Vector[Float64]): Float64 = {
@@ -310,6 +304,3 @@ def minimum(values: Vector[Float64]): Float64 =
 def meanValues(values: Vector[Float64]): Float64 =
     if (Vector.isEmpty(values)) 0.0 else Vector.foldLeft((a, b) -> a + b, 0.0, values) / Int32.toFloat64(Vector.length(values))
 def sum(values: Vector[a], accessor: a -> Float64): Float64 = Vector.foldLeft((a, b) -> a + accessor(b), 0.0, values)
-def text(name: String): ScientificTable.Column = {name = name, kind = ScientificTable.ColumnType.Text, nullable = false}
-def int64(name: String): ScientificTable.Column = {name = name, kind = ScientificTable.ColumnType.Int64, nullable = false}
-def float64(name: String): ScientificTable.Column = {name = name, kind = ScientificTable.ColumnType.Float64, nullable = false}

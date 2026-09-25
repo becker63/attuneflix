@@ -5,6 +5,7 @@
 /// document corpus, and the exact ranked field consumed by Atlas.
 pub mod Localization.PriorTable {
     use ScientificTable.Value
+    use ScientificTable.Columns.{text, int32, optionalInt32, float64}
 
     pub type alias Tables = {
         metadata = Vector[ScientificTable.Row],
@@ -226,13 +227,4 @@ pub mod Localization.PriorTable {
         case Some(value0) => Value.Int32(value0)
         case None => Value.Null
     }
-
-    def text(name: String): ScientificTable.Column =
-        {name = name, kind = ScientificTable.ColumnType.Text, nullable = false}
-    def int32(name: String): ScientificTable.Column =
-        {name = name, kind = ScientificTable.ColumnType.Int32, nullable = false}
-    def optionalInt32(name: String): ScientificTable.Column =
-        {name = name, kind = ScientificTable.ColumnType.Int32, nullable = true}
-    def float64(name: String): ScientificTable.Column =
-        {name = name, kind = ScientificTable.ColumnType.Float64, nullable = false}
 }

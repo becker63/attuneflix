@@ -4,6 +4,7 @@
 /// Arrow/Parquet.
 pub mod Atlas.Signature.Summary {
     use ScientificTable.Value
+    use ScientificTable.Columns.{text, optionalText, optionalInt32, int64, float64}
 
     type alias Datum = {
         signatureProtocol  = String,
@@ -197,31 +198,31 @@ pub mod Atlas.Signature.Summary {
         "snapshot_id" => Value.Text(identity#snapshotId),
         "scope" => Value.Text(group#scope),
         "seed_domain" => Value.Text(group#seedDomain),
-        "depth" => optionalIntValue(group#depth),
-        "last_atom" => optionalTextValue(group#lastAtom),
+        "depth" => ScientificTable.optionalInt32Value(group#depth),
+        "last_atom" => ScientificTable.optionalTextValue(group#lastAtom),
         "metric" => Value.Text(metric0#name),
         "value" => Value.Float64(metric0#value),
         "sample_count" => Value.Int64(Int32.toInt64(metric0#sampleCount))
     }
 
     def decode(row0: ScientificTable.Row): Result[String, Datum] = forM (
-        signatureProtocol <- string("signature_protocol", row0);
-        atlasProtocol <- string("atlas_protocol", row0);
-        repository <- string("repository", row0);
-        baseRevision <- string("base_revision", row0);
-        sourceTreeIdentity <- string("source_tree_identity", row0);
-        factIdentity <- string("fact_identity", row0);
-        snapshotId <- string("snapshot_id", row0);
-        seedDomain <- string("seed_domain", row0);
-        depth <- int32Value("depth", row0);
-        lastAtom <- string("last_atom", row0);
-        outputCardinality <- floatValue("output_cardinality", row0);
-        expansionRatio <- optionalFloat("expansion_ratio", row0);
-        reachFraction <- floatValue("reach_fraction", row0);
-        extinct <- boolValue("extinct", row0);
-        firstExtinction <- optionalInt("first_extinction_depth", row0);
-        semanticStateId <- string("semantic_state_id", row0);
-        sameAsInput <- boolValue("same_as_input", row0)
+        signatureProtocol <- ScientificTable.text(row0, "signature_protocol");
+        atlasProtocol <- ScientificTable.text(row0, "atlas_protocol");
+        repository <- ScientificTable.text(row0, "repository");
+        baseRevision <- ScientificTable.text(row0, "base_revision");
+        sourceTreeIdentity <- ScientificTable.text(row0, "source_tree_identity");
+        factIdentity <- ScientificTable.text(row0, "fact_identity");
+        snapshotId <- ScientificTable.text(row0, "snapshot_id");
+        seedDomain <- ScientificTable.text(row0, "seed_domain");
+        depth <- ScientificTable.int32(row0, "depth");
+        lastAtom <- ScientificTable.text(row0, "last_atom");
+        outputCardinality <- ScientificTable.number(row0, "output_cardinality");
+        expansionRatio <- ScientificTable.optionalFloat64(row0, "expansion_ratio");
+        reachFraction <- ScientificTable.number(row0, "reach_fraction");
+        extinct <- ScientificTable.boolean(row0, "extinct");
+        firstExtinction <- ScientificTable.optionalInt32(row0, "first_extinction_depth");
+        semanticStateId <- ScientificTable.text(row0, "semantic_state_id");
+        sameAsInput <- ScientificTable.boolean(row0, "same_as_input")
     ) yield {
         signatureProtocol = signatureProtocol, atlasProtocol = atlasProtocol,
         repository = repository, baseRevision = baseRevision,
@@ -232,43 +233,4 @@ pub mod Atlas.Signature.Summary {
         extinct = extinct, firstExtinction = firstExtinction,
         semanticStateId = semanticStateId, sameAsInput = sameAsInput
     }
-
-    def string(name: String, row0: ScientificTable.Row): Result[String, String] =
-        ScientificTable.text(row0, name)
-
-    def int32Value(name: String, row0: ScientificTable.Row): Result[String, Int32] =
-        ScientificTable.int32(row0, name)
-
-    def floatValue(name: String, row0: ScientificTable.Row): Result[String, Float64] =
-        ScientificTable.number(row0, name)
-
-    def boolValue(name: String, row0: ScientificTable.Row): Result[String, Bool] =
-        ScientificTable.boolean(row0, name)
-
-    def optionalFloat(name: String, row0: ScientificTable.Row): Result[String, Option[Float64]] =
-        ScientificTable.optionalFloat64(row0, name)
-
-    def optionalInt(name: String, row0: ScientificTable.Row): Result[String, Option[Int32]] =
-        ScientificTable.optionalInt32(row0, name)
-
-    def optionalIntValue(value: Option[Int32]): ScientificTable.Value = match value {
-        case None => Value.Null
-        case Some(number) => Value.Int32(number)
-    }
-
-    def optionalTextValue(value: Option[String]): ScientificTable.Value = match value {
-        case None => Value.Null
-        case Some(text0) => Value.Text(text0)
-    }
-
-    def text(name: String): ScientificTable.Column =
-        {name = name, kind = ScientificTable.ColumnType.Text, nullable = false}
-    def optionalText(name: String): ScientificTable.Column =
-        {name = name, kind = ScientificTable.ColumnType.Text, nullable = true}
-    def optionalInt32(name: String): ScientificTable.Column =
-        {name = name, kind = ScientificTable.ColumnType.Int32, nullable = true}
-    def int64(name: String): ScientificTable.Column =
-        {name = name, kind = ScientificTable.ColumnType.Int64, nullable = false}
-    def float64(name: String): ScientificTable.Column =
-        {name = name, kind = ScientificTable.ColumnType.Float64, nullable = false}
 }

@@ -92,6 +92,7 @@ flix_check(
         "//src:Repository/Structure.flix",
         "//src:ScientificIdentity.flix",
         "//src:ScientificTable.flix",
+        "//src:ScientificTable/Columns.flix",
     ],
     command = "test",
     java_deps = [
@@ -111,6 +112,7 @@ flix_check(
     srcs = [
         "//build:src/ScientificTableTest.flix",
         "//src:ScientificTable.flix",
+        "//src:ScientificTable/Columns.flix",
     ],
     command = "test",
     java_deps = ["//src/native/parquet:attune_parquet"],
@@ -129,6 +131,7 @@ flix_check(
         "//src:Population.flix",
         "//src:Population/Table.flix",
         "//src:ScientificTable.flix",
+        "//src:ScientificTable/Columns.flix",
     ],
     command = "test",
     java_deps = ["//src/native/parquet:attune_parquet"],
@@ -150,6 +153,7 @@ flix_check(
         "//src:Repository/Table.flix",
         "//src:ScientificIdentity.flix",
         "//src:ScientificTable.flix",
+        "//src:ScientificTable/Columns.flix",
     ],
     command = "test",
     java_deps = [
@@ -178,6 +182,7 @@ flix_check(
         "//src:Repository/Structure.flix",
         "//src:ScientificIdentity.flix",
         "//src:ScientificTable.flix",
+        "//src:ScientificTable/Columns.flix",
     ],
     command = "test",
     java_deps = [

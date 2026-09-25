@@ -67,12 +67,6 @@ pub mod ScientificTable {
         case None => Err("missing ${name}")
     }
 
-    pub def int64(row: Row, name: String): Result[String, Int64] = match Map.get(name, row) {
-        case Some(Value.Int64(value)) => Ok(value)
-        case Some(_) => Err("${name} must be int64")
-        case None => Err("missing ${name}")
-    }
-
     pub def float64(row: Row, name: String): Result[String, Float64] = match Map.get(name, row) {
         case Some(Value.Float64(value)) => Ok(value)
         case Some(_) => Err("${name} must be float64")
@@ -92,12 +86,6 @@ pub mod ScientificTable {
     pub def boolean(row: Row, name: String): Result[String, Bool] = match Map.get(name, row) {
         case Some(Value.Boolean(value)) => Ok(value)
         case Some(_) => Err("${name} must be boolean")
-        case None => Err("missing ${name}")
-    }
-
-    pub def textList(row: Row, name: String): Result[String, Vector[String]] = match Map.get(name, row) {
-        case Some(Value.TextList(value)) => Ok(value)
-        case Some(_) => Err("${name} must be list<string>")
         case None => Err("missing ${name}")
     }
 
@@ -121,6 +109,48 @@ pub mod ScientificTable {
         case Some(_) => Err("${name} must be nullable text")
         case None => Err("missing ${name}")
     }
+
+    /// Shared null-preserving lifts from optional decoded values to row values.
+    pub def optionalInt32Value(value: Option[Int32]): Value = match value {
+        case None => Value.Null
+        case Some(number) => Value.Int32(number)
+    }
+
+    pub def optionalFloat64Value(value: Option[Float64]): Value = match value {
+        case None => Value.Null
+        case Some(number) => Value.Float64(number)
+    }
+
+    pub def optionalTextValue(value: Option[String]): Value = match value {
+        case None => Value.Null
+        case Some(text0) => Value.Text(text0)
+    }
+
+    /// The named column must carry exactly the expected identity value; the
+    /// context names the table in the mismatch diagnostic.
+    pub def requireText(name: String, expected: String, row: Row, context: String): Result[String, Unit] =
+        text(row, name) |> Result.flatMap(actual ->
+            if (actual == expected) Ok(()) else Err("${context} identity mismatch: ${name}"))
+
+    /// A protocol table carries exactly one metadata row.
+    pub def exactlyOne(name: String, rows: Vector[a]): Result[String, a] =
+        if (Vector.length(rows) == 1) Ok(Vector.get(0, rows)) else Err("${name} requires exactly one row")
+
+    /// Typed tables are written in ordinal order. Preserve that common path
+    /// without feeding an already-sorted large vector to Flix's recursive
+    /// quicksort. Noncanonical readers retain the same sorting semantics.
+    pub def canonicalOrdinals(entries: Vector[(Int32, a)]): Vector[(Int32, a)] =
+        if (ordinalsOrdered(entries)) entries
+        else Vector.sortBy(match (ordinal, _) -> ordinal, entries)
+
+    pub def ordinalsOrdered(entries: Vector[(Int32, a)]): Bool =
+        Vector.forAll(match (index, entry) -> fst(entry) == index,
+            Vector.mapWithIndex((index, entry) -> (index, entry), entries))
+
+    /// After canonicalization the ordinals must run contiguously from zero.
+    pub def requireContiguous(message: String, entries: Vector[(Int32, a)]): Result[String, Unit] =
+        if (ordinalsOrdered(entries)) Ok(())
+        else Err(message)
 
     pub def schemaPayload(schema: Schema): String =
         JObject(Map#{

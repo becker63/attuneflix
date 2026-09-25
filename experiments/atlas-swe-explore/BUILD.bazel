@@ -17,6 +17,7 @@ flix_fatjar(
         "//src:Repository/Structure.flix",
         "//src:ScientificIdentity.flix",
         "//src:ScientificTable.flix",
+        "//src:ScientificTable/Columns.flix",
     ],
     java_deps = [
         "//src/native/identity:attune_identity",
@@ -55,6 +56,7 @@ flix_fatjar(
         "//src:Repository/Structure.flix",
         "//src:ScientificIdentity.flix",
         "//src:ScientificTable.flix",
+        "//src:ScientificTable/Columns.flix",
     ],
     java_deps = [
         "//src/native/identity:attune_identity",
@@ -93,6 +95,7 @@ flix_fatjar(
         "//src:Repository/Structure.flix",
         "//src:ScientificIdentity.flix",
         "//src:ScientificTable.flix",
+        "//src:ScientificTable/Columns.flix",
     ],
     java_deps = [
         "//src/native/identity:attune_identity",
@@ -129,6 +132,7 @@ flix_fatjar(
         "//src:Repository/Structure.flix",
         "//src:ScientificIdentity.flix",
         "//src:ScientificTable.flix",
+        "//src:ScientificTable/Columns.flix",
     ],
     java_deps = [
         "//src/native/identity:attune_identity",

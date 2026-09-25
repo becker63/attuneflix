@@ -2,6 +2,7 @@
 /// External benchmark JSON is converted once; replay sees only this table.
 pub mod Localization.IssueTable {
     use ScientificTable.Value
+    use ScientificTable.Columns.text
 
     pub def schema(): ScientificTable.Schema = {
         format = "attune-localization-issue-v1",
@@ -52,7 +53,4 @@ pub mod Localization.IssueTable {
 
     def equal(name: String, expected: String, actual: String): Result[String, Unit] =
         if (expected == actual) Ok(()) else Err("${name} mismatch")
-
-    def text(name: String): ScientificTable.Column =
-        {name = name, kind = ScientificTable.ColumnType.Text, nullable = false}
 }

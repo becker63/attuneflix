@@ -2,6 +2,8 @@
 /// are the scientific data model; the Arrow boundary only realizes them.
 pub mod Atlas.Signature.Table {
     use ScientificTable.Value
+    use ScientificTable.Columns.{text, optionalText, textList, int32, optionalInt32}
+    use ScientificTable.Columns.{int64, optionalInt64, float64, optionalFloat64, boolean}
 
     pub type alias SnapshotIdentity = {
         signatureProtocol  = String,
@@ -178,23 +180,13 @@ pub mod Atlas.Signature.Table {
             "input_cardinality" => Value.Int64(Int32.toInt64(observation#inputCardinality)),
             "output_cardinality" => Value.Int64(Int32.toInt64(observation#outputCardinality)),
             "domain_cardinality" => Value.Int64(Int32.toInt64(observation#domainCardinality)),
-            "expansion_ratio" => optionalFloat(observation#expansionRatio),
+            "expansion_ratio" => ScientificTable.optionalFloat64Value(observation#expansionRatio),
             "reach_fraction" => Value.Float64(observation#reachFraction),
             "extinct" => Value.Boolean(observation#extinct),
-            "first_extinction_depth" => optionalInt(observation#firstExtinctionDepth),
+            "first_extinction_depth" => ScientificTable.optionalInt32Value(observation#firstExtinctionDepth),
             "semantic_state_id" => Value.Text(stateId0),
             "same_as_input" => Value.Boolean(observation#sameAsInput)
         }
-    }
-
-    def optionalFloat(value: Option[Float64]): ScientificTable.Value = match value {
-        case None => Value.Null
-        case Some(number) => Value.Float64(number)
-    }
-
-    def optionalInt(value: Option[Int32]): ScientificTable.Value = match value {
-        case None => Value.Null
-        case Some(number) => Value.Int32(number)
     }
 
     def ratio(numerator: Int32, denominator: Int32): Float64 =
@@ -206,31 +198,4 @@ pub mod Atlas.Signature.Table {
         text("base_revision"), text("source_tree_identity"), text("fact_identity"),
         text("snapshot_id")
     }
-
-    def text(name: String): ScientificTable.Column =
-        {name = name, kind = ScientificTable.ColumnType.Text, nullable = false}
-
-    def textList(name: String): ScientificTable.Column =
-        {name = name, kind = ScientificTable.ColumnType.TextList, nullable = false}
-
-    def int32(name: String): ScientificTable.Column =
-        {name = name, kind = ScientificTable.ColumnType.Int32, nullable = false}
-
-    def optionalInt32(name: String): ScientificTable.Column =
-        {name = name, kind = ScientificTable.ColumnType.Int32, nullable = true}
-
-    def int64(name: String): ScientificTable.Column =
-        {name = name, kind = ScientificTable.ColumnType.Int64, nullable = false}
-
-    def optionalInt64(name: String): ScientificTable.Column =
-        {name = name, kind = ScientificTable.ColumnType.Int64, nullable = true}
-
-    def float64(name: String): ScientificTable.Column =
-        {name = name, kind = ScientificTable.ColumnType.Float64, nullable = false}
-
-    def optionalFloat64(name: String): ScientificTable.Column =
-        {name = name, kind = ScientificTable.ColumnType.Float64, nullable = true}
-
-    def boolean(name: String): ScientificTable.Column =
-        {name = name, kind = ScientificTable.ColumnType.Boolean, nullable = false}
 }

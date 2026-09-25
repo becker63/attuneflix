@@ -1,6 +1,7 @@
 /// Typed durable output of the current localization sandwich.
 pub mod Localization.PredictionTable {
     use ScientificTable.Value
+    use ScientificTable.Columns.{text, int32, optionalInt32, float64}
 
     pub type alias Tables = {
         summary = Vector[ScientificTable.Row],
@@ -69,13 +70,4 @@ pub mod Localization.PredictionTable {
         case Localization.Sandwich.Selection.Prior => Value.Null
         case Localization.Sandwich.Selection.Atlas(Localization.Sandwich.CandidateId.CandidateId(id)) => Value.Int32(id)
     }
-
-    def text(name: String): ScientificTable.Column =
-        {name = name, kind = ScientificTable.ColumnType.Text, nullable = false}
-    def int32(name: String): ScientificTable.Column =
-        {name = name, kind = ScientificTable.ColumnType.Int32, nullable = false}
-    def optionalInt32(name: String): ScientificTable.Column =
-        {name = name, kind = ScientificTable.ColumnType.Int32, nullable = true}
-    def float64(name: String): ScientificTable.Column =
-        {name = name, kind = ScientificTable.ColumnType.Float64, nullable = false}
 }
