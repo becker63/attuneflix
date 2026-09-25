@@ -108,11 +108,11 @@ pub mod Atlas.Signature.Summary {
             fraction("reach_ge_0_90_fraction", row -> row#reachFraction >= 0.90, data),
             metric("unique_semantic_states", Int32.toFloat64(Vector.length(multiplicities)), count),
             metric("logical_per_unique_state",
-                ratio(count, Vector.length(multiplicities)), count),
+                ScientificTable.ratio(count, Vector.length(multiplicities)), count),
             distribution("state_multiplicity_p50", multiplicities, 50),
             distribution("state_multiplicity_p90", multiplicities, 90),
             distribution("state_multiplicity_p99", multiplicities, 99),
-            metric("state_multiplicity_max", maximum(multiplicities), Vector.length(multiplicities)),
+            metric("state_multiplicity_max", ScientificTable.maximum(multiplicities), Vector.length(multiplicities)),
             fraction("same_as_input_fraction", row -> row#sameAsInput, data)
         }
     }
@@ -131,11 +131,11 @@ pub mod Atlas.Signature.Summary {
         metric(name, quantile(values, percentile), Vector.length(values))
 
     def fraction(name: String, predicate: Datum -> Bool, data: Vector[Datum]): Metric =
-        metric(name, ratio(Vector.count(predicate, data), Vector.length(data)), Vector.length(data))
+        metric(name, ScientificTable.ratio(Vector.count(predicate, data), Vector.length(data)), Vector.length(data))
 
     def fractionOption(name: String, predicate: Float64 -> Bool, data: Vector[Datum]): Metric = {
         let values = Vector.filterMap(row -> row#expansionRatio, data);
-        metric(name, ratio(Vector.count(predicate, values), Vector.length(values)), Vector.length(values))
+        metric(name, ScientificTable.ratio(Vector.count(predicate, values), Vector.length(values)), Vector.length(values))
     }
 
     def metric(name: String, value: Float64, sampleCount: Int32): Metric =
@@ -172,12 +172,6 @@ pub mod Atlas.Signature.Summary {
             merge(left, right, leftIndex + 1, rightIndex, Vector.get(leftIndex, left) :: reverse)
         else
             merge(left, right, leftIndex, rightIndex + 1, Vector.get(rightIndex, right) :: reverse)
-
-    def maximum(values: Vector[Float64]): Float64 =
-        Vector.foldLeft((largest, value) -> if (value > largest) value else largest, 0.0, values)
-
-    def ratio(numerator: Int32, denominator: Int32): Float64 =
-        if (denominator == 0) 0.0 else Int32.toFloat64(numerator) / Int32.toFloat64(denominator)
 
     def matches(group: Group, row: Datum): Bool =
         group#seedDomain == row#seedDomain and

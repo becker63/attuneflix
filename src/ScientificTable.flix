@@ -126,6 +126,14 @@ pub mod ScientificTable {
         case Some(text0) => Value.Text(text0)
     }
 
+    /// Shared guarded ratio: a zero denominator yields 0.0, never an error.
+    pub def ratio(numerator: Int32, denominator: Int32): Float64 =
+        if (denominator == 0) 0.0 else Int32.toFloat64(numerator) / Int32.toFloat64(denominator)
+
+    /// Shared maximum over scientific measures; 0.0 for an empty vector.
+    pub def maximum(values: Vector[Float64]): Float64 =
+        Vector.foldLeft((largest, value) -> if (value > largest) value else largest, 0.0, values)
+
     /// The named column must carry exactly the expected identity value; the
     /// context names the table in the mismatch diagnostic.
     pub def requireText(name: String, expected: String, row: Row, context: String): Result[String, Unit] =

@@ -15,12 +15,6 @@ pub mod Atlas.Signature.Table {
         snapshotId         = String
     }
 
-    pub type alias SeedIdentity = {
-        domain  = Radii.Domain,
-        identity = String,
-        ordinal = Int32
-    }
-
     pub def observations(): ScientificTable.Schema = {
         format = "attune-atlas-signature-observations-v1",
         columns = Vector#{
@@ -60,21 +54,11 @@ pub mod Atlas.Signature.Table {
         })
     }
 
-    pub def caseSnapshots(): ScientificTable.Schema = {
-        format = "attune-atlas-case-snapshots-v1",
-        columns = Vector#{
-            text("signature_protocol"), int32("manifest_position"), text("case_id"),
-            text("population"), text("split"), text("repository"),
-            text("base_revision"), text("source_tree_identity"), text("fact_identity"),
-            text("snapshot_id")
-        }
-    }
-
     /// Materialize one exact row per logical Atlas route. The route and state
     /// digests are scientific identities, not evaluator allocation IDs.
     pub def observationRows(
         snapshot: SnapshotIdentity,
-        seed: SeedIdentity,
+        seed: Atlas.Signature.Seed,
         signature: Atlas.Signature.Signature
     ): Vector[ScientificTable.Row] \ IO = {
         // Many logical routes intentionally converge on the same exact set.
@@ -100,7 +84,7 @@ pub mod Atlas.Signature.Table {
     /// this evaluator. There is no separate compiled Atlas DAG counter yet.
     pub def physicalRow(
         snapshot: SnapshotIdentity,
-        seed: SeedIdentity,
+        seed: Atlas.Signature.Seed,
         signature: Atlas.Signature.Signature
     ): ScientificTable.Row = {
         let evaluations = signature#physicalTransitions;
@@ -123,8 +107,8 @@ pub mod Atlas.Signature.Table {
             "physical_transition_requests" => Value.Int64(Int32.toInt64(evaluations + reuses)),
             "physical_transition_evaluations" => Value.Int64(Int32.toInt64(evaluations)),
             "physical_transition_reuses" => Value.Int64(Int32.toInt64(reuses)),
-            "logical_per_unique_state" => Value.Float64(ratio(logical, unique)),
-            "logical_per_physical_evaluation" => Value.Float64(ratio(logical, evaluations)),
+            "logical_per_unique_state" => Value.Float64(ScientificTable.ratio(logical, unique)),
+            "logical_per_physical_evaluation" => Value.Float64(ScientificTable.ratio(logical, evaluations)),
             "memo_cells" => Value.Int64(Int32.toInt64(evaluations)),
             "compiled_dag_nodes" => Value.Null
         }
@@ -153,7 +137,7 @@ pub mod Atlas.Signature.Table {
 
     def observationRow(
         snapshot: SnapshotIdentity,
-        seed: SeedIdentity,
+        seed: Atlas.Signature.Seed,
         observation: Atlas.Signature.Observation,
         stateId0: String
     ): ScientificTable.Row \ IO = {
@@ -188,10 +172,6 @@ pub mod Atlas.Signature.Table {
             "same_as_input" => Value.Boolean(observation#sameAsInput)
         }
     }
-
-    def ratio(numerator: Int32, denominator: Int32): Float64 =
-        if (denominator == 0) 0.0
-        else Int32.toFloat64(numerator) / Int32.toFloat64(denominator)
 
     def identityColumns(): Vector[ScientificTable.Column] = Vector#{
         text("signature_protocol"), text("atlas_protocol"), text("repository"),

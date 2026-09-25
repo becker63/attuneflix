@@ -45,7 +45,6 @@ pub mod Atlas.Signature {
     /// One exact observation from applying one Atlas program to one seed.
     pub type alias Observation = {
         program              = Atlas.Program,
-        input                = Atlas.State,
         output               = Atlas.State,
         depth                = Int32,
         inputCardinality     = Int32,
@@ -111,35 +110,30 @@ pub mod Atlas.Signature {
         Vector.append(fileSeeds(repository#files), symbolSeeds(repository#symbols))
 
     def fileSeeds(files: Vector[String]): Vector[Seed] \ IO =
-        Vector.mapWithIndex((ordinal, path) -> (
-            ScientificIdentity.sha256("file\u0000${path}"),
-            path,
-            ordinal,
-            Atlas.State.Files(Set.singleton(Repository.Structure.FileId.FileId(ordinal)))
-        ), files)
-            |> Vector.sortBy(match (digest, identity, _, _) -> (digest, identity))
-            |> firstEight
-            |> Vector.map(match (_, identity, ordinal, state) -> {
-                domain = Radii.Domain.File,
-                identity = identity,
-                ordinal = ordinal,
-                state = state
-            })
+        panel(Radii.Domain.File, files, ordinal ->
+            Atlas.State.Files(Set.singleton(Repository.Structure.FileId.FileId(ordinal))))
 
     def symbolSeeds(symbols: Vector[Repository.Symbol]): Vector[Seed] \ IO =
-        Vector.mapWithIndex((ordinal, symbol) -> {
-            let identity = "${symbol#path}\u0000${symbol#name}\u0000${symbol#startByte}\u0000${symbol#endByte}";
-            (
-                ScientificIdentity.sha256("symbol\u0000${identity}"),
-                identity,
-                ordinal,
-                Atlas.State.Symbols(Set.singleton(Repository.Structure.SymbolId.SymbolId(ordinal)))
-            )
-        }, symbols)
+        panel(Radii.Domain.Symbol, Vector.map(symbol ->
+            "${symbol#path}\u0000${symbol#name}\u0000${symbol#startByte}\u0000${symbol#endByte}", symbols),
+            ordinal ->
+            Atlas.State.Symbols(Set.singleton(Repository.Structure.SymbolId.SymbolId(ordinal))))
+
+    /// One select-sort-truncate-project seed panel: hash each identity under
+    /// the frozen atlas-signature-seeds-v1 domain-prefix bytes, order by
+    /// (digest, identity), keep the first eight, and project to Seeds.
+    def panel(domain: Radii.Domain, identities: Vector[String],
+              toState: Int32 -> Atlas.State): Vector[Seed] \ IO =
+        Vector.mapWithIndex((ordinal, identity) -> (
+            ScientificIdentity.sha256("${domainName(domain)}\u0000${identity}"),
+            identity,
+            ordinal,
+            toState(ordinal)
+        ), identities)
             |> Vector.sortBy(match (digest, identity, _, _) -> (digest, identity))
             |> firstEight
             |> Vector.map(match (_, identity, ordinal, state) -> {
-                domain = Radii.Domain.Symbol,
+                domain = domain,
                 identity = identity,
                 ordinal = ordinal,
                 state = state
@@ -168,7 +162,6 @@ pub mod Atlas.Signature {
                 let domainCardinality = domainSize(repository, Atlas.stateDomain(output));
                 {
                     program = program,
-                    input = input,
                     output = output,
                     depth = depth,
                     inputCardinality = inputCardinality,

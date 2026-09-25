@@ -126,13 +126,8 @@ mod CensusMain {
         case Nil => Ok(output)
         case seed :: rest => forM (
             signature <- Atlas.Signature.compute(world, seed#state, 7);
-            identity = {
-                domain = seed#domain,
-                identity = seed#identity,
-                ordinal = seed#ordinal
-            };
-            observations = Atlas.Signature.Table.observationRows(snapshot, identity, signature);
-            physical = Atlas.Signature.Table.physicalRow(snapshot, identity, signature);
+            observations = Atlas.Signature.Table.observationRows(snapshot, seed, signature);
+            physical = Atlas.Signature.Table.physicalRow(snapshot, seed, signature);
             result <- measure(snapshot, world, rest, {
                 observations = Vector.append(output#observations, observations),
                 physical = Vector.append(output#physical, Vector#{physical})

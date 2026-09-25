@@ -21,8 +21,7 @@ def atlasCensusSchemasAreExplicitAndStable(): Unit \ Assert = {
     Assert.assertEq(expected = 14, Vector.length(Atlas.Signature.Table.snapshots()#columns));
     Assert.assertEq(expected = 19, Vector.length(Atlas.Signature.Table.physical()#columns));
     Assert.assertEq(expected = 1,
-        Vector.count(column -> column#nullable, Atlas.Signature.Table.physical()#columns));
-    Assert.assertEq(expected = 10, Vector.length(Atlas.Signature.Table.caseSnapshots()#columns))
+        Vector.count(column -> column#nullable, Atlas.Signature.Table.physical()#columns))
 }
 
 @Test
@@ -32,7 +31,6 @@ def atlasCensusRowsCarryExactRouteStateAndWorkIdentities(): Unit \ {Assert, IO} 
     let program = Vector.get(1, Atlas.programs(1));
     let observation: Atlas.Signature.Observation = {
         program = program,
-        input = Atlas.State.Symbols(Set.singleton(s0)),
         output = Atlas.State.Symbols(Set.singleton(s1)),
         depth = 1,
         inputCardinality = 1,
@@ -61,10 +59,11 @@ def atlasCensusRowsCarryExactRouteStateAndWorkIdentities(): Unit \ {Assert, IO} 
         factIdentity = "repository-facts-v2:facts",
         snapshotId = "atlas-snapshot-v1:snapshot"
     };
-    let seed: Atlas.Signature.Table.SeedIdentity = {
+    let seed: Atlas.Signature.Seed = {
         domain = Radii.Domain.Symbol,
         identity = "symbol-seed-v1:seed",
-        ordinal = 0
+        ordinal = 0,
+        state = Atlas.State.Symbols(Set.singleton(s0))
     };
 
     let row = Vector.get(0,

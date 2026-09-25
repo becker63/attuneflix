@@ -105,7 +105,7 @@ def repositoryResult(repository: String, snapshots: Vector[Snapshot], features: 
         callAsymmetry = middle(selected, row -> row#callAsymmetry),
         physicalCompression = middle(selected, row -> row#physicalCompression),
         reuseFraction = middle(selected, row -> row#reuseFraction),
-        driftMean = meanValues(ranges), driftMax = maximum(ranges)
+        driftMean = meanValues(ranges), driftMax = ScientificTable.maximum(ranges)
     }
 }
 
@@ -291,14 +291,13 @@ def median(values: Vector[Float64]): Float64 = {
 }
 def range(rows: Vector[a], accessor: a -> Float64): Float64 = {
     let values = Vector.map(accessor, rows);
-    if (Vector.isEmpty(values)) 0.0 else maximum(values) - minimum(values)
+    if (Vector.isEmpty(values)) 0.0 else ScientificTable.maximum(values) - minimum(values)
 }
 def relativeRange(rows: Vector[a], accessor: a -> Float64): Float64 = {
     let center = absolute(middle(rows, accessor));
     range(rows, accessor) / (if (center < 1.0) 1.0 else center)
 }
 def absolute(value: Float64): Float64 = if (value < 0.0) -value else value
-def maximum(values: Vector[Float64]): Float64 = Vector.foldLeft((a, b) -> if (b > a) b else a, 0.0, values)
 def minimum(values: Vector[Float64]): Float64 =
     if (Vector.isEmpty(values)) 0.0 else Vector.foldLeft((a, b) -> if (b < a) b else a, Vector.get(0, values), values)
 def meanValues(values: Vector[Float64]): Float64 =
