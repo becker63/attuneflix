@@ -1,10 +1,13 @@
 load("//build:attune.bzl", "attune_population_files")
 
 exports_files([
-    "MANIFEST.json",
     "REPORT.md",
     "USAGE.md",
-    "results-censored.parquet",
+    "evaluation-metrics.parquet",
+    "evaluation-proof.parquet",
+    "evaluation-regions.parquet",
+    "evaluation-telemetry.parquet",
+    "replay-proof.parquet",
 ])
 
 attune_population_files(

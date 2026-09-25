@@ -1,68 +1,64 @@
 # Frozen SWE-Explore JavaScript/TypeScript scale experiment
 
-This directory owns the frozen 78-case generalization study. `MANIFEST.json` is
-the small control-plane identity: 15 historical-development cases and 63 new
-cases, with the new population fixed as 42 optimization-development and 21
-post-optimization-validation cases. Original manifest order determines shard
-assignment before historical cases are skipped.
+This directory is the durable public record of the sealed 78-case study. Its
+scientific population and final results are explicit typed Parquet datasets;
+Markdown is the human projection.
 
-The scientific protocol is unchanged by the Parquet migration: pinned source
-revisions, Marzano/Grit identity, relation definitions, Atlas grammar,
-`CENTER_COUNT`, `MAX_DEPTH`, embedding provider/model/instruction/clipping,
-request identity, cosine ranking with source-order ties, frozen iteration 013,
-Jev requests, evaluator semantics, and gold isolation all retain their prior
-meaning.
+## Canonical evidence
 
-Local canonical evidence lives below `.attune/`:
+| Artifact | Typed protocol | Meaning |
+| --- | --- | --- |
+| `population-metadata.parquet` | `attune-population-metadata-v1` | Benchmark revisions, source routing, Atlas protocol, depth, centers, and route counts |
+| `population-cases.parquet` | `attune-population-cases-v1` | Ordered 78-case population, split membership, source identity, and completed/censored outcome |
+| `replay-proof.parquet` | `attune-localization-replay-proof-v1` | Exact 61-case typed prior/prediction replay proof |
+| `evaluation-metrics.parquet` | `attune-localization-evaluation-metrics-v1` | Per-case, per-condition official metrics |
+| `evaluation-regions.parquet` | `attune-localization-evaluation-regions-v1` | Exact projected regions used by evaluation |
+| `evaluation-telemetry.parquet` | `attune-localization-evaluation-telemetry-v1` | Logical routes, semantic states, projections, and actual score evaluations |
+| `evaluation-proof.parquet` | `attune-localization-evaluation-proof-v1` | Exact/discrete and floating-tolerance parity verdicts |
 
-- `repository-world-v1/*/{metadata,entities,relations}.parquet` — typed worlds
-  for all 78 snapshots, migrated exactly from the retained observations;
-- `semantic-prior-js-ts-scale-v1/rankings/*.parquet` — per-case documents and
-  cosine rankings; raw provider envelopes remain JSON under `observations/`;
-- `experiments/swe-explore-js-ts-scale/013-predictions/*.parquet` — frozen
-  predictions retained before gold is introduced.
-
-`results-censored.parquet` is the canonical sealed evaluator output. The
-current graph exposes one keyless replay action and one bounded-lifetime
-evaluation action per completed case, followed by deterministic aggregates:
+The copied public artifacts are byte-identical to the aggregate typed outputs
+that passed the remote 61-case migration proof. Their SHA-256 identities are:
 
 ```text
-bazel build //.attune:localization_replay
-bazel build //.attune:localization_evaluation
+population-metadata  5ce53f52cae6a4fd8cb04b87e8f0e94a5ce575b2e3de1e87630d146793ead72e
+population-cases     5ed376e8be9f77e4acd6b030fe2263d2868de36a5011343f973bfe91b2dc695a
+replay-proof         3871e0648b196b728a0a18c145b5326e905f33430fe7b0a341133d5561215fe0
+evaluation-metrics   894a9bd77d023c221f27bc2a13e637718f1cf438e9d9bd34209991d2021c95cf
+evaluation-regions   aa97aa3cc8c1824d690839dccb0c1d0ec6ade5f7409d9bc489c33a2911dda684
+evaluation-telemetry 5b00c582d765995f118d4b4bbc2a4d346649eeb4c4ed961caa85266e1ddd327b
+evaluation-proof     7836992d7bbc5090a52a0047506b6fa3c5af9fc2b3f3f2de66523ee07828fcb5
 ```
 
-The aggregate validates exact 61-case order, the 42/19 completed split, exact
-predictions, discrete evaluator equality, and the frozen `1e-10` floating
-tolerance. Bazel actions receive only declared inputs; the developer-shell
-wrapper does not pass `OPENROUTER_API_KEY`. The former environment-variable
-range runner is preserved in the pre-refactor scientific checkpoint, not at
-HEAD. Retained-evidence and timing provenance is in `USAGE.md`.
+`REPORT.md` and `USAGE.md` explain the result, timing, provider-token, and
+cost evidence. Exact external provider response envelopes remain immutable in
+their native JSON because the original bytes are the evidence. They are not
+the internal data model.
 
-## Retained run status
+## Population and censors
 
-The 2026-09-23 completion pass validated repository facts for all 63 new
-cases. Semantic-prior rankings are complete for 61 cases. The two remaining
-cases are `mrdoob__three.js-26589` and `mrdoob__three.js-27395`, both in the
-post-optimization-validation population. Their frozen 48,000-codepoint input
-produces a 40,961-token request for a model with a 40,960-token context limit;
-OpenRouter rejects that exact request with HTTP 400. Reducing the frozen clip,
-changing the model, or dropping a document would create a new scientific
-condition, so this run records the failure rather than doing so.
+The order is frozen: 15 historical-development cases and 63 new cases, with
+the new population split into 42 optimization-development and 21 untouched
+post-optimization-validation cases. Sixty-one new cases completed. The two
+remaining validation cases are `mrdoob__three.js-26589` and
+`mrdoob__three.js-27395`; their frozen 48,000-codepoint input produces 40,961
+tokens for a model with a 40,960-token limit. They remain explicit censors.
 
-The authorized run is now terminal: all 61 admissible predictions replayed
-exactly without a provider credential, evaluator gold was opened only after
-that freeze, and all 61 cases were scored. The two failures remain explicit
-censors; they are not silently removed from the validation denominator.
+No clip, model, case, evaluator rule, gold boundary, or iteration-013 policy
+was changed to make them complete.
 
-## Frozen identities
+## Reproduction boundary
 
-- manifest SHA-256: `30451e14687618b9e9727e56cfe38825dc951539ed6a1702496326749ce38740`;
-- admitted Grit-program aggregate: `028fa25c577a0ebad789cc4ab64092598aeb6787632beb568ec0d7417613d937`;
-- frozen Atlas source: `8899efa83b4def48ed9871399ecec7d98016d21310179dd5a8df4197bc5673bb`;
-- retained decision aggregate: `969a0cbe7779e4569e474fa8b4ddcc40c2a41ea4a1a3583f6918eb9176898a85`;
-- canonical result Parquet: `061f5f9cc45a54bc176b48efca99f1405645220d6a8fe0627f43a0aba9c0aea0`;
-- generated report: `e3ca12e7f96ff24fa7e376277e98fa8f6fa7464c5c9acb619a75ac6dfe3cae28`.
+The historical iteration-013 acquisition/replay/evaluator implementation was
+removed from permanent HEAD after exact migration. Its final executable
+checkpoints remain in Jujutsu history:
 
-The result file uses the current inline `attune-json-tree-v1` representation.
-Its decoded scientific rows are identical to the pre-column migration; only
-the explicit representation identity and Parquet bytes changed.
+```text
+07efad98  typed prior/prediction migration and exact 61-case replay
+4010bc68  typed evaluator parity
+e274a1f5  generic JSON-tree migration representation removed
+711f4b54  permanent localization reduced to prior -> Atlas -> judge
+```
+
+The current program is not a museum of the old selector. The frozen Parquet
+evidence, reports, checksums, BuildBuddy invocations, and history preserve the
+result. Current localization code implements the smaller reusable sandwich.

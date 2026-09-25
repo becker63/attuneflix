@@ -37,9 +37,9 @@ Roaring bitmaps are not an untried idea. AttuneRadii commit
 `87d1137a4af395a287d5db1c3f3f5883515a11e6` replaced relation storage with
 immutable PyRoaring `FrozenBitMap` frontiers and dense forward/reverse bitmap
 rows. Its retained World-C measurements found a real representation win, while
-frontier-composition reuse remained modest. The imported implementation and
-record are preserved in
-[`migration/attuneradii`](../../migration/attuneradii/README.md).
+frontier-composition reuse remained modest. The exact imported implementation
+is preserved in the checkpoint named by the
+[AttuneRadii migration record](../../docs/research/attuneradii-history.md).
 
 That result also established an identity law: native Roaring serialization is
 a physical encoding, not scientific identity. Persistent states are identified

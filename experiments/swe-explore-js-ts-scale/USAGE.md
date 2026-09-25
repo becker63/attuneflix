@@ -185,10 +185,12 @@ BuildBuddy evidence:
 - [unchanged warm evaluation](https://app.buildbuddy.io/invocation/0bdb72c0-f5ee-4516-a9db-b817425c27fc)
 - [canonical Bazel test suite](https://app.buildbuddy.io/invocation/8a516a0a-31a5-45df-91ac-d7d51154f6b6)
 
-The aggregate typed outputs are exposed by
-`//.attune:localization_evaluation` as `metrics.parquet`, `regions.parquet`,
-`telemetry.parquet`, and `proof.parquet`. They are deterministic build products;
-the pre-refactor sealed result remains the durable scientific record.
+The byte-identical aggregate typed outputs are now tracked beside this report
+as `evaluation-metrics.parquet`, `evaluation-regions.parquet`,
+`evaluation-telemetry.parquet`, and `evaluation-proof.parquet`. The exact
+replay verdict is `replay-proof.parquet`. The producing graph remains in the
+named migration checkpoints; permanent HEAD keeps the typed evidence rather
+than the superseded iteration-013 runner.
 
 ## What the result supports
 
@@ -198,12 +200,11 @@ endpoint. The token result is also exact. A comparison to a
 full coding-agent workflow would require a separately measured coding-agent
 baseline; this experiment does not manufacture one.
 
-The strongest latency result is currently architectural rather than a provider
-SLA: the expensive observations replay exactly with no network, and only about
-2.2 seconds per case is measured inside the frozen structural precompute on the
-current sequential implementation. Bazel/BuildBuddy will expose the 61 cases
-as independent actions, so post-refactor wall time will measure parallel
-critical-path execution rather than the sum of these migration-era loops.
+The strongest latency result is architectural rather than a provider SLA: the
+expensive observations replay exactly with no network. The completed migration
+exposed 61 cases as independent Bazel actions, reducing the official-evaluation
+critical path from 4,301.12 seconds of retained sequential shard time to 51.70
+seconds cold and 0.153 seconds unchanged/warm.
 
 ## Provenance and limitations
 
@@ -222,7 +223,5 @@ critical-path execution rather than the sum of these migration-era loops.
 - Raw response envelopes contain no provider latency field. Future live
   acquisition should retain request start/end or duration at the native
   inference boundary, without changing request identity.
-- `REPORT.md` is generated from the canonical evaluation Parquet. This document
-  is the human-facing account of retained usage and timing evidence, not a
-  second canonical dataset. Its tabular provenance will move to typed Parquet
-  during the post-checkpoint schema migration.
+- `REPORT.md` is the human-facing projection of the adjacent canonical typed
+  evaluation Parquets, not a second canonical dataset.

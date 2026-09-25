@@ -26,8 +26,8 @@ They do not depend on the localization prior or Jev.
 
 ## Original MUI, Vue, and Darkreader result
 
-The earliest issue-blind census is now retained in this repository as part of
-the [AttuneRadii migration record](../../migration/attuneradii/README.md). It
+The earliest issue-blind census is identified by the
+[AttuneRadii migration record](attuneradii-history.md). It
 ran the same fixed, composition-only depth-seven language after removing the
 issue-conditioned semantic seed. The repository regimes remained distinct.
 
@@ -60,10 +60,8 @@ The source trees make the measurements understandable:
   is only two cases, this is a strong snapshot observation, not yet a stable
   population estimate.
 
-The exact protocol choice, depth counts, relation tables, and limitations are
-in the retained [grammar decision](../../migration/attuneradii/spec.md#15-search-grammars--atlas-measurement-versus-policy-synthesis),
-[finite depth study](../../migration/attuneradii/spec.md#42-finite-relational-language-search--exact-evidence-through-depth-7),
-and [repository-character sections](../../migration/attuneradii/spec.md#45-structural-mixinglocalness--permanent-conceptual-model).
+The exact historical protocol choice, depth counts, relation tables, and
+limitations remain in the archive checkpoint named by that migration record.
 
 The numbers are useful because they lead back to recognizable source
 architecture. After the measurements were frozen, the measured hubs and

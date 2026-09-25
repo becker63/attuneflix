@@ -147,7 +147,10 @@ candidate coverage that flat selection failed to use.
 - Jujutsu change ID: `znuvrlun`
 - protocol: `attune-jev-policy-hillclimb-015-learned-route-templates-v1`
 - model: `typesafe/jev-1.13`
-- training artifact: `route-templates.json`
+- archived training artifact SHA-256:
+  `b3167585ebf97deac33dd56cacd70ae909c9f791f1fae0bd335b69633099fcb8`
+  (the exact JSON artifact remains in Jujutsu history; it is not a permanent
+  internal scientific format)
 - iteration 013 replays exactly; only one template-selection request per case
   receives a new observation identity
 - replay outcomes SHA-256: `196b9611959abcd0a12e91b41803fc2963578b38a7ea36af4d1808ec36eea7de`

@@ -1,1 +1,0 @@
-"""Typed finite relational algebra."""

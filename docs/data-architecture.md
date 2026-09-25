@@ -1,87 +1,134 @@
 # Scientific data architecture
 
-AttuneFlix has one repository-wide data rule:
+AttuneFlix has one data rule:
 
-> External formats vary. Internal scientific datasets are Parquet. JSON is the
-> control plane. Markdown is the human plane.
+> External evidence keeps its native bytes. Every admitted value with
+> scientific meaning becomes an explicit typed Parquet artifact. Starlark
+> wires artifacts; Flix owns their meaning.
 
-Bazel owns the current data dependencies and projections. Solver-visible
-issues, retained semantic priors, retained decisions, repository worlds, and
-evaluator-only gold are separate declared inputs. The localization action has
-no dependency edge to gold; only the evaluation action receives it. Flix owns
-their meaning and uses the small Bazel-built JVM seam in
-`src/native/parquet/`. No project Nix expression, Python data helper, DuckDB
-database, or second storage layer is in the current graph.
+This is deliberately stricter than treating JSON as a control plane. There is
+no general scientific JSON tree in permanent HEAD.
 
-The three raw benchmark sources are lazy, hash-verified Bazel repositories
-under `//data/evaluation`. They retain the exact SWE-Explore, SWE-bench
-Multilingual, and SWE-bench Pro revisions used by the frozen population. They
-are not dependencies of `bazel test //...`, keyless replay, or Atlas census.
+## Two type systems, two jobs
 
-## Canonical Parquet schemas
+At Bazel analysis time, custom Starlark providers say what role an artifact
+plays. Their fields are `File` handles and immutable identity strings. Starlark
+does not read Parquet rows.
 
-New canonical datasets declare real columns in Flix through
-`ScientificTable.Schema`. The JVM boundary accepts only the declared column
-names, primitive/list types, and nullability, then moves those values through
-Arrow into Parquet. Dataset protocol identities are ordinary required columns,
-not hidden Java metadata. The four preregistered Atlas census schemas live in
-`Atlas.Signature.Table` and are checked as executable laws.
+```text
+AttuneWorldInfo       metadata + entities + relations
+AttunePopulationInfo  metadata + cases
+AttuneIssueInfo       issue
+AttunePriorInfo       metadata + documents + ranking
+AttunePredictionInfo  summary + ranking
+AttuneSignatureInfo   observations + physical + snapshot
+```
 
-`attune-json-tree-v1` below is the retained migration representation for the
-already-frozen localization evidence. It remains readable while those
-artifacts are migrated and compared semantically, but it is not the schema for
-new Atlas data and is not the intended final representation.
+At execution time, the corresponding Flix table module declares the exact
+Parquet columns, nullability, protocol identifier, encoding, decoding, and
+identity checks.
 
-Most nested experiment artifacts use `attune-json-tree-v1`. Each Parquet row is
-one JSON semantic node with these columns:
+```text
+Bazel File handles
+        |
+        v
+declared action inputs
+        |
+        v
+ScientificTable JVM boundary
+        |
+        v
+typed Flix values
+```
 
-| Column | Meaning |
-| --- | --- |
-| `path: list<string>` | Typed object-key/array-index path from the single root |
-| `node_type: string` | `object`, `array`, `null`, `boolean`, `integer`, `float`, or `string` |
-| `string_value` | String payload when applicable |
-| `integer_value` | Signed 64-bit integer payload when applicable |
-| `float_value` | IEEE-754 double payload when applicable |
-| `boolean_value` | Boolean payload when applicable |
+The Java Arrow/Parquet layer accepts only the schema and primitive/list values
+declared by Flix. It does not interpret repository, Atlas, localization, or
+evaluation meaning.
 
-This versioned representation preserves absent versus null fields, empty
-containers, integer/float identity, and array order. Object keys are serialized
-in deterministic order. It changes serialization bytes, not experiment
-semantics; migration was admitted only after strict recursive type-and-value
-comparison against every source artifact.
+## Canonical typed tables
 
-The replication census is the naturally tabular `attune-tabular-v1` schema:
-11 rows and the 15 named columns described in
-[`docs/replication/README.md`](replication/README.md). Its Parquet metadata
-retains the SHA-256 of the historical TSV representation.
+Permanent schema owners are:
 
-## Persisted artifacts
+- `Repository.Table`: world metadata, nominal entities, and admitted basis
+  relations;
+- `Population.Table`: experiment protocol and ordered case/outcome rows;
+- `Localization.IssueTable`: admitted problem statement and case identity;
+- `Localization.PriorTable`: learned-prior protocol, documents, and ranking;
+- `Localization.PredictionTable`: selected condition and ordered prediction;
+- `Atlas.Signature.Table`: route observations, physical counters, and snapshot
+  identity;
+- `Atlas.Signature.Summary`: regenerable signature reductions.
 
-- `docs/replication/replication.parquet` is the frozen replication census.
-- `docs/research/jev/*.parquet` contains the frozen 15-case result and
-  post-hoc diagnosis; the adjacent reports retain historical JSON hashes where
-  those hashes are part of the record.
-- `experiments/jev-policy-hillclimb/iterations/*/metrics.parquet` contains each
-  frozen iteration's complete metrics. Each adjacent `REPORT.md` explains its
-  provenance and regeneration path.
-- `.attune/repository-world-v1/*/{metadata,entities,relations}.parquet` is the
-  typed, semantic-path-independent world for each of the 78 frozen snapshots.
-- Semantic-prior rankings, scale predictions, retained decisions, and
-  evaluator outputs are local canonical scientific evidence. Raw provider
-  response envelopes remain JSON because their exact bytes are immutable paid
-  observations and the replay boundary.
+The sealed scale experiment additionally retains typed replay proof,
+evaluation metric, region, telemetry, and parity-proof tables in
+`experiments/swe-explore-js-ts-scale/`. Their historical producing code is
+preserved by the named scientific checkpoints rather than kept as current
+runtime architecture.
 
-`MANIFEST.json`, the two small `route-templates.json` policy descriptors,
-protocol metadata, lockfiles, and configuration remain JSON/TOML because they
-are control objects rather than datasets.
+Tables stay narrow and independently keyed. Parquet unifies representation;
+it does not collapse the action graph into one `everything.parquet` file.
+
+## Starlark is artifact control, not a second data language
+
+Rules consume and return providers. Actions receive provider files directly
+through `ctx.actions.args()`. Bazel may spill a long argument list into a
+generated parameter file. That file is transport, not a scientific format: it
+contains paths and has no independent scientific identity.
+
+The census loading graph needs its 78 target labels before execution. Its
+checked `census.bzl` projection therefore contains only the ordered target
+labels and analysis-time identity strings required to instantiate actions.
+The aggregate action reads the canonical typed population and rejects any
+repository/revision mismatch. The `.bzl` projection is compiled control data,
+not a second authority.
+
+## Capability boundaries
+
+The build graph and Flix types enforce the important boundaries:
+
+```text
+Atlas signature       world -> signature
+                      no issue, provider, learned decision, or gold edge
+
+localization search   issue + world + typed prior -> unique Atlas outcomes
+                      no provider or gold edge
+
+learned judgment      issue + unique outcomes -> typed selection
+                      one explicit Judge effect
+
+evaluation            frozen prediction + evaluator-only gold -> metrics
+                      gold arrives only after prediction is fixed
+```
+
+An acquisition handler may satisfy a learned effect through a provider. A
+replay handler may satisfy it from retained evidence. The permanent Atlas
+functions themselves are pure; local mutation in physical evaluators cannot
+escape its Flix region.
+
+## Allowed non-Parquet files
+
+Not every file should be Parquet:
+
+- Git source, Grit programs, Flix, Java, Rust, Starlark, lockfiles, and build
+  configuration are executable or configuration source;
+- exact provider response JSON and upstream benchmark bytes remain untouched
+  external evidence;
+- Markdown is a human projection;
+- Bazel-generated parameter files are path transport;
+- the small developer Nix flake selects workspace tools but contains no
+  project scientific dependency graph.
+
+Admission is the boundary. Once Flix reasons scientifically about external
+content, its canonical representation is a named typed Parquet schema.
 
 ## Executable laws
 
-`bazel test //...` checks the declared schemas and typed round trips through
-the Java Arrow/Parquet seam. It also checks repository-world metadata,
-entities, nominal domains, admitted relations, protocol identities, and Atlas
-signature tables. Heavy replay and evaluation are separate explicit Bazel
-builds: replay receives retained observations but no provider credential, and
-evaluation receives gold only after the frozen prediction dependency. The
-tracked graph therefore enforces the capability split instead of relying on a
-runtime mode or a Python repository scan.
+`bazel test //...` checks table schemas, typed round trips through Arrow,
+repository-world identity, nominal domains, admitted relations, Datalog versus
+physical parity, Atlas grammar and signature rows, the typed population, and
+the localization sandwich.
+
+Heavy science is named explicitly. The Atlas census consists of 78 independent
+signature actions, summary actions, a deterministic aggregate that verifies
+the typed population, and a report projection. BuildBuddy executes and caches
+that graph; no project Nix expression or source-store path participates.

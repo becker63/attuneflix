@@ -94,6 +94,16 @@ ATLAS_WORLDS = [
     "//.attune/repository-world-v1/678f8ed4bfb9dda19f2f538fe1248da1ae809a11675498575a989b3b3744a9f3:world",
 ]
 
+# Element Web keeps unusually broad Atlas frontiers alive through the full
+# depth-seven language. Give only that deterministic signature action a larger
+# remote worker; the scientific inputs and outputs are unchanged, and the
+# other 77 snapshots retain their existing action keys.
+_DENSE_EXECUTION = {
+    "//.attune/repository-world-v1/e5bfbed1587a474108acc0a043858b1b6c6f118463bcafd6344a0d6e47e4af70:world": {
+        "EstimatedComputeUnits": "4",
+    },
+}
+
 def atlas_census():
     """Expands the frozen manifest into independent Atlas actions."""
     signatures = []
@@ -106,6 +116,7 @@ def atlas_census():
         native.alias(name = world_name, actual = world)
         attune_atlas_signature(
             name = signature_name,
+            exec_properties = _DENSE_EXECUTION.get(world, {}),
             tool = "//experiments/atlas-swe-explore:signature",
             world = ":" + world_name,
         )

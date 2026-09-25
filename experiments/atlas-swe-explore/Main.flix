@@ -6,7 +6,6 @@ def main(): Unit \ IO = {
 /// command already compiles independently from tests; census work will extend
 /// this entry point without turning `flix test` back into an experiment runner.
 mod CensusMain {
-    import java.lang.System
     import java.lang.Integer
 
     type alias Output = {
@@ -15,7 +14,7 @@ mod CensusMain {
     }
 
     pub def execute(): Unit \ IO = {
-        let command = System.getProperty("attune.command");
+        let command = Experiment.property("attune.command");
         match command {
             case "protocol" => printProtocol()
             case "fixture" => writeFixture()
@@ -42,16 +41,16 @@ mod CensusMain {
             unresolvedCalls = 0
         };
         let identity: Repository.Table.Identity = {
-            repository = property("attune.repository"),
-            baseRevision = property("attune.base_revision"),
-            sourceTreeIdentity = property("attune.source_tree_identity"),
-            factIdentity = property("attune.fact_identity"),
-            snapshotId = property("attune.snapshot_id")
+            repository = Experiment.property("attune.repository"),
+            baseRevision = Experiment.property("attune.base_revision"),
+            sourceTreeIdentity = Experiment.property("attune.source_tree_identity"),
+            factIdentity = Experiment.property("attune.fact_identity"),
+            snapshotId = Experiment.property("attune.snapshot_id")
         };
         let _ = Repository.Table.write(
-            property("attune.world_metadata"),
-            property("attune.world_entities"),
-            property("attune.world_relations"),
+            Experiment.property("attune.world_metadata"),
+            Experiment.property("attune.world_entities"),
+            Experiment.property("attune.world_relations"),
             identity,
             world
         );
@@ -68,11 +67,11 @@ mod CensusMain {
 
     def writeSignature(): Unit \ IO =
         writeSignatureFor({
-            repository = property("attune.repository"),
-            baseRevision = property("attune.base_revision"),
-            sourceTreeIdentity = property("attune.source_tree_identity"),
-            factIdentity = property("attune.fact_identity"),
-            snapshotId = property("attune.snapshot_id")
+            repository = Experiment.property("attune.repository"),
+            baseRevision = Experiment.property("attune.base_revision"),
+            sourceTreeIdentity = Experiment.property("attune.source_tree_identity"),
+            factIdentity = Experiment.property("attune.fact_identity"),
+            snapshotId = Experiment.property("attune.snapshot_id")
         })
 
     def writeSignatureFor(worldIdentity: Repository.Table.Identity): Unit \ IO = {
@@ -86,9 +85,9 @@ mod CensusMain {
             snapshotId = worldIdentity#snapshotId
         };
         match Repository.Table.read(
-            property("attune.world_metadata"),
-            property("attune.world_entities"),
-            property("attune.world_relations"),
+            Experiment.property("attune.world_metadata"),
+            Experiment.property("attune.world_entities"),
+            Experiment.property("attune.world_relations"),
             worldIdentity
         ) {
             case Err(error) => bug!(error)
@@ -100,12 +99,12 @@ mod CensusMain {
             }) {
                 case Err(error) => bug!(error)
                 case Ok(output) => {
-                    let _ = ScientificTable.write(property("attune.output_observations"),
+                    let _ = ScientificTable.write(Experiment.property("attune.output_observations"),
                         Atlas.Signature.Table.observations(), output#observations);
-                    let _ = ScientificTable.write(property("attune.output_physical"),
+                    let _ = ScientificTable.write(Experiment.property("attune.output_physical"),
                         Atlas.Signature.Table.physical(), output#physical);
-                    let manifestCaseCount = Integer.parseInt(property("attune.manifest_case_count"));
-                    let _ = ScientificTable.write(property("attune.output_snapshot"),
+                    let manifestCaseCount = Integer.parseInt(Experiment.property("attune.manifest_case_count"));
+                    let _ = ScientificTable.write(Experiment.property("attune.output_snapshot"),
                         Atlas.Signature.Table.snapshots(), Vector#{
                             Atlas.Signature.Table.snapshotRow(snapshot, world, manifestCaseCount)
                         });
@@ -140,6 +139,4 @@ mod CensusMain {
             })
         ) yield result
     }
-
-    def property(name: String): String \ IO = System.getProperty(name)
 }

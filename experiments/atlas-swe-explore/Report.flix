@@ -1,5 +1,3 @@
-import java.lang.System
-
 use Fs.FileSystem
 use ScientificTable.Value
 
@@ -38,11 +36,11 @@ type alias RepositoryResult = {
 }
 
 def main(): Unit \ {FileSystem, IO} = {
-    let summaries0 = ScientificTable.read(System.getProperty("attune.input_summaries"),
+    let summaries0 = ScientificTable.read(Experiment.property("attune.input_summaries"),
         Atlas.Signature.Summary.schema());
-    let snapshots0 = ScientificTable.read(System.getProperty("attune.input_snapshots"),
+    let snapshots0 = ScientificTable.read(Experiment.property("attune.input_snapshots"),
         Atlas.Signature.Table.snapshots());
-    let physical0 = ScientificTable.read(System.getProperty("attune.input_physical"),
+    let physical0 = ScientificTable.read(Experiment.property("attune.input_physical"),
         Atlas.Signature.Table.physical());
     match Vector.traverse(decodeSummary, summaries0) |> Result.flatMap(summaries ->
         Vector.traverse(decodeSnapshot, snapshots0) |> Result.flatMap(snapshots ->
@@ -54,10 +52,10 @@ def main(): Unit \ {FileSystem, IO} = {
             let repositories = Vector.map(row -> row#repository, snapshots)
                 |> Vector.toSet |> Set.toVector |> Vector.sort;
             let results = Vector.map(repository -> repositoryResult(repository, snapshots, features), repositories);
-            let written = ScientificTable.write(System.getProperty("attune.output_repository_summaries"),
+            let written = ScientificTable.write(Experiment.property("attune.output_repository_summaries"),
                 repositorySchema(), Vector.map(repositoryRow, results));
             let report0 = report(summaries, snapshots, physical, features, results);
-            match FileSystem.write(str = report0, System.getProperty("attune.output_report")) {
+            match FileSystem.write(str = report0, Experiment.property("attune.output_report")) {
                 case Err(error) => bug!(ToString.toString(error))
                 case Ok(_) => println("ATLAS_REPORT snapshots=${Vector.length(snapshots)}" +
                     " repositories=${Vector.length(written)}" +

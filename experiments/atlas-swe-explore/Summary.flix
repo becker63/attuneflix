@@ -1,8 +1,6 @@
-import java.lang.System
-
 def main(): Unit \ IO = {
-    let input = System.getProperty("attune.input_observations");
-    let output = System.getProperty("attune.output_summary");
+    let input = Experiment.property("attune.input_observations");
+    let output = Experiment.property("attune.output_summary");
     let observations = ScientificTable.read(input, Atlas.Signature.Table.observations());
     match Atlas.Signature.Summary.summarize(observations) {
         case Err(error) => bug!(error)

@@ -195,8 +195,7 @@ Flix was chosen for two practical reasons.
 
 First, this project already knew that much of scientific work can live in a
 build cache. Earlier work used Buck2 extensively, then AttuneRadii moved the
-same idea inside an experimental Python system with
-[Rote](migration/attuneradii/spec.md#48-rote-contract-in-detail). That worked:
+same idea inside an experimental Python system with Rote. That worked:
 when the deterministic boundary was honest, a fresh process replayed six real
 science stages as cache hits and avoided about 202.6 seconds of work.
 
@@ -417,10 +416,10 @@ repository_adjacent = parent | ~parent
 ```
 
 Here `~` reverses a relation, `>>` composes two relations, and `|` takes their
-union. This imported prototype is now [temporary migration
-source](migration/attuneradii/README.md); the permanent implementation is
-Flix. The point of showing both is not the Python. It is that a tiny algebra
-can be written down, type checked, executed, and exhaustively explored.
+union. The [migration record](docs/research/attuneradii-history.md) identifies
+the archived prototype; the permanent implementation is Flix. The point of
+showing both is not the Python. It is that a tiny algebra can be written down,
+type checked, executed, and exhaustively explored.
 
 “Exhaustively” is literal here. Atlas starts in the `Symbol` domain. At depth
 one there are exactly three legal programs:
@@ -1102,9 +1101,9 @@ This is why the grammar is frozen as a protocol. Composition-only depth seven
 preserves direct comparison with the original MUI/Vue/Darkreader measurement,
 keeps the complete family tractable, and separates repository geometry from
 the richer policy language. It is not a claim that every future Atlas
-application must use composition only. The retained [depth study and grammar
-decision](migration/attuneradii/spec.md#42-finite-relational-language-search--exact-evidence-through-depth-7)
-contain the full counts and alternatives.
+application must use composition only. The
+[migration record](docs/research/attuneradii-history.md) identifies the
+checkpoint containing the full depth study, counts, and rejected alternatives.
 
 An embedding prior chooses where a localization task enters the structure. It
 does not define the structure. Replacing the embedding model or removing it
@@ -1422,9 +1421,9 @@ call structure, and NodeBB's plugin and backend indirection. Removing the
 semantic prior and learned decision stage did not remove these regimes.
 
 See the [repository-signature evidence](docs/research/repository-signatures.md),
-[tree reuse](docs/research/tree-reuse.md), and the
-[original MUI/Vue/Darkreader record](migration/attuneradii/spec.md#45-structural-mixinglocalness--permanent-conceptual-model),
-and [replication study](docs/replication/README.md). The full SWE-Explore Atlas
+[tree reuse](docs/research/tree-reuse.md), the
+[original AttuneRadii record](docs/research/attuneradii-history.md), and the
+[replication study](docs/replication/README.md). The full SWE-Explore Atlas
 census now contains 78 unique frozen snapshots from 11 repositories, 1,248
 seed executions, and 4,092,192 logical observations. Its [seed, schema, metric,
 and analysis protocol](experiments/atlas-swe-explore/PREREGISTRATION.md) was
@@ -1625,7 +1624,8 @@ independent implementations by design:
           Radii.Evaluate.Program / Evaluation
               region-memoized DAG
                        |
-        Decide.Request -> Decide.Observation
+       Localization.Sandwich.Judge
+            -> typed Selection
 ```
 
 Those labels are current Flix names, not conceptual placeholders:
@@ -1642,9 +1642,9 @@ Those labels are current Flix names, not conceptual placeholders:
 - [`Radii.Evaluate.Program`](src/Radii/Evaluate.flix) is the shared program
   DAG; `Radii.Evaluate.Evaluation` contains its query-local state arena and
   memo counts.
-- [`Decide.Request`](src/Decide.flix) and `Decide.Observation` are the typed
-  learned-choice boundary. This boundary will move under `Localization`
-  during cleanup; its scientific request identity will not change.
+- [`Localization.Sandwich.Judge`](src/Localization/Sandwich.flix) is the one
+  typed learned-choice effect. Acquisition, replay, and fixture handlers may
+  satisfy it; Atlas itself has no provider capability.
 
 Datalog does not call the physical evaluator. The physical evaluator does not
 call Datalog. Tests compare them. This lets the execution representation change
@@ -1658,8 +1658,8 @@ The data rule is:
 
 ```text
 External formats vary.
-Internal scientific datasets are Parquet.
-JSON is the control plane.
+Every admitted scientific value is typed Parquet.
+Starlark wires File artifacts and never reads scientific rows.
 Markdown is the human plane.
 ```
 
@@ -1677,12 +1677,10 @@ evaluation parity proofs. The migration implementation is preserved in the
 scientific checkpoint that performed it, not carried as dead machinery at
 HEAD.
 
-The Atlas census and the optional frozen-localization graph are tracked
-Starlark. A public checkout can inspect and run the census without private
-inputs. In the laboratory checkout, the presence of retained decision evidence
-and evaluator gold exposes 61 independent replay actions and 61 independent
-evaluation actions. Removing those private roots leaves one explanatory
-placeholder target; it does not make the public checkout invalid.
+The Atlas census is a tracked Starlark graph. A public checkout can inspect and
+run it without private inputs. The 61 independent replay/evaluation graph that
+proved the typed migration is preserved at the named scientific checkpoints;
+the resulting typed aggregate evidence is tracked with the sealed report.
 
 Bazel owns declared builds, tests, and deterministic derived artifacts.
 BuildBuddy remotely executes and caches that graph. Flix owns the scientific
@@ -1700,7 +1698,6 @@ experiments/                 frozen protocols, Parquet results, and reports
 docs/architecture/           implementation details
 docs/research/               research history and interpretation
 src/native/                  narrow foreign runtime boundaries
-migration/attuneradii/       temporary source record for the earlier prototype
 ```
 
 The frozen 78-case study lives in
@@ -1716,8 +1713,6 @@ With Bazel already on `PATH`, no project Nix evaluation is needed:
 
 ```console
 bazel test //...
-bazel build //.attune:localization_replay
-bazel build //.attune:localization_evaluation
 bazel build //experiments/atlas-swe-explore/census:signatures
 bazel build //experiments/atlas-swe-explore/census:report
 ```
