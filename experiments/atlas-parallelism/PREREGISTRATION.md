@@ -9,7 +9,8 @@ precedes every measurement change in jj history (provable via `jj log`).
   from VCS history and evaluated in an isolated `git worktree`; never
   fabricated; the live worktree is never reset or mutated.
 - Intervention: this mission's cleanup (concept deletion, one-owner-per-concept
-  consolidation, tracked-Flix LOC reduction under the `< 4600` gate).
+  consolidation, tracked-Flix LOC reduction under the `< 4800` gate; amended
+  pre-measurement 2026-09-25, round-3 ruling — see "Budget and reuse").
 - Cleaned revision (after): recorded exactly in `REPORT.md` at measurement
   time (the sealed `reduction-completion` state plus this experiment's own
   changes).
@@ -226,9 +227,20 @@ the orchestrator.
 
 ## Budget and reuse
 
+**Amendment (pre-measurement, 2026-09-25, round-3 user ruling — recorded in
+`library/steering-memoized-evaluator.md` and
+`library/parallelism-experiment-status.md`'s RESOLUTION section):** the shared
+experiment Flix budget is **~450 raw Flix lines** (was ~200) and the
+tracked-Flix gate is **< 4,800** (was < 4,600), cited at lines 12 and here
+because both stale numbers appeared in this file. The metric set M1-M10 is
+unchanged — this amendment touches constraints only, before any measurement
+has run. Metric-neutral compression of the compiled instrument draft (doc
+comments and row literals toward the ~350 instrument floor) is likewise
+pre-measurement and metric-set-neutral.
+
 All experiment-specific Flix (instrument + oracle assertion logic) lives in
-`experiments/atlas-parallelism/` and shares one hard budget of ~200 raw Flix
-lines, counted in the tracked-Flix total (< 4600 gate). The instrument reuses
+`experiments/atlas-parallelism/` and shares one hard budget of ~450 raw Flix
+lines, counted in the tracked-Flix total (< 4,800 gate). The instrument reuses
 `Atlas`, `Repository`, `Repository.Physical`, `Repository.Table`,
 `ScientificTable`, and `ScientificIdentity`; no new graph-analysis framework;
 no permanent `src/` inflation.

@@ -1,18 +1,13 @@
-/// The preregistered self-signature instrument (PREREGISTRATION.md).
-///
-/// AttuneFlix admits its own tracked Flix sources as a repository world
-/// (attuneflix-self-admission-v1): the deterministic extractor names the
-/// tracked files, their declared modules, and the dotted-token use edges; this
-/// module gives those facts the standard typed world meaning, evaluates the
-/// frozen Atlas composition family over region seeds, and writes canonical
-/// Atlas signature artifacts plus the union-member rows the overlap metrics
-/// need. Every command is deterministic over its declared inputs.
+/// The preregistered self-signature instrument (PREREGISTRATION.md): admits
+/// the extractor's fact lists as a typed repository world, evaluates the
+/// frozen Atlas composition family over region seeds, and writes the
+/// artifacts for the preregistered coordination-surface metrics.
 mod Parallelism {
+    import java.lang.Double
     import java.nio.file.{Files, Paths}
     use ScientificTable.Value
 
-    /// The fixed region partition (attuneflix-regions-v1): a pure function of
-    /// the file path, applied identically to every revision.
+    /// The fixed region partition (attuneflix-regions-v1): first match wins.
     pub def regionOf(path: String): String =
         if (path == "src/Repository.flix" or String.startsWith(prefix = "src/Repository/", path)) "repository"
         else if (path == "src/Radii.flix" or String.startsWith(prefix = "src/Radii/", path)) "radii"
@@ -28,22 +23,19 @@ mod Parallelism {
 
     /// The preregistered region names, in fixed order.
     pub def regions(): Vector[String] =
-        Vector#{"repository", "radii", "atlas", "localization", "tables",
-            "population", "src-root", "tests", "build-src", "experiments"}
+        Vector#{"repository", "radii", "atlas", "localization", "tables", "population",
+            "src-root", "tests", "build-src", "experiments"}
 
-    /// The measured family: every well-typed composition-only Atlas program
-    /// of length <= 2 over the File domain (the frozen grammar, truncated).
+    /// The measured family: the frozen grammar, truncated at depth 2.
     pub def family(): Vector[Atlas.Program] = Atlas.programsFrom(Radii.Domain.File, 2)
 
     def testSide(region0: String): Bool = region0 == "tests" or region0 == "build-src"
 
-    // ------------------------------------------------------------------
-    // Self-admission: extracted fact lists -> standard typed world
-    // ------------------------------------------------------------------
+    // Self-admission.
 
-    /// Admit the self-world from the extractor's three fact lists: the sorted
+    /// Admit the self-world from the extractor's three fact lists (the sorted
     /// tracked files, one `module<TAB>path` row per declared module, and one
-    /// `source<TAB>target` row per use edge.
+    /// `source<TAB>target` row per use edge).
     pub def selfWorld(files0: Vector[String], modules: Vector[(String, String)],
                       uses: Vector[(String, String)]): Repository.World = {
         let fileIds = Vector.mapWithIndex((index, path) ->
@@ -53,8 +45,7 @@ mod Parallelism {
             symbols = Vector.map(match (module0, path) ->
                 {path = path, name = module0, startByte = 0, endByte = 0}, modules),
             defines = Vector.mapWithIndex((index, entry) -> match entry {
-                case (_, path) =>
-                    (fileIdOf(fileIds, path), Repository.Structure.SymbolId.SymbolId(index))
+                case (_, path) => (fileIdOf(fileIds, path), Repository.Structure.SymbolId.SymbolId(index))
             }, modules) |> Vector.toSet,
             imports = Vector.map(match (source, target) ->
                 (fileIdOf(fileIds, source), fileIdOf(fileIds, target)), uses) |> Vector.toSet,
@@ -71,8 +62,8 @@ mod Parallelism {
             case None => bug!("extractor named an unknown file: ${path}")
         }
 
-    /// Command `facts`: read the extractor's fact lists, admit the self-world,
-    /// and write the standard typed repository-world Parquet triple.
+    /// Command `facts`: admit the self-world and write the standard typed
+    /// repository-world Parquet triple.
     def writeFacts(): Unit \ IO = {
         let revision = Experiment.property("attune.revision");
         let files = factLines(Experiment.property("attune.files"));
@@ -86,8 +77,8 @@ mod Parallelism {
             Experiment.property("attune.world_metadata"),
             Experiment.property("attune.world_entities"),
             Experiment.property("attune.world_relations"),
-            {repository = "attuneflix", baseRevision = revision,
-                sourceTreeIdentity = sourceTreeIdentity, factIdentity = factIdentity, snapshotId = snapshotId},
+            {repository = "attuneflix", baseRevision = revision, sourceTreeIdentity = sourceTreeIdentity,
+                factIdentity = factIdentity, snapshotId = snapshotId},
             world);
         println("ATLAS_PARALLELISM_FACTS revision=${revision} files=${Vector.length(world#files)} " +
             "symbols=${Vector.length(world#symbols)} imports=${Set.size(world#imports)}")
@@ -101,32 +92,32 @@ mod Parallelism {
         case _ => bug!("fact line needs two tab-separated fields: ${line}")
     }
 
-    /// Read a committed self-world triple, restoring its identity from the
-    /// metadata row.
+    /// Read a committed self-world triple, identity restored from metadata.
     pub def readWorld(metadataPath: String, entitiesPath: String, relationsPath: String): Result[String, (Repository.Table.Identity, Repository.World)] \ IO =
         identityOf(metadataPath) |> Result.flatMap(identity ->
             Repository.Table.read(metadataPath, entitiesPath, relationsPath, identity)
                 |> Result.map(world -> (identity, world)))
 
+    /// Run one action over a world read from its committed triple.
+    def withWorld(metadataPath: String, entitiesPath: String, relationsPath: String,
+                  action: (Repository.Table.Identity, Repository.World) -> Unit \ IO): Unit \ IO =
+        match readWorld(metadataPath, entitiesPath, relationsPath) {
+            case Err(error) => bug!(error)
+            case Ok((identity, world)) => action(identity, world)
+        }
+
     def identityOf(metadataPath: String): Result[String, Repository.Table.Identity] \ IO =
         ScientificTable.exactlyOne("self-world metadata", ScientificTable.read(metadataPath, Repository.Table.metadata()))
             |> Result.flatMap(row -> forM (
-                repository <- ScientificTable.text(row, "repository");
-                baseRevision <- ScientificTable.text(row, "base_revision");
-                sourceTreeIdentity <- ScientificTable.text(row, "source_tree_identity");
-                factIdentity <- ScientificTable.text(row, "fact_identity");
+                repository <- ScientificTable.text(row, "repository"); baseRevision <- ScientificTable.text(row, "base_revision");
+                sourceTreeIdentity <- ScientificTable.text(row, "source_tree_identity"); factIdentity <- ScientificTable.text(row, "fact_identity");
                 snapshotId <- ScientificTable.text(row, "snapshot_id")
             ) yield {
-                repository = repository,
-                baseRevision = baseRevision,
-                sourceTreeIdentity = sourceTreeIdentity,
-                factIdentity = factIdentity,
-                snapshotId = snapshotId
+                repository = repository, baseRevision = baseRevision, sourceTreeIdentity = sourceTreeIdentity,
+                factIdentity = factIdentity, snapshotId = snapshotId
             })
 
-    // ------------------------------------------------------------------
-    // Measurement: regions, family evaluation, preregistered quantities
-    // ------------------------------------------------------------------
+    // Measurement.
 
     /// The region's file frontier under the fixed partition rule.
     pub def regionSeed(world: Repository.World, region0: String): Set[Repository.Structure.FileId] =
@@ -134,8 +125,7 @@ mod Parallelism {
             |> Vector.filterMap(match (path, id) -> if (regionOf(path) == region0) Some(id) else None)
             |> Vector.toSet
 
-    /// File members of a state; symbol members project to their declaring file
-    /// through the one-to-one defines admission.
+    /// File members of a state; symbol members project to their declaring file.
     def members(state: Atlas.State, world: Repository.World): Set[String] = match state {
         case Atlas.State.Files(ids) => Set.map(fileIdentity(world), ids)
         case Atlas.State.Symbols(ids) => Set.map(symbolFile(world), ids)
@@ -168,11 +158,11 @@ mod Parallelism {
         Set.union(Set.map(fileIdentity(world), seed), outputUnion(world, seed))
     }
 
-    def jaccard(a: Set[String], b: Set[String]): Float64 = {
-        let intersection = Int32.toFloat64(Set.size(Set.filter(member -> Set.memberOf(member, b), a)));
-        let union = Int32.toFloat64(Set.size(Set.union(a, b)));
-        if (union == 0.0) 0.0 else intersection / union
-    }
+    def intersectionOf(a: Set[String], b: Set[String]): Set[String] =
+        Set.filter(member -> Set.memberOf(member, b), a)
+
+    def jaccard(a: Set[String], b: Set[String]): Float64 =
+        ScientificTable.ratio(Set.size(intersectionOf(a, b)), Set.size(Set.union(a, b)))
 
     /// Nearest-rank percentile over an Int32 sample (PREREGISTRATION.md M5).
     def percentile(values0: Vector[Int32], p: Int32): Int32 = {
@@ -191,59 +181,67 @@ mod Parallelism {
         not Vector.exists(match (source, target) ->
             target == region0 and source != region0 and not testSide(source), edges)
 
-    /// E1 coherence: internal edges over all edges leaving the region's files;
-    /// an isolated region is fully coherent.
+    /// E1 coherence: internal edges over all edges leaving the region's files.
     def coherence(edges: Vector[(String, String)], region0: String): Float64 = {
         let internal = Vector.length(Vector.filter(match (f, g) -> f == region0 and g == region0, edges));
         let outgoing = Vector.length(Vector.filter(match (f, g) -> f == region0 and g != region0, edges));
-        if (internal + outgoing == 0) 1.0
-        else Int32.toFloat64(internal) / Int32.toFloat64(internal + outgoing)
+        ScientificTable.ratio(internal, internal + outgoing)
     }
 
-    /// M10: order the non-empty regions by descending cross-region edge
-    /// involvement (ties: ascending name); assign each region in that order to
-    /// the worker sharing the fewest use edges with already-assigned regions
-    /// (ties: lowest worker index); report the inter-worker edge count.
+    def groupName(group: (String, Set[String])): String = match group {
+        case (name, _) => name
+    }
+
+    /// Cross-group use edges between two groups, either direction.
+    def interEdges(edges: Vector[(String, String)], a: Set[String], b: Set[String]): Int32 =
+        Vector.length(Vector.filter(match (f, t) ->
+            (Set.memberOf(f, a) and Set.memberOf(t, b)) or (Set.memberOf(f, b) and Set.memberOf(t, a)), edges))
+
+    /// M10: greedy agglomerative merge of the non-empty regions until k
+    /// groups remain (PREREGISTRATION.md): repeatedly merge the pair with
+    /// maximal w(A, B) + w(B, A) (ties: the lexicographically smallest pair of
+    /// names; the merged group keeps the smaller name).
+    def mergeGroups(edges: Vector[(String, String)], k: Int32,
+                    groups: Vector[(String, Set[String])]): Vector[(String, Set[String])] =
+        if (Vector.length(groups) <= k) groups
+        else {
+            let weighted = Vector.flatMap(match (a, sa) -> Vector.filterMap(match (b, sb) ->
+                if (a < b) Some((0 - interEdges(edges, sa, sb), a, b, sa, sb)) else None, groups), groups);
+            match Vector.get(0, Vector.sortBy(match (weight, a, b, _, _) -> (weight, a, b), weighted)) {
+                case (_, a, b, sa, sb) => {
+                    let merged = (if (a < b) a else b, Set.union(sa, sb));
+                    let rest = Vector.filterMap(match (name, members0) ->
+                        if (name == a or name == b) None else Some((name, members0)), groups);
+                    mergeGroups(edges, k, Vector.sortBy(groupName, Vector.append(rest, Vector#{merged})))
+                }
+            }
+        }
+
+    def groupOf(groups: Vector[(String, Set[String])], region0: String): String =
+        Vector.foldLeft((found, entry) -> match entry {
+            case (name, members0) => if (Set.memberOf(region0, members0)) name else found
+        }, "", groups)
+
+    /// M10 reported quantity: the inter-group use-edge count at k workers.
     pub def crossEdges(world: Repository.World, k: Int32): Int32 = {
         let edges = edgeRegions(world);
-        let involvement = Vector.map(region0 -> (region0,
-            Vector.length(Vector.filter(match (f, g) ->
-                (f == region0 and g != region0) or (g == region0 and f != region0), edges))), regions());
-        let order = Vector.sortBy(match (region0, weight) -> (0 - weight, region0),
-            Vector.filterMap(match (region0, weight) ->
-                if (Set.isEmpty(regionSeed(world, region0))) None else Some((region0, weight)), involvement));
-        let final = Vector.foldLeft((workers, entry) -> match entry {
-            case (region0, _) => assign(workers, region0, edges)
-        }, Vector.map(_ -> Set.empty(), Vector.range(0, k)), order);
-        Vector.foldLeft((sum, edge) -> match edge {
-            case (f, g) => if (workerOf(final, f) == workerOf(final, g)) sum else sum + 1
-        }, 0, edges)
+        let start = Vector.sortBy(groupName, Vector.filterMap(region0 ->
+            if (Set.isEmpty(regionSeed(world, region0))) None
+            else Some((region0, Set#{region0})), regions()));
+        let groups = mergeGroups(edges, k, start);
+        Vector.length(Vector.filter(match (f, t) ->
+            groupOf(groups, f) != groupOf(groups, t), edges))
     }
 
-    def assign(workers: Vector[Set[String]], region0: String, edges: Vector[(String, String)]): Vector[Set[String]] = {
-        let loads = Vector.map(group ->
-            Vector.foldLeft((sum, edge) -> match edge {
-                case (f, g) =>
-                    if ((f == region0 and Set.memberOf(g, group)) or (g == region0 and Set.memberOf(f, group))) sum + 1 else sum
-            }, 0, edges), workers);
-        let best = Vector.foldLeft((bestIndex, entry) -> match entry {
-            case (index, load) => if (load < Vector.get(bestIndex, loads)) index else bestIndex
-        }, 0, Vector.mapWithIndex((index, load) -> (index, load), loads));
-        Vector.mapWithIndex((index, group) ->
-            if (index == best) Set.insert(region0, group) else group, workers)
-    }
-
-    def workerOf(workers: Vector[Set[String]], region0: String): Int32 =
-        Vector.foldLeft((found, entry) -> match entry {
-            case (index, group) => if (Set.memberOf(region0, group)) index else found
-        }, 0, Vector.mapWithIndex((index, group) -> (index, group), workers))
+    def nonEmptyRegions(world: Repository.World): Vector[String] =
+        Vector.filter(region0 -> not Set.isEmpty(regionSeed(world, region0)), regions())
 
     /// The preregistered coordination-surface quantities, (name, value) pairs
     /// in fixed order. Definitions: PREREGISTRATION.md M1-M10 (M2, the raw
     /// LOC, is counted outside the instrument).
     pub def quantities(world: Repository.World): Vector[(String, Float64)] = {
         let edges = edgeRegions(world);
-        let nonEmpty = Vector.filter(region0 -> not Set.isEmpty(regionSeed(world, region0)), regions());
+        let nonEmpty = nonEmptyRegions(world);
         let hoods = Vector.map(region0 -> (region0, neighborhood(world, region0)), nonEmpty);
         let pairs0 = Vector.flatMap(match (a, ha) ->
             Vector.filterMap(match (b, hb) -> if (a < b) Some((ha, hb)) else None, hoods), hoods);
@@ -261,7 +259,8 @@ mod Parallelism {
         Vector#{
             ("tracked_files", Int32.toFloat64(Vector.length(world#files))),
             ("use_edges", Int32.toFloat64(Vector.length(edges))),
-            ("cross_region_edge_ratio", ratioOf(Vector.length(Vector.filter(match (f, g) -> f != g, edges)), Vector.length(edges))),
+            ("cross_region_edge_ratio", ScientificTable.ratio(
+                Vector.length(Vector.filter(match (f, g) -> f != g, edges)), Vector.length(edges))),
             ("median_file_blast", Int32.toFloat64(percentile(blasts, 50))),
             ("p90_file_blast", Int32.toFloat64(percentile(blasts, 90))),
             ("max_region_blast", Vector.foldLeft((best, region0) -> {
@@ -292,15 +291,10 @@ mod Parallelism {
         }, 0, evaluation#outputs)) / Int32.toFloat64(seedSize)
     }
 
-    def ratioOf(numerator: Int32, denominator: Int32): Float64 =
-        if (denominator == 0) 0.0
-        else Int32.toFloat64(numerator) / Int32.toFloat64(denominator)
+    // Commands.
 
-    // ------------------------------------------------------------------
-    // Commands
-    // ------------------------------------------------------------------
-
-    /// The executable surface: facts, region, compare.
+    /// The executable surface: facts, region, compare (which also writes each
+    /// revision's region-pairs table).
     pub def execute(): Unit \ IO = match Experiment.property("attune.command") {
         case "facts" => writeFacts()
         case "region" => writeRegion()
@@ -309,15 +303,26 @@ mod Parallelism {
     }
 
     /// The union-member row schema: one row per region shard carrying the
-    /// depth-<=2 neighborhood membership the overlap metrics consume.
+    /// depth-<=2 neighborhood membership plus the region's coherence and
+    /// independence (the per-region quantities the oracle asserts).
     pub def membersSchema(): ScientificTable.Schema = {
         format = "attuneflix-parallelism-members-v1",
         columns = Vector#{
-            ScientificTable.Columns.text("revision"),
-            ScientificTable.Columns.text("region"),
-            ScientificTable.Columns.int32("seed_size"),
-            ScientificTable.Columns.int32("result_size"),
+            ScientificTable.Columns.text("revision"), ScientificTable.Columns.text("region"),
+            ScientificTable.Columns.int32("seed_size"), ScientificTable.Columns.int32("result_size"),
+            ScientificTable.Columns.float64("coherence"),
+            ScientificTable.Columns.boolean("independently_testable"),
             ScientificTable.Columns.textList("members")
+        }
+    }
+
+    /// The region-pairs schema (PREREGISTRATION.md artifact schemas).
+    pub def pairsSchema(): ScientificTable.Schema = {
+        format = "attuneflix-parallelism-pairs-v1",
+        columns = Vector#{
+            ScientificTable.Columns.text("revision"), ScientificTable.Columns.text("region_a"),
+            ScientificTable.Columns.text("region_b"), ScientificTable.Columns.int32("union_size"),
+            ScientificTable.Columns.int32("intersection_size"), ScientificTable.Columns.float64("jaccard")
         }
     }
 
@@ -325,45 +330,54 @@ mod Parallelism {
     /// signature of the region seed under the depth-2 family and writes the
     /// observation/physical rows plus the region's union-member row.
     def writeRegion(): Unit \ IO =
-        match readWorld(Experiment.property("attune.world_metadata"),
-            Experiment.property("attune.world_entities"),
-            Experiment.property("attune.world_relations")) {
-            case Err(error) => bug!(error)
-            case Ok((identity, world)) => {
-                let region0 = Experiment.property("attune.region");
-                let seed = regionSeed(world, region0);
-                let seedState = Atlas.State.Files(seed);
-                let seed0: Atlas.Signature.Seed = {
-                    domain = Radii.Domain.File, identity = region0, ordinal = 0, state = seedState
-                };
-                match Atlas.Signature.compute(world, seedState, 2) {
-                    case Err(error) => bug!(error)
-                    case Ok(signature) => {
-                        let snapshot = snapshotOf(identity);
-                        let _ = ScientificTable.write(Experiment.property("attune.output_observations"),
-                            Atlas.Signature.Table.observations(),
-                            Atlas.Signature.Table.observationRows(snapshot, seed0, signature));
-                        let _ = ScientificTable.write(Experiment.property("attune.output_physical"),
-                            Atlas.Signature.Table.physical(),
-                            Vector#{Atlas.Signature.Table.physicalRow(snapshot, seed0, signature)});
-                        let union = neighborhood(world, region0);
-                        let _ = ScientificTable.write(Experiment.property("attune.output_members"),
-                            membersSchema(), Vector#{Map#{
-                                "revision" => Value.Text(identity#baseRevision),
-                                "region" => Value.Text(region0),
-                                "seed_size" => Value.Int32(Set.size(seed)),
-                                "result_size" => Value.Int32(Set.size(union)),
-                                "members" => Value.TextList(Vector.sort(Set.toVector(union)))
-                            }});
-                        println("ATLAS_PARALLELISM_REGION revision=${identity#baseRevision} region=${region0} " +
-                            "seed=${Set.size(seed)} neighborhood=${Set.size(union)}")
-                    }
+        withWorld(Experiment.property("attune.world_metadata"), Experiment.property("attune.world_entities"),
+            Experiment.property("attune.world_relations"), (identity, world) -> {
+            let region0 = Experiment.property("attune.region");
+            let seed = regionSeed(world, region0);
+            let seedState = Atlas.State.Files(seed);
+            let seed0: Atlas.Signature.Seed = {domain = Radii.Domain.File,
+                identity = region0, ordinal = 0, state = seedState};
+            match Atlas.Signature.compute(world, seedState, 2) {
+                case Err(error) => bug!(error)
+                case Ok(signature) => {
+                    let snapshot = snapshotOf(identity);
+                    let _ = ScientificTable.write(Experiment.property("attune.output_observations"),
+                        Atlas.Signature.Table.observations(),
+                        Atlas.Signature.Table.observationRows(snapshot, seed0, signature));
+                    let _ = ScientificTable.write(Experiment.property("attune.output_physical"),
+                        Atlas.Signature.Table.physical(),
+                        Vector#{Atlas.Signature.Table.physicalRow(snapshot, seed0, signature)});
+                    let edges = edgeRegions(world);
+                    let union = neighborhood(world, region0);
+                    let _ = ScientificTable.write(Experiment.property("attune.output_members"),
+                        membersSchema(), Vector#{Map#{
+                            "revision" => Value.Text(identity#baseRevision), "region" => Value.Text(region0),
+                            "seed_size" => Value.Int32(Set.size(seed)), "result_size" => Value.Int32(Set.size(union)),
+                            "coherence" => Value.Float64(coherence(edges, region0)),
+                            "independently_testable" => Value.Boolean(independentlyTestable(edges, region0)),
+                            "members" => Value.TextList(Vector.sort(Set.toVector(union)))
+                        }});
+                    println("ATLAS_PARALLELISM_REGION revision=${identity#baseRevision} region=${region0} " +
+                        "seed=${Set.size(seed)} neighborhood=${Set.size(union)}")
                 }
             }
-        }
+        })
+
+    def pairsRows(identity: Repository.Table.Identity, world: Repository.World): Vector[ScientificTable.Row] = {
+        let hoods = Vector.map(region0 -> (region0, neighborhood(world, region0)), nonEmptyRegions(world));
+        Vector.flatMap(match (a, ha) ->
+            Vector.filterMap(match (b, hb) -> if (a < b) Some((a, b, ha, hb)) else None, hoods), hoods)
+            |> Vector.map(match (a, b, ha, hb) -> Map#{
+                "revision" => Value.Text(identity#baseRevision),
+                "region_a" => Value.Text(a), "region_b" => Value.Text(b),
+                "union_size" => Value.Int32(Set.size(Set.union(ha, hb))),
+                "intersection_size" => Value.Int32(Set.size(intersectionOf(ha, hb))),
+                "jaccard" => Value.Float64(jaccard(ha, hb))
+            })
+    }
 
     /// Command `compare`: the before/after coordination-surface table over two
-    /// committed self-world triples (same instrument, same definitions).
+    /// committed self-world triples, plus each revision's region-pairs table.
     def writeCompare(): Unit \ IO = {
         let (baselineIdentity, baseline) = Experiment.require(readWorld(
             Experiment.property("attune.baseline_metadata"),
@@ -373,12 +387,65 @@ mod Parallelism {
             Experiment.property("attune.after_metadata"),
             Experiment.property("attune.after_entities"),
             Experiment.property("attune.after_relations")));
+        let _ = ScientificTable.write(Experiment.property("attune.baseline_pairs"),
+            pairsSchema(), pairsRows(baselineIdentity, baseline));
+        let _ = ScientificTable.write(Experiment.property("attune.after_pairs"),
+            pairsSchema(), pairsRows(afterIdentity, after));
         println("metric ${baselineIdentity#baseRevision} ${afterIdentity#baseRevision}");
         Vector.foldLeft((_, pair) -> match pair {
-            case ((name, before), (_, value)) =>
-                println("${name} ${before} ${value}")
+            case ((name, before), (_, value)) => println("${name} ${before} ${value}")
         }, (), Vector.zip(quantities(baseline), quantities(after)))
     }
+
+    /// Command `oracle`: the standing parallel-work-friendliness law
+    /// (PREREGISTRATION.md enshrinement). Asserts the preregistered
+    /// coordination-surface thresholds — per-region values from the shard
+    /// outputs, world-level values from the in-graph world — with the
+    /// documented bounds; a violation fails the action and turns red.
+    pub def writeOracle(): Unit \ IO = {
+        let (_, world) = Experiment.require(readWorld(
+            Experiment.property("attune.world_metadata"),
+            Experiment.property("attune.world_entities"),
+            Experiment.property("attune.world_relations")));
+        let shards = Vector.map(shardRow, Experiment.paths("attune.members"));
+        let q = Vector.toMap(quantities(world));
+        let coherences = Vector.map(match (_, c, _, _) -> c, shards);
+        let jaccards = Vector.flatMap(match (a, _, _, ma) ->
+            Vector.filterMap(match (b, _, _, mb) -> if (a < b) Some(jaccard(ma, mb)) else None, shards), shards);
+        let independent = Vector.filterMap(match (_, _, t, _) -> if (t) Some(()) else None, shards);
+        let value = name -> match Map.get(name, q) { case Some(v) => v case None => 0.0 };
+        let measured = Vector#{
+            ("min_region_coherence", Vector.foldLeft((best, c) -> if (c < best) c else best, 1.0, coherences), 1),
+            ("max_pair_jaccard", Vector.foldLeft((best, j) -> if (j > best) j else best, 0.0, jaccards), -1),
+            ("shared_hotspots", value("shared_hotspots"), -1),
+            ("max_hotspot_pressure", value("max_hotspot_pressure"), -1),
+            ("independently_testable", Int32.toFloat64(Vector.length(independent)), 1),
+            ("median_file_blast", value("median_file_blast"), -1)
+        };
+        let failures = Vector.filterMap(match (name, measured0, direction) -> {
+            let bound = Double.parseDouble(Experiment.property("attune.threshold.${name}"));
+            let ok = if (direction == 1) measured0 >= bound else measured0 <= bound;
+            println("PARALLELISM_ORACLE ${name} measured=${measured0} bound=${bound} ${if (ok) "pass" else "FAIL"}");
+            if (ok) None else Some(name)
+        }, measured);
+        if (Vector.isEmpty(failures)) ()
+        else bug!("parallel-work-friendliness oracle violated: ${Vector.toString(failures)}")
+    }
+
+    /// One shard's members row: (region, coherence, independently testable,
+    /// neighborhood members).
+    def shardRow(path: String): (String, Float64, Bool, Set[String]) \ IO =
+        ScientificTable.exactlyOne("parallelism members", ScientificTable.read(path, membersSchema()))
+            |> Result.flatMap(row -> forM (
+                region0 <- ScientificTable.text(row, "region"); c <- ScientificTable.number(row, "coherence");
+                t <- ScientificTable.boolean(row, "independently_testable"); members0 <- textListOf(row, "members")
+            ) yield (region0, c, t, Vector.toSet(members0))) |> Experiment.require
+
+    def textListOf(row: ScientificTable.Row, name: String): Result[String, Vector[String]] =
+        match Map.get(name, row) {
+            case Some(Value.TextList(values)) => Ok(values)
+            case _ => Err("missing ${name} text list")
+        }
 
     def snapshotOf(identity: Repository.Table.Identity): Atlas.Signature.Table.SnapshotIdentity = {
         signatureProtocol = "attuneflix-parallelism-v1",

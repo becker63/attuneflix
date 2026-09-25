@@ -27,3 +27,15 @@ flix_fatjar(
     ],
     threads = 2,
 )
+
+java_binary(
+    name = "parallelism",
+    jvm_flags = [
+        "--add-opens=java.base/java.nio=ALL-UNNAMED",
+        "--enable-native-access=ALL-UNNAMED",
+        "-Xss8m",
+    ],
+    main_class = "Main",
+    runtime_deps = [":parallelism_flix"],
+    visibility = ["//visibility:public"],
+)
