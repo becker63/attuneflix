@@ -17,6 +17,12 @@ precedes every measurement change in jj history (provable via `jj log`).
 - This preregistration revision: the jj change containing exactly this file
   (change id and commit id recorded in `REPORT.md`).
 
+**Amended 2026-09-25 (v2, pre-measurement):** the section
+"AMENDMENT — v2 acquisition" at the end of this file changes the *acquisition
+system* only (v1 is the lexical/proxy measurement; v2 is Grit-acquired). The
+metric set M1-M10, the region partition, the program family, and the two frozen
+revisions are unchanged, and v1's measured numbers are preserved exactly.
+
 ## Hypotheses
 
 **Primary hypothesis.** The cleanup reduces the repository's *coordination
@@ -244,3 +250,136 @@ lines, counted in the tracked-Flix total (< 4,800 gate). The instrument reuses
 `Atlas`, `Repository`, `Repository.Physical`, `Repository.Table`,
 `ScientificTable`, and `ScientificIdentity`; no new graph-analysis framework;
 no permanent `src/` inflation.
+
+---
+
+# AMENDMENT — v2 acquisition: real Grit, actual Atlas neighborhoods
+
+Status: **committed BEFORE the first v2 measurement** (steering 2026-09-25,
+`library/experiment-genuineness-v2.md` §11 + `library/grit-language-integration.md`
+§8-11). This amendment is an ancestor of every v2 measurement change in jj
+history; no v2 number existed when it was committed. It changes the
+**acquisition system** (a steering amendment), not the measured quantity: the
+metric definitions M1-M10, the region partition `attuneflix-regions-v1`, the
+program family, and the two frozen revisions are unchanged, so all four rows
+stay directly comparable.
+
+## Why the acquisition changed (v1 is a proxy, not the self-signature)
+
+The world defined above (`attuneflix-self-admission-v1`) is a deliberately
+reduced **lexical proxy**. `extract_self_facts.sh` reads `.flix` text only: one
+symbol per declared module, use edges from dotted textual prefixes, `calls`
+structurally empty, no Java, no Starlark, no byte ranges. It is useful and it
+stays frozen exactly as measured, but it is NOT the authoritative Atlas
+self-signature of AttuneFlix, and it partially punishes legitimate namespace
+structure (every dotted child path also reaches its parent module name).
+
+The authoritative acquisition is the repository's ONE source frontend: GritQL
+programs under `src/grit/{defines,imports,calls}/{javascript,typescript,java,flix,starlark}.grit`
+executed by the frozen hermetic Grit closure
+(`getgrit/gritql @ c80b3026471b229f41b279c3eb0c162dcdacfdb1`, Flix via the one
+pinned Zed grammar `omarjatoi/tree-sitter-flix @ 78cff149b2e9897456f94844872353b5ee0ca93b`),
+normalizing all five languages into the ONE `Repository.Grit.Fact` protocol and
+ordinary `Repository.admit`. There is no second frontend, no tree-sitter call
+outside Grit, and no experiment-specific graph.
+
+**v1 is preserved exactly** (world, artifacts, numbers, decision): it is
+relabeled "v1 lexical/proxy" and reported as such. Nothing about the v1
+measurement is rewritten or retroactively altered.
+
+## The v2 admitted world (`attuneflix-grit-acquisition-v2`)
+
+Inclusions, exact and identical for both revisions: every tracked file whose
+path the closure's one detection table admits
+(`Repository.Grit.language(path) != None`) — `.flix`, `.java`, `.js`/`.mjs`/
+`.cjs`, `.jsx`, `.ts`/`.mts`/`.cts`, `.tsx`, `.bzl`/`.bazel`/`.star`, and the
+extensionless/`.bazel` Bazel build files (`BUILD`, `BUILD.bazel`, `WORKSPACE`,
+`WORKSPACE.bazel`) — **excluding** the frozen data tree `.attune/**`. The
+resulting admitted list is committed verbatim per revision
+(`v2/sources/<role>.sources.tsv`: path, sha256, byte length, language), which is
+the exact inclusion record (`v2/README.md` documents the exclusions): frozen
+data (`*.parquet`, `.attune/**`), documentation, environment/lock/JSON/TOML
+plumbing, `*.rs` (the narrow native seam; Rust is not an admitted Grit target
+language), `*.grit` (absent at both measured revisions), `.bazelrc` (command
+line configuration, not Starlark).
+
+`calls` and `parents` are real relations in the v2 world (`Repository.admit`
+derives `parents` from the admitted paths); `defines` carries real definition
+byte ranges, so symbol ownership is well defined. JS/TS: no tracked
+`.js/.jsx/.ts/.tsx` exists at either revision, so those frontends contribute no
+facts — recorded, not hidden.
+
+## Acquisition execution (how the v2 facts come to exist)
+
+The two revisions are materialized as isolated `git worktree`s (baseline
+`bcfc126db7b7c7f535353ccc8afca44465903571`, cleaned
+`ae2f5e68711121f8ecbf9ce94a7926ca7c7833d1`; never the live worktree, never
+mutated, never fabricated). The repository's own acquisition path
+(`Repository.Acquire.acquire` over the closure's frozen engine) is built by
+Bazel and run over each worktree; its output is committed as typed Parquet
+(`v2/grit/<role>.facts.parquet`: path, source_sha256, language, program, kind,
+start_byte, end_byte, value) together with the source manifest above. The
+in-graph steps then read the committed facts: ordinary `Repository.admit` ->
+`Repository.World` -> `Repository.Physical` -> `Atlas.evaluate` ->
+neighborhoods -> metrics. Exact reproduction commands are in `v2/README.md`.
+
+## v2 file and region neighborhoods (the measurement path)
+
+Per admitted file `f`: canonical file seed `Atlas.State.Files({f})` -> the
+preregistered family `Atlas.programsFrom(Radii.Domain.File, 2)` -> the ACTUAL
+`Atlas.evaluate` output states -> normalize to files:
+
+- **file states** -> those files directly;
+- **symbol states** -> the owning file through the canonical `DefinedIn`
+  relation (a symbol has exactly one defining file in an admitted world);
+- **location states** -> the File-domain family contains no Location atom, so
+  no location state can occur in this measurement and no mapping is applied.
+  This is documented rather than assumed: `Atlas.compatible(File)` is
+  `{Defines, Imports, ImportedBy}`, none of whose targets is the Location
+  domain.
+
+`N_v2(f)` = the union of those normalized outputs. Region neighborhood
+`N_v2(R) = union(N_v2(f) for f in R over the region's files)`. There is **no
+handwritten BFS/DFS** over Imports/Calls in the v2 metric path: every expansion
+is an `Atlas.evaluate` transition over the admitted world.
+
+## Basis statistics vs Atlas-signature statistics (never conflated)
+
+- **BASIS** (direct admitted-relation statistics, `world#imports`): M3
+  `use_edges`, M4 `cross_region_edge_ratio`, per-region coherence, M8
+  `shared_hotspots`/`hotspot_count`/`max_hotspot_pressure`, M9
+  `independently_testable`, M10 `cross_group_edges_4`/`_8`.
+- **ATLAS** (from actual Atlas output states): M5 `median_file_blast`/`p90`,
+  M6 `max_region_blast` (+ per-region rows), M7 `max_pair_jaccard`,
+  `high_overlap_pairs`, and every region-pair Jaccard.
+- **COUNTS**: M1 `tracked_files`, M2 `tracked_flix_loc` (counted outside the
+  instrument by the mission's verbatim LOC command).
+
+The four-row table labels each metric's class; a BASIS value is never presented
+as an Atlas signature.
+
+## Bazel locality (separate execution/build evidence channel)
+
+`bazel query` over the analyzed graph of each revision — target dependencies,
+test ownership, `srcs` fan-out, independently runnable targets — is recorded as
+a separate channel (`v2/bazel-locality/*.txt`) and reported in its own table,
+compared against the source signature. It supplements and never replaces Grit
+acquisition.
+
+## Provenance (in-graph, mandatory)
+
+The v2 measurement graph depends on the real `//src:Atlas.flix`,
+`//src:Atlas/Signature.flix`, `//src:Repository/Physical.flix` and the real
+admission code. A focused provenance fixture
+(`//experiments/atlas-parallelism:parallelism_provenance_test`, wired into the
+authoritative suite) fails unless the resulting neighborhood changes when the
+Atlas program family or an admitted relation changes. If the v2 result could be
+produced without Atlas, the design is wrong and is corrected, not excused.
+
+## Enshrinement (unchanged rule, re-evaluated on v2)
+
+E1-E5 above are re-evaluated on the **cleaned v2 world**. If they hold
+pronouncedly the oracle is enshrined into the authoritative suite; if they do
+not, no permanently-red test is added and the measured numbers plus the
+threshold analysis are the deliverable (VAL-PARA-007 fallback). Hill-climbing
+stays paused in this mission regardless of the outcome.
