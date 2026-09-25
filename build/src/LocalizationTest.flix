@@ -25,7 +25,7 @@ def localizationPrepared(): Localization.Prepared = {
     };
     {
         instanceId = "case", repository = "repo", baseCommit = "rev",
-        snapshotId = "snapshot", issue = issue, world = localizationFixture()
+        issue = issue, world = localizationFixture()
     }
 }
 

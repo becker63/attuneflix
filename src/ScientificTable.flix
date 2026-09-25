@@ -67,12 +67,6 @@ pub mod ScientificTable {
         case None => Err("missing ${name}")
     }
 
-    pub def float64(row: Row, name: String): Result[String, Float64] = match Map.get(name, row) {
-        case Some(Value.Float64(value)) => Ok(value)
-        case Some(_) => Err("${name} must be float64")
-        case None => Err("missing ${name}")
-    }
-
     /// Numeric projection used only by analyses whose declared metric is a
     /// Float64 but whose source count is an integer column.
     pub def number(row: Row, name: String): Result[String, Float64] = match Map.get(name, row) {

@@ -26,28 +26,7 @@ mod Localization {
         instanceId = String,
         repository = String,
         baseCommit = String,
-        snapshotId = String,
         issue      = Issue,
         world      = Repository.World
-    }
-
-    pub def prepare(
-        instanceId: String,
-        repository: String,
-        baseCommit: String,
-        snapshotId: String,
-        issue: Issue,
-        world: Repository.World
-    ): Result[String, Prepared] = forM (
-        _ <- if (issue#instanceId == instanceId) Ok(()) else Err("issue identity mismatch");
-        _ <- if (issue#repository == repository) Ok(()) else Err("issue repository mismatch");
-        _ <- if (issue#baseCommit == baseCommit) Ok(()) else Err("issue revision mismatch")
-    ) yield {
-        instanceId = instanceId,
-        repository = repository,
-        baseCommit = baseCommit,
-        snapshotId = snapshotId,
-        issue = issue,
-        world = world
     }
 }
