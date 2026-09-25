@@ -23,18 +23,7 @@ mod Repository {
         unresolvedCalls   = Int32
     }
 
-    pub type alias Observations = {
-        sources     = Vector[Source],
-        definitions = Vector[Repository.Grit.Fact],
-        imports     = Vector[Repository.Grit.Fact],
-        calls       = Vector[Repository.Grit.Fact]
-    }
-
     pub enum Error with Eq, ToString {
-        case Grit(Repository.Grit.Error),
-        case DuplicatePath(String),
-        case UnsupportedSourceDialect(String),
-        case UnexpectedFact(String, String),
         case UnknownFactPath(String)
     }
 
@@ -44,40 +33,6 @@ mod Repository {
         edges    = Repository.Structure.Relation[a, b],
         rejected = Int32
     }
-
-    /// Execute the three fixed source observations, then admit repository facts.
-    pub def extract(sources0: Vector[Source]): Result[Error, World] \ Repository.Grit.Eval = {
-        forM (
-            observations <- observeAll(sources0);
-            world <- admitObserved(observations)
-        ) yield world
-    }
-
-    /// Effectful source observation is kept separate so experiments can time Grit honestly.
-    pub def observeAll(sources0: Vector[Source]): Result[Error, Observations] \ Repository.Grit.Eval = {
-        let sources = Vector.sortBy(source -> source#path, sources0);
-        match duplicatePath(sources) {
-            case Some(path) => Err(Error.DuplicatePath(path))
-            case None => forM (
-                definitions <- observe(Repository.Grit.Program.Defines, "definition", sources);
-                imports <- observe(Repository.Grit.Program.Imports, "import", sources);
-                calls <- observe(Repository.Grit.Program.Calls, "call", sources)
-            ) yield {
-                sources = sources,
-                definitions = definitions,
-                imports = imports,
-                calls = calls
-            }
-        }
-    }
-
-    pub def admitObserved(observations: Observations): Result[Error, World] =
-        admit(
-            observations#sources,
-            observations#definitions,
-            observations#imports,
-            observations#calls
-        )
 
     /// Pure admission is independently testable from the native acquisition effect.
     pub def admit(
@@ -138,49 +93,6 @@ mod Repository {
 
     def factKey(fact: Repository.Grit.Fact): (String, Int32, Int32, String) =
         (fact#path, fact#startByte, fact#endByte, fact#value)
-
-    pub def allSymbols(world: World): Set[Repository.Structure.SymbolId] =
-        Vector.range(0, Vector.length(world#symbols))
-            |> Vector.map(Repository.Structure.SymbolId.SymbolId)
-            |> Vector.toSet
-
-    def observe(program: Repository.Grit.Program, kind: String, sources: Vector[Source]): Result[Error, Vector[Repository.Grit.Fact]] \ Repository.Grit.Eval =
-        Vector.traverse(source -> match language(source#path) {
-            case Err(error) => Err(error)
-            case Ok(dialect) => {
-                let wire = Repository.Grit.evaluate(dialect, program, source#path, source#content);
-                Repository.Grit.facts(source#path, source#content, wire)
-                    |> Result.mapErr(Error.Grit)
-                    |> Result.flatMap(facts -> requireKind(kind, facts))
-            }
-        }, sources)
-            |> Result.map(Vector.flatten)
-
-    pub def language(path: String): Result[Error, Repository.Grit.Language] =
-        if (String.endsWith(suffix = ".tsx", path)) Ok(Repository.Grit.Language.Tsx)
-        else if (String.endsWith(suffix = ".jsx", path)) Ok(Repository.Grit.Language.Jsx)
-        else if (List.exists(suffix -> String.endsWith(suffix = suffix, path),
-            ".js" :: ".mjs" :: ".cjs" :: Nil)) Ok(Repository.Grit.Language.JavaScript)
-        else if (List.exists(suffix -> String.endsWith(suffix = suffix, path),
-            ".ts" :: ".mts" :: ".cts" :: Nil)) Ok(Repository.Grit.Language.TypeScript)
-        else Err(Error.UnsupportedSourceDialect(path))
-
-    def requireKind(expected: String, facts: Vector[Repository.Grit.Fact]): Result[Error, Vector[Repository.Grit.Fact]] =
-        match Vector.find(fact -> fact#kind != expected, facts) {
-            case None => Ok(facts)
-            case Some(fact) => Err(Error.UnexpectedFact(expected, fact#kind))
-        }
-
-    def duplicatePath(sources: Vector[Source]): Option[String] =
-        duplicatePathList(Vector.toList(sources), None)
-
-    def duplicatePathList(sources: List[Source], previous: Option[String]): Option[String] = match sources {
-        case Nil => None
-        case source :: rest => match previous {
-            case Some(path) if path == source#path => Some(path)
-            case _ => duplicatePathList(rest, Some(source#path))
-        }
-    }
 
     def definitionEdges(files: Map[String, Repository.Structure.FileId], identities: Vector[Identity]): Result[Error, Repository.Structure.Defines] =
         Vector.traverse(match (fact, symbol) ->

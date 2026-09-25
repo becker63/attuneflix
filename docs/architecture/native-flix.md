@@ -9,7 +9,7 @@ after the conclusions below were recorded.
 | Experiment | Flix 0.76 result | Production decision |
 |---|---|---|
 | Nominal repository IDs | `enum FileId(Int32)` works in fixpoint predicates; a `FileId` in a `SymbolId` position is a compile error. | Adopted. All permanent predicates carry their real endpoint types. |
-| First-class schemas | Row-polymorphic facts and rule functions compose directly in `query` and `solve`. A solved/projected constraint value composes into a later stage. | Adopted. `repositoryFacts`, four small rule fragments, and `structuralRules` are ordinary constraint values. |
+| First-class schemas | Row-polymorphic facts and rule functions compose directly in `query` and `solve`. A solved/projected constraint value composes into a later stage. | Adopted. `repositoryFacts` and `structuralRules` are ordinary constraint values. |
 | Restrictable policy variants | Closed constructor rows compile and reject `Union` at an Atlas-typed call site. A recursive two-constructor expression then crashes at runtime with `ClassCastException: Tag$Obj$Obj cannot be cast to Tag$Obj`. | Rejected for Flix 0.76. Atlas and synthesis use separate ordinary enums instead. |
 | Region-local memoization | `region rc` with `MutHashMap`, `MutHashSet`, and `Ref` compiles as an externally pure function; returning a region-owned map is a compile error. | Adopted. No mutable value or region effect is public. |
 | Grit effect | A fixture handler eliminates the capability; a native handler reinterprets it as `IO`. Calling it from a pure function is a compile error. | Adopted. Application code requests `Grit.Eval`, not arbitrary `IO`. |
@@ -26,7 +26,7 @@ GENERIC ROW-EXTENSION COMBINATOR: NO
 Flix can compose independently typed fragments that share predicate names:
 
 ```flix
-query repositoryFacts(...), sameFileRules(), importRules()
+query repositoryFacts(...), structuralRules()
     select (x, y) from ImportNeighbor(x, y)
 ```
 
@@ -143,7 +143,7 @@ versions and malformed external shapes before admission. Fact projection uses
 `String.toBytes`, selects the smallest enclosing syntax match, and reconstructs
 values with `String.fromBytes`; Java UTF-16 indexes never enter the semantics.
 
-`Repository.extract` then follows the frozen Python rules for the initial
+`Repository.admit` then follows the frozen Python rules for the initial
 TypeScript/JavaScript world: sorted dense identities, repository-relative
 imports only, innermost lexical call ownership, local-then-global unambiguous
 target resolution, and aligned file/directory locations. Missing imports and
