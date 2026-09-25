@@ -39,7 +39,14 @@ def _facts_impl(ctx):
         mnemonic = "AttuneParallelismFacts",
         progress_message = "Admitting self-world facts %{label}",
     )
-    return [DefaultInfo(files = depset([metadata, entities, relations]))]
+    return [
+        DefaultInfo(files = depset([metadata, entities, relations])),
+        OutputGroupInfo(
+            metadata = depset([metadata]),
+            entities = depset([entities]),
+            relations = depset([relations]),
+        ),
+    ]
 
 attune_parallelism_facts = rule(
     implementation = _facts_impl,
@@ -88,36 +95,6 @@ attune_parallelism_region = rule(
     },
 )
 
-def _pairs_impl(ctx):
-    pairs = ctx.actions.declare_file(ctx.label.name + "/pairs.parquet")
-    world = _world_paths(ctx.files.world)
-    args = ctx.actions.args()
-    for name, value in [
-        ("attune.command", "pairs"),
-        ("attune.world_metadata", world["metadata"]),
-        ("attune.world_entities", world["entities"]),
-        ("attune.world_relations", world["relations"]),
-        ("attune.pairs_output", pairs.path),
-    ]:
-        args.add(_jvm_property(name, value))
-    ctx.actions.run(
-        executable = ctx.executable.tool,
-        arguments = [args],
-        inputs = ctx.files.world,
-        outputs = [pairs],
-        mnemonic = "AttuneParallelismPairs",
-        progress_message = "Writing parallelism region pairs %{label}",
-    )
-    return [DefaultInfo(files = depset([pairs]))]
-
-attune_parallelism_pairs = rule(
-    implementation = _pairs_impl,
-    attrs = {
-        "world": attr.label(allow_files = [".parquet"], mandatory = True),
-        "tool": attr.label(executable = True, cfg = "exec", mandatory = True),
-    },
-)
-
 # The preregistered region names (attuneflix-regions-v1), in fixed order.
 PARALLELISM_REGIONS = [
     "repository",
@@ -133,10 +110,11 @@ PARALLELISM_REGIONS = [
 ]
 
 def attune_parallelism_revision(name, revision, files, modules, uses, tool):
-    """One revision's fact admission, per-region signature shards, and pairs.
+    """One revision's fact admission and per-region signature shards.
 
     The per-region shard actions are independent (BuildBuddy runs them
-    concurrently, mirroring the census per-world fan-out).
+    concurrently, mirroring the census per-world fan-out). The region-pairs
+    tables are produced by the compare action over both worlds.
     """
     attune_parallelism_facts(
         name = name + "_world",
@@ -153,8 +131,3 @@ def attune_parallelism_revision(name, revision, files, modules, uses, tool):
             world = ":%s_world" % name,
             tool = tool,
         )
-    attune_parallelism_pairs(
-        name = name + "_pairs",
-        world = ":%s_world" % name,
-        tool = tool,
-    )

@@ -391,6 +391,17 @@ mod Parallelism {
             pairsSchema(), pairsRows(baselineIdentity, baseline));
         let _ = ScientificTable.write(Experiment.property("attune.after_pairs"),
             pairsSchema(), pairsRows(afterIdentity, after));
+        // Diagnostic (not a preregistered metric): which pair attains M7's max.
+        let hoods = Vector.map(region0 -> (region0, neighborhood(after, region0)), nonEmptyRegions(after));
+        let best = Vector.foldLeft((m, pair) -> match pair {
+            case (_, _, j) => if (j > m) j else m
+        }, 0.0, Vector.flatMap(match (a, ha) ->
+            Vector.filterMap(match (b, hb) -> if (a < b) Some((a, b, jaccard(ha, hb))) else None, hoods), hoods));
+        let argmaxText = Vector.foldLeft((acc, pair) -> match pair {
+            case (a, b, j) => if (j == best) "${acc}${a}+${b} " else acc
+        }, "", Vector.flatMap(match (a, ha) ->
+            Vector.filterMap(match (b, hb) -> if (a < b) Some((a, b, jaccard(ha, hb))) else None, hoods), hoods));
+        println("argmax_pair ${argmaxText}");
         println("metric ${baselineIdentity#baseRevision} ${afterIdentity#baseRevision}");
         Vector.foldLeft((_, pair) -> match pair {
             case ((name, before), (_, value)) => println("${name} ${before} ${value}")

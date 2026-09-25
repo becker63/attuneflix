@@ -1602,6 +1602,22 @@ memory, and program complexity. New systems need new held-out repositories;
 the current 61 cases stop being untouched once their failure patterns guide the
 design.
 
+## A parallelizable monolith, measured with its own machinery
+
+AttuneFlix is intentionally developed as a parallelizable monolith: one
+repository, with boundaries designed so substantial work can be delegated
+independently while semantic ownership stays explicit. Flix's types and
+effects draw the module boundaries, Atlas repository signatures measure the
+resulting structural expansion, coupling, and candidate coordination surfaces,
+and Bazel with BuildBuddy externalizes and reuses the deterministic work
+across machines and Factory Mission workers. A preregistered self-signature
+experiment compared the repository's coordination surface before and after the
+recent cleanup; the numbers, the honest negative enshrinement decision, and
+the frontier analysis are in
+[the report](experiments/atlas-parallelism/REPORT.md). Future work may evaluate
+the predicted coordination surfaces against published multi-agent/orchestration
+benchmarks or actual Factory Mission traces.
+
 ## Permanent implementation rules
 
 The semantic path is intentionally short, but structural meaning has two

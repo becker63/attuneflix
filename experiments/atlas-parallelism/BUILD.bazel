@@ -1,4 +1,5 @@
 load("//build:flix.bzl", "flix_fatjar")
+load(":parallelism.bzl", "attune_parallelism_revision")
 
 # The self-signature parallelism instrument (PREREGISTRATION.md). Compiles
 # against the permanent Atlas/Repository/ScientificTable machinery only.
@@ -38,4 +39,93 @@ java_binary(
     main_class = "Main",
     runtime_deps = [":parallelism_flix"],
     visibility = ["//visibility:public"],
+)
+
+# The two measured revisions (PREREGISTRATION.md): the mission's recorded
+# starting revision, evaluated from an isolated git worktree, and the cleaned
+# revision (the sealed instrument change itself; the measurement artifacts add
+# no .flix files). Each expansion is one fact admission, ten independent
+# per-region signature shards, and the region-pairs table.
+attune_parallelism_revision(
+    name = "baseline",
+    files = "extracted/baseline/files.txt",
+    modules = "extracted/baseline/modules.txt",
+    revision = "bcfc126db7b7c7f535353ccc8afca44465903571",
+    tool = ":parallelism",
+    uses = "extracted/baseline/uses.txt",
+)
+
+attune_parallelism_revision(
+    name = "after",
+    files = "extracted/after/files.txt",
+    modules = "extracted/after/modules.txt",
+    revision = "ae2f5e68711121f8ecbf9ce94a7926ca7c7833d1",
+    tool = ":parallelism",
+    uses = "extracted/after/uses.txt",
+)
+
+filegroup(
+    name = "baseline_metadata",
+    srcs = [":baseline_world"],
+    output_group = "metadata",
+)
+
+filegroup(
+    name = "baseline_entities",
+    srcs = [":baseline_world"],
+    output_group = "entities",
+)
+
+filegroup(
+    name = "baseline_relations",
+    srcs = [":baseline_world"],
+    output_group = "relations",
+)
+
+filegroup(
+    name = "after_metadata",
+    srcs = [":after_world"],
+    output_group = "metadata",
+)
+
+filegroup(
+    name = "after_entities",
+    srcs = [":after_world"],
+    output_group = "entities",
+)
+
+filegroup(
+    name = "after_relations",
+    srcs = [":after_world"],
+    output_group = "relations",
+)
+
+genrule(
+    name = "compare",
+    srcs = [
+        ":baseline_metadata",
+        ":baseline_entities",
+        ":baseline_relations",
+        ":after_metadata",
+        ":after_entities",
+        ":after_relations",
+    ],
+    outs = [
+        "compare.txt",
+        "baseline_pairs.parquet",
+        "after_pairs.parquet",
+    ],
+    cmd = ("PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin " +
+        "$(location :parallelism)" +
+        " --jvm_flag=-Dattune.command=compare" +
+        " --jvm_flag=-Dattune.baseline_metadata=$(location :baseline_metadata)" +
+        " --jvm_flag=-Dattune.baseline_entities=$(location :baseline_entities)" +
+        " --jvm_flag=-Dattune.baseline_relations=$(location :baseline_relations)" +
+        " --jvm_flag=-Dattune.after_metadata=$(location :after_metadata)" +
+        " --jvm_flag=-Dattune.after_entities=$(location :after_entities)" +
+        " --jvm_flag=-Dattune.after_relations=$(location :after_relations)" +
+        " --jvm_flag=-Dattune.baseline_pairs=$(@D)/baseline_pairs.parquet" +
+        " --jvm_flag=-Dattune.after_pairs=$(@D)/after_pairs.parquet" +
+        " > $(@D)/compare.txt"),
+    tools = [":parallelism"],
 )
