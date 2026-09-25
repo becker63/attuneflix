@@ -25,22 +25,9 @@ def depthSevenAtlasProgramsAreCompleteAndStable(): Unit \ Assert = {
 @Test
 def atlasEvaluationReturnsExactTypedStatesAndReusesTransitions(): Unit \ Assert = {
     let f0 = Repository.Structure.FileId.FileId(0);
-    let f1 = Repository.Structure.FileId.FileId(1);
     let s0 = Repository.Structure.SymbolId.SymbolId(0);
     let s1 = Repository.Structure.SymbolId.SymbolId(1);
-    let world: Repository.World = {
-        files = Vector#{"a.js", "b.js"},
-        symbols = Vector#{
-            {path = "a.js", name = "a", startByte = 0, endByte = 1},
-            {path = "b.js", name = "b", startByte = 0, endByte = 1}
-        },
-        defines = Set#{(f0, s0), (f1, s1)},
-        imports = Set#{(f0, f1)},
-        calls = Set#{(s0, s1)},
-        parents = Set.empty(),
-        unresolvedImports = 0,
-        unresolvedCalls = 0
-    };
+    let world = TestWorlds.abWorld();
     match Atlas.evaluate(world, Atlas.State.Symbols(Set.singleton(s0)), Atlas.programs(2)) {
         case Err(error) => Assert.fail(error)
         case Ok(result) => {
@@ -61,23 +48,8 @@ def atlasEvaluationReturnsExactTypedStatesAndReusesTransitions(): Unit \ Assert 
 
 @Test
 def atlasSignatureExplainsExtinctionExpansionReachAndReuse(): Unit \ Assert = {
-    let f0 = Repository.Structure.FileId.FileId(0);
-    let f1 = Repository.Structure.FileId.FileId(1);
     let s0 = Repository.Structure.SymbolId.SymbolId(0);
-    let s1 = Repository.Structure.SymbolId.SymbolId(1);
-    let world: Repository.World = {
-        files = Vector#{"a.js", "b.js"},
-        symbols = Vector#{
-            {path = "a.js", name = "a", startByte = 0, endByte = 1},
-            {path = "b.js", name = "b", startByte = 0, endByte = 1}
-        },
-        defines = Set#{(f0, s0), (f1, s1)},
-        imports = Set#{(f0, f1)},
-        calls = Set#{(s0, s1)},
-        parents = Set.empty(),
-        unresolvedImports = 0,
-        unresolvedCalls = 0
-    };
+    let world = TestWorlds.abWorld();
     match Atlas.Signature.compute(world, Atlas.State.Symbols(Set.singleton(s0)), 2) {
         case Err(error) => Assert.fail(error)
         case Ok(signature) => {

@@ -13,4 +13,5 @@ exports_files([
     "src/RepositoryAdmissionTest.flix",
     "src/RepositoryTableTest.flix",
     "src/ScientificTableTest.flix",
+    "src/TestWorlds.flix",
 ])

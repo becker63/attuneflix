@@ -55,6 +55,7 @@ flix_check(
     name = "atlas_grammar_check",
     srcs = [
         "//build:src/AtlasTest.flix",
+        "//build:src/TestWorlds.flix",
         "//src:Atlas.flix",
         "//src:Atlas/Signature.flix",
         "//src:Radii.flix",
@@ -78,6 +79,7 @@ flix_check(
     name = "localization_sandwich_check",
     srcs = [
         "//build:src/LocalizationTest.flix",
+        "//build:src/TestWorlds.flix",
         "//src:Atlas.flix",
         "//src:Atlas/Signature.flix",
         "//src:Localization.flix",
