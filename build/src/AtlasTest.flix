@@ -1,15 +1,11 @@
 @Test
 def depthSevenAtlasProgramsAreCompleteAndStable(): Unit \ Assert = {
     let programs = Atlas.programs(7);
-    let symbolPrograms = Vector.filter(program -> match program#expression {
-        case Atlas.Expr.Atom(Atlas.Atom.DefinedIn) => false
-        case Atlas.Expr.Atom(_) => true
-        case Atlas.Expr.Compose(_, Atlas.Atom.Defines) => true
-        case Atlas.Expr.Compose(_, Atlas.Atom.DefinedIn) => false
-        case Atlas.Expr.Compose(_, Atlas.Atom.Imports) => false
-        case Atlas.Expr.Compose(_, Atlas.Atom.ImportedBy) => false
-        case Atlas.Expr.Compose(_, Atlas.Atom.Calls) => true
-        case Atlas.Expr.Compose(_, Atlas.Atom.Callers) => true
+    let symbolPrograms = Vector.filter(program -> match Vector.last(program#steps) {
+        case Some(Atlas.Atom.Defines) => true
+        case Some(Atlas.Atom.Calls) => true
+        case Some(Atlas.Atom.Callers) => true
+        case _ => false
     }, programs);
     Assert.assertEq(expected = (3279, 1643),
         (Vector.length(programs), Vector.length(symbolPrograms)));

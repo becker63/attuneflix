@@ -64,19 +64,13 @@ mod Atlas {
         case Callers
     }
 
-    pub enum Expr with Eq, Order, ToString, Hash {
-        case Atom(Atom),
-        case Compose(Expr, Atom)
-    }
-
     /// One member of the finite Atlas measurement language: an ordered list
-    /// of Atoms plus the equivalent closed expression used for type checking.
+    /// of Atoms.
     ///
-    /// The expression type has only Atom and Compose, so an Atlas Program
-    /// cannot silently acquire Radii's Reverse or Union constructors.
+    /// Every element is an `Atlas.Atom`, so an Atlas Program cannot silently
+    /// acquire Radii's Reverse or Union constructors.
     pub type alias Program = {
-        steps      = Vector[Atom],
-        expression = Expr
+        steps = Vector[Atom]
     }
 
     pub type alias Counts = {
@@ -183,15 +177,11 @@ mod Atlas {
             all
         else {
             let exact = if (current == 1)
-                Vector.map(atom -> {
-                    steps = Vector#{atom},
-                    expression = Expr.Atom(atom)
-                }, compatible(start))
+                Vector.map(atom -> {steps = Vector#{atom}}, compatible(start))
             else
                 Vector.flatMap(program -> Vector.map(atom -> {
-                    steps = Vector.append(program#steps, Vector#{atom}),
-                    expression = Expr.Compose(program#expression, atom)
-                }, compatible(target(program#expression))), previous);
+                    steps = Vector.append(program#steps, Vector#{atom})
+                }, compatible(target(program#steps))), previous);
             enumerateLevels(
                 start,
                 current + 1,
@@ -207,7 +197,13 @@ mod Atlas {
         case Radii.Domain.Location => Vector.empty()
     }
 
-    pub def terminal(program: Program): Radii.Domain = target(program#expression)
+    /// The domain a program ends in: the target of its last atom. Only
+    /// non-empty step lists name programs; the empty case maps to the
+    /// Location domain, with which no atom is compatible.
+    def target(steps: Vector[Atom]): Radii.Domain = match Vector.last(steps) {
+        case Some(atom) => targetAtom(atom)
+        case None => Radii.Domain.Location
+    }
 
     pub def stateDomain(state: State): Radii.Domain = match state {
         case State.Files(_)   => Radii.Domain.File
@@ -217,11 +213,6 @@ mod Atlas {
     pub def cardinality(state: State): Int32 = match state {
         case State.Files(values)   => Set.size(values)
         case State.Symbols(values) => Set.size(values)
-    }
-
-    def target(expression: Expr): Radii.Domain = match expression {
-        case Expr.Atom(atom) => targetAtom(atom)
-        case Expr.Compose(_, atom) => targetAtom(atom)
     }
 
     def targetAtom(atom: Atom): Radii.Domain = match atom {
@@ -248,13 +239,9 @@ mod Atlas {
         program: Program,
         memos: Memos[r]
     ): Result[String, State] \ r =
-        match expressionOf(program#steps) {
-            case None => Err("Atlas program must contain at least one atom")
-            case Some(expression) =>
-                if (expression != program#expression)
-                    Err("Atlas program steps and expression disagree")
-                else evaluateSteps(world, input, program#steps, memos)
-        }
+        if (Vector.isEmpty(program#steps))
+            Err("Atlas program must contain at least one atom")
+        else evaluateSteps(world, input, program#steps, memos)
 
     def evaluateSteps(
         world: Repository.Physical.World,
@@ -275,15 +262,6 @@ mod Atlas {
                     memos
                 )
             }
-    }
-
-    def expressionOf(steps: Vector[Atom]): Option[Expr] = match Vector.head(steps) {
-        case None => None
-        case Some(atom) => Some(Vector.foldLeft(
-            (expression, next) -> Expr.Compose(expression, next),
-            Expr.Atom(atom),
-            Vector.slice(start = 1, end = Vector.length(steps), steps)
-        ))
     }
 
     /// Apply one directed relation to the whole typed frontier. A cache miss is
