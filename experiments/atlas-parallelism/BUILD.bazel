@@ -1,0 +1,29 @@
+load("//build:flix.bzl", "flix_fatjar")
+
+# The self-signature parallelism instrument (PREREGISTRATION.md). Compiles
+# against the permanent Atlas/Repository/ScientificTable machinery only.
+flix_fatjar(
+    name = "parallelism_flix",
+    srcs = [
+        "Main.flix",
+        "Parallelism.flix",
+        "//src:Atlas.flix",
+        "//src:Atlas/Signature.flix",
+        "//src:Atlas/Signature/Table.flix",
+        "//src:Experiment.flix",
+        "//src:Radii.flix",
+        "//src:Repository.flix",
+        "//src:Repository/Grit.flix",
+        "//src:Repository/Physical.flix",
+        "//src:Repository/Table.flix",
+        "//src:Repository/Structure.flix",
+        "//src:ScientificIdentity.flix",
+        "//src:ScientificTable.flix",
+        "//src:ScientificTable/Columns.flix",
+    ],
+    java_deps = [
+        "//src/native/identity:attune_identity",
+        "//src/native/parquet:attune_parquet",
+    ],
+    threads = 2,
+)
