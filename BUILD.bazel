@@ -14,7 +14,6 @@ test_suite(
         "//test:core_parity_test",
         "//test:atlas_grammar_test",
         "//test:atlas_signature_table_test",
-        "//test:grit_boundary_test",
         "//test:identity_test",
         "//test:localization_sandwich_test",
         "//test:repository_table_test",

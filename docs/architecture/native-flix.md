@@ -12,7 +12,7 @@ after the conclusions below were recorded.
 | First-class schemas | Row-polymorphic facts and rule functions compose directly in `query` and `solve`. A solved/projected constraint value composes into a later stage. | Adopted. `repositoryFacts` and `structuralRules` are ordinary constraint values. |
 | Restrictable policy variants | Closed constructor rows compile and reject `Union` at an Atlas-typed call site. A recursive two-constructor expression then crashes at runtime with `ClassCastException: Tag$Obj$Obj cannot be cast to Tag$Obj`. | Rejected for Flix 0.76. Atlas and synthesis use separate ordinary enums instead. |
 | Region-local memoization | `region rc` with `MutHashMap`, `MutHashSet`, and `Ref` compiles as an externally pure function; returning a region-owned map is a compile error. | Adopted. No mutable value or region effect is public. |
-| Grit effect | A fixture handler eliminates the capability; a native handler reinterprets it as `IO`. Calling it from a pure function is a compile error. | Adopted. Application code requests `Grit.Eval`, not arbitrary `IO`. |
+| Grit effect | A fixture handler eliminates the capability; a native handler reinterprets it as `IO`. Calling it from a pure function is a compile error. | Adopted during the pass; the Flix-side effect seam was later deleted with the Grit wire layer — admitted facts arrive from the frozen typed worlds. |
 | Functional predicate | `let symbol = adjacent(file, index)` works in a rule and preserves nominal types. | Valid, but not adopted as the policy backend yet; see measurement below. |
 | Lattice predicate | `Cost(state; Down[Int32])` retains the minimum discovered cost and converges over a small graph. | Valid and deferred. It is promising for later minimum-cost discovery, not needed by the current evaluator. |
 
@@ -105,7 +105,7 @@ and must pass the same Level-2 parity gate.
 - Repository predicates distinguish files, symbols, and locations.
 - A semantic state cannot contain members from the wrong domain.
 - Policy evaluation is pure even though it uses mutable hash tables internally.
-- Grit fixture handling and Decide replay are pure; only the native Grit handler exposes `IO`.
+- Admitted Grit facts arrive only through the frozen typed worlds; native Grit runs behind the Java facade tested by `//src/native/grit:attune_grit_test`.
 - The synthesis AST remains intentionally enumerable. Because Flix 0.76 has no
   ergonomic GADT/opaque-constructor combination for this use, its dynamic
   enumerator retains the small explicit endpoint checker.
@@ -131,17 +131,20 @@ verification consume the same Bazel-built library. No Nix-store path,
 runtime graph.
 
 The JAR also carries the exact three admitted Grit programs as resources.
-`Grit.Program` is a closed Flix enum, so application code cannot accidentally
-turn the source-syntax boundary into an arbitrary-program capability. The raw
+The admitted source-syntax vocabulary stays closed by construction: the three
+programs are tracked under `src/grit/`, pinned by the Bazel repository rule,
+and asserted byte-for-byte against the packaged resources by
+`//src/native/grit:attune_grit_test`, so the source-syntax boundary cannot
+become an arbitrary-program capability. The raw
 Java method remains available only at the low-level seam where invalid-program
 classification is tested.
 
 ## First repository vertical slice
 
-`Grit.decode` uses Flix 0.76's pure `Util.Json` parser. It rejects unknown wire
-versions and malformed external shapes before admission. Fact projection uses
-`String.toBytes`, selects the smallest enclosing syntax match, and reconstructs
-values with `String.fromBytes`; Java UTF-16 indexes never enter the semantics.
+The Flix wire-decode layer (JSON envelope decoding and byte-range fact
+projection) was removed with the Grit boundary shrink: no Flix code parses
+native envelopes. `Repository.admit` consumes `Repository.Grit.Fact` records
+directly, and the retained frozen worlds are the facts source.
 
 `Repository.admit` then follows the frozen Python rules for the initial
 TypeScript/JavaScript world: sorted dense identities, repository-relative

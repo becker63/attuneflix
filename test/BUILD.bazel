@@ -22,22 +22,6 @@ checked_test(
 )
 
 flix_check(
-    name = "grit_boundary_check",
-    srcs = [
-        "//build:src/Repository.flix",
-        "//src:Repository/Grit.flix",
-    ],
-    command = "check",
-    java_deps = ["//src/native/grit:attune_grit"],
-    threads = 2,
-)
-
-checked_test(
-    name = "grit_boundary_test",
-    check = ":grit_boundary_check",
-)
-
-flix_check(
     name = "repository_admission_check",
     srcs = [
         "//build:src/RepositoryAdmissionTest.flix",
@@ -46,9 +30,6 @@ flix_check(
         "//src:Repository/Structure.flix",
     ],
     command = "test",
-    java_deps = [
-        "//src/native/grit:attune_grit",
-    ],
     threads = 2,
 )
 
