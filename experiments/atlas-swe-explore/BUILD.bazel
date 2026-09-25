@@ -29,6 +29,7 @@ java_binary(
     jvm_flags = [
         "--add-opens=java.base/java.nio=ALL-UNNAMED",
         "--enable-native-access=ALL-UNNAMED",
+        "-Xss8m",
     ],
     main_class = "Main",
     runtime_deps = [":signature_flix"],
@@ -65,6 +66,7 @@ java_binary(
     jvm_flags = [
         "--add-opens=java.base/java.nio=ALL-UNNAMED",
         "--enable-native-access=ALL-UNNAMED",
+        "-Xss8m",
     ],
     main_class = "Main",
     runtime_deps = [":summary_flix"],
@@ -101,6 +103,7 @@ java_binary(
     jvm_flags = [
         "--add-opens=java.base/java.nio=ALL-UNNAMED",
         "--enable-native-access=ALL-UNNAMED",
+        "-Xss8m",
     ],
     main_class = "Main",
     runtime_deps = [":aggregate_flix"],
@@ -135,6 +138,7 @@ java_binary(
     jvm_flags = [
         "--add-opens=java.base/java.nio=ALL-UNNAMED",
         "--enable-native-access=ALL-UNNAMED",
+        "-Xss8m",
     ],
     main_class = "Main",
     runtime_deps = [":report_flix"],
