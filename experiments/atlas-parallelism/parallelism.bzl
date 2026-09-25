@@ -131,3 +131,63 @@ def attune_parallelism_revision(name, revision, files, modules, uses, tool):
             world = ":%s_world" % name,
             tool = tool,
         )
+
+def _grit_world_impl(ctx):
+    metadata = ctx.actions.declare_file(ctx.label.name + "/metadata.parquet")
+    entities = ctx.actions.declare_file(ctx.label.name + "/entities.parquet")
+    relations = ctx.actions.declare_file(ctx.label.name + "/relations.parquet")
+    args = ctx.actions.args()
+    for name, value in [
+        ("attune.command", "grit_facts"),
+        ("attune.revision", ctx.attr.revision),
+        ("attune.sources", ctx.file.sources.path),
+        ("attune.facts", ctx.file.facts.path),
+        ("attune.world_metadata", metadata.path),
+        ("attune.world_entities", entities.path),
+        ("attune.world_relations", relations.path),
+    ]:
+        args.add(_jvm_property(name, value))
+    ctx.actions.run(
+        executable = ctx.executable.tool,
+        arguments = [args],
+        inputs = [ctx.file.sources, ctx.file.facts],
+        outputs = [metadata, entities, relations],
+        mnemonic = "AttuneParallelismGritWorld",
+        progress_message = "Admitting Grit-acquired self-world %{label}",
+    )
+    return [
+        DefaultInfo(files = depset([metadata, entities, relations])),
+        OutputGroupInfo(
+            metadata = depset([metadata]),
+            entities = depset([entities]),
+            relations = depset([relations]),
+        ),
+    ]
+
+attune_parallelism_grit_world = rule(
+    implementation = _grit_world_impl,
+    attrs = {
+        "revision": attr.string(mandatory = True),
+        "sources": attr.label(allow_single_file = [".parquet"], mandatory = True),
+        "facts": attr.label(allow_single_file = [".parquet"], mandatory = True),
+        "tool": attr.label(executable = True, cfg = "exec", mandatory = True),
+    },
+)
+
+def attune_parallelism_grit_revision(name, revision, sources, facts, tool):
+    """One v2 revision: re-admit its committed Grit acquisition evidence and
+    run the same independent per-region signature shards as v1."""
+    attune_parallelism_grit_world(
+        name = name + "_world",
+        revision = revision,
+        sources = sources,
+        facts = facts,
+        tool = tool,
+    )
+    for region in PARALLELISM_REGIONS:
+        attune_parallelism_region(
+            name = "%s_region_%s" % (name, region),
+            region = region,
+            world = ":%s_world" % name,
+            tool = tool,
+        )

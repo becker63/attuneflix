@@ -1,0 +1,11 @@
+//test:atlas_grammar_test
+//test:atlas_signature_table_test
+//test:core_parity_test
+//test:grit_boundary_test
+//test:identity_test
+//test:inference_boundary_test
+//test:localization_sandwich_test
+//test:population_table_test
+//test:repository_admission_test
+//test:repository_table_test
+//test:scientific_table_test

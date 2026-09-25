@@ -1612,8 +1612,14 @@ resulting structural expansion, coupling, and candidate coordination surfaces,
 and Bazel with BuildBuddy externalizes and reuses the deterministic work
 across machines and Factory Mission workers. A preregistered self-signature
 experiment compared the repository's coordination surface before and after the
-recent cleanup; the numbers, the honest negative enshrinement decision, and
-the frontier analysis are in
+recent cleanup. The authoritative measurement acquires the repository with its
+own Grit frontend (Java, Flix, and Starlark through one fact protocol) and
+derives the file and region neighborhoods from actual Atlas evaluation output
+states; the earlier lexical-proxy measurement is preserved alongside it, and the
+report gives the four-row comparison (baseline/cleaned × proxy/authoritative),
+the agreement/disagreement analysis, the separate Bazel-locality channel, and
+the honest negative enshrinement decision. The numbers, the provenance fixture
+that forces the Atlas dependence, and the frontier analysis are in
 [the report](experiments/atlas-parallelism/REPORT.md). Future work may evaluate
 the predicted coordination surfaces against published multi-agent/orchestration
 benchmarks or actual Factory Mission traces.

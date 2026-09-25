@@ -1,0 +1,55 @@
+== targets declaring ScientificTable.flix in srcs (universe: //:all + //build:all + //src:all + //test:all + //experiments/atlas-swe-explore:all + //experiments/swe-explore-js-ts-scale:all + //data/evaluation:all)
+//experiments/atlas-swe-explore:aggregate_flix
+//experiments/atlas-swe-explore:report_flix
+//experiments/atlas-swe-explore:signature_flix
+//experiments/atlas-swe-explore:summary_flix
+//test:atlas_signature_table_check
+//test:localization_sandwich_check
+//test:population_table_check
+//test:repository_table_check
+//test:scientific_table_check
+  (dependents: 9)
+== targets declaring Radii.flix in srcs (universe: //:all + //build:all + //src:all + //test:all + //experiments/atlas-swe-explore:all + //experiments/swe-explore-js-ts-scale:all + //data/evaluation:all)
+//experiments/atlas-swe-explore:aggregate_flix
+//experiments/atlas-swe-explore:report_flix
+//experiments/atlas-swe-explore:signature_flix
+//experiments/atlas-swe-explore:summary_flix
+//test:atlas_grammar_check
+//test:atlas_signature_table_check
+//test:core_parity_check
+//test:localization_sandwich_check
+  (dependents: 8)
+== targets declaring Structure.flix in srcs (universe: //:all + //build:all + //src:all + //test:all + //experiments/atlas-swe-explore:all + //experiments/swe-explore-js-ts-scale:all + //data/evaluation:all)
+//experiments/atlas-swe-explore:aggregate_flix
+//experiments/atlas-swe-explore:report_flix
+//experiments/atlas-swe-explore:signature_flix
+//experiments/atlas-swe-explore:summary_flix
+//test:atlas_grammar_check
+//test:atlas_signature_table_check
+//test:core_parity_check
+//test:localization_sandwich_check
+//test:repository_admission_check
+//test:repository_table_check
+  (dependents: 10)
+== targets declaring Repository.flix in srcs (universe: //:all + //build:all + //src:all + //test:all + //experiments/atlas-swe-explore:all + //experiments/swe-explore-js-ts-scale:all + //data/evaluation:all)
+//experiments/atlas-swe-explore:aggregate_flix
+//experiments/atlas-swe-explore:report_flix
+//experiments/atlas-swe-explore:signature_flix
+//experiments/atlas-swe-explore:summary_flix
+//test:atlas_grammar_check
+//test:atlas_signature_table_check
+//test:core_parity_check
+//test:grit_boundary_check
+//test:localization_sandwich_check
+//test:repository_admission_check
+//test:repository_table_check
+  (dependents: 11)
+== targets declaring Atlas.flix in srcs (universe: //:all + //build:all + //src:all + //test:all + //experiments/atlas-swe-explore:all + //experiments/swe-explore-js-ts-scale:all + //data/evaluation:all)
+//experiments/atlas-swe-explore:aggregate_flix
+//experiments/atlas-swe-explore:report_flix
+//experiments/atlas-swe-explore:signature_flix
+//experiments/atlas-swe-explore:summary_flix
+//test:atlas_grammar_check
+//test:atlas_signature_table_check
+//test:localization_sandwich_check
+  (dependents: 7)

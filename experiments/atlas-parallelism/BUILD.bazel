@@ -1,11 +1,52 @@
-load("//build:flix.bzl", "flix_fatjar")
-load(":parallelism.bzl", "attune_parallelism_revision")
+load("//build:flix.bzl", "checked_test", "flix_check", "flix_fatjar")
+load(":parallelism.bzl", "attune_parallelism_grit_revision", "attune_parallelism_revision")
+
+# The v2 acquisition seam (PREREGISTRATION.md "AMENDMENT — v2 acquisition"):
+# the repository's own Grit acquisition path over one frozen revision's
+# isolated worktree. Built by Bazel, run over the worktrees by
+# `v2_extract.sh`; its typed output is what the measurement graph reads.
+flix_fatjar(
+    name = "acquire_flix",
+    srcs = [
+        "AcquireMain.flix",
+        "AcquisitionDriver.flix",
+        "AcquisitionFacts.flix",
+        "//src:Experiment.flix",
+        "//src:Repository.flix",
+        "//src:Repository/Acquire.flix",
+        "//src:Repository/Grit.flix",
+        "//src:Repository/Structure.flix",
+        "//src:ScientificIdentity.flix",
+        "//src:ScientificTable.flix",
+        "//src:ScientificTable/Columns.flix",
+    ],
+    java_deps = [
+        "//src/native/grit:attune_grit",
+        "//src/native/identity:attune_identity",
+        "//src/native/parquet:attune_parquet",
+    ],
+    threads = 2,
+)
+
+java_binary(
+    name = "acquire",
+    data = ["//src/native/grit:attune_grit_abi"],
+    jvm_flags = [
+        "--add-opens=java.base/java.nio=ALL-UNNAMED",
+        "--enable-native-access=ALL-UNNAMED",
+        "-Djava.library.path=$${JAVA_RUNFILES}/_main/src/native/grit",
+    ],
+    main_class = "Main",
+    runtime_deps = [":acquire_flix"],
+    visibility = ["//visibility:public"],
+)
 
 # The self-signature parallelism instrument (PREREGISTRATION.md). Compiles
 # against the permanent Atlas/Repository/ScientificTable machinery only.
 flix_fatjar(
     name = "parallelism_flix",
     srcs = [
+        "AcquisitionFacts.flix",
         "Main.flix",
         "Parallelism.flix",
         "//src:Atlas.flix",
@@ -128,4 +169,144 @@ genrule(
         " --jvm_flag=-Dattune.after_pairs=$(@D)/after_pairs.parquet" +
         " > $(@D)/compare.txt"),
     tools = [":parallelism"],
+)
+
+# v2 (PREREGISTRATION.md "AMENDMENT — v2 acquisition"): the two frozen
+# revisions are Grit-acquired in isolated worktrees by `:acquire` +
+# `v2_extract.sh`; the committed typed artifacts under `v2/` are re-admitted
+# here through ordinary Repository admission (no source text is parsed in the
+# graph), and the same per-region Atlas shards run over both v2 worlds.
+attune_parallelism_grit_revision(
+    name = "v2_baseline",
+    facts = "v2/grit/baseline.facts.parquet",
+    revision = "bcfc126db7b7c7f535353ccc8afca44465903571",
+    sources = "v2/sources/baseline.sources.parquet",
+    tool = ":parallelism",
+)
+
+attune_parallelism_grit_revision(
+    name = "v2_cleaned",
+    facts = "v2/grit/cleaned.facts.parquet",
+    revision = "ae2f5e68711121f8ecbf9ce94a7926ca7c7833d1",
+    sources = "v2/sources/cleaned.sources.parquet",
+    tool = ":parallelism",
+)
+
+filegroup(
+    name = "v2_baseline_metadata",
+    srcs = [":v2_baseline_world"],
+    output_group = "metadata",
+)
+
+filegroup(
+    name = "v2_baseline_entities",
+    srcs = [":v2_baseline_world"],
+    output_group = "entities",
+)
+
+filegroup(
+    name = "v2_baseline_relations",
+    srcs = [":v2_baseline_world"],
+    output_group = "relations",
+)
+
+filegroup(
+    name = "v2_cleaned_metadata",
+    srcs = [":v2_cleaned_world"],
+    output_group = "metadata",
+)
+
+filegroup(
+    name = "v2_cleaned_entities",
+    srcs = [":v2_cleaned_world"],
+    output_group = "entities",
+)
+
+filegroup(
+    name = "v2_cleaned_relations",
+    srcs = [":v2_cleaned_world"],
+    output_group = "relations",
+)
+
+# The four-row table of record: baseline/cleaned x v1 lexical proxy / v2 Grit.
+genrule(
+    name = "four_rows",
+    srcs = [
+        ":baseline_metadata",
+        ":baseline_entities",
+        ":baseline_relations",
+        ":after_metadata",
+        ":after_entities",
+        ":after_relations",
+        ":v2_baseline_metadata",
+        ":v2_baseline_entities",
+        ":v2_baseline_relations",
+        ":v2_cleaned_metadata",
+        ":v2_cleaned_entities",
+        ":v2_cleaned_relations",
+    ],
+    outs = [
+        "four_rows.txt",
+        "four_rows.parquet",
+        "four_pairs.parquet",
+    ],
+    cmd = ("PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin " +
+        "$(location :parallelism)" +
+        " --jvm_flag=-Dattune.command=four_rows" +
+        " --jvm_flag=-Dattune.rows.count=4" +
+        " --jvm_flag=-Dattune.rows.0.row=baseline_v1" +
+        " --jvm_flag=-Dattune.rows.0.metadata=$(location :baseline_metadata)" +
+        " --jvm_flag=-Dattune.rows.0.entities=$(location :baseline_entities)" +
+        " --jvm_flag=-Dattune.rows.0.relations=$(location :baseline_relations)" +
+        " --jvm_flag=-Dattune.rows.1.row=cleaned_v1" +
+        " --jvm_flag=-Dattune.rows.1.metadata=$(location :after_metadata)" +
+        " --jvm_flag=-Dattune.rows.1.entities=$(location :after_entities)" +
+        " --jvm_flag=-Dattune.rows.1.relations=$(location :after_relations)" +
+        " --jvm_flag=-Dattune.rows.2.row=baseline_v2" +
+        " --jvm_flag=-Dattune.rows.2.metadata=$(location :v2_baseline_metadata)" +
+        " --jvm_flag=-Dattune.rows.2.entities=$(location :v2_baseline_entities)" +
+        " --jvm_flag=-Dattune.rows.2.relations=$(location :v2_baseline_relations)" +
+        " --jvm_flag=-Dattune.rows.3.row=cleaned_v2" +
+        " --jvm_flag=-Dattune.rows.3.metadata=$(location :v2_cleaned_metadata)" +
+        " --jvm_flag=-Dattune.rows.3.entities=$(location :v2_cleaned_entities)" +
+        " --jvm_flag=-Dattune.rows.3.relations=$(location :v2_cleaned_relations)" +
+        " --jvm_flag=-Dattune.output_rows=$(@D)/four_rows.parquet" +
+        " --jvm_flag=-Dattune.output_pairs=$(@D)/four_pairs.parquet" +
+        " > $(@D)/four_rows.txt"),
+    tools = [":parallelism"],
+)
+
+# Provenance: the reported neighborhoods must come from actual Atlas evaluation
+# over the admitted world (VAL-PARA-010(c)). Wired into the authoritative suite.
+flix_check(
+    name = "parallelism_provenance_check",
+    srcs = [
+        "AcquisitionFacts.flix",
+        "Parallelism.flix",
+        "Provenance.flix",
+        "//src:Atlas.flix",
+        "//src:Atlas/Signature.flix",
+        "//src:Atlas/Signature/Table.flix",
+        "//src:Experiment.flix",
+        "//src:Radii.flix",
+        "//src:Repository.flix",
+        "//src:Repository/Grit.flix",
+        "//src:Repository/Physical.flix",
+        "//src:Repository/Structure.flix",
+        "//src:Repository/Table.flix",
+        "//src:ScientificIdentity.flix",
+        "//src:ScientificTable.flix",
+        "//src:ScientificTable/Columns.flix",
+    ],
+    command = "test",
+    java_deps = [
+        "//src/native/identity:attune_identity",
+        "//src/native/parquet:attune_parquet",
+    ],
+    threads = 2,
+)
+
+checked_test(
+    name = "parallelism_provenance_test",
+    check = ":parallelism_provenance_check",
 )

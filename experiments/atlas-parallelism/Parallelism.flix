@@ -142,11 +142,18 @@ mod Parallelism {
     def regionAt(world: Repository.World, id: Repository.Structure.FileId): String =
         regionOf(fileIdentity(world, id))
 
-    /// The file-space union of every family output from one File seed.
-    def outputUnion(world: Repository.World, seed: Set[Repository.Structure.FileId]): Set[String] = {
-        let evaluation = Experiment.require(Atlas.evaluate(world, Atlas.State.Files(seed), family()));
+    /// The file-space union of every output of one Atlas family from one File
+    /// seed. This is the whole neighborhood expansion: every step is one real
+    /// `Atlas.evaluate` transition over the admitted world.
+    pub def expansion(world: Repository.World, seed: Set[Repository.Structure.FileId],
+                      family0: Vector[Atlas.Program]): Set[String] = {
+        let evaluation = Experiment.require(Atlas.evaluate(world, Atlas.State.Files(seed), family0));
         Vector.foldLeft((acc, output) -> Set.union(acc, members(output, world)), Set.empty(), evaluation#outputs)
     }
+
+    /// The preregistered depth-2 family expansion from one File seed.
+    pub def outputUnion(world: Repository.World, seed: Set[Repository.Structure.FileId]): Set[String] =
+        expansion(world, seed, family())
 
     /// M5 file blast radius: the output union size from one single-file seed.
     def blast(world: Repository.World, index: Int32): Int32 =
@@ -180,6 +187,31 @@ mod Parallelism {
     def independentlyTestable(edges: Vector[(String, String)], region0: String): Bool =
         not Vector.exists(match (source, target) ->
             target == region0 and source != region0 and not testSide(source), edges)
+
+    /// M8 basis statistic: for each admitted file, the set of regions whose
+    /// files import it from a different region.
+    pub def pressures(world: Repository.World): Map[Repository.Structure.FileId, Set[String]] =
+        Vector.foldLeft((acc, edge) -> match edge {
+            case (f, g) => {
+                let rf = regionAt(world, f);
+                let rg = regionAt(world, g);
+                if (rf == rg) acc
+                else Map.insert(g, Set.insert(rf, Map.getWithDefault(g, Set.empty(), acc)), acc)
+            }
+        }, Map.empty(), Set.toVector(world#imports))
+
+    /// The file that attains M7's maximum pair Jaccard, as a stable name.
+    pub def argmaxPair(world: Repository.World): String = {
+        let hoods = Vector.map(region0 -> (region0, neighborhood(world, region0)), nonEmptyRegions(world));
+        let pairs0 = Vector.flatMap(match (a, ha) ->
+            Vector.filterMap(match (b, hb) -> if (a < b) Some((a, b, jaccard(ha, hb))) else None, hoods), hoods);
+        let best = Vector.foldLeft((m, pair) -> match pair {
+            case (_, _, j) => if (j > m) j else m
+        }, 0.0, pairs0);
+        Vector.foldLeft((acc, pair) -> match pair {
+            case (a, b, j) => if (j == best) "${acc}${a}+${b} " else acc
+        }, "", pairs0)
+    }
 
     /// E1 coherence: internal edges over all edges leaving the region's files.
     def coherence(edges: Vector[(String, String)], region0: String): Float64 = {
@@ -247,15 +279,7 @@ mod Parallelism {
             Vector.filterMap(match (b, hb) -> if (a < b) Some((ha, hb)) else None, hoods), hoods);
         let jaccards = Vector.map(match (ha, hb) -> jaccard(ha, hb), pairs0);
         let blasts = Vector.mapWithIndex((index, _) -> blast(world, index), world#files);
-        let pressures = Vector.foldLeft((acc, edge) -> match edge {
-            case (f, g) => {
-                let rf = regionAt(world, f);
-                let rg = regionAt(world, g);
-                if (rf == rg) acc
-                else Map.insert(g, Set.insert(rf, Map.getWithDefault(g, Set.empty(), acc)), acc)
-            }
-        }, Map.empty(), Set.toVector(world#imports));
-        let pressureSizes = Vector.map(match (_, fs) -> Set.size(fs), Map.toVector(pressures));
+        let pressureSizes = Vector.map(match (_, fs) -> Set.size(fs), Map.toVector(pressures(world)));
         Vector#{
             ("tracked_files", Int32.toFloat64(Vector.length(world#files))),
             ("use_edges", Int32.toFloat64(Vector.length(edges))),
@@ -294,11 +318,14 @@ mod Parallelism {
     // Commands.
 
     /// The executable surface: facts, region, compare (which also writes each
-    /// revision's region-pairs table).
+    /// revision's region-pairs table), grit_facts and four_rows (the v2
+    /// Grit-acquired worlds and the four-row v1/v2 comparison).
     pub def execute(): Unit \ IO = match Experiment.property("attune.command") {
         case "facts" => writeFacts()
         case "region" => writeRegion()
         case "compare" => writeCompare()
+        case "grit_facts" => writeGritFacts()
+        case "four_rows" => writeFourRows()
         case command => bug!("unknown parallelism command: ${command}")
     }
 
@@ -392,16 +419,7 @@ mod Parallelism {
         let _ = ScientificTable.write(Experiment.property("attune.after_pairs"),
             pairsSchema(), pairsRows(afterIdentity, after));
         // Diagnostic (not a preregistered metric): which pair attains M7's max.
-        let hoods = Vector.map(region0 -> (region0, neighborhood(after, region0)), nonEmptyRegions(after));
-        let best = Vector.foldLeft((m, pair) -> match pair {
-            case (_, _, j) => if (j > m) j else m
-        }, 0.0, Vector.flatMap(match (a, ha) ->
-            Vector.filterMap(match (b, hb) -> if (a < b) Some((a, b, jaccard(ha, hb))) else None, hoods), hoods));
-        let argmaxText = Vector.foldLeft((acc, pair) -> match pair {
-            case (a, b, j) => if (j == best) "${acc}${a}+${b} " else acc
-        }, "", Vector.flatMap(match (a, ha) ->
-            Vector.filterMap(match (b, hb) -> if (a < b) Some((a, b, jaccard(ha, hb))) else None, hoods), hoods));
-        println("argmax_pair ${argmaxText}");
+        println("argmax_pair ${argmaxPair(after)}");
         println("metric ${baselineIdentity#baseRevision} ${afterIdentity#baseRevision}");
         Vector.foldLeft((_, pair) -> match pair {
             case ((name, before), (_, value)) => println("${name} ${before} ${value}")
@@ -457,6 +475,143 @@ mod Parallelism {
             case Some(Value.TextList(values)) => Ok(values)
             case _ => Err("missing ${name} text list")
         }
+
+    // v2: Grit-acquired worlds and the four-row v1/v2 comparison.
+
+    /// Command `grit_facts`: re-admit one revision's committed Grit acquisition
+    /// evidence through ordinary Repository admission and write the standard
+    /// typed world triple. No source text is parsed here.
+    def writeGritFacts(): Unit \ IO = {
+        let revision = Experiment.property("attune.revision");
+        let world = Experiment.require(AcquisitionFacts.world(
+            AcquisitionFacts.readSources(Experiment.property("attune.sources")),
+            AcquisitionFacts.readFacts(Experiment.property("attune.facts"))));
+        let sourceTreeIdentity = "attuneflix-source-tree-v2:" + revision;
+        let factIdentity = Repository.Table.factIdentity(sourceTreeIdentity, AcquisitionFacts.gritIdentity(), world);
+        let snapshotId = Repository.Table.snapshotIdentity("attuneflix", revision, sourceTreeIdentity, factIdentity);
+        let _ = Repository.Table.write(
+            Experiment.property("attune.world_metadata"), Experiment.property("attune.world_entities"),
+            Experiment.property("attune.world_relations"),
+            {repository = "attuneflix", baseRevision = revision, sourceTreeIdentity = sourceTreeIdentity,
+                factIdentity = factIdentity, snapshotId = snapshotId}, world);
+        println("ATLAS_PARALLELISM_GRIT_FACTS revision=${revision} files=${Vector.length(world#files)} " +
+            "symbols=${Vector.length(world#symbols)} imports=${Set.size(world#imports)} calls=${Set.size(world#calls)}")
+    }
+
+    pub type alias FourRow = {
+        label    = String,
+        revision = String,
+        world    = Repository.World
+    }
+
+    def fourRow(index: Int32): FourRow \ IO = {
+        let prefix = "attune.rows.${index}";
+        let (identity, world) = Experiment.require(readWorld(
+            Experiment.property("${prefix}.metadata"), Experiment.property("${prefix}.entities"),
+            Experiment.property("${prefix}.relations")));
+        {label = Experiment.property("${prefix}.row"), revision = identity#baseRevision, world = world}
+    }
+
+    /// Every reported quantity is labeled by its origin: BASIS quantities are
+    /// direct admitted-relation statistics, ATLAS quantities come from actual
+    /// Atlas output states, COUNT quantities are plain counts. They are never
+    /// conflated (PREREGISTRATION.md "AMENDMENT — v2 acquisition").
+    pub def metricClass(name: String): String =
+        if (name == "median_file_blast" or name == "p90_file_blast" or name == "max_region_blast"
+            or name == "max_pair_jaccard" or name == "high_overlap_pairs"
+            or name == "region_neighborhood" or name == "region_blast") "atlas"
+        else if (name == "tracked_files" or name == "tracked_flix_loc" or name == "region_files") "count"
+        else "basis"
+
+    /// Long-form four-row table: one row per (row label, subject, metric).
+    pub def rowTableSchema(): ScientificTable.Schema = {
+        format = "attuneflix-parallelism-rows-v2",
+        columns = Vector#{ScientificTable.Columns.text("row"), ScientificTable.Columns.text("revision"),
+            ScientificTable.Columns.text("subject"), ScientificTable.Columns.text("metric"),
+            ScientificTable.Columns.text("class"), ScientificTable.Columns.float64("value")}
+    }
+
+    pub def fourPairsSchema(): ScientificTable.Schema = {
+        format = "attuneflix-parallelism-four-pairs-v2",
+        columns = Vector#{ScientificTable.Columns.text("row"), ScientificTable.Columns.text("revision"),
+            ScientificTable.Columns.text("region_a"), ScientificTable.Columns.text("region_b"),
+            ScientificTable.Columns.int32("union_size"), ScientificTable.Columns.int32("intersection_size"),
+            ScientificTable.Columns.float64("jaccard")}
+    }
+
+    def longRow(row: FourRow, subject: String, metric: String, value: Float64): ScientificTable.Row = Map#{
+        "row" => Value.Text(row#label), "revision" => Value.Text(row#revision),
+        "subject" => Value.Text(subject), "metric" => Value.Text(metric),
+        "class" => Value.Text(metricClass(metric)), "value" => Value.Float64(value)
+    }
+
+    def worldMetrics(row: FourRow): Vector[ScientificTable.Row] =
+        Vector.map(match (name, value) -> longRow(row, "-", name, value), quantities(row#world))
+
+    def regionMetrics(row: FourRow): Vector[ScientificTable.Row] = {
+        let world = row#world;
+        let edges = edgeRegions(world);
+        Vector.flatMap(region0 -> Vector#{
+            longRow(row, region0, "region_files", Int32.toFloat64(Set.size(regionSeed(world, region0)))),
+            longRow(row, region0, "region_neighborhood", Int32.toFloat64(Set.size(neighborhood(world, region0)))),
+            longRow(row, region0, "region_coherence", coherence(edges, region0)),
+            longRow(row, region0, "region_independent", if (independentlyTestable(edges, region0)) 1.0 else 0.0),
+            longRow(row, region0, "region_blast", regionBlast(world, region0))
+        }, nonEmptyRegions(world))
+    }
+
+    def hotspotMetrics(row: FourRow): Vector[ScientificTable.Row] = {
+        let world = row#world;
+        Vector.flatMap(match (file, regions0) -> Vector#{
+            longRow(row, fileIdentity(world, file), "hotspot_pressure", Int32.toFloat64(Set.size(regions0))),
+            longRow(row, fileIdentity(world, file), "hotspot_shared", if (Set.size(regions0) >= 2) 1.0 else 0.0)
+        }, Map.toVector(pressures(world)))
+    }
+
+    def pairMetrics(row: FourRow): Vector[ScientificTable.Row] = {
+        let hoods = Vector.map(region0 -> (region0, neighborhood(row#world, region0)), nonEmptyRegions(row#world));
+        Vector.flatMap(match (a, ha) ->
+            Vector.filterMap(match (b, hb) -> if (a < b) Some(Map#{
+                "row" => Value.Text(row#label), "revision" => Value.Text(row#revision),
+                "region_a" => Value.Text(a), "region_b" => Value.Text(b),
+                "union_size" => Value.Int32(Set.size(Set.union(ha, hb))),
+                "intersection_size" => Value.Int32(Set.size(intersectionOf(ha, hb))),
+                "jaccard" => Value.Float64(jaccard(ha, hb))
+            }) else None, hoods), hoods)
+    }
+
+    /// Command `four_rows`: the four preregistered rows (baseline/cleaned x
+    /// v1/v2) over the committed worlds, plus the classified long-form table and
+    /// the four-row region-pairs table. Each row's world is an independent
+    /// committed artifact; the printed block is the table of record.
+    def writeFourRows(): Unit \ IO = {
+        let rows = Vector.map(fourRow, Vector.range(0, Experiment.count("attune.rows")));
+        let _ = ScientificTable.write(Experiment.property("attune.output_rows"), rowTableSchema(),
+            Vector.flatMap(row -> Vector.append(Vector.append(worldMetrics(row), regionMetrics(row)),
+                hotspotMetrics(row)), rows));
+        let _ = ScientificTable.write(Experiment.property("attune.output_pairs"), fourPairsSchema(),
+            Vector.flatMap(row -> pairMetrics(row), rows));
+        Vector.foldLeft((_, row) -> printFourRow(row), (), rows)
+    }
+
+    def printFourRow(row: FourRow): Unit \ IO = {
+        Vector.foldLeft((_, entry) -> match entry {
+            case (name, value) => println("ROW ${row#label} ${row#revision} ${name} ${metricClass(name)} ${value}")
+        }, (), quantities(row#world));
+        let edges = edgeRegions(row#world);
+        Vector.foldLeft((_, region0) -> println("REGION ${row#label} ${region0} " +
+            "files=${Set.size(regionSeed(row#world, region0))} " +
+            "hood=${Set.size(neighborhood(row#world, region0))} " +
+            "coherence=${coherence(edges, region0)} " +
+            "independent=${independentlyTestable(edges, region0)} " +
+            "blast=${regionBlast(row#world, region0)}"), (), nonEmptyRegions(row#world));
+        Vector.foldLeft((_, entry) -> match entry {
+            case (file, regions0) => if (Set.size(regions0) >= 2)
+                println("HOTSPOT ${row#label} ${fileIdentity(row#world, file)} pressure=${Set.size(regions0)}")
+            else ()
+        }, (), Map.toVector(pressures(row#world)));
+        println("PAIRMAX ${row#label} ${argmaxPair(row#world)}")
+    }
 
     def snapshotOf(identity: Repository.Table.Identity): Atlas.Signature.Table.SnapshotIdentity = {
         signatureProtocol = "attuneflix-parallelism-v1",

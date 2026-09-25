@@ -22,5 +22,6 @@ test_suite(
         "//test:localization_sandwich_test",
         "//test:repository_table_test",
         "//test:scientific_table_test",
+        "//experiments/atlas-parallelism:parallelism_provenance_test",
     ],
 )
