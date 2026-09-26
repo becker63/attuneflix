@@ -25,7 +25,33 @@ filegroup(
     ],
 )
 
+# Milestone 2 — Candidate A/B measurements (PREREGISTRATION.md §7, §8, §10).
+#
+# Each record is the identical instrument's reading of a candidate *revision*
+# (measured from a worktree detached at that revision, so the record's
+# `working_commit` names exactly the measured tree). `candidates/README.md`
+# states the provenance recipe, the revision pair and the measured deltas
+# against `baseline-metrics.json`, including the negative ones (§7 non-rule).
+filegroup(
+    name = "candidate_measurements",
+    srcs = [
+        "candidates/README.md",
+        "candidates/candidate-a.json",
+        "candidates/candidate-b.json",
+    ],
+)
+
 sh_binary(
     name = "measure_baseline",
     srcs = ["scripts/measure_baseline_metrics.sh"],
+)
+
+# `measure_candidates` drives the same instrument over the frozen candidate
+# *revisions*, each in a detached worktree at that revision, and writes one
+# record per generation into `candidates/` (VAL-METRIC-001). It takes no metric
+# or partition of its own; later generations are added with
+# `ATTUNE_CANDIDATES=<name>=<rev>...`.
+sh_binary(
+    name = "measure_candidates",
+    srcs = ["scripts/measure_candidates.sh"],
 )

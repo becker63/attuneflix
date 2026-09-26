@@ -1,0 +1,118 @@
+{
+  "protocol": "attuneflix-effectful-stage-baseline-v1",
+  "recorded_at_utc": "2026-09-26T20:10:52Z",
+  "control_commit": "09e27244af9340aa616116a93ea02472e7521ba5",
+  "working_commit": "3efee12b2fb83b62727c9a09fd98c79bf3c5643c",
+  "partitions": {
+    "admission": "attuneflix-admission-v1",
+    "region": "attuneflix-regions-v1",
+    "stage": "attuneflix-stages-v1"
+  },
+  "channels": {
+    "basis": {
+      "admitted_files": 116,
+      "production_flix_files": 27,
+      "production_flix_loc": 3770,
+      "total_reference_edges": 278,
+      "production_reference_edges": 50,
+      "region_groups": 9,
+      "k_way_cut": {
+        "2": {
+          "count": 8,
+          "fraction": 0.028777
+        },
+        "3": {
+          "count": 26,
+          "fraction": 0.093525
+        },
+        "4": {
+          "count": 45,
+          "fraction": 0.161871
+        },
+        "5": {
+          "count": 71,
+          "fraction": 0.255396
+        },
+        "6": {
+          "count": 98,
+          "fraction": 0.352518
+        },
+        "7": {
+          "count": 123,
+          "fraction": 0.442446
+        },
+        "8": {
+          "count": 156,
+          "fraction": 0.561151
+        },
+        "9": {
+          "count": 198,
+          "fraction": 0.712230
+        }
+      },
+      "mutable_cross_stage_edges": 31,
+      "mutable_cross_stage_fraction": 0.620000,
+      "shared_writable_hotspots": 16,
+      "max_hotspot_pressure": 6,
+      "shared_stage_hotspots": 6,
+      "max_stage_hotspot_pressure": 3
+    },
+    "kernel": {
+      "kernel_files": 4,
+      "kernel_loc": 547,
+      "kernel_loc_fraction": 0.145093,
+      "kernel_fanin": 44,
+      "kernel_fanin_share": 0.158273
+    },
+    "build": {
+      "skipped": false,
+      "analyzed_targets": 495,
+      "test_targets": 31,
+      "cross_stage_test_invalidation": 60,
+      "cross_stage_test_invalidation_all_tests": 261
+    },
+    "work": {
+      "tasks": {
+        "acquisition": {
+          "file_count": 4,
+          "seed_files": [
+            "src/Repository/Grit.flix",
+            "src/Repository/Acquire.flix"
+          ]
+        },
+        "atlas_bitset": {
+          "file_count": 4,
+          "seed_files": [
+            "src/Repository/Physical.flix",
+            "src/Radii/Evaluate.flix"
+          ]
+        },
+        "judge_pareto": {
+          "file_count": 11,
+          "seed_files": [
+            "src/Localization/Sandwich.flix",
+            "src/Localization/PriorTable.flix"
+          ]
+        },
+        "projection_jsonld": {
+          "file_count": 5,
+          "seed_files": [
+            "src/Localization/PredictionTable.flix",
+            "src/Population/Table.flix"
+          ]
+        }
+      },
+      "conflict_graph": {
+        "acquisition|judge_pareto": true,
+        "acquisition|atlas_bitset": true,
+        "judge_pareto|projection_jsonld": true,
+        "atlas_bitset|judge_pareto": true,
+        "acquisition|projection_jsonld": false,
+        "atlas_bitset|projection_jsonld": false
+      },
+      "T_one": 4,
+      "T_inf": 3,
+      "critical_path_fraction": 0.750000
+    }
+  }
+}
