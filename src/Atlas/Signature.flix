@@ -68,7 +68,7 @@ pub mod Atlas.Signature {
     }
 
     pub def compute(
-        repository: Repository.World,
+        repository: Kernel.Contract.AdmittedWorld,
         input: Atlas.State,
         depth: Int32
     ): Result[String, Signature] = {
@@ -106,14 +106,14 @@ pub mod Atlas.Signature {
     /// The issue-blind seed panel declared by atlas-signature-seeds-v1.
     /// Selection hashes stable repository identities, never nominal ordinal
     /// order, issue text, embedding rank, or filesystem enumeration order.
-    pub def seeds(repository: Repository.World): Vector[Seed] \ Kernel.Effect.Digest =
+    pub def seeds(repository: Kernel.Contract.AdmittedWorld): Vector[Seed] \ Kernel.Effect.Digest =
         Vector.append(fileSeeds(repository#files), symbolSeeds(repository#symbols))
 
     def fileSeeds(files: Vector[String]): Vector[Seed] \ Kernel.Effect.Digest =
         panel(Radii.Domain.File, files, ordinal ->
             Atlas.State.Files(Set.singleton(Kernel.Contract.FileId.FileId(ordinal))))
 
-    def symbolSeeds(symbols: Vector[Repository.Symbol]): Vector[Seed] \ Kernel.Effect.Digest =
+    def symbolSeeds(symbols: Vector[Kernel.Contract.Symbol]): Vector[Seed] \ Kernel.Effect.Digest =
         panel(Radii.Domain.Symbol, Vector.map(symbol ->
             "${symbol#path}\u0000${symbol#name}\u0000${symbol#startByte}\u0000${symbol#endByte}", symbols),
             ordinal ->
@@ -141,7 +141,7 @@ pub mod Atlas.Signature {
     }
 
     def observation(
-        repository: Repository.World,
+        repository: Kernel.Contract.AdmittedWorld,
         seed: Atlas.State,
         program: Atlas.Program,
         output: Atlas.State,
@@ -195,7 +195,7 @@ pub mod Atlas.Signature {
             }
         }
 
-    def domainSize(repository: Repository.World, domain: Radii.Domain): Int32 = match domain {
+    def domainSize(repository: Kernel.Contract.AdmittedWorld, domain: Radii.Domain): Int32 = match domain {
         case Radii.Domain.File     => Vector.length(repository#files)
         case Radii.Domain.Symbol   => Vector.length(repository#symbols)
         case Radii.Domain.Location => 0

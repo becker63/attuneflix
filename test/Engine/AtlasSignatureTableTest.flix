@@ -87,7 +87,7 @@ def atlasCensusRowsCarryExactRouteStateAndWorkIdentities(): Unit \ {Assert, IO} 
 def atlasCensusUsesTypedFileAndSymbolSeedFamilies(): Unit \ {Assert, IO} = {
     let f0 = Kernel.Contract.FileId.FileId(0);
     let s0 = Kernel.Contract.SymbolId.SymbolId(0);
-    let world: Repository.World = {
+    let world: Kernel.Contract.AdmittedWorld = {
         files = Vector#{"src/a.ts"},
         symbols = Vector#{{path = "src/a.ts", name = "a", startByte = 0, endByte = 1}},
         defines = Set#{(f0, s0)}, imports = Set.empty(), calls = Set.empty(),

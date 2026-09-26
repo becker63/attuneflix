@@ -143,10 +143,10 @@ classification is tested.
 
 The Flix wire-decode layer (JSON envelope decoding and byte-range fact
 projection) was removed with the Grit boundary shrink: no Flix code parses
-native envelopes. `Repository.admit` consumes `Repository.Grit.Fact` records
+native envelopes. `World.Admission.admit` consumes `Repository.Grit.Fact` records
 directly, and the retained frozen worlds are the facts source.
 
-`Repository.admit` then follows the frozen Python rules for the initial
+`World.Admission.admit` then follows the frozen Python rules for the initial
 TypeScript/JavaScript world: sorted dense identities, repository-relative
 imports only, innermost lexical call ownership, local-then-global unambiguous
 target resolution, and aligned file/directory locations. Missing imports and

@@ -28,32 +28,32 @@ mod ControlTopology {
 
     // ---- The admitted basis graph (BASIS) ----
 
-    pub def fileIdentity(world: Repository.World, id: Kernel.Contract.FileId): String =
+    pub def fileIdentity(world: Kernel.Contract.AdmittedWorld, id: Kernel.Contract.FileId): String =
         let Kernel.Contract.FileId.FileId(index) = id;
         Vector.get(index, world#files)
 
-    def symbolFile(world: Repository.World, id: Kernel.Contract.SymbolId): String =
+    def symbolFile(world: Kernel.Contract.AdmittedWorld, id: Kernel.Contract.SymbolId): String =
         let Kernel.Contract.SymbolId.SymbolId(index) = id;
         Vector.get(index, world#symbols)#path
 
-    pub def edgePaths(world: Repository.World): Vector[(String, String)] =
+    pub def edgePaths(world: Kernel.Contract.AdmittedWorld): Vector[(String, String)] =
         Vector.map(match (source, target) -> (fileIdentity(world, source), fileIdentity(world, target)),
             Set.toVector(world#imports))
 
-    pub def regionEdges(world: Repository.World): Vector[(String, String)] =
+    pub def regionEdges(world: Kernel.Contract.AdmittedWorld): Vector[(String, String)] =
         Vector.map(match (source, target) -> (ControlMap.regionOf(source), ControlMap.regionOf(target)),
             edgePaths(world))
 
-    pub def cellEdges(world: Repository.World): Vector[(String, String)] =
+    pub def cellEdges(world: Kernel.Contract.AdmittedWorld): Vector[(String, String)] =
         Vector.map(match (source, target) -> (ControlMap.cellOf(source), ControlMap.cellOf(target)),
             edgePaths(world))
 
     // ---- §4 regions ----
 
-    pub def regionFiles(world: Repository.World, region0: String): Vector[String] =
+    pub def regionFiles(world: Kernel.Contract.AdmittedWorld, region0: String): Vector[String] =
         Vector.filter(path -> ControlMap.regionOf(path) == region0, world#files)
 
-    pub def nonEmptyRegions(world: Repository.World): Vector[String] =
+    pub def nonEmptyRegions(world: Kernel.Contract.AdmittedWorld): Vector[String] =
         Vector.filter(region0 -> not Vector.isEmpty(regionFiles(world, region0)), ControlMap.regions())
 
     pub def internalEdges(edges: Vector[(String, String)], region0: String): Int32 =
@@ -72,7 +72,7 @@ mod ControlTopology {
         not Vector.exists(match (f, t) ->
             t == region0 and f != region0 and f != "tests" and f != "build-src", edges)
 
-    pub def minCoherence(world: Repository.World, edges: Vector[(String, String)]): (String, Float64) =
+    pub def minCoherence(world: Kernel.Contract.AdmittedWorld, edges: Vector[(String, String)]): (String, Float64) =
         Vector.foldLeft((best, region0) -> {
             let value = coherence(edges, region0);
             if (value < snd(best)) (region0, value) else best
@@ -103,7 +103,7 @@ mod ControlTopology {
             }
         }
 
-    pub def regionGroups(world: Repository.World, k: Int32): Vector[(String, Set[String])] = {
+    pub def regionGroups(world: Kernel.Contract.AdmittedWorld, k: Int32): Vector[(String, Set[String])] = {
         let seeds = Vector.map(region0 -> (region0, Set#{region0}), nonEmptyRegions(world));
         mergeBy((a, b) -> interGroups(regionEdges(world), a, b), k,
             Vector.sortBy(match (name, _) -> name, seeds))
@@ -126,10 +126,10 @@ mod ControlTopology {
             case _ => true
         }
 
-    pub def crossEdges(world: Repository.World, k: Int32): Int32 =
+    pub def crossEdges(world: Kernel.Contract.AdmittedWorld, k: Int32): Int32 =
         Vector.count(match (f, t) -> crosses(regionGroups(world, k), f, t), regionEdges(world))
 
-    pub def cutCounts(world: Repository.World): Vector[(Int32, Int32)] =
+    pub def cutCounts(world: Kernel.Contract.AdmittedWorld): Vector[(Int32, Int32)] =
         Vector.map(k -> (k, crossEdges(world, k)), cutDepths())
 
     // ---- T5: the K4 ownership-cell cut ----
@@ -180,7 +180,7 @@ mod ControlTopology {
 
     // ---- T7: hotspot pressure ----
 
-    pub def pressures(world: Repository.World): Map[Kernel.Contract.FileId, Set[String]] =
+    pub def pressures(world: Kernel.Contract.AdmittedWorld): Map[Kernel.Contract.FileId, Set[String]] =
         Vector.foldLeft((acc, edge) -> match edge {
             case (f, g) => {
                 let rf = ControlMap.regionOf(fileIdentity(world, f));
@@ -191,13 +191,13 @@ mod ControlTopology {
         }, Map.empty(), Set.toVector(world#imports))
 
     /// (path, sorted importing regions, pressure) for every shared hotspot.
-    pub def hotspotFiles(world: Repository.World): Vector[(String, Vector[String], Int32)] =
+    pub def hotspotFiles(world: Kernel.Contract.AdmittedWorld): Vector[(String, Vector[String], Int32)] =
         Vector.map(match (id, regions0) -> (fileIdentity(world, id), Vector.sort(Set.toVector(regions0)),
             Set.size(regions0)), Map.toVector(pressures(world)))
             |> Vector.filter(match (_, _, pressure) -> pressure >= 2)
             |> Vector.sortBy(match (path, _, pressure) -> (0 - pressure, path))
 
-    pub def maxHotspotPressure(world: Repository.World): Int32 =
+    pub def maxHotspotPressure(world: Kernel.Contract.AdmittedWorld): Int32 =
         Vector.foldLeft((best, entry) -> match entry {
             case (_, _, pressure) => if (pressure > best) pressure else best
         }, 0, hotspotFiles(world))
@@ -206,25 +206,25 @@ mod ControlTopology {
 
     pub def family(): Vector[Atlas.Program] = Atlas.programsFrom(Radii.Domain.File, 2)
 
-    def regionSeed(world: Repository.World, region0: String): Set[Kernel.Contract.FileId] =
+    def regionSeed(world: Kernel.Contract.AdmittedWorld, region0: String): Set[Kernel.Contract.FileId] =
         Vector.mapWithIndex((index, path) -> (path, Kernel.Contract.FileId.FileId(index)), world#files)
             |> Vector.filterMap(match (path, id) -> if (ControlMap.regionOf(path) == region0) Some(id) else None)
             |> Vector.toSet
 
-    def stateMembers(world: Repository.World, state: Atlas.State): Set[String] = match state {
+    def stateMembers(world: Kernel.Contract.AdmittedWorld, state: Atlas.State): Set[String] = match state {
         case Atlas.State.Files(ids) => Set.map(id -> fileIdentity(world, id), ids)
         case Atlas.State.Symbols(ids) => Set.map(id -> symbolFile(world, id), ids)
     }
 
     /// The file-space union of every depth-<=2 File-domain route output: every
     /// step is one real `Atlas.evaluate` transition over the admitted world.
-    pub def outputUnion(world: Repository.World, seed: Set[Kernel.Contract.FileId]): Set[String] = {
+    pub def outputUnion(world: Kernel.Contract.AdmittedWorld, seed: Set[Kernel.Contract.FileId]): Set[String] = {
         let evaluation = Experiment.require(Atlas.evaluate(world, Atlas.State.Files(seed), family()));
         Vector.foldLeft((acc, output) -> Set.union(acc, stateMembers(world, output)), Set.empty(), evaluation#outputs)
     }
 
     /// T9 `N(R)`: the region's files plus its depth-<=2 Atlas output union.
-    pub def neighborhood(world: Repository.World, region0: String): Set[String] =
+    pub def neighborhood(world: Kernel.Contract.AdmittedWorld, region0: String): Set[String] =
         Set.union(Set.map(id -> fileIdentity(world, id), regionSeed(world, region0)),
             outputUnion(world, regionSeed(world, region0)))
 
@@ -236,7 +236,7 @@ mod ControlTopology {
 
     pub type alias Overlap = {left = String, right = String, jaccard = Float64}
 
-    pub def overlaps(world: Repository.World): Vector[Overlap] = {
+    pub def overlaps(world: Kernel.Contract.AdmittedWorld): Vector[Overlap] = {
         let hoods = Vector.map(region0 -> (region0, neighborhood(world, region0)), nonEmptyRegions(world));
         let pairs0 = Vector.flatMap(match (a, hoodA) -> Vector.filterMap(match (b, hoodB) ->
             if (a < b) Some({left = a, right = b, jaccard = jaccard(hoodA, hoodB)}) else None, hoods), hoods);
@@ -244,10 +244,10 @@ mod ControlTopology {
     }
 
     /// T10 `b(f)`: the depth-<=2 Atlas output union size from one file seed.
-    pub def blast(world: Repository.World, id: Kernel.Contract.FileId): Int32 =
+    pub def blast(world: Kernel.Contract.AdmittedWorld, id: Kernel.Contract.FileId): Int32 =
         Set.size(outputUnion(world, Set#{id}))
 
-    pub def fileBlasts(world: Repository.World): Vector[Int32] =
+    pub def fileBlasts(world: Kernel.Contract.AdmittedWorld): Vector[Int32] =
         Vector.mapWithIndex((index, _) -> blast(world, Kernel.Contract.FileId.FileId(index)), world#files)
 
     /// Nearest-rank percentile (ascending sort, 0-based `floor(p*n/100)`).
@@ -260,7 +260,7 @@ mod ControlTopology {
         }
 
     /// The largest depth-<=2 File-domain output cardinality over the seed size.
-    pub def regionBlast(world: Repository.World, region0: String): Float64 = {
+    pub def regionBlast(world: Kernel.Contract.AdmittedWorld, region0: String): Float64 = {
         let seed = regionSeed(world, region0);
         let seedSize = Set.size(seed);
         if (seedSize == 0) 0.0
@@ -274,7 +274,7 @@ mod ControlTopology {
         }
     }
 
-    pub def maxRegionBlast(world: Repository.World): Float64 =
+    pub def maxRegionBlast(world: Kernel.Contract.AdmittedWorld): Float64 =
         Vector.foldLeft((best, region0) -> {
             let value = regionBlast(world, region0);
             if (value > best) value else best

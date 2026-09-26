@@ -37,7 +37,7 @@ mod RoundOracle {
         round0: RoundIdentity.Round,
         controlSources: Vector[AcquisitionFacts.Source],
         controlFacts: Vector[AcquisitionFacts.FactRow]
-    ): Repository.World = {
+    ): Kernel.Contract.AdmittedWorld = {
         let mapping = RoundIdentity.mapping(round0);
         let sources = Experiment.require(Vector.traverse(source -> match Map.get(source#path, mapping) {
             case None => Err("round basis source has no logical identity: ${source#path}")
@@ -53,13 +53,13 @@ mod RoundOracle {
         Experiment.require(AcquisitionFacts.world(sources, facts))
     }
 
-    pub def landmarks(world: Repository.World): ControlSignature.Landmarks \ IO =
+    pub def landmarks(world: Kernel.Contract.AdmittedWorld): ControlSignature.Landmarks \ IO =
         ControlSignature.landmarks(world, ControlSignature.signatures(world))
 
     /// The same landmark definition over an explicit (already translated) seed
     /// panel, so a candidate is measured on the §9 logical-identity seeds
     /// rather than on a path-hashed panel a file move would perturb.
-    pub def landmarksWith(world: Repository.World, seeds: Vector[Atlas.Signature.Seed]): ControlSignature.Landmarks =
+    pub def landmarksWith(world: Kernel.Contract.AdmittedWorld, seeds: Vector[Atlas.Signature.Seed]): ControlSignature.Landmarks =
         ControlSignature.landmarks(world, Vector.map(seed ->
             (seed, Experiment.require(Atlas.Signature.compute(world, seed#state, ControlSignature.maxDepth()))), seeds))
 
@@ -68,8 +68,8 @@ mod RoundOracle {
     /// successor (drops are reported by the identity map), so the candidate
     /// panel is the same set of logical entities as control's.
     pub def translatedSeeds(
-        world: Repository.World,
-        candidate: Repository.World,
+        world: Kernel.Contract.AdmittedWorld,
+        candidate: Kernel.Contract.AdmittedWorld,
         mapping: Map[String, String]
     ): Vector[Atlas.Signature.Seed] \ IO = Kernel.DigestHandler.runDigest(() -> {
         let seeds = Atlas.Signature.seeds(world);
@@ -81,15 +81,15 @@ mod RoundOracle {
     def indexOfPaths(paths: Vector[String]): Map[String, Int32] =
         Vector.mapWithIndex((index, path) -> (path, index), paths) |> Vector.toMap
 
-    def indexOfSymbols(symbols: Vector[Repository.Symbol]): Map[String, Int32] =
+    def indexOfSymbols(symbols: Vector[Kernel.Contract.Symbol]): Map[String, Int32] =
         Vector.mapWithIndex((index, symbol) -> (symbolKey(symbol), index), symbols) |> Vector.toMap
 
-    def symbolKey(symbol: Repository.Symbol): String =
+    def symbolKey(symbol: Kernel.Contract.Symbol): String =
         "${symbol#path}\u0000${symbol#name}\u0000${symbol#startByte}\u0000${symbol#endByte}"
 
     def translate(
         seed: Atlas.Signature.Seed,
-        world: Repository.World,
+        world: Kernel.Contract.AdmittedWorld,
         mapping: Map[String, String],
         files: Map[String, Int32],
         symbols: Map[String, Int32]
@@ -195,7 +195,7 @@ mod RoundOracle {
     /// The frozen basis edges carried into the candidate world by the §9
     /// logical-identity translation (no re-admission). This is the comparison
     /// basis §6.2 binds: identity, not path, so a move cannot perturb it.
-    pub def translatedEdgePaths(world: Repository.World, mapping: Map[String, String]): Set[(String, String)] =
+    pub def translatedEdgePaths(world: Kernel.Contract.AdmittedWorld, mapping: Map[String, String]): Set[(String, String)] =
         Vector.toSet(Vector.filterMap(match (source, target) ->
             match (Map.get(source, mapping), Map.get(target, mapping)) {
                 case (Some(currentSource), Some(currentTarget)) => Some((currentSource, currentTarget))
@@ -208,7 +208,7 @@ mod RoundOracle {
     /// suffix, so a move can change which declaration an unchanged import fact
     /// reaches. Sorted for byte-stable rendering.
     pub def basisEdgeDrift(
-        candidate: Repository.World,
+        candidate: Kernel.Contract.AdmittedWorld,
         translated: Set[(String, String)]
     ): (Vector[(String, String)], Vector[(String, String)]) = {
         let admitted = Vector.toSet(ControlTopology.edgePaths(candidate));
@@ -221,7 +221,7 @@ mod RoundOracle {
         Vector.sortBy(match (source, target) -> "${source}\u0000${target}", pairs)
 
     /// The number of frozen basis edges incident to a set of control paths.
-    pub def incidentEdges(world: Repository.World, paths: Vector[String]): Int32 = {
+    pub def incidentEdges(world: Kernel.Contract.AdmittedWorld, paths: Vector[String]): Int32 = {
         let set = Vector.toSet(paths);
         Vector.count(match (source, target) -> Set.memberOf(source, set) or Set.memberOf(target, set),
             ControlTopology.edgePaths(world))

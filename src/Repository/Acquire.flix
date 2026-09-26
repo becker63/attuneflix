@@ -19,7 +19,7 @@ pub mod Repository.Acquire {
     /// Stable, honest classification of an acquisition failure.
     pub enum AcquisitionError with Eq, ToString {
         case Grit(Repository.Grit.Error),
-        case Admission(Repository.Error)
+        case Admission(World.Error)
     }
 
     type alias Facts = {
@@ -33,19 +33,19 @@ pub mod Repository.Acquire {
     /// the facts, and admit them through ordinary Repository admission. Every
     /// language emits the same `Repository.Grit.Fact`; there are no per-language
     /// facts or worlds.
-    pub def acquire(sources: Vector[Repository.Source]): Result[AcquisitionError, Repository.World] \ IO =
+    pub def acquire(sources: Vector[Kernel.Contract.SourceFile]): Result[AcquisitionError, Kernel.Contract.AdmittedWorld] \ IO =
         Vector.traverse(source -> sourceFacts(source), sources)
             |> Result.flatMap(all -> acquireWorld(sources, all))
 
-    def acquireWorld(sources: Vector[Repository.Source], all: Vector[Facts]): Result[AcquisitionError, Repository.World] =
-        Repository.admit(
+    def acquireWorld(sources: Vector[Kernel.Contract.SourceFile], all: Vector[Facts]): Result[AcquisitionError, Kernel.Contract.AdmittedWorld] =
+        World.Admission.admit(
             sources,
             Vector.flatten(Vector.map(facts -> facts#definitions, all)),
             Vector.flatten(Vector.map(facts -> facts#imports, all)),
             Vector.flatten(Vector.map(facts -> facts#calls, all))
         ) |> Result.mapErr(AcquisitionError.Admission)
 
-    def sourceFacts(source: Repository.Source): Result[AcquisitionError, Facts] \ IO =
+    def sourceFacts(source: Kernel.Contract.SourceFile): Result[AcquisitionError, Facts] \ IO =
         match Repository.Grit.language(source#path) {
             case None => Ok(emptyFacts())
             case Some(language) => forM (
@@ -55,7 +55,7 @@ pub mod Repository.Acquire {
             ) yield {definitions = definitions, imports = imports, calls = calls}
         }
 
-    def facts(language: Language, program: Program, source: Repository.Source): Result[AcquisitionError, Vector[Fact]] \ IO =
+    def facts(language: Language, program: Program, source: Kernel.Contract.SourceFile): Result[AcquisitionError, Vector[Fact]] \ IO =
         Repository.Grit.facts(
             source#path,
             source#content,

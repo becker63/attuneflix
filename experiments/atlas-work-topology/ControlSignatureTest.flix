@@ -9,17 +9,17 @@
 mod ControlSignatureTest {
     use Repository.Grit.Fact
 
-    // ---- Tiny synthesized worlds, through ordinary Repository.admit ----
+    // ---- Tiny synthesized worlds, through ordinary World.Admission.admit ----
 
-    def source(path: String): Repository.Source = {path = path, content = ""}
+    def source(path: String): Kernel.Contract.SourceFile = {path = path, content = ""}
 
     def fact(kind: String, path: String, start: Int32, end: Int32, value: String): Fact =
         {kind = kind, path = path, startByte = start, endByte = end, value = value}
 
     /// Two files, each with one definition; `imports` is the only admitted edge
     /// the caller varies.
-    def twoFileWorld(imports: Vector[Fact]): Repository.World =
-        Repository.admit(
+    def twoFileWorld(imports: Vector[Fact]): Kernel.Contract.AdmittedWorld =
+        World.Admission.admit(
             Vector#{source("a.flix"), source("b.flix")},
             Vector#{fact("definition", "a.flix", 0, 5, "Alpha"), fact("definition", "b.flix", 0, 4, "Beta")},
             imports, Vector.empty())
@@ -27,9 +27,9 @@ mod ControlSignatureTest {
             |> Experiment.require
 
     /// An isolated pair (no edge) and a linked pair (`a` imports `b`).
-    def isolated(): Repository.World = twoFileWorld(Vector.empty())
+    def isolated(): Kernel.Contract.AdmittedWorld = twoFileWorld(Vector.empty())
 
-    def linked(): Repository.World =
+    def linked(): Kernel.Contract.AdmittedWorld =
         twoFileWorld(Vector#{fact("import", "a.flix", 12, 13, "b")})
 
     // ---- Provenance: the response curve comes from Atlas ----

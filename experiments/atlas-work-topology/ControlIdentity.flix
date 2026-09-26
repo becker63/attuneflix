@@ -46,7 +46,7 @@ pub mod ControlIdentity {
     }
 
     /// The admitted `defines` facts of one path as (value, startByte, endByte),
-    /// in the canonical byte order `Repository.admit` uses.
+    /// in the canonical byte order `World.Admission.admit` uses.
     pub def definitionsOf(facts: Vector[AcquisitionFacts.FactRow], path: String): Vector[(String, Int32, Int32)] =
         Vector.filterMap(fact ->
             if (fact#program == "defines" and fact#path == path)

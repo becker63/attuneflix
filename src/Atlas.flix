@@ -27,7 +27,7 @@
 /// The small reuse unit buys several concrete properties:
 ///
 ///   * Stable identity. In this file the live Flix key is exactly
-///     `(Atlas.Atom, Atlas.State)` because one `Repository.World` is fixed by
+///     `(Atlas.Atom, Atlas.State)` because one `Kernel.Contract.AdmittedWorld` is fixed by
 ///     the enclosing `evaluate` call. The persisted equivalent is
 ///     `(snapshot_id, canonical state_id, atom)`. No surrounding route,
 ///     policy, or learned-model choice is required to interpret that work.
@@ -126,7 +126,7 @@ mod Atlas {
     /// same stable order as `programs`; repeated exact transitions execute
     /// only once.
     pub def evaluate(
-        repository: Repository.World,
+        repository: Kernel.Contract.AdmittedWorld,
         input: State,
         family: Vector[Program]
     ): Result[String, Evaluation] = region rc {

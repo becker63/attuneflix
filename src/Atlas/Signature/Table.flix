@@ -120,7 +120,7 @@ pub mod Atlas.Signature.Table {
 
     pub def snapshotRow(
         snapshot: SnapshotIdentity,
-        repository: Repository.World,
+        repository: Kernel.Contract.AdmittedWorld,
         manifestCaseCount: Int32
     ): Kernel.Contract.Row = Map.union(identityRow(snapshot), Map#{
         "file_count" => Value.Int64(Int32.toInt64(Vector.length(repository#files))),

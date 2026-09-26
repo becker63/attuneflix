@@ -3,7 +3,7 @@
 /// with the closure's own language table (`Repository.Grit.language`) rather
 /// than a parallel lexical rule; everything downstream is the unchanged
 /// `AcquisitionDriver` (`source -> Grit -> Repository.Grit.Fact ->
-/// Repository.admit -> Repository.World`).
+/// World.Admission.admit -> Kernel.Contract.AdmittedWorld`).
 mod ControlAcquisition {
     import java.nio.file.{Files, Paths}
 

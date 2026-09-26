@@ -27,6 +27,6 @@ mod Localization {
         repository = String,
         baseCommit = String,
         issue      = Issue,
-        world      = Repository.World
+        world      = Kernel.Contract.AdmittedWorld
     }
 }

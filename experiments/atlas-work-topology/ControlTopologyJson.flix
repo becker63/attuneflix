@@ -17,7 +17,7 @@ mod ControlTopologyJson {
     pub def arr(items: Vector[Json]): Json = JArray(items)
     pub def obj(fields: Vector[(String, Json)]): Json = JObject(Vector.toMap(fields))
 
-    pub def json(revision: String, sources: Vector[AcquisitionFacts.Source], world: Repository.World): String = {
+    pub def json(revision: String, sources: Vector[AcquisitionFacts.Source], world: Kernel.Contract.AdmittedWorld): String = {
         let edges = ControlTopology.regionEdges(world);
         obj(Vector#{
             ("protocol", str(ControlTopology.topologyProtocol())),
@@ -36,7 +36,7 @@ mod ControlTopologyJson {
         }) |> Json.toCompactString
     }
 
-    pub def basisJson(world: Repository.World, edges: Vector[(String, String)]): Json = {
+    pub def basisJson(world: Kernel.Contract.AdmittedWorld, edges: Vector[(String, String)]): Json = {
         let cross = Vector.count(match (f, t) -> f != t, edges);
         obj(Vector#{
             ("admitted_files", int(Vector.length(world#files))),
@@ -60,7 +60,7 @@ mod ControlTopologyJson {
             ("files", int(Vector.count(source -> source#language == language, sources)))
         }), ControlTopology.languageNames()))
 
-    pub def regionsJson(world: Repository.World, edges: Vector[(String, String)]): Json = {
+    pub def regionsJson(world: Kernel.Contract.AdmittedWorld, edges: Vector[(String, String)]): Json = {
         let nonEmpty = ControlTopology.nonEmptyRegions(world);
         let independent = Vector.count(region0 -> ControlTopology.independentlyTestable(edges, region0), nonEmpty);
         obj(Vector#{
@@ -77,7 +77,7 @@ mod ControlTopologyJson {
         })
     }
 
-    pub def otherJson(world: Repository.World, edges: Vector[(String, String)]): Json = {
+    pub def otherJson(world: Kernel.Contract.AdmittedWorld, edges: Vector[(String, String)]): Json = {
         let otherPaths = ControlTopology.regionFiles(world, "other");
         obj(Vector#{
             ("files", int(Vector.length(otherPaths))),
@@ -92,7 +92,7 @@ mod ControlTopologyJson {
         })
     }
 
-    pub def cutsJson(world: Repository.World, edges: Vector[(String, String)]): Json =
+    pub def cutsJson(world: Kernel.Contract.AdmittedWorld, edges: Vector[(String, String)]): Json =
         arr(Vector.map(k -> {
             let groups = ControlTopology.regionGroups(world, k);
             let cross = Vector.count(match (f, t) -> ControlTopology.crosses(groups, f, t), edges);
@@ -117,7 +117,7 @@ mod ControlTopologyJson {
             ("excluded_other_edges", int(cut#otherEdges))
         })
 
-    pub def hotspotsJson(world: Repository.World): Json = {
+    pub def hotspotsJson(world: Kernel.Contract.AdmittedWorld): Json = {
         let hotspots = ControlTopology.hotspotFiles(world);
         obj(Vector#{
             ("shared_hotspots", int(Vector.length(hotspots))),
@@ -130,7 +130,7 @@ mod ControlTopologyJson {
         })
     }
 
-    pub def coherenceJson(world: Repository.World, edges: Vector[(String, String)]): Json = {
+    pub def coherenceJson(world: Kernel.Contract.AdmittedWorld, edges: Vector[(String, String)]): Json = {
         let (region0, value) = ControlTopology.minCoherence(world, edges);
         obj(Vector#{
             ("min", real(value)),
@@ -138,7 +138,7 @@ mod ControlTopologyJson {
         })
     }
 
-    pub def atlasJson(world: Repository.World): Json = {
+    pub def atlasJson(world: Kernel.Contract.AdmittedWorld): Json = {
         let blasts = ControlTopology.fileBlasts(world);
         let overlaps0 = ControlTopology.overlaps(world);
         let high = Vector.filter(overlap -> overlap#jaccard >= 0.5, overlaps0);

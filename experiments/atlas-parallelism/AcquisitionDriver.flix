@@ -5,7 +5,7 @@
 /// writes the typed artifacts the measurement graph consumes.
 ///
 /// This is the only step that needs the native engine. Everything downstream
-/// (re-admission -> Repository.World -> Atlas) is pure and hermetic over the
+/// (re-admission -> Kernel.Contract.AdmittedWorld -> Atlas) is pure and hermetic over the
 /// committed artifacts written here.
 mod AcquisitionDriver {
     import java.nio.file.{Files, Paths}

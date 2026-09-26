@@ -96,6 +96,14 @@ filegroup(
         ":world_structure_law_sources",
         "//src:Repository.flix",
         "//src:Repository/Grit.flix",
+        "//src:World.flix",
+        "//src:World/Admission.flix",
+        "//src:World/CallIndex.flix",
+        "//src:World/Language.flix",
+        "//src:World/Language/Flix.flix",
+        "//src:World/Language/Java.flix",
+        "//src:World/Language/JavaScript.flix",
+        "//src:World/Language/Starlark.flix",
     ],
 )
 

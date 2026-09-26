@@ -30,7 +30,7 @@ mod ControlMeasure {
             |> List.toVector
             |> Vector.toSet
 
-    def world(): Repository.World \ IO =
+    def world(): Kernel.Contract.AdmittedWorld \ IO =
         ControlSignature.world(Experiment.property("attune.sources"), Experiment.property("attune.facts"))
 
     def commits(): Vector[ControlCoChange.Commit] \ IO =
@@ -54,7 +54,7 @@ mod ControlMeasure {
             "topology_bytes=${String.length(topology)} cochange_bytes=${String.length(cochange)}")
     }
 
-    def report(world0: Repository.World): Unit \ IO = {
+    def report(world0: Kernel.Contract.AdmittedWorld): Unit \ IO = {
         let edges = ControlTopology.regionEdges(world0);
         let useEdges = Vector.length(edges);
         let cut = ControlTopology.cellCut(ControlTopology.cellEdges(world0));

@@ -68,7 +68,7 @@ pub mod Repository.Table {
         }
     }
 
-    pub def rows(identity: Identity, world: Repository.World): Rows = {
+    pub def rows(identity: Identity, world: Kernel.Contract.AdmittedWorld): Rows = {
         metadata = Vector#{metadataRow(identity, world)},
         entities = Vector.append(fileRows(identity#snapshotId, world#files),
             symbolRows(identity#snapshotId, world#symbols)),
@@ -83,7 +83,7 @@ pub mod Repository.Table {
     pub def factIdentity(
         sourceTreeIdentity: String,
         gritIdentity: String,
-        world: Repository.World
+        world: Kernel.Contract.AdmittedWorld
     ): String \ Kernel.Effect.Digest = "repository-facts-v2:${Kernel.Effect.Digest.digest(
         field(sourceTreeIdentity) + field(gritIdentity) + worldPayload(world))}"
 
@@ -98,7 +98,7 @@ pub mod Repository.Table {
 
     /// Decode only the exact declared snapshot. Row order is not trusted;
     /// ordinals restore the vectors that define nominal FileId/SymbolId values.
-    pub def world(expected: Identity, rows0: Rows): Result[String, Repository.World] = forM (
+    pub def world(expected: Identity, rows0: Rows): Result[String, Kernel.Contract.AdmittedWorld] = forM (
         _ <- requireMetadata(expected, rows0#metadata);
         entities0 <- Vector.traverse(row -> decodeEntity(expected#snapshotId, row), rows0#entities);
         files <- orderedFiles(entities0);
@@ -113,7 +113,7 @@ pub mod Repository.Table {
         entitiesPath: String,
         relationsPath: String,
         identity: Identity,
-        world: Repository.World
+        world: Kernel.Contract.AdmittedWorld
     ): Rows \ IO = {
         let encoded = rows(identity, world);
         {
@@ -128,13 +128,13 @@ pub mod Repository.Table {
         entitiesPath: String,
         relationsPath: String,
         identity: Identity
-    ): Result[String, Repository.World] \ IO = world(identity, {
+    ): Result[String, Kernel.Contract.AdmittedWorld] \ IO = world(identity, {
         metadata = Scientific.Parquet.read(metadataPath, metadata()),
         entities = Scientific.Parquet.read(entitiesPath, entities()),
         relations = Scientific.Parquet.read(relationsPath, relations())
     })
 
-    def metadataRow(identity: Identity, world: Repository.World): Kernel.Contract.Row = Map#{
+    def metadataRow(identity: Identity, world: Kernel.Contract.AdmittedWorld): Kernel.Contract.Row = Map#{
         "repository" => Value.Text(identity#repository),
         "base_revision" => Value.Text(identity#baseRevision),
         "source_tree_identity" => Value.Text(identity#sourceTreeIdentity),
@@ -150,7 +150,7 @@ pub mod Repository.Table {
         "unresolved_calls" => Value.Int32(world#unresolvedCalls)
     }
 
-    def worldPayload(world: Repository.World): String = {
+    def worldPayload(world: Kernel.Contract.AdmittedWorld): String = {
         let files = Vector.mapWithIndex((ordinal, path) ->
             "F:${ordinal}:${field(path)}", world#files);
         let symbols = Vector.mapWithIndex((ordinal, symbol) ->
@@ -184,7 +184,7 @@ pub mod Repository.Table {
             "start_byte" => Value.Null, "end_byte" => Value.Null
         }, files0)
 
-    def symbolRows(snapshotId: String, symbols0: Vector[Repository.Symbol]): Vector[Kernel.Contract.Row] =
+    def symbolRows(snapshotId: String, symbols0: Vector[Kernel.Contract.Symbol]): Vector[Kernel.Contract.Row] =
         Vector.mapWithIndex((ordinal, symbol) -> Map#{
             "snapshot_id" => Value.Text(snapshotId), "domain" => Value.Text("symbol"),
             "entity_id" => Value.Int32(ordinal), "ordinal" => Value.Int32(ordinal),
@@ -193,7 +193,7 @@ pub mod Repository.Table {
             "end_byte" => Value.Int32(symbol#endByte)
         }, symbols0)
 
-    def relationRows(snapshotId: String, world: Repository.World): Vector[Kernel.Contract.Row] =
+    def relationRows(snapshotId: String, world: Kernel.Contract.AdmittedWorld): Vector[Kernel.Contract.Row] =
         Vector.flatten(Vector#{
             Set.toVector(world#defines) |> Vector.map(match (source, target) ->
                 relationRow(snapshotId, "defines", "file", fileId(source), "symbol", symbolId(target))),
@@ -272,7 +272,7 @@ pub mod Repository.Table {
             |> Result.map(_ -> Vector.map(match (_, path) -> path, entries))
     }
 
-    def orderedSymbols(entities0: Vector[Entity]): Result[String, Vector[Repository.Symbol]] = {
+    def orderedSymbols(entities0: Vector[Entity]): Result[String, Vector[Kernel.Contract.Symbol]] = {
         let entries = Vector.filterMap(match entity -> match entity {
             case Entity.Symbol(ordinal, path, name, start, end) => Some((ordinal, {
                 path = path, name = name, startByte = start, endByte = end
@@ -283,7 +283,7 @@ pub mod Repository.Table {
             |> Result.map(_ -> Vector.map(match (_, value) -> value, entries))
     }
 
-    def makeWorld(files0: Vector[String], symbols0: Vector[Repository.Symbol], relations0: Vector[Relation], metadata0: Vector[Kernel.Contract.Row]): Result[String, Repository.World] =
+    def makeWorld(files0: Vector[String], symbols0: Vector[Kernel.Contract.Symbol], relations0: Vector[Relation], metadata0: Vector[Kernel.Contract.Row]): Result[String, Kernel.Contract.AdmittedWorld] =
         forM (
             unresolvedImports <- Kernel.Contract.int32(Vector.get(0, metadata0), "unresolved_imports");
             unresolvedCalls <- Kernel.Contract.int32(Vector.get(0, metadata0), "unresolved_calls")
@@ -318,7 +318,7 @@ pub mod Repository.Table {
         case _ => None
     }
 
-    def requireCounts(world: Repository.World, row: Kernel.Contract.Row): Result[String, Unit] = {
+    def requireCounts(world: Kernel.Contract.AdmittedWorld, row: Kernel.Contract.Row): Result[String, Unit] = {
         let actual = Vector#{
             ("file_count", Vector.length(world#files)), ("symbol_count", Vector.length(world#symbols)),
             ("defines_count", Set.size(world#defines)), ("imports_count", Set.size(world#imports)),

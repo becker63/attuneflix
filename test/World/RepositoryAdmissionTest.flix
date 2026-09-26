@@ -33,7 +33,7 @@ def indexedCallAdmissionPreservesOwnerAndTargetRules(): Unit \ Assert = {
         admissionFact("call", "a.ts", 20, 21, "ambiguous"),
         admissionFact("call", "a.ts", 130, 131, "hit")
     };
-    match Repository.admit(sources, definitions, Vector.empty(), calls) {
+    match World.Admission.admit(sources, definitions, Vector.empty(), calls) {
         case Err(error) => Assert.fail(ToString.toString(error))
         case Ok(world) => {
             let symbol = Kernel.Contract.SymbolId.SymbolId;

@@ -5,7 +5,7 @@
 /// `sources` is the exact inclusion record of a revision (path, sha256, byte
 /// length, language). `facts` is the Grit evidence (one row per emitted
 /// `Repository.Grit.Fact`, per file and relation program). The measurement
-/// graph re-admits those facts through ordinary `Repository.admit`, so what it
+/// graph re-admits those facts through ordinary `World.Admission.admit`, so what it
 /// measures is the canonical admitted basis — never a second experiment graph.
 mod AcquisitionFacts {
     use Kernel.Contract.Value
@@ -99,7 +99,7 @@ mod AcquisitionFacts {
     /// Every fact must name an admitted source, carry that source's exact hash
     /// and language, and lie inside the source's byte range: the evidence and
     /// the inclusion record cannot drift apart silently.
-    pub def world(sources: Vector[Source], facts: Vector[FactRow]): Result[String, Repository.World] = {
+    pub def world(sources: Vector[Source], facts: Vector[FactRow]): Result[String, Kernel.Contract.AdmittedWorld] = {
         let byPath = Vector.map(source -> (source#path, source), sources) |> Vector.toMap;
         forM (
             _ <- requireSorted(sources);
@@ -107,7 +107,7 @@ mod AcquisitionFacts {
             definitions <- factsFor(byPath, "defines", facts);
             imports <- factsFor(byPath, "imports", facts);
             calls <- factsFor(byPath, "calls", facts);
-            world <- Repository.admit(
+            world <- World.Admission.admit(
                 Vector.map(source -> {path = source#path, content = ""}, sources),
                 definitions, imports, calls) |> Result.mapErr(error -> ToString.toString(error))
         ) yield world

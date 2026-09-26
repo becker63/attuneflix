@@ -57,7 +57,7 @@ mod RoundJson {
         controlRevision: String,
         admittedFiles: Int32,
         round0: RoundIdentity.Round,
-        world: Repository.World,
+        world: Kernel.Contract.AdmittedWorld,
         mapping: RoundTopology.Mapping
     ): String = {
         let edges = RoundTopology.regionEdges(world, mapping);
@@ -94,7 +94,7 @@ mod RoundJson {
     pub def topologyProtocol(): String = "attuneflix-round-topology-v1"
     pub def cellAmendment(): String = "attuneflix-cells-v1-round1"
 
-    def regionsJson(world: Repository.World, mapping: RoundTopology.Mapping, edges: Vector[(String, String)]): Json = {
+    def regionsJson(world: Kernel.Contract.AdmittedWorld, mapping: RoundTopology.Mapping, edges: Vector[(String, String)]): Json = {
         let nonEmpty = RoundTopology.nonEmptyRegions(world, mapping);
         obj(Vector#{
             ("non_empty", int(Vector.length(nonEmpty))),
@@ -110,7 +110,7 @@ mod RoundJson {
         })
     }
 
-    def cutsJson(world: Repository.World, mapping: RoundTopology.Mapping, edges: Vector[(String, String)]): Json =
+    def cutsJson(world: Kernel.Contract.AdmittedWorld, mapping: RoundTopology.Mapping, edges: Vector[(String, String)]): Json =
         arr(Vector.map(k -> {
             let groups = RoundTopology.regionGroups(world, mapping, k);
             obj(Vector#{
@@ -135,7 +135,7 @@ mod RoundJson {
             ("excluded_other_edges", int(cut#otherEdges))
         })
 
-    def hotspotsJson(world: Repository.World, mapping: RoundTopology.Mapping): Json = {
+    def hotspotsJson(world: Kernel.Contract.AdmittedWorld, mapping: RoundTopology.Mapping): Json = {
         let hotspots = RoundTopology.hotspotFiles(world, mapping);
         obj(Vector#{
             ("shared_hotspots", int(Vector.length(hotspots))),
@@ -148,7 +148,7 @@ mod RoundJson {
         })
     }
 
-    def coherenceJson(world: Repository.World, mapping: RoundTopology.Mapping): Json = {
+    def coherenceJson(world: Kernel.Contract.AdmittedWorld, mapping: RoundTopology.Mapping): Json = {
         let (region0, value) = RoundTopology.minCoherence(world, mapping);
         obj(Vector#{
             ("min", real(value)),
@@ -156,7 +156,7 @@ mod RoundJson {
         })
     }
 
-    def atlasJson(world: Repository.World, mapping: RoundTopology.Mapping): Json = {
+    def atlasJson(world: Kernel.Contract.AdmittedWorld, mapping: RoundTopology.Mapping): Json = {
         let blasts = RoundTopology.fileBlasts(world);
         let overlaps0 = RoundTopology.overlaps(world, mapping);
         let high = Vector.filter(overlap -> overlap#jaccard >= 0.5, overlaps0);
@@ -186,8 +186,8 @@ mod RoundJson {
     /// Frozen basis edges re-admitted at the candidate paths do not reproduce,
     /// and the candidate edges they predict instead (§6.2 identity layer).
     def basisEdgeDriftJson(
-        world: Repository.World,
-        candidateWorld: Repository.World,
+        world: Kernel.Contract.AdmittedWorld,
+        candidateWorld: Kernel.Contract.AdmittedWorld,
         round0: RoundIdentity.Round
     ): Json = {
         let translated = RoundOracle.translatedEdgePaths(world, RoundIdentity.mapping(round0));
@@ -208,8 +208,8 @@ mod RoundJson {
         controlRevision: String,
         controlSources: Vector[AcquisitionFacts.Source],
         controlFacts: Vector[AcquisitionFacts.FactRow],
-        world: Repository.World,
-        candidateWorld: Repository.World,
+        world: Kernel.Contract.AdmittedWorld,
+        candidateWorld: Kernel.Contract.AdmittedWorld,
         round0: RoundIdentity.Round,
         control: ControlSignature.Landmarks,
         candidate: ControlSignature.Landmarks

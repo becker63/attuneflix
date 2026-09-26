@@ -74,7 +74,7 @@ mod RoundTest {
 
     // ---- the frozen control basis re-expressed at candidate paths ----
 
-    def source0(path: String): Repository.Source = {path = path, content = ""}
+    def source0(path: String): Kernel.Contract.SourceFile = {path = path, content = ""}
 
     def definition(path: String, name: String): Repository.Grit.Fact =
         {kind = "definition", path = path, startByte = 0, endByte = 1, value = name}
@@ -82,8 +82,8 @@ mod RoundTest {
     def importFact(path: String, target: String): Repository.Grit.Fact =
         {kind = "import", path = path, startByte = 1, endByte = 2, value = target}
 
-    def worldOf(paths: Vector[String], imports: Vector[Repository.Grit.Fact]): Repository.World =
-        Repository.admit(
+    def worldOf(paths: Vector[String], imports: Vector[Repository.Grit.Fact]): Kernel.Contract.AdmittedWorld =
+        World.Admission.admit(
             Vector.map(source0, paths),
             Vector.mapWithIndex((index, path) -> definition(path, "D${index}"), paths),
             imports,
@@ -94,7 +94,7 @@ mod RoundTest {
     /// `src/Atlas.flix` is the engine cell; the law file `build/src/A.flix`
     /// imports it. At control the edge is law-excluded; moved into
     /// `test/World/` it becomes a considered world->engine edge.
-    def twoFileWorld(): Repository.World =
+    def twoFileWorld(): Kernel.Contract.AdmittedWorld =
         worldOf(Vector#{"build/src/A.flix", "src/Atlas.flix"},
             Vector#{importFact("build/src/A.flix", "Atlas")})
 

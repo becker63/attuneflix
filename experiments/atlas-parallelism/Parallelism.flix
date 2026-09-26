@@ -37,7 +37,7 @@ mod Parallelism {
     /// tracked files, one `module<TAB>path` row per declared module, and one
     /// `source<TAB>target` row per use edge).
     pub def selfWorld(files0: Vector[String], modules: Vector[(String, String)],
-                      uses: Vector[(String, String)]): Repository.World = {
+                      uses: Vector[(String, String)]): Kernel.Contract.AdmittedWorld = {
         let fileIds = Vector.mapWithIndex((index, path) ->
             (path, Kernel.Contract.FileId.FileId(index)), files0) |> Vector.toMap;
         {
@@ -96,14 +96,14 @@ mod Parallelism {
     }
 
     /// Read a committed self-world triple, identity restored from metadata.
-    pub def readWorld(metadataPath: String, entitiesPath: String, relationsPath: String): Result[String, (Repository.Table.Identity, Repository.World)] \ IO =
+    pub def readWorld(metadataPath: String, entitiesPath: String, relationsPath: String): Result[String, (Repository.Table.Identity, Kernel.Contract.AdmittedWorld)] \ IO =
         identityOf(metadataPath) |> Result.flatMap(identity ->
             Repository.Table.read(metadataPath, entitiesPath, relationsPath, identity)
                 |> Result.map(world -> (identity, world)))
 
     /// Run one action over a world read from its committed triple.
     def withWorld(metadataPath: String, entitiesPath: String, relationsPath: String,
-                  action: (Repository.Table.Identity, Repository.World) -> Unit \ IO): Unit \ IO =
+                  action: (Repository.Table.Identity, Kernel.Contract.AdmittedWorld) -> Unit \ IO): Unit \ IO =
         match readWorld(metadataPath, entitiesPath, relationsPath) {
             case Err(error) => bug!(error)
             case Ok((identity, world)) => action(identity, world)
@@ -123,47 +123,47 @@ mod Parallelism {
     // Measurement.
 
     /// The region's file frontier under the fixed partition rule.
-    pub def regionSeed(world: Repository.World, region0: String): Set[Kernel.Contract.FileId] =
+    pub def regionSeed(world: Kernel.Contract.AdmittedWorld, region0: String): Set[Kernel.Contract.FileId] =
         Vector.mapWithIndex((index, path) -> (path, Kernel.Contract.FileId.FileId(index)), world#files)
             |> Vector.filterMap(match (path, id) -> if (regionOf(path) == region0) Some(id) else None)
             |> Vector.toSet
 
     /// File members of a state; symbol members project to their declaring file.
-    def members(state: Atlas.State, world: Repository.World): Set[String] = match state {
+    def members(state: Atlas.State, world: Kernel.Contract.AdmittedWorld): Set[String] = match state {
         case Atlas.State.Files(ids) => Set.map(fileIdentity(world), ids)
         case Atlas.State.Symbols(ids) => Set.map(symbolFile(world), ids)
     }
 
-    def fileIdentity(world: Repository.World, id: Kernel.Contract.FileId): String =
+    def fileIdentity(world: Kernel.Contract.AdmittedWorld, id: Kernel.Contract.FileId): String =
         let Kernel.Contract.FileId.FileId(index) = id;
         Vector.get(index, world#files)
 
-    def symbolFile(world: Repository.World, id: Kernel.Contract.SymbolId): String =
+    def symbolFile(world: Kernel.Contract.AdmittedWorld, id: Kernel.Contract.SymbolId): String =
         let Kernel.Contract.SymbolId.SymbolId(index) = id;
         Vector.get(index, world#symbols)#path
 
-    def regionAt(world: Repository.World, id: Kernel.Contract.FileId): String =
+    def regionAt(world: Kernel.Contract.AdmittedWorld, id: Kernel.Contract.FileId): String =
         regionOf(fileIdentity(world, id))
 
     /// The file-space union of every output of one Atlas family from one File
     /// seed. This is the whole neighborhood expansion: every step is one real
     /// `Atlas.evaluate` transition over the admitted world.
-    pub def expansion(world: Repository.World, seed: Set[Kernel.Contract.FileId],
+    pub def expansion(world: Kernel.Contract.AdmittedWorld, seed: Set[Kernel.Contract.FileId],
                       family0: Vector[Atlas.Program]): Set[String] = {
         let evaluation = Experiment.require(Atlas.evaluate(world, Atlas.State.Files(seed), family0));
         Vector.foldLeft((acc, output) -> Set.union(acc, members(output, world)), Set.empty(), evaluation#outputs)
     }
 
     /// The preregistered depth-2 family expansion from one File seed.
-    pub def outputUnion(world: Repository.World, seed: Set[Kernel.Contract.FileId]): Set[String] =
+    pub def outputUnion(world: Kernel.Contract.AdmittedWorld, seed: Set[Kernel.Contract.FileId]): Set[String] =
         expansion(world, seed, family())
 
     /// M5 file blast radius: the output union size from one single-file seed.
-    def blast(world: Repository.World, index: Int32): Int32 =
+    def blast(world: Kernel.Contract.AdmittedWorld, index: Int32): Int32 =
         Set.size(outputUnion(world, Set#{Kernel.Contract.FileId.FileId(index)}))
 
     /// M7 neighborhood: the depth-<=2 member union including the seed files.
-    def neighborhood(world: Repository.World, region0: String): Set[String] = {
+    def neighborhood(world: Kernel.Contract.AdmittedWorld, region0: String): Set[String] = {
         let seed = regionSeed(world, region0);
         Set.union(Set.map(fileIdentity(world), seed), outputUnion(world, seed))
     }
@@ -182,7 +182,7 @@ mod Parallelism {
     }
 
     /// The region-edge list: one (source-region, target-region) per use edge.
-    def edgeRegions(world: Repository.World): Vector[(String, String)] =
+    def edgeRegions(world: Kernel.Contract.AdmittedWorld): Vector[(String, String)] =
         Vector.map(match (source, target) -> (regionAt(world, source), regionAt(world, target)),
             Set.toVector(world#imports))
 
@@ -193,7 +193,7 @@ mod Parallelism {
 
     /// M8 basis statistic: for each admitted file, the set of regions whose
     /// files import it from a different region.
-    pub def pressures(world: Repository.World): Map[Kernel.Contract.FileId, Set[String]] =
+    pub def pressures(world: Kernel.Contract.AdmittedWorld): Map[Kernel.Contract.FileId, Set[String]] =
         Vector.foldLeft((acc, edge) -> match edge {
             case (f, g) => {
                 let rf = regionAt(world, f);
@@ -204,7 +204,7 @@ mod Parallelism {
         }, Map.empty(), Set.toVector(world#imports))
 
     /// The file that attains M7's maximum pair Jaccard, as a stable name.
-    pub def argmaxPair(world: Repository.World): String = {
+    pub def argmaxPair(world: Kernel.Contract.AdmittedWorld): String = {
         let hoods = Vector.map(region0 -> (region0, neighborhood(world, region0)), nonEmptyRegions(world));
         let pairs0 = Vector.flatMap(match (a, ha) ->
             Vector.filterMap(match (b, hb) -> if (a < b) Some((a, b, jaccard(ha, hb))) else None, hoods), hoods);
@@ -258,7 +258,7 @@ mod Parallelism {
         }, "", groups)
 
     /// M10 reported quantity: the inter-group use-edge count at k workers.
-    pub def crossEdges(world: Repository.World, k: Int32): Int32 = {
+    pub def crossEdges(world: Kernel.Contract.AdmittedWorld, k: Int32): Int32 = {
         let edges = edgeRegions(world);
         let start = Vector.sortBy(groupName, Vector.filterMap(region0 ->
             if (Set.isEmpty(regionSeed(world, region0))) None
@@ -268,13 +268,13 @@ mod Parallelism {
             groupOf(groups, f) != groupOf(groups, t), edges))
     }
 
-    def nonEmptyRegions(world: Repository.World): Vector[String] =
+    def nonEmptyRegions(world: Kernel.Contract.AdmittedWorld): Vector[String] =
         Vector.filter(region0 -> not Set.isEmpty(regionSeed(world, region0)), regions())
 
     /// The preregistered coordination-surface quantities, (name, value) pairs
     /// in fixed order. Definitions: PREREGISTRATION.md M1-M10 (M2, the raw
     /// LOC, is counted outside the instrument).
-    pub def quantities(world: Repository.World): Vector[(String, Float64)] = {
+    pub def quantities(world: Kernel.Contract.AdmittedWorld): Vector[(String, Float64)] = {
         let edges = edgeRegions(world);
         let nonEmpty = nonEmptyRegions(world);
         let hoods = Vector.map(region0 -> (region0, neighborhood(world, region0)), nonEmpty);
@@ -309,7 +309,7 @@ mod Parallelism {
     }
 
     /// M6: the largest family output from the region seed, over the seed size.
-    def regionBlast(world: Repository.World, region0: String): Float64 = {
+    def regionBlast(world: Kernel.Contract.AdmittedWorld, region0: String): Float64 = {
         let seedSize = Set.size(regionSeed(world, region0));
         let evaluation = Experiment.require(Atlas.evaluate(world, Atlas.State.Files(regionSeed(world, region0)), family()));
         Int32.toFloat64(Vector.foldLeft((best, output) -> {
@@ -394,7 +394,7 @@ mod Parallelism {
             }
         })
 
-    def pairsRows(identity: Repository.Table.Identity, world: Repository.World): Vector[Kernel.Contract.Row] = {
+    def pairsRows(identity: Repository.Table.Identity, world: Kernel.Contract.AdmittedWorld): Vector[Kernel.Contract.Row] = {
         let hoods = Vector.map(region0 -> (region0, neighborhood(world, region0)), nonEmptyRegions(world));
         Vector.flatMap(match (a, ha) ->
             Vector.filterMap(match (b, hb) -> if (a < b) Some((a, b, ha, hb)) else None, hoods), hoods)
@@ -508,7 +508,7 @@ mod Parallelism {
     pub type alias FourRow = {
         label    = String,
         revision = String,
-        world    = Repository.World
+        world    = Kernel.Contract.AdmittedWorld
     }
 
     def fourRow(index: Int32): FourRow \ IO = {

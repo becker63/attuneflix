@@ -16,47 +16,47 @@ mod RoundTopology {
     /// Translate one control path to its candidate path (identity if unmapped).
     pub def current(mapping: Mapping, path: String): String = Map.getWithDefault(path, path, mapping)
 
-    pub def regionEdges(world: Repository.World, mapping: Mapping): Vector[(String, String)] =
+    pub def regionEdges(world: Kernel.Contract.AdmittedWorld, mapping: Mapping): Vector[(String, String)] =
         Vector.map(match (source, target) ->
             (ControlMap.regionOf(current(mapping, source)), ControlMap.regionOf(current(mapping, target))),
             ControlTopology.edgePaths(world))
 
-    pub def cellEdges(world: Repository.World, mapping: Mapping): Vector[(String, String)] =
+    pub def cellEdges(world: Kernel.Contract.AdmittedWorld, mapping: Mapping): Vector[(String, String)] =
         Vector.map(match (source, target) ->
             (ControlMap.roundCellOf(current(mapping, source)), ControlMap.roundCellOf(current(mapping, target))),
             ControlTopology.edgePaths(world))
 
-    pub def regionFiles(world: Repository.World, mapping: Mapping, region0: String): Vector[String] =
+    pub def regionFiles(world: Kernel.Contract.AdmittedWorld, mapping: Mapping, region0: String): Vector[String] =
         Vector.filterMap(path ->
             if (ControlMap.regionOf(current(mapping, path)) == region0) Some(current(mapping, path)) else None,
             world#files)
 
-    pub def regionCells(world: Repository.World, mapping: Mapping, cell0: String): Vector[String] =
+    pub def regionCells(world: Kernel.Contract.AdmittedWorld, mapping: Mapping, cell0: String): Vector[String] =
         Vector.filter(path -> ControlMap.roundCellOf(current(mapping, path)) == cell0, world#files)
 
     /// §4: regions with no candidate files are dropped from the candidate's
     /// analyses rather than reported as zero-valued phantoms.
-    pub def nonEmptyRegions(world: Repository.World, mapping: Mapping): Vector[String] =
+    pub def nonEmptyRegions(world: Kernel.Contract.AdmittedWorld, mapping: Mapping): Vector[String] =
         Vector.filter(region0 -> not Vector.isEmpty(regionFiles(world, mapping, region0)), ControlMap.regions())
 
     // ---- T4: the same frozen greedy k-way cut over candidate regions ----
 
-    pub def regionGroups(world: Repository.World, mapping: Mapping, k: Int32): Vector[(String, Set[String])] = {
+    pub def regionGroups(world: Kernel.Contract.AdmittedWorld, mapping: Mapping, k: Int32): Vector[(String, Set[String])] = {
         let seeds = Vector.map(region0 -> (region0, Set#{region0}), nonEmptyRegions(world, mapping));
         ControlTopology.mergeBy((a, b) -> ControlTopology.interGroups(regionEdges(world, mapping), a, b), k,
             Vector.sortBy(match (name, _) -> name, seeds))
     }
 
-    pub def crossEdges(world: Repository.World, mapping: Mapping, k: Int32): Int32 =
+    pub def crossEdges(world: Kernel.Contract.AdmittedWorld, mapping: Mapping, k: Int32): Int32 =
         Vector.count(match (f, t) -> ControlTopology.crosses(regionGroups(world, mapping, k), f, t),
             regionEdges(world, mapping))
 
-    pub def cutCounts(world: Repository.World, mapping: Mapping): Vector[(Int32, Int32)] =
+    pub def cutCounts(world: Kernel.Contract.AdmittedWorld, mapping: Mapping): Vector[(Int32, Int32)] =
         Vector.map(k -> (k, crossEdges(world, mapping, k)), ControlTopology.cutDepths())
 
     // ---- T5: the amended K4 ownership-cell cut ----
 
-    pub def cellCut(world: Repository.World, mapping: Mapping): ControlTopology.CellCut =
+    pub def cellCut(world: Kernel.Contract.AdmittedWorld, mapping: Mapping): ControlTopology.CellCut =
         ControlTopology.cellCutFor(ControlTopology.fourCells(), cellEdges(world, mapping))
 
     // ---- T6: coherence over candidate regions ----
@@ -64,13 +64,13 @@ mod RoundTopology {
     /// T8: non-empty candidate regions that no non-test-side region uses into.
     /// The frozen test-side rule is reused unchanged; after round 1 `tests` is
     /// the only test-side region left (`build-src` is empty and dropped).
-    pub def independentlyTestableRegions(world: Repository.World, mapping: Mapping): Vector[String] = {
+    pub def independentlyTestableRegions(world: Kernel.Contract.AdmittedWorld, mapping: Mapping): Vector[String] = {
         let edges = regionEdges(world, mapping);
         Vector.filter(region0 -> ControlTopology.independentlyTestable(edges, region0),
             nonEmptyRegions(world, mapping))
     }
 
-    pub def minCoherence(world: Repository.World, mapping: Mapping): (String, Float64) = {
+    pub def minCoherence(world: Kernel.Contract.AdmittedWorld, mapping: Mapping): (String, Float64) = {
         let edges = regionEdges(world, mapping);
         Vector.foldLeft((best, region0) -> {
             let value = ControlTopology.coherence(edges, region0);
@@ -80,7 +80,7 @@ mod RoundTopology {
 
     // ---- T7: hotspot pressure over candidate regions ----
 
-    pub def hotspotFiles(world: Repository.World, mapping: Mapping): Vector[(String, Vector[String], Int32)] = {
+    pub def hotspotFiles(world: Kernel.Contract.AdmittedWorld, mapping: Mapping): Vector[(String, Vector[String], Int32)] = {
         let pressures = Vector.foldLeft((acc, edge) -> match edge {
             case (f, g) => {
                 let rf = ControlMap.regionOf(current(mapping, ControlTopology.fileIdentity(world, f)));
@@ -96,20 +96,20 @@ mod RoundTopology {
             |> Vector.sortBy(match (path, _, pressure) -> (0 - pressure, path))
     }
 
-    pub def maxHotspotPressure(world: Repository.World, mapping: Mapping): Int32 =
+    pub def maxHotspotPressure(world: Kernel.Contract.AdmittedWorld, mapping: Mapping): Int32 =
         Vector.foldLeft((best, entry) -> match entry {
             case (_, _, pressure) => if (pressure > best) pressure else best
         }, 0, hotspotFiles(world, mapping))
 
     // ---- T9/T10: ATLAS depth-<=2 neighborhoods over candidate regions ----
 
-    def regionSeed(world: Repository.World, mapping: Mapping, region0: String): Set[Kernel.Contract.FileId] =
+    def regionSeed(world: Kernel.Contract.AdmittedWorld, mapping: Mapping, region0: String): Set[Kernel.Contract.FileId] =
         Vector.mapWithIndex((index, path) -> (path, Kernel.Contract.FileId.FileId(index)), world#files)
             |> Vector.filterMap(match (path, id) ->
                 if (ControlMap.regionOf(current(mapping, path)) == region0) Some(id) else None)
             |> Vector.toSet
 
-    def neighborhood(world: Repository.World, mapping: Mapping, region0: String): Set[String] = {
+    def neighborhood(world: Kernel.Contract.AdmittedWorld, mapping: Mapping, region0: String): Set[String] = {
         let seed = regionSeed(world, mapping, region0);
         Set.union(
             Set.map(id -> current(mapping, ControlTopology.fileIdentity(world, id)), seed),
@@ -117,7 +117,7 @@ mod RoundTopology {
     }
 
     /// T9 candidate region-pair Jaccard overlap, sorted by region pair.
-    pub def overlaps(world: Repository.World, mapping: Mapping): Vector[ControlTopology.Overlap] = {
+    pub def overlaps(world: Kernel.Contract.AdmittedWorld, mapping: Mapping): Vector[ControlTopology.Overlap] = {
         let hoods = Vector.map(region0 -> (region0, neighborhood(world, mapping, region0)),
             nonEmptyRegions(world, mapping));
         let pairs0 = Vector.flatMap(match (a, hoodA) -> Vector.filterMap(match (b, hoodB) ->
@@ -128,10 +128,10 @@ mod RoundTopology {
 
     /// T10 candidate file blast radii. A move changes no set cardinality, so the
     /// values must equal control's byte-for-byte; that equality is a law test.
-    pub def fileBlasts(world: Repository.World): Vector[Int32] = ControlTopology.fileBlasts(world)
+    pub def fileBlasts(world: Kernel.Contract.AdmittedWorld): Vector[Int32] = ControlTopology.fileBlasts(world)
 
     /// The largest candidate-region depth-<=2 output cardinality over seed size.
-    pub def regionBlast(world: Repository.World, mapping: Mapping, region0: String): Float64 = {
+    pub def regionBlast(world: Kernel.Contract.AdmittedWorld, mapping: Mapping, region0: String): Float64 = {
         let seed = regionSeed(world, mapping, region0);
         let seedSize = Set.size(seed);
         if (seedSize == 0) 0.0
@@ -145,7 +145,7 @@ mod RoundTopology {
         }
     }
 
-    pub def maxRegionBlast(world: Repository.World, mapping: Mapping): Float64 =
+    pub def maxRegionBlast(world: Kernel.Contract.AdmittedWorld, mapping: Mapping): Float64 =
         Vector.foldLeft((best, region0) -> {
             let value = regionBlast(world, mapping, region0);
             if (value > best) value else best

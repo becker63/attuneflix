@@ -107,7 +107,7 @@ pub mod Localization.Sandwich {
         else if (prepared#baseCommit != prior#baseCommit) Err("prior revision mismatch")
         else Ok(())
 
-    def seed(world: Repository.World, ranking: Vector[Localization.Ranked]): Result[String, Atlas.State] = {
+    def seed(world: Kernel.Contract.AdmittedWorld, ranking: Vector[Localization.Ranked]): Result[String, Atlas.State] = {
         let centers = Vector.slice(start = 0, end = Int32.min(8, Vector.length(ranking)), ranking);
         match Vector.find(item -> item#ordinal < 0 or item#ordinal >= Vector.length(world#symbols), centers) {
             case Some(_) => Err("semantic prior contains an invalid symbol ordinal")

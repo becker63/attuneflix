@@ -73,7 +73,7 @@ tests, and evaluator gold are excluded.
 The historical embedding and ranking procedure is reconstructed over the
 current AttuneFlix SWE-Explore world, not over the retired Spider graph. The
 frozen documents are every callable admitted by the permanent Grit `Defines`
-program, in `Repository.World.symbols` order. Their provider-visible text is:
+program, in `Kernel.Contract.AdmittedWorld.symbols` order. Their provider-visible text is:
 
 ```text
 repository-relative path:local callable name

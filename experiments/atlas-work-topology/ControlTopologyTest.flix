@@ -9,9 +9,9 @@
 mod ControlTopologyTest {
     use Repository.Grit.Fact
 
-    // ---- Tiny synthesized worlds, through ordinary Repository.admit ----
+    // ---- Tiny synthesized worlds, through ordinary World.Admission.admit ----
 
-    def source(path: String): Repository.Source = {path = path, content = ""}
+    def source(path: String): Kernel.Contract.SourceFile = {path = path, content = ""}
 
     def fact(kind: String, path: String, start: Int32, end: Int32, value: String): Fact =
         {kind = kind, path = path, startByte = start, endByte = end, value = value}
@@ -20,8 +20,8 @@ mod ControlTopologyTest {
 
     def importFact(path: String, target: String): Fact = fact("import", path, 2, 3, target)
 
-    def worldOf(paths: Vector[String], imports: Vector[Fact]): Repository.World =
-        Repository.admit(
+    def worldOf(paths: Vector[String], imports: Vector[Fact]): Kernel.Contract.AdmittedWorld =
+        World.Admission.admit(
             Vector.map(source, paths),
             Vector.mapWithIndex((index, path) -> definition(path, "D${index}"), paths),
             imports,
@@ -31,7 +31,7 @@ mod ControlTopologyTest {
 
     /// Four files in four distinct regions; `a`<->`b` is a two-edge clique and
     /// `c`->`d` is a single edge.
-    def fourRegionWorld(): Repository.World =
+    def fourRegionWorld(): Kernel.Contract.AdmittedWorld =
         worldOf(
             Vector#{"src/Atlas.flix", "src/Radii.flix", "src/Repository.flix", "test/T.flix"},
             Vector#{

@@ -1,7 +1,7 @@
 /// The shared a/b test world used by the Atlas grammar and Localization
 /// law tests: a.js defines a, b.js defines b, a imports b, and a calls b.
 pub mod TestWorlds {
-    pub def abWorld(): Repository.World = {
+    pub def abWorld(): Kernel.Contract.AdmittedWorld = {
         let f0 = Kernel.Contract.FileId.FileId(0);
         let f1 = Kernel.Contract.FileId.FileId(1);
         let s0 = Kernel.Contract.SymbolId.SymbolId(0);

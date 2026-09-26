@@ -1,7 +1,7 @@
 /// The control specimen's Atlas depth-response curve (PREREGISTRATION.md §3).
 ///
 /// The instrument re-admits the committed control evidence through ordinary
-/// `Repository.admit`, evaluates the frozen composition-only Atlas family
+/// `World.Admission.admit`, evaluates the frozen composition-only Atlas family
 /// (`atlas-composition-depth7-v1`) over the frozen `atlas-signature-seeds-v1`
 /// panel at depth 7, and writes the two typed signature tables plus the logical
 /// identity map of §9:
@@ -37,7 +37,7 @@ mod ControlSignature {
     /// Re-admit the committed control evidence as the canonical typed basis.
     /// Every fact must name an admitted source and lie inside it, so the
     /// signature is measured over the same world the acquisition froze.
-    pub def world(sourcesPath: String, factsPath: String): Repository.World \ IO =
+    pub def world(sourcesPath: String, factsPath: String): Kernel.Contract.AdmittedWorld \ IO =
         Experiment.require(AcquisitionFacts.world(
             AcquisitionFacts.readSources(sourcesPath),
             AcquisitionFacts.readFacts(factsPath)))
@@ -53,7 +53,7 @@ mod ControlSignature {
     /// acquisition seam derives it for a Grit-acquired revision. The identity
     /// derivations are `\ Digest`; this instrument supplies the capability at
     /// its own IO boundary.
-    pub def identityOf(revision: String, world: Repository.World): WorldIdentity \ IO =
+    pub def identityOf(revision: String, world: Kernel.Contract.AdmittedWorld): WorldIdentity \ IO =
         Kernel.DigestHandler.runDigest(() -> {
             let sourceTreeIdentity = "attuneflix-source-tree-v2:" + revision;
             let factIdentity = Repository.Table.factIdentity(sourceTreeIdentity, AcquisitionFacts.gritIdentity(), world);
@@ -80,7 +80,7 @@ mod ControlSignature {
 
     /// One full depth-7 signature per frozen seed (8 File seeds and 8 Symbol
     /// seeds through `Atlas.Signature.seeds`, fewer only if a domain is small).
-    pub def signatures(world: Repository.World): Vector[(Atlas.Signature.Seed, Atlas.Signature.Signature)] \ IO =
+    pub def signatures(world: Kernel.Contract.AdmittedWorld): Vector[(Atlas.Signature.Seed, Atlas.Signature.Signature)] \ IO =
         Kernel.DigestHandler.runDigest(() -> Vector.map(seed -> (seed, Experiment.require(
             Atlas.Signature.compute(world, seed#state, maxDepth()))),
             Atlas.Signature.seeds(world)))
@@ -110,7 +110,7 @@ mod ControlSignature {
     /// §3 defines it. `none` (the curve never reaches the threshold) is encoded
     /// as `maxDepth + 1` so drift is always an integer comparison.
     pub def landmarks(
-        world: Repository.World,
+        world: Kernel.Contract.AdmittedWorld,
         computed: Vector[(Atlas.Signature.Seed, Atlas.Signature.Signature)]
     ): Landmarks = {
         let fileCount = Vector.length(world#files);
@@ -143,7 +143,7 @@ mod ControlSignature {
     }
 
     /// The cumulative file reach of one File seed, indexed by depth 1..7.
-    def cumulativeReach(world: Repository.World, signature: Atlas.Signature.Signature): Vector[Set[String]] = {
+    def cumulativeReach(world: Kernel.Contract.AdmittedWorld, signature: Atlas.Signature.Signature): Vector[Set[String]] = {
         let zero: Vector[Set[String]] = Vector.empty();
         Vector.foldLeft((acc, depth) -> {
             let added = Vector.filter(observation -> observation#depth == depth, signature#observations)
@@ -155,16 +155,16 @@ mod ControlSignature {
     }
 
     /// File members of a state; symbol members project to the declaring file.
-    def stateMembers(world: Repository.World, state: Atlas.State): Set[String] = match state {
+    def stateMembers(world: Kernel.Contract.AdmittedWorld, state: Atlas.State): Set[String] = match state {
         case Atlas.State.Files(ids) => Set.map(id -> fileIdentity(world, id), ids)
         case Atlas.State.Symbols(ids) => Set.map(id -> symbolFile(world, id), ids)
     }
 
-    def fileIdentity(world: Repository.World, id: Kernel.Contract.FileId): String =
+    def fileIdentity(world: Kernel.Contract.AdmittedWorld, id: Kernel.Contract.FileId): String =
         let Kernel.Contract.FileId.FileId(index) = id;
         Vector.get(index, world#files)
 
-    def symbolFile(world: Repository.World, id: Kernel.Contract.SymbolId): String =
+    def symbolFile(world: Kernel.Contract.AdmittedWorld, id: Kernel.Contract.SymbolId): String =
         let Kernel.Contract.SymbolId.SymbolId(index) = id;
         Vector.get(index, world#symbols)#path
 

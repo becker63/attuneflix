@@ -10,7 +10,7 @@ Every language emits the same `Repository.Grit.Fact` shape and flows through
 ordinary Repository admission. There are no per-language fact types, and the
 native host never normalizes syntax differently for Atlas: language-specific
 syntax is parsed by Grit (inside the frozen closure), and `Repository.Acquire`
-turns the one wire envelope into one canonical `Repository.World`.
+turns the one wire envelope into one canonical `Kernel.Contract.AdmittedWorld`.
 
 File routing is explicit:
 
@@ -25,7 +25,7 @@ File routing is explicit:
 | `.bzl`, `.bazel`, `.star` | `starlark.grit` | `language starlark` |
 | `BUILD`, `BUILD.bazel`, `WORKSPACE`, `WORKSPACE.bazel` | `starlark.grit` | `language starlark` |
 
-`Repository.language(path)` (`Repository.Grit.language`) is the one detection
+`World.language(path)` (`Repository.Grit.language`) is the one detection
 table; unknown extensions are rejected before Grit runs. Every entry point
 documents positive examples, exclusions, normalization, parser selection,
 returned values, and the later resolver/admission responsibilities.

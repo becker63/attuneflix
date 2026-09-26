@@ -157,7 +157,7 @@ mod ControlCoChange {
     def obj(fields: Vector[(String, Json)]): Json = JObject(Vector.toMap(fields))
 
     pub def json(revision: String, commits: Vector[Commit], admitted: Set[String],
-                 world: Repository.World): String = {
+                 world: Kernel.Contract.AdmittedWorld): String = {
         let entries = Map.toVector(graph(commits, admitted));
         let regionPairs = Map.toVector(regionPairMass(entries));
         let totalRaw0 = totalRaw(entries);

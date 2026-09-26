@@ -4,7 +4,7 @@ use Repository.Grit.{Fact, Language, Program, Wire}
 /// frontend envelopes (captured from the real native Grit engine and re-verified
 /// live by //src/native/grit:attune_grit_test) flow through the ONE fact
 /// protocol, ordinary Repository admission, and explicit per-language
-/// resolution into one canonical Repository.World.
+/// resolution into one canonical Kernel.Contract.AdmittedWorld.
 
 def span(path: String, range: (Int32, Int32)): String =
     let (start, end) = range;
@@ -52,7 +52,7 @@ def languageDetectionRoutesEveryAdmittedFileKind(): Unit \ Assert = {
         ("README.md", None)
     };
     Vector.forEach(match (path, expected) ->
-        Assert.assertEq(expected = expected, Repository.language(path)), cases)
+        Assert.assertEq(expected = expected, World.language(path)), cases)
 }
 
 @Test
@@ -68,7 +68,7 @@ def javaSourceAdmitsTheExpectedFacts(): Unit \ Assert = {
         ("definition", (42, 48)) :: ("definition", (67, 73)) :: ("definition", (106, 112)) :: Nil));
     let imports = facts(path, source, envelope(path, (12, 27) :: Nil, ("import", (19, 26)) :: Nil));
     let calls = facts(path, source, envelope(path, (128, 140) :: Nil, ("call", (128, 134)) :: Nil));
-    match Repository.admit(sources, definitions, imports, calls) {
+    match World.Admission.admit(sources, definitions, imports, calls) {
         case Err(error) => Assert.fail(ToString.toString(error))
         case Ok(world) => {
             Assert.assertEq(expected = Vector#{"definition", "definition", "definition"},
@@ -96,7 +96,7 @@ def flixSourceAdmitsTheExpectedFacts(): Unit \ Assert = {
         ("definition", (4, 8)) :: ("definition", (60, 66)) :: ("definition", (100, 103)) :: Nil));
     let imports = facts(path, source, envelope(path, (15, 46) :: Nil, ("import", (15, 46)) :: Nil));
     let calls = facts(path, source, envelope(path, (115, 124) :: Nil, ("call", (115, 121)) :: Nil));
-    match Repository.admit(sources, definitions, imports, calls) {
+    match World.Admission.admit(sources, definitions, imports, calls) {
         case Err(error) => Assert.fail(ToString.toString(error))
         case Ok(world) => {
             Assert.assertEq(expected = Vector#{"Demo", "helper", "run"},
@@ -122,7 +122,7 @@ def starlarkSourceAdmitsTheExpectedFacts(): Unit \ Assert = {
         ("definition", (40, 46)) :: ("definition", (68, 71)) :: Nil));
     let imports = facts(path, source, envelope(path, (5, 23) :: Nil, ("import", (5, 23)) :: Nil));
     let calls = facts(path, source, envelope(path, (79, 95) :: Nil, ("call", (79, 85)) :: Nil));
-    match Repository.admit(sources, definitions, imports, calls) {
+    match World.Admission.admit(sources, definitions, imports, calls) {
         case Err(error) => Assert.fail(ToString.toString(error))
         case Ok(world) => {
             Assert.assertEq(expected = Vector#{"helper", "run"},
@@ -153,14 +153,14 @@ def ambiguousJavaReferencesAreConservativelyRejected(): Unit \ Assert = {
         {path = "src/one/Client.java", content = ""},
         {path = "src/two/Client.java", content = ""}
     };
-    match Repository.admit(unique, definitions, imports, Vector.empty()) {
+    match World.Admission.admit(unique, definitions, imports, Vector.empty()) {
         case Err(error) => Assert.fail(ToString.toString(error))
         case Ok(world) => {
             Assert.assertEq(expected = Set#{(fileId(0), fileId(1))}, world#imports);
             Assert.assertEq(expected = 0, world#unresolvedImports)
         }
     };
-    match Repository.admit(ambiguous, definitions, imports, Vector.empty()) {
+    match World.Admission.admit(ambiguous, definitions, imports, Vector.empty()) {
         case Err(error) => Assert.fail(ToString.toString(error))
         case Ok(ambiguousWorld) => {
             Assert.assertEq(expected = Set.empty(), ambiguousWorld#imports);

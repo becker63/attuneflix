@@ -1644,7 +1644,7 @@ independent implementations by design:
 ```text
               Repository.Grit.Fact
                        |
-                 Repository.World               Level 1
+                 Kernel.Contract.AdmittedWorld               Level 1
         FileId / SymbolId / LocationId
                     /     \
                    v       v
@@ -1666,7 +1666,7 @@ Those labels are current Flix names, not conceptual placeholders:
 
 - [`Repository.Grit.Fact`](src/Repository/Grit.flix) is the admitted native
   observation shape.
-- [`Repository.World`](src/Repository.flix) stores the admitted basis using
+- [`Kernel.Contract.AdmittedWorld`](src/Repository.flix) stores the admitted basis using
   `Repository.Structure.FileId`, `SymbolId`, and `LocationId`.
 - [`Repository.Structure.Repository`](src/Repository/Structure.flix) is the
   first-class constraint set; `structuralRules` is the readable Datalog
@@ -1700,7 +1700,7 @@ Markdown is the human plane.
 See [data architecture](docs/data-architecture.md) for the executable format
 checks and current schemas.
 
-The frozen repository data plane is now 78 typed `Repository.World` artifacts
+The frozen repository data plane is now 78 typed `Kernel.Contract.AdmittedWorld` artifacts
 in Parquet: metadata, nominal File/Symbol/Location entities, and admitted
 definitions/imports/calls. Their identity is `repository + revision + exact
 JS/TS source-tree digest + Grit/Marzano protocol + admitted facts`; it contains

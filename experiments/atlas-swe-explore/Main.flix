@@ -28,7 +28,7 @@ mod CensusMain {
     def writeFixture(): Unit \ IO = {
         let file = Kernel.Contract.FileId.FileId(0);
         let symbol = Kernel.Contract.SymbolId.SymbolId(0);
-        let world: Repository.World = {
+        let world: Kernel.Contract.AdmittedWorld = {
             files = Vector#{"src/fixture.ts"},
             symbols = Vector#{{
                 path = "src/fixture.ts", name = "fixture", startByte = 0, endByte = 7
@@ -119,7 +119,7 @@ mod CensusMain {
 
     def measure(
         snapshot: Atlas.Signature.Table.SnapshotIdentity,
-        world: Repository.World,
+        world: Kernel.Contract.AdmittedWorld,
         seeds: List[Atlas.Signature.Seed],
         output: Output
     ): Result[String, Output] \ IO = match seeds {
