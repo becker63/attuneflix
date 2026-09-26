@@ -65,14 +65,16 @@ def attune_control_signatures(name = "control_signatures"):
 
 def attune_control_signature_artifacts_test(name = "control_signature_artifacts_test"):
     """Re-derives the landmarks and identity map from the committed evidence and
-    compares them with the committed artifacts; a mismatch is a non-zero exit."""
+    compares them with the committed artifacts; a mismatch is a non-zero exit.
+    Reads the world boundary and the signature stage's typed boundary only."""
     native.sh_test(
         name = name,
         size = "medium",
         srcs = ["control_signature_artifacts_test.sh"],
         data = [
+            ":control_signature_artifacts",
             ":control_signatures_bin",
-            ":control_files",
+            ":control_world_artifacts",
             "@bazel_tools//tools/bash/runfiles",
         ],
     )

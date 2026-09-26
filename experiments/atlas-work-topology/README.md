@@ -213,3 +213,23 @@ test-side rule, grammar invariance). `round1_artifacts_test` re-derives the
 identity map, topology and oracle from the committed control evidence and
 asserts byte-for-byte equality with the committed `round1/` artifacts.
 
+## Rounds 2 and 3 — narrow crossings and shared-owner stabilization
+
+The round-2 revision `10f3a212…` re-homed the two shared law fixtures onto the
+horizontal law surface; the round-3 revision `73b8709…` moved the shared
+`build/flix.bzl` rule definition to `test/build/flix.bzl` and restored
+`src/BUILD.bazel` byte-identically. Neither round moved `k_way_cut(8)`
+(70.07% → 69.34%), so §13 classifies the run Outcome C. Deltas, verdicts and
+gotchas: `rounds/round23.md`; the artifacts are under `round2/` and `round3/`.
+
+## Round 4 — typed artifact and build-cache boundaries
+
+The two expensive scientific stages (the depth 1..7 signature derivation and the
+static work-topology / co-change measurement) are now declared cacheable Bazel
+actions over their exact typed input boundary, with their typed artifacts as
+declared outputs; the frozen control evidence is declared as four per-stage
+artifact boundaries instead of one 10-file list, and
+`artifact_boundary_test` consumes the declared artifacts and checks them
+byte-for-byte against the frozen evidence. Details, the cache-hit logs and the
+declared input closures: `artifact-boundaries.md`.
+

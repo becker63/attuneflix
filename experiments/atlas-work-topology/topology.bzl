@@ -81,14 +81,16 @@ def attune_control_topology_check(name = "control_topology_check"):
 
 def attune_control_topology_artifacts_test(name = "control_topology_artifacts_test"):
     """Re-derives the topology document and the co-change graph from the
-    committed evidence and compares them with the committed artifacts."""
+    committed evidence and compares them with the committed artifacts. Reads the
+    world boundary and the topology stage's document boundary only."""
     native.sh_test(
         name = name,
         size = "medium",
         srcs = ["control_topology_artifacts_test.sh"],
         data = [
+            ":control_topology_artifacts",
             ":control_topology_bin",
-            ":control_files",
+            ":control_world_artifacts",
             "@bazel_tools//tools/bash/runfiles",
         ],
     )

@@ -79,7 +79,7 @@ def attune_control_reproducibility_test(name = "control_reproducibility_test"):
         args = [CONTROL_REVISION],
         data = [
             ":acquire_bin",
-            ":control_files",
+            ":control_world_artifacts",
             "@bazel_tools//tools/bash/runfiles",
         ],
         local = True,

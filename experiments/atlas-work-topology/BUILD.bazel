@@ -1,3 +1,4 @@
+load(":artifacts.bzl", "attune_artifact_boundary_test", "attune_control_stage")
 load(":control_signatures.bzl", "attune_control_signature_artifacts_test", "attune_control_signature_check", "attune_control_signatures")
 load(":round_topology.bzl", "attune_round_artifacts_test", "attune_round_check", "attune_round_reproducibility_test", "attune_round_topology")
 load(":topology.bzl", "attune_control_topology", "attune_control_topology_artifacts_test", "attune_control_topology_check")
@@ -8,19 +9,64 @@ package(default_visibility = ["//visibility:public"])
 # The frozen control evidence (§2, §3, §6, §8, §9, §14). Committed under
 # control/; read-only typed Parquet, the identity map, and the frozen topology
 # and co-change documents, never hand-edited.
+#
+# Round 4 declares the evidence as four *typed artifact boundaries*, one per
+# stage that produces it, instead of one 10-file list (K4 Hill-Climb Round 4,
+# PREREGISTRATION.md §7/§14). A consumer declares the boundary it actually
+# reads, so a change to one stage's artifact no longer invalidates the
+# consumers of another stage's:
+#
+#   world      acquisition (`acquire`)                 attuneflix-grit-{sources,facts}-v2
+#   signature  depth 1..7 signature stage              attune-atlas-signature-{observations,summary}-v1
+#   topology   work-topology / co-change stage         (frozen documents)
+#   locality   Build channel (`measure_bazel_locality.sh`)
+#
+# `control_files` stays as the union so one label still names the whole frozen
+# record (the report and the round bookkeeping read it that way).
 filegroup(
-    name = "control_files",
+    name = "control_world_artifacts",
+    srcs = [
+        "control/control.facts.parquet",
+        "control/control.files.txt",
+        "control/control.revision.txt",
+        "control/control.sources.parquet",
+    ],
+)
+
+filegroup(
+    name = "control_signature_artifacts",
+    srcs = [
+        "control/control.identity_map.json",
+        "control/control.signatures.parquet",
+        "control/control.summaries.parquet",
+    ],
+)
+
+filegroup(
+    name = "control_topology_artifacts",
     srcs = [
         "control/control.cochange.json",
         "control/control.cochange_history.txt",
-        "control/control.facts.parquet",
-        "control/control.files.txt",
-        "control/control.identity_map.json",
-        "control/control.revision.txt",
-        "control/control.signatures.parquet",
-        "control/control.sources.parquet",
-        "control/control.summaries.parquet",
         "control/control.topology.json",
+    ],
+)
+
+filegroup(
+    name = "control_locality_artifacts",
+    srcs = [
+        "control/control.fanout.txt",
+        "control/control.targets.txt",
+        "control/control.tests.txt",
+    ],
+)
+
+filegroup(
+    name = "control_files",
+    srcs = [
+        ":control_locality_artifacts",
+        ":control_signature_artifacts",
+        ":control_topology_artifacts",
+        ":control_world_artifacts",
     ],
 )
 
@@ -120,6 +166,44 @@ attune_control_signature_artifacts_test()
 # `control.cochange.json` (§6, §8).
 attune_control_topology()
 
+# The two expensive scientific stages as declared, cacheable Bazel actions
+# (K4 Hill-Climb Round 4; PREREGISTRATION.md §7, §14; VAL-HC4-001).
+#
+# Each stage is a pure function of the frozen typed evidence, so it is declared
+# with exactly that evidence as its inputs and its typed artifacts as declared
+# outputs. They are the artifact boundaries downstream consumers read:
+#
+#   bazel build //experiments/atlas-work-topology:control_signature_tables \
+#               //experiments/atlas-work-topology:control_topology_documents \
+#               --config=buildbuddy-rbe
+#
+# A second invocation reuses the action cache (`N remote cache hit`) because
+# nothing either stage reads has changed. The `bazel run` commands of record
+# above still write the committed evidence; these actions derive the same
+# artifacts into the build graph without touching the source tree.
+attune_control_stage(
+    name = "control_signature_tables",
+    evidence = [":control_world_artifacts"],
+    stage = "signatures",
+    tool = ":control_signatures_bin",
+)
+
+attune_control_stage(
+    name = "control_topology_documents",
+    evidence = [
+        ":control_world_artifacts",
+        "control/control.cochange_history.txt",
+    ],
+    stage = "topology",
+    tool = ":control_topology_bin",
+)
+
+# `bazel test //experiments/atlas-work-topology:artifact_boundary_test` is the
+# in-graph downstream consumer of those declared artifacts: it checks every
+# declared stage output against the committed frozen evidence, so the boundary
+# is only reused when it re-derives the frozen bytes exactly.
+attune_artifact_boundary_test()
+
 # Provenance and protocol law tests for the topology instrument (§4, §5, §6, §8).
 attune_control_topology_check()
 
@@ -159,6 +243,7 @@ attune_round_reproducibility_test(name = "round2_reproducibility_test", role = "
 test_suite(
     name = "research_tests",
     tests = [
+        ":artifact_boundary_test",
         ":control_reproducibility_test",
         ":control_signature_artifacts_test",
         ":control_signature_test",
