@@ -78,21 +78,23 @@ pub mod Repository.Table {
     /// Semantic fact identity. This includes the admitted source tree and
     /// Grit/Marzano protocol plus the canonical nominal world. Store paths,
     /// Parquet bytes, and evaluator representations are deliberately absent.
+    /// The digest is the declared `Digest` capability: this is a pure
+    /// analytical derivation, not an ambient `\ IO` computation.
     pub def factIdentity(
         sourceTreeIdentity: String,
         gritIdentity: String,
         world: Repository.World
-    ): String \ IO = ScientificIdentity.versioned("repository-facts-v2",
-        field(sourceTreeIdentity) + field(gritIdentity) + worldPayload(world))
+    ): String \ Kernel.Effect.Digest = "repository-facts-v2:${Kernel.Effect.Digest.digest(
+        field(sourceTreeIdentity) + field(gritIdentity) + worldPayload(world))}"
 
     pub def snapshotIdentity(
         repository: String,
         baseRevision: String,
         sourceTreeIdentity: String,
         factIdentity0: String
-    ): String \ IO = ScientificIdentity.versioned("repository-snapshot-v1",
+    ): String \ Kernel.Effect.Digest = "repository-snapshot-v1:${Kernel.Effect.Digest.digest(
         field(repository) + field(baseRevision) +
-        field(sourceTreeIdentity) + field(factIdentity0))
+        field(sourceTreeIdentity) + field(factIdentity0))}"
 
     /// Decode only the exact declared snapshot. Row order is not trusted;
     /// ordinals restore the vectors that define nominal FileId/SymbolId values.

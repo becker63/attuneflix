@@ -88,6 +88,7 @@ flix_check(
         "HandlerTest.flix",
         "//test:kernel_effect_law_sources",
         "//src:Kernel/Handler.flix",
+        "//src:Kernel/DigestHandler.flix",
         "//src:Repository.flix",
         "//src:Repository/Grit.flix",
         "//src:Repository/Structure.flix",

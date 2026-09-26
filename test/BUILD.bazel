@@ -116,6 +116,7 @@ filegroup(
     srcs = [
         "//src:Atlas.flix",
         "//src:Atlas/Signature.flix",
+        "//src:Kernel/Effect.flix",
     ],
 )
 

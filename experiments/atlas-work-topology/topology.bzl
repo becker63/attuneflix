@@ -25,6 +25,8 @@ _TOPOLOGY_SRCS = [
     "//src:Experiment.flix",
     "//src:Kernel.flix",
     "//src:Kernel/Contract.flix",
+    "//src:Kernel/Effect.flix",
+    "//src:Kernel/DigestHandler.flix",
     "//src:Radii.flix",
     "//src:Repository.flix",
     "//src:Repository/Grit.flix",

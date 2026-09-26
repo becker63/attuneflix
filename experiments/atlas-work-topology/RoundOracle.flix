@@ -71,12 +71,12 @@ mod RoundOracle {
         world: Repository.World,
         candidate: Repository.World,
         mapping: Map[String, String]
-    ): Vector[Atlas.Signature.Seed] \ IO = {
+    ): Vector[Atlas.Signature.Seed] \ IO = Kernel.DigestHandler.runDigest(() -> {
         let seeds = Atlas.Signature.seeds(world);
         let files = indexOfPaths(candidate#files);
         let symbols = indexOfSymbols(candidate#symbols);
         Vector.filterMap(seed -> translate(seed, world, mapping, files, symbols), seeds)
-    }
+    })
 
     def indexOfPaths(paths: Vector[String]): Map[String, Int32] =
         Vector.mapWithIndex((index, path) -> (path, index), paths) |> Vector.toMap

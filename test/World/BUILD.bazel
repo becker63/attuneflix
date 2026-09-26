@@ -67,6 +67,8 @@ flix_check(
         "//test:kernel_identity_law_sources",
         "//test:kernel_table_law_sources",
         "//test:world_admission_law_sources",
+        "//src:Kernel/Effect.flix",
+        "//src:Kernel/DigestHandler.flix",
     ],
     command = "test",
     java_deps = [
@@ -93,6 +95,7 @@ flix_check(
         "//src:Kernel/Contract.flix",
         "//src:Kernel/Effect.flix",
         "//src:Kernel/Handler.flix",
+        "//src:Kernel/DigestHandler.flix",
         "//src:Repository.flix",
         "//src:Repository/Grit.flix",
         "//src:Repository/Structure.flix",

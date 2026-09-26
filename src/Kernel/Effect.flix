@@ -11,7 +11,13 @@ pub mod Kernel.Effect {
         case Rejected(String)
     }
 
-    pub eff Digest { def digest(payload: String): Result[CapabilityError, String] }
+    /// Content addressing is total: a digest is a pure function of its payload,
+    /// and an absent provider is a construction failure of the shell, not a
+    /// data-dependent outcome. So `Digest` alone carries no `Result`, which is
+    /// what lets the analytical identity functions be `\ Digest` rather than
+    /// fallible. The remaining five capabilities keep `CapabilityError` because
+    /// their providers can genuinely refuse, fail, or be unavailable.
+    pub eff Digest { def digest(payload: String): String }
     pub eff SourceRead { def readText(path: String): Result[CapabilityError, String] }
     pub eff Grit { def extract(language: String, relation: FactKind, path: String, source: String): Result[CapabilityError, Vector[RawFact]] }
     pub eff ArtifactStore { def read(path: String): Result[CapabilityError, String] }

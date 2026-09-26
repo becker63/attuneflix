@@ -27,8 +27,8 @@ pub mod Atlas.Signature {
     pub def routePayload(program: Atlas.Program): String =
         Vector.map(atomName, program#steps) |> Vector.join(",")
 
-    pub def routeId(program: Atlas.Program): String \ IO =
-        ScientificIdentity.versioned("atlas-route-v1", routePayload(program))
+    pub def routeId(program: Atlas.Program): String \ Kernel.Effect.Digest =
+        "atlas-route-v1:${Kernel.Effect.Digest.digest(routePayload(program))}"
 
     /// Canonical scientific payload for one semantic result state. Nominal
     /// IDs are sorted explicitly; evaluator allocation order is irrelevant.
@@ -39,8 +39,8 @@ pub mod Atlas.Signature {
             "symbol:${orderedSymbols(values) |> Vector.join(",")}" 
     }
 
-    pub def stateId(state: Atlas.State): String \ IO =
-        ScientificIdentity.versioned("atlas-state-v1", statePayload(state))
+    pub def stateId(state: Atlas.State): String \ Kernel.Effect.Digest =
+        "atlas-state-v1:${Kernel.Effect.Digest.digest(statePayload(state))}"
 
     /// One exact observation from applying one Atlas program to one seed.
     pub type alias Observation = {
@@ -106,14 +106,14 @@ pub mod Atlas.Signature {
     /// The issue-blind seed panel declared by atlas-signature-seeds-v1.
     /// Selection hashes stable repository identities, never nominal ordinal
     /// order, issue text, embedding rank, or filesystem enumeration order.
-    pub def seeds(repository: Repository.World): Vector[Seed] \ IO =
+    pub def seeds(repository: Repository.World): Vector[Seed] \ Kernel.Effect.Digest =
         Vector.append(fileSeeds(repository#files), symbolSeeds(repository#symbols))
 
-    def fileSeeds(files: Vector[String]): Vector[Seed] \ IO =
+    def fileSeeds(files: Vector[String]): Vector[Seed] \ Kernel.Effect.Digest =
         panel(Radii.Domain.File, files, ordinal ->
             Atlas.State.Files(Set.singleton(Kernel.Contract.FileId.FileId(ordinal))))
 
-    def symbolSeeds(symbols: Vector[Repository.Symbol]): Vector[Seed] \ IO =
+    def symbolSeeds(symbols: Vector[Repository.Symbol]): Vector[Seed] \ Kernel.Effect.Digest =
         panel(Radii.Domain.Symbol, Vector.map(symbol ->
             "${symbol#path}\u0000${symbol#name}\u0000${symbol#startByte}\u0000${symbol#endByte}", symbols),
             ordinal ->
@@ -123,9 +123,9 @@ pub mod Atlas.Signature {
     /// the frozen atlas-signature-seeds-v1 domain-prefix bytes, order by
     /// (digest, identity), keep the first eight, and project to Seeds.
     def panel(domain: Radii.Domain, identities: Vector[String],
-              toState: Int32 -> Atlas.State): Vector[Seed] \ IO = {
+              toState: Int32 -> Atlas.State): Vector[Seed] \ Kernel.Effect.Digest = {
         let ranked = Vector.mapWithIndex((ordinal, identity) -> (
-            ScientificIdentity.sha256("${domainName(domain)}\u0000${identity}"),
+            Kernel.Effect.Digest.digest("${domainName(domain)}\u0000${identity}"),
             identity,
             ordinal,
             toState(ordinal)

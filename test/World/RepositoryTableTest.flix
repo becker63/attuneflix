@@ -73,15 +73,17 @@ def repositoryWorldRejectsSnapshotIdentityDrift(): Unit \ Assert = {
 @Test
 def repositoryWorldScientificIdentityIgnoresSerializationPaths(): Unit \ {Assert, IO} = {
     let world = repositoryTableFixture();
-    let facts0 = Repository.Table.factIdentity("source-tree-v1:tree", "grit-v1:programs", world);
-    let facts1 = Repository.Table.factIdentity("source-tree-v1:tree", "grit-v1:programs", world);
-    let snapshot0 = Repository.Table.snapshotIdentity(
-        "owner/repo", "abc123", "source-tree-v1:tree", facts0);
-    let snapshot1 = Repository.Table.snapshotIdentity(
-        "owner/repo", "abc123", "source-tree-v1:tree", facts1);
+    let facts0 = Kernel.DigestHandler.runDigest(() ->
+        Repository.Table.factIdentity("source-tree-v1:tree", "grit-v1:programs", world));
+    let facts1 = Kernel.DigestHandler.runDigest(() ->
+        Repository.Table.factIdentity("source-tree-v1:tree", "grit-v1:programs", world));
+    let snapshot0 = Kernel.DigestHandler.runDigest(() ->
+        Repository.Table.snapshotIdentity("owner/repo", "abc123", "source-tree-v1:tree", facts0));
+    let snapshot1 = Kernel.DigestHandler.runDigest(() ->
+        Repository.Table.snapshotIdentity("owner/repo", "abc123", "source-tree-v1:tree", facts1));
     Assert.assertEq(expected = facts0, facts1);
     Assert.assertEq(expected = snapshot0, snapshot1);
-    let changed = Repository.Table.factIdentity(
-        "source-tree-v1:changed", "grit-v1:programs", world);
+    let changed = Kernel.DigestHandler.runDigest(() ->
+        Repository.Table.factIdentity("source-tree-v1:changed", "grit-v1:programs", world));
     if (facts0 == changed) Assert.fail("source-tree identity did not change fact identity") else ()
 }

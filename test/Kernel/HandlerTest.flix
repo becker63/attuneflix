@@ -9,15 +9,16 @@ import java.nio.file.{Files, Paths}
 use Kernel.Contract.{CandidateSet, FactKind, RawFact, Selection}
 use Kernel.Effect.CapabilityError
 
-def replayProgram(): Result[CapabilityError, String] \ {Kernel.Effect.Digest, Kernel.Effect.SourceRead, Kernel.Effect.Grit, Kernel.Effect.ArtifactStore, Kernel.Effect.Embedding, Kernel.Effect.JudgeModel} =
+def replayProgram(): Result[CapabilityError, String] \ {Kernel.Effect.Digest, Kernel.Effect.SourceRead, Kernel.Effect.Grit, Kernel.Effect.ArtifactStore, Kernel.Effect.Embedding, Kernel.Effect.JudgeModel} = {
+    let digest = Kernel.Effect.Digest.digest("payload");
     forM (
-        digest <- Kernel.Effect.Digest.digest("payload");
         source <- Kernel.Effect.SourceRead.readText("src/a.flix");
         facts <- Kernel.Effect.Grit.extract("flix", FactKind.Defines, "src/a.flix", source);
         artifact <- Kernel.Effect.ArtifactStore.read("blob");
         embedding <- Kernel.Effect.Embedding.embed("issue");
         selection <- Kernel.Effect.JudgeModel.decide("issue", {candidates = Vector.empty()})
     ) yield "${digest}|${source}|${Vector.length(facts)}|${artifact}|${Vector.length(embedding)}|${selection}"
+}
 
 @Test
 def replayHandlersRunKeylessAndDeterministically(): Unit \ Assert = {
@@ -27,7 +28,7 @@ def replayHandlersRunKeylessAndDeterministically(): Unit \ Assert = {
     let result = Kernel.Handler.runReplay(
         (_path: String) -> Ok("mod A"),
         (_path: String) -> Ok("blob"),
-        (_payload: String) -> Ok("sha:replay"),
+        (_payload: String) -> "sha:replay",
         (_language: String, _relation: FactKind, _path: String, _source: String) -> Ok(Vector#{fact}),
         (_text: String) -> Ok(Vector#{1.0, 2.0}),
         (_issue: String, _candidates: CandidateSet) -> Ok(Selection.Prior),
@@ -41,7 +42,7 @@ def replayHandlersPropagateFixtureFailures(): Unit \ Assert = {
     let result = Kernel.Handler.runReplay(
         (path: String) -> Err(CapabilityError.Unavailable(path)),
         (_path: String) -> Ok("blob"),
-        (_payload: String) -> Ok("sha:replay"),
+        (_payload: String) -> "sha:replay",
         (_language: String, _relation: FactKind, _path: String, _source: String) -> Ok(Vector.empty()),
         (_text: String) -> Ok(Vector.empty()),
         (_issue: String, _candidates: CandidateSet) -> Ok(Selection.Prior),
@@ -53,7 +54,7 @@ def replayHandlersPropagateFixtureFailures(): Unit \ Assert = {
 @Test
 def productionDigestBridgesToTheNativeIdentitySeam(): Unit \ {Assert, IO} = {
     Assert.assertEq(
-        expected = Ok("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"),
+        expected = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
         Kernel.Handler.runProduction(() -> Kernel.Effect.Digest.digest("abc")))
 }
 

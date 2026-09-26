@@ -71,8 +71,11 @@ mod Parallelism {
         let uses = Vector.map(split2, factLines(Experiment.property("attune.uses")));
         let world = selfWorld(files, modules, uses);
         let sourceTreeIdentity = "attuneflix-source-tree-v1:" + revision;
-        let factIdentity = Repository.Table.factIdentity(sourceTreeIdentity, "attuneflix-self-admission-v1", world);
-        let snapshotId = Repository.Table.snapshotIdentity("attuneflix", revision, sourceTreeIdentity, factIdentity);
+        let (factIdentity, snapshotId) = Kernel.DigestHandler.runDigest(() -> {
+            let factIdentity = Repository.Table.factIdentity(sourceTreeIdentity, "attuneflix-self-admission-v1", world);
+            let snapshotId = Repository.Table.snapshotIdentity("attuneflix", revision, sourceTreeIdentity, factIdentity);
+            (factIdentity, snapshotId)
+        });
         let _ = Repository.Table.write(
             Experiment.property("attune.world_metadata"),
             Experiment.property("attune.world_entities"),
@@ -370,7 +373,8 @@ mod Parallelism {
                     let snapshot = snapshotOf(identity);
                     let _ = ScientificTable.write(Experiment.property("attune.output_observations"),
                         Atlas.Signature.Table.observations(),
-                        Atlas.Signature.Table.observationRows(snapshot, seed0, signature));
+                        Kernel.DigestHandler.runDigest(() ->
+                            Atlas.Signature.Table.observationRows(snapshot, seed0, signature)));
                     let _ = ScientificTable.write(Experiment.property("attune.output_physical"),
                         Atlas.Signature.Table.physical(),
                         Vector#{Atlas.Signature.Table.physicalRow(snapshot, seed0, signature)});
@@ -487,8 +491,11 @@ mod Parallelism {
             AcquisitionFacts.readSources(Experiment.property("attune.sources")),
             AcquisitionFacts.readFacts(Experiment.property("attune.facts"))));
         let sourceTreeIdentity = "attuneflix-source-tree-v2:" + revision;
-        let factIdentity = Repository.Table.factIdentity(sourceTreeIdentity, AcquisitionFacts.gritIdentity(), world);
-        let snapshotId = Repository.Table.snapshotIdentity("attuneflix", revision, sourceTreeIdentity, factIdentity);
+        let (factIdentity, snapshotId) = Kernel.DigestHandler.runDigest(() -> {
+            let factIdentity = Repository.Table.factIdentity(sourceTreeIdentity, AcquisitionFacts.gritIdentity(), world);
+            let snapshotId = Repository.Table.snapshotIdentity("attuneflix", revision, sourceTreeIdentity, factIdentity);
+            (factIdentity, snapshotId)
+        });
         let _ = Repository.Table.write(
             Experiment.property("attune.world_metadata"), Experiment.property("attune.world_entities"),
             Experiment.property("attune.world_relations"),

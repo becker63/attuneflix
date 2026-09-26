@@ -63,8 +63,8 @@ def atlasCensusRowsCarryExactRouteStateAndWorkIdentities(): Unit \ {Assert, IO} 
         state = Atlas.State.Symbols(Set.singleton(s0))
     };
 
-    let row = Vector.get(0,
-        Atlas.Signature.Table.observationRows(snapshot, seed, signature));
+    let row = Vector.get(0, Kernel.DigestHandler.runDigest(() ->
+        Atlas.Signature.Table.observationRows(snapshot, seed, signature)));
     Assert.assertEq(expected = Some(Value.Text("calls")), Map.get("first_atom", row));
     Assert.assertEq(
         expected = Some(Value.Text("atlas-route-v1:f46f5990ebfadcab199107258b9dadd8711bd7946d8d00091a1073effcf2a843")),
@@ -93,7 +93,7 @@ def atlasCensusUsesTypedFileAndSymbolSeedFamilies(): Unit \ {Assert, IO} = {
         defines = Set#{(f0, s0)}, imports = Set.empty(), calls = Set.empty(),
         parents = Set.empty(), unresolvedImports = 0, unresolvedCalls = 0
     };
-    let seeds = Atlas.Signature.seeds(world);
+    let seeds = Kernel.DigestHandler.runDigest(() -> Atlas.Signature.seeds(world));
     Assert.assertEq(expected = Vector#{Radii.Domain.File, Radii.Domain.Symbol},
         Vector.map(seed -> seed#domain, seeds));
     Assert.assertEq(expected = 3279, Vector.length(Atlas.programsFrom(Radii.Domain.File, 7)));

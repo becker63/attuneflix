@@ -144,7 +144,7 @@ mod RoundTest {
             Map#{"src/Atlas.flix" => "h-atlas", "test/World/A.flix" => "h-a"});
         let candidate = RoundOracle.candidateWorld(round0, sources, facts);
         let seeds = RoundOracle.translatedSeeds(world, candidate, RoundIdentity.mapping(round0));
-        Assert.assertEq(expected = Vector.length(Atlas.Signature.seeds(world)),
+        Assert.assertEq(expected = Vector.length(Kernel.DigestHandler.runDigest(() -> Atlas.Signature.seeds(world))),
             Vector.length(seeds));
         // Control's `build/src/A.flix` file seed becomes candidate's
         // `test/World/A.flix`, which sorts second: [src/Atlas.flix, test/World/A.flix].

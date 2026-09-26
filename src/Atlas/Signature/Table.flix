@@ -60,7 +60,7 @@ pub mod Atlas.Signature.Table {
         snapshot: SnapshotIdentity,
         seed: Atlas.Signature.Seed,
         signature: Atlas.Signature.Signature
-    ): Vector[Kernel.Contract.Row] \ IO = {
+    ): Vector[Kernel.Contract.Row] \ Kernel.Effect.Digest = {
         // Many logical routes intentionally converge on the same exact set.
         // Canonicalizing that large set once per unique semantic state keeps
         // persisted identity exact without repeatedly sorting identical IDs.
@@ -137,7 +137,7 @@ pub mod Atlas.Signature.Table {
         seed: Atlas.Signature.Seed,
         observation: Atlas.Signature.Observation,
         stateId0: String
-    ): Kernel.Contract.Row \ IO = {
+    ): Kernel.Contract.Row \ Kernel.Effect.Digest = {
         let routeId = Atlas.Signature.routeId(observation#program);
         let atoms = Vector.map(Atlas.Signature.atomName, observation#program#steps);
         Map.union(identityRow(snapshot), Map#{

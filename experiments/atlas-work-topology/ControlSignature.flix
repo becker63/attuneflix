@@ -50,18 +50,21 @@ mod ControlSignature {
     }
 
     /// The control world's content-addressed identity, derived exactly as the
-    /// acquisition seam derives it for a Grit-acquired revision.
-    pub def identityOf(revision: String, world: Repository.World): WorldIdentity \ IO = {
-        let sourceTreeIdentity = "attuneflix-source-tree-v2:" + revision;
-        let factIdentity = Repository.Table.factIdentity(sourceTreeIdentity, AcquisitionFacts.gritIdentity(), world);
-        let snapshotId = Repository.Table.snapshotIdentity("attuneflix", revision, sourceTreeIdentity, factIdentity);
-        {
-            revision = revision,
-            sourceTreeIdentity = sourceTreeIdentity,
-            factIdentity = factIdentity,
-            snapshotId = snapshotId
-        }
-    }
+    /// acquisition seam derives it for a Grit-acquired revision. The identity
+    /// derivations are `\ Digest`; this instrument supplies the capability at
+    /// its own IO boundary.
+    pub def identityOf(revision: String, world: Repository.World): WorldIdentity \ IO =
+        Kernel.DigestHandler.runDigest(() -> {
+            let sourceTreeIdentity = "attuneflix-source-tree-v2:" + revision;
+            let factIdentity = Repository.Table.factIdentity(sourceTreeIdentity, AcquisitionFacts.gritIdentity(), world);
+            let snapshotId = Repository.Table.snapshotIdentity("attuneflix", revision, sourceTreeIdentity, factIdentity);
+            {
+                revision = revision,
+                sourceTreeIdentity = sourceTreeIdentity,
+                factIdentity = factIdentity,
+                snapshotId = snapshotId
+            }
+        })
 
     pub def snapshotIdentity(identity: WorldIdentity): Atlas.Signature.Table.SnapshotIdentity = {
         signatureProtocol = signatureProtocol(),
@@ -78,17 +81,17 @@ mod ControlSignature {
     /// One full depth-7 signature per frozen seed (8 File seeds and 8 Symbol
     /// seeds through `Atlas.Signature.seeds`, fewer only if a domain is small).
     pub def signatures(world: Repository.World): Vector[(Atlas.Signature.Seed, Atlas.Signature.Signature)] \ IO =
-        Vector.map(seed -> (seed, Experiment.require(
+        Kernel.DigestHandler.runDigest(() -> Vector.map(seed -> (seed, Experiment.require(
             Atlas.Signature.compute(world, seed#state, maxDepth()))),
-            Atlas.Signature.seeds(world))
+            Atlas.Signature.seeds(world)))
 
     /// One observation row per seed × logical route, in the frozen schema.
     pub def observationRows(
         snapshot: Atlas.Signature.Table.SnapshotIdentity,
         computed: Vector[(Atlas.Signature.Seed, Atlas.Signature.Signature)]
     ): Vector[Kernel.Contract.Row] \ IO =
-        Vector.flatMap(match (seed, signature) ->
-            Atlas.Signature.Table.observationRows(snapshot, seed, signature), computed)
+        Kernel.DigestHandler.runDigest(() -> Vector.flatMap(match (seed, signature) ->
+            Atlas.Signature.Table.observationRows(snapshot, seed, signature), computed))
 
     // ---- Mixing landmarks D50 / D80 / D90 / D95 ----
 

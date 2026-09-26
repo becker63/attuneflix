@@ -43,6 +43,7 @@ flix_check(
         "//test:kernel_identity_law_sources",
         "//test:world_admission_law_sources",
         "//test:TestWorlds.flix",
+        "//src:Kernel/DigestHandler.flix",
     ],
     command = "test",
     java_deps = ["//src/native/identity:attune_identity"],
@@ -65,6 +66,7 @@ flix_check(
         "//test:kernel_identity_law_sources",
         "//test:kernel_table_law_sources",
         "//test:world_admission_law_sources",
+        "//src:Kernel/DigestHandler.flix",
     ],
     command = "test",
     java_deps = [

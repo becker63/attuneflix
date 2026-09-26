@@ -5,7 +5,6 @@
 /// the declared `Kernel.Effect` capabilities stay untouched by this module.
 pub mod Kernel.Handler {
     import attune.grit.AttuneGrit
-    import attune.identity.AttuneIdentity
     import attune.parquet.AttuneParquet
     import java.io.IOException
     import java.lang.Exception
@@ -22,7 +21,7 @@ pub mod Kernel.Handler {
         run {
             computation()
         } with handler Kernel.Effect.Digest {
-            def digest(payload, resume) = resume(Ok(AttuneIdentity.sha256(payload)))
+            def digest(payload, resume) = resume(Kernel.DigestHandler.hash(payload))
         } with handler Kernel.Effect.SourceRead {
             def readText(path, resume) = resume(readFile(path))
         } with handler Kernel.Effect.Grit {
@@ -52,7 +51,7 @@ pub mod Kernel.Handler {
     pub def runReplay(
         readSource: String -> Result[CapabilityError, String],
         readArtifact: String -> Result[CapabilityError, String],
-        digestOf: String -> Result[CapabilityError, String],
+        digestOf: String -> String,
         extractFacts: (String, FactKind, String, String) -> Result[CapabilityError, Vector[RawFact]],
         embedText: String -> Result[CapabilityError, Vector[Float64]],
         decideModel: (String, CandidateSet) -> Result[CapabilityError, Selection],

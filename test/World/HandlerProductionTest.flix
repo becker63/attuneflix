@@ -9,7 +9,7 @@ import java.nio.file.{Files, Paths}
 @Test
 def productionDigestBridgesToTheNativeIdentity(): Unit \ {Assert, IO} = {
     Assert.assertEq(
-        expected = Ok("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"),
+        expected = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
         Kernel.Handler.runProduction(() -> Kernel.Effect.Digest.digest("abc")))
 }
 

@@ -92,7 +92,7 @@ mod CensusMain {
         ) {
             case Err(error) => bug!(error)
             case Ok(world) => {
-                let seeds = Atlas.Signature.seeds(world);
+                let seeds = Kernel.DigestHandler.runDigest(() -> Atlas.Signature.seeds(world));
                 match measure(snapshot, world, Vector.toList(seeds), {
                 observations = Vector.empty(),
                 physical = Vector.empty()
@@ -126,7 +126,8 @@ mod CensusMain {
         case Nil => Ok(output)
         case seed :: rest => forM (
             signature <- Atlas.Signature.compute(world, seed#state, 7);
-            observations = Atlas.Signature.Table.observationRows(snapshot, seed, signature);
+            observations = Kernel.DigestHandler.runDigest(() ->
+                Atlas.Signature.Table.observationRows(snapshot, seed, signature));
             physical = Atlas.Signature.Table.physicalRow(snapshot, seed, signature);
             result <- measure(snapshot, world, rest, {
                 observations = Vector.append(output#observations, observations),
