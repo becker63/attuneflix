@@ -6,7 +6,7 @@
 # (`//test:world_relational_law_sources`) and the shared law surface's
 # parent-module anchor (`//test:Repository.flix`), so it never pulls the full
 # admission surface into an Engine action.
-load("//build:flix.bzl", "checked_test", "flix_check")
+load("//test/build:flix.bzl", "checked_test", "flix_check")
 
 package(default_visibility = ["//visibility:public"])
 

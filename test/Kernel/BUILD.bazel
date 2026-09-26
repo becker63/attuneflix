@@ -4,7 +4,7 @@
 # four cells: it is the high-fan-in, low-edit-frequency kernel every cell reads.
 # Its laws (identity and typed-table round-trips, driven by the two native
 # seams) are owned here so kernel edits invalidate only kernel laws.
-load("//build:flix.bzl", "checked_test", "flix_check")
+load("//test/build:flix.bzl", "checked_test", "flix_check")
 
 package(default_visibility = ["//visibility:public"])
 

@@ -8,7 +8,7 @@ inclusion record + determinism check) and the thin `bazel run` / `bazel test`
 launchers; no second parser, no lexical proxy.
 """
 
-load("//build:flix.bzl", "flix_fatjar")
+load("//test/build:flix.bzl", "flix_fatjar")
 
 # The control revision is a declared protocol constant, never read from the
 # ambient environment.

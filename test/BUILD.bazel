@@ -10,6 +10,37 @@
 #
 # This package owns no test target: law targets belong to their cell.
 
+# Cell public surfaces (K4 Hill-Climb Round 2; re-homed here in Round 3).
+#
+# Flix has no top-level module privacy, so a cell's intentional cross-cell
+# surface is declared here rather than enforced by the compiler. A cell exposes
+# only the modules named below; every other module in the cell is internal
+# implementation and is read only by that cell's own laws (and, for Cell D, by
+# the instrument).
+#
+#   stable kernel : ScientificIdentity, ScientificTable, ScientificTable/Columns
+#   cell A world  : Repository, Repository/Structure
+#                   (internal: Repository/Grit, Repository/Acquire,
+#                    Repository/Reference, Repository/Table)
+#   cell B engine : Radii, Atlas
+#                   (internal: Repository/Physical, Radii/Evaluate,
+#                    Radii/Synthesize, Atlas/Signature*)
+#   cell C apps   : Localization, Population
+#                   (internal: Localization/*Table, Population/Table)
+#   cell D research: Experiment
+#
+# The cross-cell reads in the tree already respect this table: Engine and
+# Applications reach only World/Kernel surfaces, and the only read of a cell
+# internal across a cell boundary is by the Cell D instrument, which is a leaf.
+# The World `Repository.Reference` -> Engine `Radii` read is the permanent
+# reference/physical parity pair (the reference evaluator interprets Radii
+# programs).
+#
+# Round 3 moved this declaration off `src/BUILD.bazel`: a production surface
+# file must stay byte-stable across rounds (the oracle's production-drift rule),
+# so the declared contract lives on the law surface that owns the per-cell
+# catalogs.
+
 package(default_visibility = ["//visibility:public"])
 
 # The shared law surface (K4 Hill-Climb Round 2). Two fixtures are read by the

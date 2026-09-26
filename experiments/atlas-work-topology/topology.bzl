@@ -7,7 +7,7 @@ family; these rules only pass the committed evidence and the artifact paths
 is parsed here.
 """
 
-load("//build:flix.bzl", "checked_test", "flix_check", "flix_fatjar")
+load("//test/build:flix.bzl", "checked_test", "flix_check", "flix_fatjar")
 
 _TOPOLOGY_SRCS = [
     "ControlCoChange.flix",

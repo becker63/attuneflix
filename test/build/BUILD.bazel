@@ -1,0 +1,11 @@
+# The shared Flix build-rule surface (K4 Hill-Climb Round 3).
+#
+# `flix.bzl` defines the Flix check/test/fatjar rules every law surface and the
+# research instrument load. It is consumed only by the law surfaces and the
+# Cell D instrument, so it is owned by the horizontal law surface here
+# (`test/build/`) rather than by the unowned `build/` bucket, matching the
+# round-2 re-homing of the shared law fixtures. The `build` package segment is
+# preserved so the rule file keeps its label identity.
+package(default_visibility = ["//visibility:public"])
+
+exports_files(["flix.bzl"])

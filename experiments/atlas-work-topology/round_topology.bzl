@@ -8,7 +8,7 @@ artifact paths (JVM properties). No grammar, atom, evaluator or fact
 acquisition is added, and no source text is parsed by the measurement itself.
 """
 
-load("//build:flix.bzl", "checked_test", "flix_check", "flix_fatjar")
+load("//test/build:flix.bzl", "checked_test", "flix_check", "flix_fatjar")
 
 _ROUND_SRCS = [
     "ControlIdentity.flix",

@@ -1,28 +1,3 @@
-# Cell public surfaces (K4 Hill-Climb Round 2).
-#
-# Flix has no top-level module privacy, so a cell's intentional cross-cell
-# surface is declared here rather than enforced by the compiler. A cell exposes
-# only the modules named below; every other module in the cell is internal
-# implementation and is read only by that cell's own laws (and, for Cell D, by
-# the instrument).
-#
-#   stable kernel : ScientificIdentity, ScientificTable, ScientificTable/Columns
-#   cell A world  : Repository, Repository/Structure
-#                   (internal: Repository/Grit, Repository/Acquire,
-#                    Repository/Reference, Repository/Table)
-#   cell B engine : Radii, Atlas
-#                   (internal: Repository/Physical, Radii/Evaluate,
-#                    Radii/Synthesize, Atlas/Signature*)
-#   cell C apps   : Localization, Population
-#                   (internal: Localization/*Table, Population/Table)
-#   cell D research: Experiment
-#
-# The cross-cell reads in the tree already respect this table: Engine and
-# Applications reach only World/Kernel surfaces, and the only read of a cell
-# internal across a cell boundary is by the Cell D instrument, which is a leaf.
-# The World `Repository.Reference` -> Engine `Radii` read is the permanent
-# reference/physical parity pair (the reference evaluator interprets Radii
-# programs); it is not a reach-through and is left for the hotspot round.
 exports_files([
     "Atlas.flix",
     "Atlas/Signature.flix",

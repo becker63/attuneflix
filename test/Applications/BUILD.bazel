@@ -3,7 +3,7 @@
 # Owns the Applications cell's law targets (localization, population, and the
 # native inference seam) and declares the Localization/Population production
 # sources it reads. Shared upstream sources come from the `//test` catalogs.
-load("//build:flix.bzl", "checked_test", "flix_check")
+load("//test/build:flix.bzl", "checked_test", "flix_check")
 
 package(default_visibility = ["//visibility:public"])
 

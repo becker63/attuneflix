@@ -7,7 +7,7 @@ reuses the frozen Atlas/Repository/ScientificTable machinery unchanged and
 adds no grammar, atom or evaluator.
 """
 
-load("//build:flix.bzl", "checked_test", "flix_check", "flix_fatjar")
+load("//test/build:flix.bzl", "checked_test", "flix_check", "flix_fatjar")
 
 # The one control world identity: the same seam the acquisition froze, read
 # back through ordinary Repository admission at measurement time.

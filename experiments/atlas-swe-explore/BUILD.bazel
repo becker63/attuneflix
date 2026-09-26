@@ -1,4 +1,4 @@
-load("//build:flix.bzl", "flix_fatjar")
+load("//test/build:flix.bzl", "flix_fatjar")
 load("//build:attune.bzl", "attune_atlas_signature", "attune_atlas_signature_summary", "attune_world_fixture")
 
 flix_fatjar(

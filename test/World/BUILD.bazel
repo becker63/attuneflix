@@ -4,7 +4,7 @@
 # cells' laws (the `mod Repository {}` parent anchor and the `TestWorlds` a/b
 # world) live on the horizontal law surface (`//test`), not here, so no other
 # cell's law package reads into this one (Round 2).
-load("//build:flix.bzl", "checked_test", "flix_check")
+load("//test/build:flix.bzl", "checked_test", "flix_check")
 
 package(default_visibility = ["//visibility:public"])
 

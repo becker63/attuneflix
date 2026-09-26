@@ -1,4 +1,4 @@
-load("//build:flix.bzl", "checked_test", "flix_check", "flix_fatjar")
+load("//test/build:flix.bzl", "checked_test", "flix_check", "flix_fatjar")
 load(":parallelism.bzl", "attune_parallelism_grit_revision", "attune_parallelism_revision")
 
 # The frozen polyglot acquisition seam (the one `Repository.Grit.Fact` protocol
