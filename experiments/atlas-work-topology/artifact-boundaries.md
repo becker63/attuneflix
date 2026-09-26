@@ -114,7 +114,13 @@ boundary check agree.
 
 - `bazel test //experiments/atlas-work-topology:research_tests
   --config=buildbuddy-rbe` covers every rewired consumer plus the new boundary
-  test (11/11 green).
+  test (12/12 green, including the round-4 measurement's
+  `round4_artifacts_test`); `source /etc/profile.d/nix.sh && ./verify` is
+  29/29 green, exit 0.
+- The Round 4 candidate's own oracle verdicts (`ROUND_SIGNATURE_OK true`,
+  `D50 3 -> 4`, depth-7 reach `-0.0108`, no new drift) are in the round-4
+  measurement commit and `round4/round4.oracle.json`: the boundary work is
+  signature-identical to round 3.
 - Disk: the stage actions download ~2 MB of typed artifacts. At ~125 MB free on
   `/`, the full fresh `./verify --nocache_test_results` is not affordable; a
   cached `./verify` is (the library's round23 note still applies: reuse a warm

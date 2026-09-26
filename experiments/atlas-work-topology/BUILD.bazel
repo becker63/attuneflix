@@ -137,6 +137,26 @@ filegroup(
     ],
 )
 
+# The Round 4 candidate measurement (PREREGISTRATION.md §9, §10, §11;
+# VAL-HC4-002). Same instrument as rounds 1-3, at the round-4 revision
+# c236a3aa (typed artifact / build-cache boundaries). Its verdict set passes
+# unchanged — the round adds no Flix line and changes no `src/` content — so it
+# carries the full `attune.command=verify` guard like round 1 and round 3. The
+# BUILD-channel artifacts (the locality `targets`/`tests`/`fanout` and the
+# fanout delta) are measured separately by
+# `scripts/measure_bazel_locality.sh round4` and are not listed here.
+filegroup(
+    name = "round4_files",
+    srcs = [
+        "round4/round4.files.txt",
+        "round4/round4.identity_map.json",
+        "round4/round4.oracle.json",
+        "round4/round4.revision.txt",
+        "round4/round4.sources.txt",
+        "round4/round4.topology.json",
+    ],
+)
+
 # `bazel run //experiments/atlas-work-topology:acquire` materializes the control
 # revision in an isolated /tmp worktree and freezes the typed evidence.
 attune_control_acquisition()
@@ -230,6 +250,11 @@ attune_round_artifacts_test()
 # verdict set passes: `src/BUILD.bazel` is restored byte-identically).
 attune_round_artifacts_test(name = "round3_artifacts_test", role = "round3")
 
+# `bazel test //experiments/atlas-work-topology:round4_artifacts_test`
+# the same full `attune.command=verify` guard for the round-4 revision (its
+# verdict set passes: no `src/` content changed and no Flix line was added).
+attune_round_artifacts_test(name = "round4_artifacts_test", role = "round4")
+
 # `bazel test //experiments/atlas-work-topology:round2_reproducibility_test`
 # re-derives the round-2 documents and compares them byte-for-byte. The full
 # verdict set is not asserted for round 2 because its revision's `src/BUILD.bazel`
@@ -252,6 +277,7 @@ test_suite(
         ":round1_artifacts_test",
         ":round2_reproducibility_test",
         ":round3_artifacts_test",
+        ":round4_artifacts_test",
         ":round_test",
         "//experiments/atlas-parallelism:parallelism_provenance_test",
     ],
