@@ -1,0 +1,96 @@
+# Cell A — World law surface.
+#
+# Owns the World cell's law targets and its law-owned sources: the reduced
+# `mod Repository {}` parent anchor `//test/Engine:core_parity_test` compiles
+# `Repository/Reference.flix` against, and the shared `TestWorlds` a/b fixture
+# the Engine and Applications law surfaces also read.
+load("//build:flix.bzl", "checked_test", "flix_check")
+
+package(default_visibility = ["//visibility:public"])
+
+exports_files(
+    [
+        "Repository.flix",
+        "TestWorlds.flix",
+    ],
+)
+
+flix_check(
+    name = "repository_admission_check",
+    srcs = [
+        "RepositoryAdmissionTest.flix",
+        "//test:world_admission_law_sources",
+    ],
+    command = "test",
+    threads = 2,
+)
+
+checked_test(
+    name = "repository_admission_test",
+    check = ":repository_admission_check",
+)
+
+flix_check(
+    name = "grit_acquisition_check",
+    srcs = [
+        "GritAcquisitionTest.flix",
+        "//test:world_admission_law_sources",
+    ],
+    command = "test",
+    threads = 2,
+)
+
+checked_test(
+    name = "grit_acquisition_test",
+    check = ":grit_acquisition_check",
+)
+
+flix_check(
+    name = "grit_acquire_check",
+    srcs = [
+        "//src:Repository/Acquire.flix",
+        "//test:world_admission_law_sources",
+    ],
+    command = "check",
+    java_deps = ["//src/native/grit:attune_grit"],
+    threads = 2,
+)
+
+checked_test(
+    name = "grit_acquire_test",
+    check = ":grit_acquire_check",
+)
+
+flix_check(
+    name = "repository_table_check",
+    srcs = [
+        "RepositoryTableTest.flix",
+        "//src:Repository/Table.flix",
+        "//test:kernel_identity_law_sources",
+        "//test:kernel_table_law_sources",
+        "//test:world_admission_law_sources",
+    ],
+    command = "test",
+    java_deps = [
+        "//src/native/identity:attune_identity",
+        "//src/native/parquet:attune_parquet",
+    ],
+    threads = 2,
+)
+
+checked_test(
+    name = "repository_table_test",
+    check = ":repository_table_check",
+)
+
+test_suite(
+    name = "world_tests",
+    tests = [
+        ":grit_acquire_test",
+        ":grit_acquisition_test",
+        ":repository_admission_test",
+        ":repository_table_test",
+        "//src/native/grit:attune_grit_rust_test",
+        "//src/native/grit:attune_grit_test",
+    ],
+)

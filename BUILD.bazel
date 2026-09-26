@@ -5,28 +5,17 @@ java_binary(
     runtime_deps = ["@flix_compiler//jar"],
 )
 
+# Aggregation only: every law is owned by its cell's suite (`//test/World`,
+# `//test/Engine`, `//test/Applications`, `//test/Kernel`) or by the Research
+# cell (`//experiments/atlas-work-topology`). This target adds no ownership of
+# its own; it exists so one label names the whole law suite.
 test_suite(
     name = "tests",
     tests = [
-        "//src/native/inference:attune_inference_test",
-        "//src/native/identity:attune_identity_test",
-        "//src/native/grit:attune_grit_test",
-        "//src/native/parquet:attune_parquet_test",
-        "//test:core_parity_test",
-        "//test:atlas_grammar_test",
-        "//test:atlas_signature_table_test",
-        "//test:grit_acquisition_test",
-        "//test:grit_acquire_test",
-        "//test:inference_boundary_test",
-        "//test:identity_test",
-        "//test:localization_sandwich_test",
-        "//test:repository_table_test",
-        "//test:scientific_table_test",
-        "//experiments/atlas-parallelism:parallelism_provenance_test",
-        "//experiments/atlas-work-topology:control_reproducibility_test",
-        "//experiments/atlas-work-topology:control_signature_test",
-        "//experiments/atlas-work-topology:control_signature_artifacts_test",
-        "//experiments/atlas-work-topology:control_topology_test",
-        "//experiments/atlas-work-topology:control_topology_artifacts_test",
+        "//test/Applications:applications_tests",
+        "//test/Engine:engine_tests",
+        "//test/Kernel:kernel_tests",
+        "//test/World:world_tests",
+        "//experiments/atlas-work-topology:research_tests",
     ],
 )

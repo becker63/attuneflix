@@ -1,0 +1,51 @@
+# Stable Kernel law surface.
+#
+# The K4 substrate (`ScientificIdentity`, `ScientificTable`) is not one of the
+# four cells: it is the high-fan-in, low-edit-frequency kernel every cell reads.
+# Its laws (identity and typed-table round-trips, driven by the two native
+# seams) are owned here so kernel edits invalidate only kernel laws.
+load("//build:flix.bzl", "checked_test", "flix_check")
+
+package(default_visibility = ["//visibility:public"])
+
+flix_check(
+    name = "identity_check",
+    srcs = [
+        "IdentityTest.flix",
+        "//test:kernel_identity_law_sources",
+    ],
+    command = "test",
+    java_deps = ["//src/native/identity:attune_identity"],
+    threads = 2,
+)
+
+checked_test(
+    name = "identity_test",
+    check = ":identity_check",
+)
+
+flix_check(
+    name = "scientific_table_check",
+    srcs = [
+        "ScientificTableTest.flix",
+        "//test:kernel_table_law_sources",
+    ],
+    command = "test",
+    java_deps = ["//src/native/parquet:attune_parquet"],
+    threads = 2,
+)
+
+checked_test(
+    name = "scientific_table_test",
+    check = ":scientific_table_check",
+)
+
+test_suite(
+    name = "kernel_tests",
+    tests = [
+        ":identity_test",
+        ":scientific_table_test",
+        "//src/native/identity:attune_identity_test",
+        "//src/native/parquet:attune_parquet_test",
+    ],
+)

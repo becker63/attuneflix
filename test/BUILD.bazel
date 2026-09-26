@@ -1,251 +1,74 @@
-load("//build:flix.bzl", "checked_test", "flix_check")
+# The law surface's shared cell source catalogs (K4 Hill-Climb Round 1).
+#
+# Every production source a cell's laws compile against is declared exactly
+# once here, as the narrowest catalog that genuinely shares it; wider catalogs
+# compose narrower ones instead of re-listing their files. The cell law
+# packages (`//test/World`, `//test/Engine`, `//test/Applications`,
+# `//test/Kernel`) consume these catalogs rather than repeating `//src` labels
+# in every target, so a source has one declaration and a change invalidates
+# only the cells whose laws actually read it.
+#
+# This package owns no test target: law targets belong to their cell.
 
-flix_check(
-    name = "inference_boundary_check",
-    srcs = ["//build:src/InferenceBoundaryTest.flix"],
-    command = "test",
-    java_deps = ["//src/native/inference:attune_inference"],
-    threads = 2,
+package(default_visibility = ["//visibility:public"])
+
+# World — the reduced relational surface (`Repository/Structure.flix` compiles
+# against a declared parent module) and the full admission surface.
+filegroup(
+    name = "world_structure_law_sources",
+    srcs = ["//src:Repository/Structure.flix"],
 )
 
-checked_test(
-    name = "inference_boundary_test",
-    check = ":inference_boundary_check",
-)
-
-flix_check(
-    name = "core_parity_check",
+filegroup(
+    name = "world_relational_law_sources",
     srcs = [
-        "ParityTest.flix",
-        "//build:src/Repository.flix",
+        ":world_structure_law_sources",
+        "//src:Repository/Reference.flix",
+    ],
+)
+
+filegroup(
+    name = "world_admission_law_sources",
+    srcs = [
+        ":world_structure_law_sources",
+        "//src:Repository.flix",
+        "//src:Repository/Grit.flix",
+    ],
+)
+
+# Engine — the physical evaluator, the relation algebra, and the Atlas family.
+filegroup(
+    name = "engine_physical_law_sources",
+    srcs = ["//src:Repository/Physical.flix"],
+)
+
+filegroup(
+    name = "engine_radii_law_sources",
+    srcs = [
         "//src:Radii.flix",
         "//src:Radii/Evaluate.flix",
         "//src:Radii/Synthesize.flix",
-        "//src:Repository/Physical.flix",
-        "//src:Repository/Reference.flix",
-        "//src:Repository/Structure.flix",
     ],
-    command = "test",
-    threads = 2,
 )
 
-checked_test(
-    name = "core_parity_test",
-    check = ":core_parity_check",
-)
-
-flix_check(
-    name = "repository_admission_check",
+filegroup(
+    name = "engine_atlas_law_sources",
     srcs = [
-        "//build:src/RepositoryAdmissionTest.flix",
-        "//src:Repository.flix",
-        "//src:Repository/Grit.flix",
-        "//src:Repository/Structure.flix",
-    ],
-    command = "test",
-    threads = 2,
-)
-
-checked_test(
-    name = "repository_admission_test",
-    check = ":repository_admission_check",
-)
-
-flix_check(
-    name = "grit_acquisition_check",
-    srcs = [
-        "//build:src/GritAcquisitionTest.flix",
-        "//src:Repository.flix",
-        "//src:Repository/Grit.flix",
-        "//src:Repository/Structure.flix",
-    ],
-    command = "test",
-    threads = 2,
-)
-
-checked_test(
-    name = "grit_acquisition_test",
-    check = ":grit_acquisition_check",
-)
-
-flix_check(
-    name = "grit_acquire_check",
-    srcs = [
-        "//src:Repository/Acquire.flix",
-        "//src:Repository.flix",
-        "//src:Repository/Grit.flix",
-        "//src:Repository/Structure.flix",
-    ],
-    command = "check",
-    java_deps = ["//src/native/grit:attune_grit"],
-    threads = 2,
-)
-
-checked_test(
-    name = "grit_acquire_test",
-    check = ":grit_acquire_check",
-)
-
-flix_check(
-    name = "atlas_grammar_check",
-    srcs = [
-        "//build:src/AtlasTest.flix",
-        "//build:src/TestWorlds.flix",
         "//src:Atlas.flix",
         "//src:Atlas/Signature.flix",
-        "//src:Radii.flix",
-        "//src:Repository.flix",
-        "//src:Repository/Grit.flix",
-        "//src:Repository/Physical.flix",
-        "//src:Repository/Structure.flix",
-        "//src:ScientificIdentity.flix",
     ],
-    command = "test",
-    java_deps = ["//src/native/identity:attune_identity"],
-    threads = 2,
 )
 
-checked_test(
-    name = "atlas_grammar_test",
-    check = ":atlas_grammar_check",
+# Kernel — the move-stable identity and table contracts.
+filegroup(
+    name = "kernel_identity_law_sources",
+    srcs = ["//src:ScientificIdentity.flix"],
 )
 
-flix_check(
-    name = "localization_sandwich_check",
+filegroup(
+    name = "kernel_table_law_sources",
     srcs = [
-        "//build:src/LocalizationTest.flix",
-        "//build:src/TestWorlds.flix",
-        "//src:Atlas.flix",
-        "//src:Atlas/Signature.flix",
-        "//src:Localization.flix",
-        "//src:Localization/IssueTable.flix",
-        "//src:Localization/PredictionTable.flix",
-        "//src:Localization/PriorTable.flix",
-        "//src:Localization/Sandwich.flix",
-        "//src:Radii.flix",
-        "//src:Repository.flix",
-        "//src:Repository/Grit.flix",
-        "//src:Repository/Physical.flix",
-        "//src:Repository/Structure.flix",
-        "//src:ScientificIdentity.flix",
         "//src:ScientificTable.flix",
         "//src:ScientificTable/Columns.flix",
     ],
-    command = "test",
-    java_deps = [
-        "//src/native/identity:attune_identity",
-        "//src/native/parquet:attune_parquet",
-    ],
-    threads = 2,
-)
-
-checked_test(
-    name = "localization_sandwich_test",
-    check = ":localization_sandwich_check",
-)
-
-flix_check(
-    name = "scientific_table_check",
-    srcs = [
-        "//build:src/ScientificTableTest.flix",
-        "//src:ScientificTable.flix",
-        "//src:ScientificTable/Columns.flix",
-    ],
-    command = "test",
-    java_deps = ["//src/native/parquet:attune_parquet"],
-    threads = 2,
-)
-
-checked_test(
-    name = "scientific_table_test",
-    check = ":scientific_table_check",
-)
-
-flix_check(
-    name = "population_table_check",
-    srcs = [
-        "//build:src/PopulationTableTest.flix",
-        "//src:Population.flix",
-        "//src:Population/Table.flix",
-        "//src:ScientificTable.flix",
-        "//src:ScientificTable/Columns.flix",
-    ],
-    command = "test",
-    java_deps = ["//src/native/parquet:attune_parquet"],
-    threads = 2,
-)
-
-checked_test(
-    name = "population_table_test",
-    check = ":population_table_check",
-)
-
-flix_check(
-    name = "repository_table_check",
-    srcs = [
-        "//build:src/RepositoryTableTest.flix",
-        "//src:Repository.flix",
-        "//src:Repository/Grit.flix",
-        "//src:Repository/Structure.flix",
-        "//src:Repository/Table.flix",
-        "//src:ScientificIdentity.flix",
-        "//src:ScientificTable.flix",
-        "//src:ScientificTable/Columns.flix",
-    ],
-    command = "test",
-    java_deps = [
-        "//src/native/identity:attune_identity",
-        "//src/native/parquet:attune_parquet",
-    ],
-    threads = 2,
-)
-
-checked_test(
-    name = "repository_table_test",
-    check = ":repository_table_check",
-)
-
-flix_check(
-    name = "atlas_signature_table_check",
-    srcs = [
-        "//build:src/AtlasSignatureTableTest.flix",
-        "//src:Atlas.flix",
-        "//src:Atlas/Signature.flix",
-        "//src:Atlas/Signature/Table.flix",
-        "//src:Radii.flix",
-        "//src:Repository.flix",
-        "//src:Repository/Grit.flix",
-        "//src:Repository/Physical.flix",
-        "//src:Repository/Structure.flix",
-        "//src:ScientificIdentity.flix",
-        "//src:ScientificTable.flix",
-        "//src:ScientificTable/Columns.flix",
-    ],
-    command = "test",
-    java_deps = [
-        "//src/native/identity:attune_identity",
-        "//src/native/parquet:attune_parquet",
-    ],
-    threads = 2,
-)
-
-checked_test(
-    name = "atlas_signature_table_test",
-    check = ":atlas_signature_table_check",
-)
-
-flix_check(
-    name = "identity_check",
-    srcs = [
-        "//build:src/IdentityTest.flix",
-        "//src:ScientificIdentity.flix",
-    ],
-    command = "test",
-    java_deps = ["//src/native/identity:attune_identity"],
-    threads = 2,
-)
-
-checked_test(
-    name = "identity_test",
-    check = ":identity_check",
 )

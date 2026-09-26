@@ -1,0 +1,79 @@
+# Cell C — Applications law surface.
+#
+# Owns the Applications cell's law targets (localization, population, and the
+# native inference seam) and declares the Localization/Population production
+# sources it reads. Shared upstream sources come from the `//test` catalogs.
+load("//build:flix.bzl", "checked_test", "flix_check")
+
+package(default_visibility = ["//visibility:public"])
+
+flix_check(
+    name = "localization_sandwich_check",
+    srcs = [
+        "LocalizationTest.flix",
+        "//src:Localization.flix",
+        "//src:Localization/IssueTable.flix",
+        "//src:Localization/PredictionTable.flix",
+        "//src:Localization/PriorTable.flix",
+        "//src:Localization/Sandwich.flix",
+        "//test:engine_atlas_law_sources",
+        "//test:engine_physical_law_sources",
+        "//test:engine_radii_law_sources",
+        "//test:kernel_identity_law_sources",
+        "//test:kernel_table_law_sources",
+        "//test:world_admission_law_sources",
+        "//test/World:TestWorlds.flix",
+    ],
+    command = "test",
+    java_deps = [
+        "//src/native/identity:attune_identity",
+        "//src/native/parquet:attune_parquet",
+    ],
+    threads = 2,
+)
+
+checked_test(
+    name = "localization_sandwich_test",
+    check = ":localization_sandwich_check",
+)
+
+flix_check(
+    name = "population_table_check",
+    srcs = [
+        "PopulationTableTest.flix",
+        "//src:Population.flix",
+        "//src:Population/Table.flix",
+        "//test:kernel_table_law_sources",
+    ],
+    command = "test",
+    java_deps = ["//src/native/parquet:attune_parquet"],
+    threads = 2,
+)
+
+checked_test(
+    name = "population_table_test",
+    check = ":population_table_check",
+)
+
+flix_check(
+    name = "inference_boundary_check",
+    srcs = ["InferenceBoundaryTest.flix"],
+    command = "test",
+    java_deps = ["//src/native/inference:attune_inference"],
+    threads = 2,
+)
+
+checked_test(
+    name = "inference_boundary_test",
+    check = ":inference_boundary_check",
+)
+
+test_suite(
+    name = "applications_tests",
+    tests = [
+        ":inference_boundary_test",
+        ":localization_sandwich_test",
+        ":population_table_test",
+        "//src/native/inference:attune_inference_test",
+    ],
+)

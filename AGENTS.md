@@ -18,16 +18,19 @@ and laws. Nothing here changes what the code means.
 
 - `./verify` is the one gate. It runs the full law suite:
   `nix develop --command bazel test //... --config=buildbuddy-rbe`.
-- While working, run the narrowest affected `//test:*` targets with the
-  same config, batched into ONE invocation; escalate to `./verify` at
-  milestones. Never run two Bazel invocations concurrently (the local
-  resource caps assume exclusivity).
+- While working, run the narrowest affected cell law target with the
+  same config, batched into ONE invocation: `//test/World:*`,
+  `//test/Engine:*`, `//test/Applications:*`, `//test/Kernel:*` (the
+  Stable Kernel), or `//experiments/atlas-work-topology:*` (Research).
+  Escalate to `./verify` at milestones. Never run two Bazel invocations
+  concurrently (the local resource caps assume exclusivity).
 
 ## Bazel authority
 
 - Bazel is the single derivation and validation graph: every artifact and
   every law goes through a Bazel target. Keep BUILD wiring in sync with
-  any file move or deletion (`test/BUILD.bazel`, `build/BUILD.bazel`
+  any file move or deletion (the cell law packages `test/<Cell>/BUILD.bazel`,
+  the shared source catalogs in `test/BUILD.bazel`, `build/BUILD.bazel`
   exports, the root `tests` suite, census fatjar srcs).
 - Nix is developer bootstrap only (dev shell, credential helper) — never
   project construction. Rust and Java are narrow seams (the Grit engine,

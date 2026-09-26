@@ -1,0 +1,84 @@
+# Cell B — Engine law surface.
+#
+# Owns the Engine cell's law targets: the permanent `Repository.Reference` vs
+# `Repository.Physical` parity law, the Atlas grammar law, and the Atlas
+# signature table law. The parity law reads World's reduced surface
+# (`//test:world_relational_law_sources`) and World's parent-module anchor
+# (`//test/World:Repository.flix`), so it never pulls the full admission
+# surface into an Engine action.
+load("//build:flix.bzl", "checked_test", "flix_check")
+
+package(default_visibility = ["//visibility:public"])
+
+flix_check(
+    name = "core_parity_check",
+    srcs = [
+        "ParityTest.flix",
+        "//test:engine_physical_law_sources",
+        "//test:engine_radii_law_sources",
+        "//test:world_relational_law_sources",
+        "//test/World:Repository.flix",
+    ],
+    command = "test",
+    threads = 2,
+)
+
+checked_test(
+    name = "core_parity_test",
+    check = ":core_parity_check",
+)
+
+flix_check(
+    name = "atlas_grammar_check",
+    srcs = [
+        "AtlasTest.flix",
+        "//test:engine_atlas_law_sources",
+        "//test:engine_physical_law_sources",
+        "//test:engine_radii_law_sources",
+        "//test:kernel_identity_law_sources",
+        "//test:world_admission_law_sources",
+        "//test/World:TestWorlds.flix",
+    ],
+    command = "test",
+    java_deps = ["//src/native/identity:attune_identity"],
+    threads = 2,
+)
+
+checked_test(
+    name = "atlas_grammar_test",
+    check = ":atlas_grammar_check",
+)
+
+flix_check(
+    name = "atlas_signature_table_check",
+    srcs = [
+        "AtlasSignatureTableTest.flix",
+        "//src:Atlas/Signature/Table.flix",
+        "//test:engine_atlas_law_sources",
+        "//test:engine_physical_law_sources",
+        "//test:engine_radii_law_sources",
+        "//test:kernel_identity_law_sources",
+        "//test:kernel_table_law_sources",
+        "//test:world_admission_law_sources",
+    ],
+    command = "test",
+    java_deps = [
+        "//src/native/identity:attune_identity",
+        "//src/native/parquet:attune_parquet",
+    ],
+    threads = 2,
+)
+
+checked_test(
+    name = "atlas_signature_table_test",
+    check = ":atlas_signature_table_check",
+)
+
+test_suite(
+    name = "engine_tests",
+    tests = [
+        ":atlas_grammar_test",
+        ":atlas_signature_table_test",
+        ":core_parity_test",
+    ],
+)
