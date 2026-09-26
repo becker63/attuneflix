@@ -115,3 +115,15 @@ filegroup(
         "//src:ScientificTable/Columns.flix",
     ],
 )
+
+# Kernel — the Candidate A contract surface. The pure contract kernel declares
+# the nominal IDs, relation types, six-atom Atlas grammar, scientific schema,
+# and stage ADTs; its law compiles the module in isolation, which is what
+# proves the zero-FFI / zero-IO / zero-resolver boundary (VAL-KERN-001/2/3).
+filegroup(
+    name = "kernel_contract_law_sources",
+    srcs = [
+        "//src:Kernel.flix",
+        "//src:Kernel/Contract.flix",
+    ],
+)

@@ -40,11 +40,29 @@ checked_test(
     check = ":scientific_table_check",
 )
 
+# Candidate A: the pure contract kernel. Compiled with no `java_deps`, which is
+# how the kernel's zero-FFI, zero-IO, zero-resolver boundary is enforced.
+flix_check(
+    name = "contract_check",
+    srcs = [
+        "ContractTest.flix",
+        "//test:kernel_contract_law_sources",
+    ],
+    command = "test",
+    threads = 2,
+)
+
+checked_test(
+    name = "contract_test",
+    check = ":contract_check",
+)
+
 test_suite(
     name = "kernel_tests",
     tests = [
         ":identity_test",
         ":scientific_table_test",
+        ":contract_test",
         "//src/native/identity:attune_identity_test",
         "//src/native/parquet:attune_parquet_test",
     ],

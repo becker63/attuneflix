@@ -4,6 +4,8 @@ exports_files([
     "Atlas/Signature/Summary.flix",
     "Atlas/Signature/Table.flix",
     "Experiment.flix",
+    "Kernel.flix",
+    "Kernel/Contract.flix",
     "Localization.flix",
     "Localization/Sandwich.flix",
     "Localization/IssueTable.flix",
