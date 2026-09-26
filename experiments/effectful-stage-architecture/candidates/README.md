@@ -1,16 +1,20 @@
-# Candidate A / B / C measurements (M2–M3: kernel, effects, schema/transport split)
+# Candidate A / B / C / D measurements (M2–M4: kernel, effects, schema/transport split, staged Bazel packages)
 
-Machine-readable measurements of the M2 (Candidate A, B) and M3 (Candidate C)
-generations, produced with the frozen instrument of record
+Machine-readable measurements of the M2 (Candidate A, B), M3 (Candidate C) and
+M4 (Candidate D) generations, produced with the frozen instrument of record
 (`../scripts/measure_baseline_metrics.sh`, PREREGISTRATION.md §10) and the
 identical three channels (`basis`, `kernel`, `work`) plus the BUILD channel. No
-metric, partition or protocol was redefined.
+metric formula, admission rule, oracle or region partition was redefined.
+Candidate D adds a supplementary, clearly-labelled stage-partition reading
+(PREREGISTRATION.md §16, `*_dagref` fields); the frozen §2.3 partition remains
+the metric of record and is the one the tables below quote.
 
 | file | revision | change |
 |---|---|---|
 | `candidate-a.json` | `3efee12b2fb83b62727c9a09fd98c79bf3c5643c` | extract the stable contract kernel (Candidate A) |
 | `candidate-b.json` | `38deb855119efe1f8d8c65602d1b65d4883ee01a` | capability effects + handlers + ambient `\ IO` elimination (Candidate B) |
 | `candidate-c.json` | `97568f6e269a10c9d92004441860a06371c1212e` | schema/transport split + World decomposition + six-stage typed DAG (Candidate C) |
+| `candidate-d.json` | `37ceaa5a495084642dd4b6dfd874a179b0bea491` | mirror the stage DAG in Bazel packages + slice the law catalogs (Candidate D) |
 
 All three records have `control_commit = 09e27244af9340aa616116a93ea02472e7521ba5`
 and `build.skipped = false`, i.e. the BUILD channel was measured, not skipped.
@@ -53,25 +57,32 @@ cross-stage invalidation count.
 
 ## Measured deltas against the frozen control
 
-| quantity (channel) | control | Candidate A | Candidate B | Candidate C |
-|---|---|---|---|---|
-| admitted files | 113 | 116 | 121 | 147 |
-| production `.flix` files / LOC (basis) | 25 / 3479 | 27 / 3770 | 30 / 3799 | 50 / 4231 |
-| total / production reference edges | 276 / 49 | 278 / 50 | 309 / 65 | 396 / 125 |
-| region groups (`K`) | 9 | 9 | 9 | **8** |
-| `k_way_cut(K)` (primary, finest region cut) | 0.7138 (197) @ K=9 | 0.7122 (198) @ K=9 | 0.7314 (226) @ K=9 | **0.6540 (259) @ K=8** |
-| `k_way_cut(8)` | 0.5616 (155) | 0.5612 (156) | 0.5987 (185) | 0.6540 (259) |
-| `mutable_cross_stage_edges` (fraction) | 30 (0.6122) | 31 (0.6200) | 41 (0.6308) | **78 (0.6240)** |
-| `shared_writable_hotspots` / max pressure | 16 / 6 | 16 / 6 | 18 / 8 | **22 / 7** |
-| stage-partition hotspots | 6 | 6 | 6 | 9 |
-| `kernel_files` / `kernel_loc` | 3 / 260 | 4 / 547 | 7 / 584 | 5 / 445 |
-| `kernel_loc_fraction` | 0.0747 | 0.1451 | 0.1537 | **0.1052** |
-| `kernel_fanin` / `kernel_fanin_share` | 42 / 0.1522 | 44 / 0.1583 | 96 / 0.3107 | 106 / 0.2677 |
-| analyzed / test targets | 492 / 30 | 495 / 31 | 510 / 35 | 526 / 38 |
-| `cross_stage_test_invalidation` (primary) | 59 | 60 | 151 | **275** |
-| `cross_stage_test_invalidation_all_tests` | 260 | 261 | 409 | 686 |
-| task conflict graph edges | 4 | 4 | 3 | 2 |
-| `T1` / `T∞` / `critical_path_fraction` | 4 / 3 / 0.7500 | 4 / 3 / 0.7500 | 4 / 2 / 0.5000 | 4 / 2 / 0.5000 |
+| quantity (channel) | control | Candidate A | Candidate B | Candidate C | Candidate D |
+|---|---|---|---|---|---|
+| admitted files | 113 | 116 | 121 | 147 | 162 |
+| production `.flix` files / LOC (basis) | 25 / 3479 | 27 / 3770 | 30 / 3799 | 50 / 4231 | **50 / 4231** (unchanged) |
+| total / production reference edges | 276 / 49 | 278 / 50 | 309 / 65 | 396 / 125 | **396 / 125** (unchanged) |
+| region groups (`K`) | 9 | 9 | 9 | **8** | 8 |
+| `k_way_cut(K)` (primary, finest region cut) | 0.7138 (197) @ K=9 | 0.7122 (198) @ K=9 | 0.7314 (226) @ K=9 | **0.6540 (259) @ K=8** | 0.6540 (259) @ K=8 |
+| `k_way_cut(8)` | 0.5616 (155) | 0.5612 (156) | 0.5987 (185) | 0.6540 (259) | 0.6540 (259) |
+| `mutable_cross_stage_edges` (fraction) | 30 (0.6122) | 31 (0.6200) | 41 (0.6308) | **78 (0.6240)** | 78 (0.6240) |
+| `shared_writable_hotspots` / max pressure | 16 / 6 | 16 / 6 | 18 / 8 | **22 / 7** | 22 / 7 |
+| stage-partition hotspots / max pressure | 6 / 3 | 6 / 3 | 6 / 3 | 9 / 4 | 9 / 4 |
+| `kernel_files` / `kernel_loc` | 3 / 260 | 4 / 547 | 7 / 584 | 5 / 445 | 5 / 445 |
+| `kernel_loc_fraction` | 0.0747 | 0.1451 | 0.1537 | **0.1052** | 0.1052 |
+| `kernel_fanin` / `kernel_fanin_share` | 42 / 0.1522 | 44 / 0.1583 | 96 / 0.3107 | 106 / 0.2677 | 106 / 0.2677 |
+| analyzed / test targets | 492 / 30 | 495 / 31 | 510 / 35 | 526 / 38 | **575 / 44** |
+| `cross_stage_test_invalidation` (primary) | 59 | 60 | 151 | **275** | **253** (−8.0%) |
+| `cross_stage_test_invalidation_all_tests` | 260 | 261 | 409 | 686 | 664 (−3.2%) |
+| `mutable_cross_stage_edges` (`_dagref`, §16) | 30 | 31 | 41 | 78 | **60** |
+| `cross_stage_test_invalidation` (`_dagref`, §16) | 59 | 60 | 151 | 275 | **173** |
+| task conflict graph edges | 4 | 4 | 3 | 2 | 2 |
+| `T1` / `T∞` / `critical_path_fraction` | 4 / 3 / 0.7500 | 4 / 3 / 0.7500 | 4 / 2 / 0.5000 | 4 / 2 / 0.5000 | 4 / 2 / 0.5000 |
+
+The `_dagref` rows are the supplementary PREREGISTRATION.md §16 reading, given
+for control and for every candidate by the same re-keyed path function; the
+control is 30/59 under both keyings (§16 proves no control path matches an added
+rule), so the rows are directly comparable and the frozen rows stay primary.
 
 Task change surfaces (`file_count`): acquisition 4→4→3→3, atlas_bitset
 4→4→3→3, judge_pareto 11→11→9→7, projection_jsonld 5→5→5→7. The conflict pair
@@ -154,3 +165,74 @@ conflict edges `atlas_bitset–judge_pareto` and
 Neither candidate is rejected: per PREREGISTRATION.md §7, a candidate that
 passes O1-O9 but does not improve (or worsens) a primary quantity is recorded
 with its measured deltas as a negative result.
+
+### Candidate D (M4)
+
+Candidate D restructures the **Bazel graph only**. Every production `.flix`
+file keeps its path and content, so every BASIS, kernel and WORK number is
+byte-identical to Candidate C (same 50 production files / 4231 LOC, same
+396/125 reference edges, same `k_way_cut(8)` 0.6540, same `T∞ = 2`). That
+identity is the preservation evidence for the generation: the change is
+ownership wiring, not meaning.
+
+What moved is the BUILD channel. Each stage now owns a package
+(`//src/kernel`, `//src/transport/parquet`, `//src/world`, `//src/engine`,
+`//src/applications`, `//src/stage{,/acquire,/world,/prior,/atlas,/candidate_set,/judge,/projection,/pipeline}`,
+`//src/research`) whose source catalogs the cell law packages compose, and the
+single root LOC law is sliced per stage and per cell (7 law targets instead of
+1, so `test_targets` 38 → 44).
+
+- **The BUILD metric improves, but far short of the threshold.**
+  `cross_stage_test_invalidation` falls **275 → 253 (−8.0%)**, and the
+  all-tests variant 686 → 664. Against the frozen control (59) the M4 number is
+  **4.3× higher**, so the §9.4 minimum criterion (≤ 18) and the validation
+  contract's `≤ 25` are not met, and the `_dagref` reading (173) does not change
+  that: the direction is negative under both keyings.
+- **Mechanism (why the threshold is out of reach for this surface).** The
+  quantity is `Σ_f |{ tests t : t declares f, stage(t) ≠ stage(f) }|` over the
+  admitted file set. A Flix test target compiles its sources as one
+  whole-program unit, so a cell law test necessarily declares the whole
+  upstream closure it exercises (`//test/Applications:localization_sandwich_test`
+  declares the World admission modules, the Engine, the kernel schema and the
+  Parquet transport: 27 of its declared files are outside `applications`). The
+  immutable kernel is read by every downstream cell by design (O1-O6), so with
+  44 test targets the floor of the aggregate is on the order of
+  `Σ_cells (files upstream of the cell)`, i.e. several hundred — orders above
+  25. Reducing it further would require test targets that do not compile their
+  upstream closure, which whole-program Flix compilation does not offer.
+- **The behavioural half of VAL-BAZEL-002 does hold, and is demonstrable.** A
+  stage-local edit now invalidates only the law targets whose stage closure
+  contains it, and those are exactly its downstream dependents. With the root
+  `//:flix_loc_law_test` no longer a single target over the whole surface, a
+  change under `//src/stage/atlas` re-runs the Atlas/Pipeline laws, not the
+  Kernel, World or Applications laws:
+
+```bash
+nix develop --command bazel query \
+  'kind(".*_test", rdeps(//..., //src/stage/atlas:flix_sources))'
+```
+
+  which returns exactly three targets —
+
+```text
+//test/Applications:stage_pipeline_test
+//test/Engine:atlas_grammar_test
+//test/Engine:flix_loc_law_test
+```
+
+  — all Engine or Applications stage (i.e. downstream of node 3B), while every
+  `//test/Kernel:*`, `//test/World:*` and `//test/Engine:atlas_signature_table_test`
+  target is disjoint from it (that law reads the grammar tables directly, not
+  the Stage 3B node). `//src/stage/judge` behaves the same way: its three
+  dependents (`//test/Applications:localization_sandwich_test`,
+  `//test/Applications:stage_pipeline_test`,
+  `//test/Applications:flix_loc_law_test`) are all Applications stage, and no
+  Kernel, World or Engine law target is invalidated.
+- **Classification.** `mutable_cross_stage_edges` (78; `_dagref` 60) and
+  `cross_stage_test_invalidation` (253; `_dagref` 173) both miss the §9.4
+  minimum, `shared_writable_hotspots` (22) misses the strong criterion, while
+  the stretch quantities `critical_path_fraction` (0.5000) and
+  `kernel_loc_fraction` (0.1052) are met. Per PREREGISTRATION.md §12 this is
+  **Outcome C** (inconclusive / trade-off) on the frozen measurements, and the
+  generation is recorded with its measured deltas rather than smoothed into a
+  success.

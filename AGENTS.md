@@ -96,9 +96,14 @@ them.
 - The law covers the handwritten production and law Flix surface (`src/` +
   `test/`) and is enforced as a repo rule, not by an ad-hoc `wc` command:
   `bazel test //:flix_loc_law_test` (macro `flix_loc_law` in
-  `test/build/flix.bzl`, script `test/build/flix_loc_law.sh`, source
-  filegroups `//src:flix_sources` + `//test:flix_sources`). It is part of
-  `//:tests`, so `./verify` runs it.
+  `test/build/flix.bzl`, script `test/build/flix_loc_law.sh`). The root target
+  is a `test_suite` over per-stage and per-cell law targets, so a stage-local
+  edit re-runs only that stage's slice: `//test/Kernel`, `//test/World`,
+  `//test/Engine`, `//test/Applications`, `//src/stage`, `//src/research`, and
+  the residual fixtures law at `//test:flix_loc_law_test`. Each slice carries
+  its own ceiling through the macro's `max_total` (`ATTUNE_FLIX_LOC_MAX_TOTAL`),
+  and the slices sum to the same combined ceiling. It is part of `//:tests`, so
+  `./verify` runs it.
 - **LOC means code lines.** A line counts when, after stripping `/* ... */`
   blocks, it has content that is not itself `//`/`///`. Blank and pure-comment
   lines are documentation, not code, and do not count (user ruling
