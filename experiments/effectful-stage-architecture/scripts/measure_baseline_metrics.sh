@@ -84,6 +84,7 @@ region_of() {
 # ---------------------------------------------------------------------------
 stage_of() {
     case "$1" in
+        src/Kernel/*|src/kernel/*) echo kernel ;;
         src/ScientificIdentity.flix|src/ScientificTable.flix|src/ScientificTable/*|src/native/identity/*|src/native/parquet/*) echo kernel ;;
         src/Repository/Physical.flix) echo engine ;;
         src/Repository.flix|src/Repository/*|src/grit/*|src/native/grit/*) echo world ;;
@@ -243,7 +244,10 @@ for g in "${!hotspot_importers[@]}"; do
     [ "$n" -ge 2 ] && hotspots=$((hotspots + 1))
     [ "$n" -gt "$max_pressure" ] && max_pressure="$n"
 done
-# region-level hotspots, reported for continuity with the prior instrument
+# The region partition carries the spec keys `shared_writable_hotspots` /
+# `max_hotspot_pressure` (PREREGISTRATION.md §3.5, §9.1); the stage-partition
+# counts are reported alongside under `shared_stage_hotspots` /
+# `max_stage_hotspot_pressure`, never substituted for the region count.
 declare -A rhot
 for k in "${!edge_keys[@]}"; do
     a="${k%%|*}"; b="${k##*|}"; ra="$(region_of "$a")" rb="$(region_of "$b")"
@@ -397,10 +401,10 @@ jq -n \
   --argjson cuts "$cuts_json" \
   --argjson cross_stage_edges "$cross_edges" \
   --arg cross_stage_fraction "$(frac "$cross_edges" "$prod_edges")" \
-  --argjson shared_hotspots "$hotspots" \
-  --argjson max_hotspot_pressure "$max_pressure" \
-  --argjson region_hotspots "$region_hotspots" \
-  --argjson region_max_hotspot_pressure "$region_max_pressure" \
+  --argjson shared_writable_hotspots "$region_hotspots" \
+  --argjson max_hotspot_pressure "$region_max_pressure" \
+  --argjson shared_stage_hotspots "$hotspots" \
+  --argjson max_stage_hotspot_pressure "$max_pressure" \
   --argjson kernel_files "$kernel_files" \
   --argjson kernel_loc "$kernel_loc" \
   --arg kernel_loc_fraction "$(frac "$kernel_loc" "$prod_loc")" \
@@ -437,10 +441,10 @@ jq -n \
          k_way_cut: $cuts,
          mutable_cross_stage_edges: $cross_stage_edges,
          mutable_cross_stage_fraction: ($cross_stage_fraction|tonumber),
-         shared_writable_hotspots: $shared_hotspots,
+         shared_writable_hotspots: $shared_writable_hotspots,
          max_hotspot_pressure: $max_hotspot_pressure,
-         shared_region_hotspots: $region_hotspots,
-         region_max_hotspot_pressure: $region_max_hotspot_pressure
+         shared_stage_hotspots: $shared_stage_hotspots,
+         max_stage_hotspot_pressure: $max_stage_hotspot_pressure
        },
        kernel: {
          kernel_files: $kernel_files,
@@ -472,7 +476,7 @@ jq -c '{control: .control_commit,
         cross_stage_edges: .channels.basis.mutable_cross_stage_edges,
         cross_stage_fraction: .channels.basis.mutable_cross_stage_fraction,
         hotspots: .channels.basis.shared_writable_hotspots,
-        region_hotspots: .channels.basis.shared_region_hotspots,
+        stage_hotspots: .channels.basis.shared_stage_hotspots,
         kernel_loc_fraction: .channels.kernel.kernel_loc_fraction,
         kernel_fanin_share: .channels.kernel.kernel_fanin_share,
         cross_invalidation: .channels.build.cross_stage_test_invalidation,

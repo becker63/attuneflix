@@ -1,8 +1,8 @@
 {
   "protocol": "attuneflix-effectful-stage-baseline-v1",
-  "recorded_at_utc": "2026-09-26T16:41:49Z",
+  "recorded_at_utc": "2026-09-26T17:14:27Z",
   "control_commit": "09e27244af9340aa616116a93ea02472e7521ba5",
-  "working_commit": "c14c8f1b90b3e144c98fe670ce14e40e1322d9b4",
+  "working_commit": "d766448b9c6108443f262e51d528630ebb6f3c48",
   "partitions": {
     "admission": "attuneflix-admission-v1",
     "region": "attuneflix-regions-v1",
@@ -52,10 +52,10 @@
       },
       "mutable_cross_stage_edges": 30,
       "mutable_cross_stage_fraction": 0.612245,
-      "shared_writable_hotspots": 6,
-      "max_hotspot_pressure": 3,
-      "shared_region_hotspots": 16,
-      "region_max_hotspot_pressure": 6
+      "shared_writable_hotspots": 16,
+      "max_hotspot_pressure": 6,
+      "shared_stage_hotspots": 6,
+      "max_stage_hotspot_pressure": 3
     },
     "kernel": {
       "kernel_files": 3,
