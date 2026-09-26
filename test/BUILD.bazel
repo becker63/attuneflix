@@ -127,3 +127,16 @@ filegroup(
         "//src:Kernel/Contract.flix",
     ],
 )
+
+# Kernel — the capability effect declarations (Candidate B). The effect module
+# names only pure kernel types, so it inherits the same zero-FFI / zero-IO
+# boundary as the contract: a target that compiles both with no `java_deps` is
+# what proves the declarations delegate all real work to a handler
+# (VAL-EFF-001).
+filegroup(
+    name = "kernel_effect_law_sources",
+    srcs = [
+        ":kernel_contract_law_sources",
+        "//src:Kernel/Effect.flix",
+    ],
+)

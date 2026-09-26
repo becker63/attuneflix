@@ -6,6 +6,7 @@ exports_files([
     "Experiment.flix",
     "Kernel.flix",
     "Kernel/Contract.flix",
+    "Kernel/Effect.flix",
     "Localization.flix",
     "Localization/Sandwich.flix",
     "Localization/IssueTable.flix",

@@ -57,12 +57,29 @@ checked_test(
     check = ":contract_check",
 )
 
+# Candidate B: the capability effect declarations. Typechecked with no
+# `java_deps`, so the effects stay pure declarations (no FFI, no file, no
+# provider) and the handler seam remains the only place the world enters
+# (VAL-EFF-001). Behavioural replay laws arrive with `Kernel.Handler`.
+flix_check(
+    name = "effect_check",
+    srcs = ["//test:kernel_effect_law_sources"],
+    command = "check",
+    threads = 2,
+)
+
+checked_test(
+    name = "effect_test",
+    check = ":effect_check",
+)
+
 test_suite(
     name = "kernel_tests",
     tests = [
         ":identity_test",
         ":scientific_table_test",
         ":contract_test",
+        ":effect_test",
         "//src/native/identity:attune_identity_test",
         "//src/native/parquet:attune_parquet_test",
     ],

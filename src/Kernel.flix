@@ -1,4 +1,2 @@
-/// The Stable Contract Kernel root: the leaf-level pure namespace every cell
-/// reads. All contract declarations live under `Kernel.Contract`; this root
-/// carries no behavior of its own.
+/// Stable Contract Kernel root: the pure namespace (`Kernel.Contract`, `Kernel.Effect`) every cell reads.
 pub mod Kernel {}

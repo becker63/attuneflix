@@ -1,12 +1,8 @@
-/// The Stable Semantic / Contract Kernel (Candidate A): the leaf of the
-/// architecture. It declares the nominal identities, the pure relational
-/// contract, the frozen six-atom Atlas grammar, the pure scientific schema,
-/// and the typed input/output contracts of the six-stage pipeline. Nothing
-/// here performs I/O, calls a native seam, or names a language resolver, so
-/// any cell may depend on it without inheriting an effect. The World, Engine,
-/// and Applications cells converge on this contract as the Candidate C/D
-/// decomposition lands; the Arrow/Parquet transport that realizes the schema
-/// stays in `ScientificTable` until Candidate C splits it out.
+/// The Stable Contract Kernel (Candidate A): nominal identities, the pure
+/// relational contract, the six-atom Atlas grammar, the pure scientific schema,
+/// and the six-stage typed input/output contracts. Nothing here performs I/O,
+/// calls a native seam, or names a language resolver, so any cell may depend on
+/// it without inheriting an effect.
 pub mod Kernel.Contract {
     use Util.Json
     use Util.Json.Json.{JArray, JBool, JNull, JNumber, JObject, JString}
