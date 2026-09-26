@@ -1,6 +1,15 @@
 load("//build:flix.bzl", "checked_test", "flix_check", "flix_fatjar")
 load(":parallelism.bzl", "attune_parallelism_grit_revision", "attune_parallelism_revision")
 
+# The frozen polyglot acquisition seam (the one `Repository.Grit.Fact` protocol
+# over `Repository.admit`) is reused, not duplicated, by the work-topology
+# experiment's control acquisition. Exposed as source files, never modified.
+exports_files([
+    "AcquireMain.flix",
+    "AcquisitionDriver.flix",
+    "AcquisitionFacts.flix",
+])
+
 # The v2 acquisition seam (PREREGISTRATION.md "AMENDMENT — v2 acquisition"):
 # the repository's own Grit acquisition path over one frozen revision's
 # isolated worktree. Built by Bazel, run over the worktrees by
