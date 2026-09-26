@@ -144,10 +144,27 @@ mod ControlTopology {
     }
 
     def fourCell(name: String): Bool =
-        name == "world" or name == "engine" or name == "applications" or name == "research"
+        Vector.exists(member -> member == name, fourCells())
 
-    /// `cell_cut_4` over the four cells; kernel-, law- and other-homed edges are
-    /// excluded from numerator and denominator and reported separately.
+    /// `cell_cut_4` over an arbitrary list of four member cells; kernel-, law-
+    /// and other-homed edges are excluded from numerator and denominator and
+    /// reported separately. `cellCut` fixes the control cells so the control and
+    /// every candidate share one counting rule.
+    pub def cellCutFor(four: Vector[String], cells: Vector[(String, String)]): CellCut = {
+        let inFour = name -> Vector.exists(member -> member == name, four);
+        let considered = Vector.filter(match (a, b) -> inFour(a) and inFour(b), cells);
+        let shared = Vector.count(match (a, b) -> a != b, considered);
+        {
+            shared = shared,
+            considered = Vector.length(considered),
+            fraction = ScientificTable.ratio(shared, Vector.length(considered)),
+            kernelEdges = Vector.count(match (a, b) -> a == "kernel" or b == "kernel", cells),
+            lawEdges = Vector.count(match (a, b) -> a == "law" or b == "law", cells),
+            otherEdges = Vector.count(match (a, b) -> a == "other" or b == "other", cells)
+        }
+    }
+
+    /// `cell_cut_4` over the four control cells (the initial, pre-Round-1 cut).
     pub def cellCut(cells: Vector[(String, String)]): CellCut = {
         let considered = Vector.filter(match (a, b) -> fourCell(a) and fourCell(b), cells);
         let shared = Vector.count(match (a, b) -> a != b, considered);

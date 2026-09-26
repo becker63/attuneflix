@@ -28,6 +28,7 @@ def attune_control_acquisition(name = "acquire"):
         srcs = [
             "ControlMain.flix",
             "ControlAcquisition.flix",
+            "ControlMap.flix",
             "//experiments/atlas-parallelism:AcquisitionDriver.flix",
             "//experiments/atlas-parallelism:AcquisitionFacts.flix",
             "//src:Experiment.flix",

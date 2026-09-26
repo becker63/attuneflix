@@ -22,14 +22,10 @@ mod ControlAcquisition {
     /// excluded by protocol. Paths are ASCII, so ordinal string order is the
     /// `LC_ALL=C` byte order.
     def manifest(): Unit \ IO = {
-        let admitted = Vector.filter(admittedPath, lines(Experiment.property("attune.list")))
-            |> Vector.sort;
+        let admitted = ControlMap.admittedManifest(lines(Experiment.property("attune.list")));
         let _ = Files.writeString(Paths.get(Experiment.property("attune.files")), joinLines(admitted));
         println("CONTROL_MANIFEST files=${Vector.length(admitted)}")
     }
-
-    def admittedPath(path: String): Bool =
-        not String.startsWith(prefix = ".attune/", path) and Repository.Grit.language(path) != None
 
     def lines(path: String): Vector[String] \ IO =
         String.lines(Files.readString(Paths.get(path))) |> List.toVector

@@ -44,6 +44,30 @@ pub mod ControlMap {
     pub def cells(): Vector[String] = Vector#{"kernel", "world", "engine", "applications", "research",
         "law", "other"}
 
+    /// §2 admission rule: a tracked path is admitted iff the frozen closure's
+    /// own language table admits it and it is not frozen `.attune` evidence.
+    /// The one rule is shared by the control inclusion record and every
+    /// candidate revision's admitted path list.
+    pub def admitted(path: String): Bool =
+        not String.startsWith(prefix = ".attune/", path) and Repository.Grit.language(path) != None
+
+    /// The admitted path list of a raw `git ls-tree` listing: filtered by the
+    /// §2 rule and `LC_ALL=C` sorted (paths are ASCII).
+    pub def admittedManifest(listing: Vector[String]): Vector[String] =
+        Vector.filter(admitted, listing) |> Vector.sort
+
+    /// §5 amendment (Round 1, 2026-09-26): the cell-owned law surfaces.
+    /// `cellOf` above stays exactly the control protocol, so the frozen control
+    /// cut re-derives unchanged; this amended first-match-wins partition is what
+    /// every candidate after Round 1 uses. A `test/<Cell>/` law package belongs
+    /// to the cell it exercises; the shared `test/` catalogs stay `law`.
+    pub def roundCellOf(path: String): String =
+        if (String.startsWith(prefix = "test/World/", path)) "world"
+        else if (String.startsWith(prefix = "test/Engine/", path)) "engine"
+        else if (String.startsWith(prefix = "test/Applications/", path)) "applications"
+        else if (String.startsWith(prefix = "test/Kernel/", path)) "kernel"
+        else cellOf(path)
+
     /// §9 surface class: a coarse, move-stable prefix rule that keeps two files
     /// declaring the same module name distinct (`src/Repository.flix` as
     /// production versus `build/src/Repository.flix` as law).

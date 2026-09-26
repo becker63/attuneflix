@@ -29,18 +29,31 @@ here="$(cd "$(dirname "$0")/.." && pwd)"
 root="${BUILD_WORKSPACE_DIRECTORY:-$(git -C "$here" rev-parse --show-toplevel)}"
 worktree="${2:-${ATTUNE_LOCALITY_WORKTREE:-/tmp/attuneflix-control}}"
 universe="${BAZEL_LOCALITY_UNIVERSE:-//...}"
-files="${ATTUNE_LOCALITY_FILES:-$here/control/control.files.txt}"
+files="${ATTUNE_LOCALITY_FILES:-$here/$role/$role.files.txt}"
 out="$here/$role"
+revision_file="$here/$role/$role.revision.txt"
 
 if [ ! -f "$files" ]; then
     echo "FAIL: missing admitted file list: $files" >&2
     exit 1
 fi
-if [ ! -e "$worktree/.git" ]; then
-    echo "FAIL: missing isolated worktree: $worktree" >&2
+if [ ! -f "$revision_file" ]; then
+    echo "FAIL: missing revision record: $revision_file" >&2
     exit 1
 fi
 mkdir -p "$out"
+
+# The role's revision is a declared protocol constant, read from the committed
+# `<role>.revision.txt`. One shared worktree keeps the warm Bazel output base
+# (§7 documents that a fresh output base cannot evaluate the revision's Rust
+# crate universe), so the worktree is materialized once and then checked out to
+# the role's revision; a re-run for either role is idempotent and deterministic.
+revision="$(tr -d '[:space:]' < "$revision_file")"
+if [ ! -e "$worktree/.git" ]; then
+    git -C "$root" worktree add "$worktree" "$revision" >/dev/null
+elif [ "$(git -C "$worktree" rev-parse HEAD 2>/dev/null || true)" != "$revision" ]; then
+    git -C "$worktree" checkout --quiet "$revision"
+fi
 
 cd "$worktree"
 

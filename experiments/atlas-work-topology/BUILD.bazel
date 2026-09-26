@@ -1,4 +1,5 @@
 load(":control_signatures.bzl", "attune_control_signature_artifacts_test", "attune_control_signature_check", "attune_control_signatures")
+load(":round_topology.bzl", "attune_round_artifacts_test", "attune_round_check", "attune_round_topology")
 load(":topology.bzl", "attune_control_topology", "attune_control_topology_artifacts_test", "attune_control_topology_check")
 load(":work_topology.bzl", "attune_control_acquisition", "attune_control_reproducibility_test")
 
@@ -23,7 +24,34 @@ filegroup(
     ],
 )
 
-exports_files(["scripts/measure_bazel_locality.sh"])
+exports_files([
+    "scripts/fanout_delta.sh",
+    "scripts/measure_bazel_locality.sh",
+])
+
+# The Round 1 candidate measurement (PREREGISTRATION.md §9, §10; VAL-HC1-003).
+# `round1.files.txt` is the round-1 revision's admitted path list derived by the
+# one §2 admission rule; `round1.sources.txt` is that revision's source-hash
+# manifest (no Grit, no fact re-acquisition); the three JSON documents are the
+# round's identity map, static work-topology and signature-preservation oracle.
+# The Bazel-locality artifacts are produced by `scripts/measure_bazel_locality.sh
+# round1` (targets, tests, per-file direct fanout) and `scripts/fanout_delta.sh
+# control round1` (the comparative table keyed on the logical identity layer).
+filegroup(
+    name = "round1_files",
+    srcs = [
+        "round1/round1.fanout.txt",
+        "round1/round1.fanout_delta.tsv",
+        "round1/round1.files.txt",
+        "round1/round1.identity_map.json",
+        "round1/round1.oracle.json",
+        "round1/round1.revision.txt",
+        "round1/round1.sources.txt",
+        "round1/round1.targets.txt",
+        "round1/round1.tests.txt",
+        "round1/round1.topology.json",
+    ],
+)
 
 # `bazel run //experiments/atlas-work-topology:acquire` materializes the control
 # revision in an isolated /tmp worktree and freezes the typed evidence.
@@ -62,6 +90,19 @@ attune_control_topology_check()
 # compares them with the committed artifacts (§6, §8).
 attune_control_topology_artifacts_test()
 
+# `bazel run //experiments/atlas-work-topology:measure_topology -- round1`
+# writes the Round 1 candidate's identity map, static work-topology and
+# signature-preservation oracle over the frozen control basis (§9, §10, §11).
+attune_round_topology()
+
+# Provenance and protocol law tests for the round instrument (§4, §5, §9, §11).
+attune_round_check()
+
+# `bazel test //experiments/atlas-work-topology:round1_artifacts_test`
+# independently re-derives the round's identity map, topology and oracle from
+# the committed evidence and compares them with the committed artifacts.
+attune_round_artifacts_test()
+
 # Cell D — Research law surface: one aggregation point for the research cell's
 # replay, signature-provenance, and topology-provenance laws. The frozen
 # historical instrument's provenance law is aggregated here unchanged.
@@ -73,6 +114,8 @@ test_suite(
         ":control_signature_test",
         ":control_topology_artifacts_test",
         ":control_topology_test",
+        ":round1_artifacts_test",
+        ":round_test",
         "//experiments/atlas-parallelism:parallelism_provenance_test",
     ],
 )

@@ -153,3 +153,63 @@ Re-acquires the same worktree twice, re-admits the committed evidence through
 `Repository.admit`, and asserts byte-for-byte equality of both runs against each
 other and against the committed evidence, plus exact inclusion-record and
 revision equality. All comparison logic runs in Flix (`ControlAcquisition.flix`).
+
+## Round 1 — cell-owned law and build surfaces (VAL-HC1-002 / -003)
+
+Round 1 is the candidate revision `52da6424…`; its delta report is
+`rounds/round1.md` and its artifacts are under `round1/`.
+
+Commands of record:
+
+```bash
+nix develop --command bazel run //experiments/atlas-work-topology:measure_topology --config=buildbuddy-rbe -- round1
+nix develop --command bash experiments/atlas-work-topology/scripts/measure_bazel_locality.sh round1
+bash experiments/atlas-work-topology/scripts/fanout_delta.sh control round1
+```
+
+`measure_topology <role>` derives the role's admitted manifest and source
+manifest from the revision recorded in `<role>/<role>.revision.txt`, re-admits
+the frozen control facts (no Grit, no re-acquisition) and writes:
+
+| artifact | content |
+|---|---|
+| `round1/round1.files.txt`, `round1/round1.sources.txt` | the round revision's admitted paths and source hashes by the one §2 admission rule |
+| `round1/round1.identity_map.json` | the §9 post-round identity map: movement classification (stable/modified/moved/dropped/new), regions, and the round's ownership cell per file |
+| `round1/round1.topology.json` | candidate BASIS cuts `k=2..10`, cross-region ratio, per-region coherence/independence, hotspot pressure, the amended `cell_cut_4`, and the candidate ATLAS region overlap and blast radii |
+| `round1/round1.oracle.json` | the §10 oracle: grammar invariance, mixing landmarks, the depth 1..7 reach curve, identity verdicts, the basis graph and the explicit basis-edge drift |
+
+`RoundIdentity.flix` owns the movement/identity classification,
+`RoundTopology.flix` the candidate static topology (region- and cell-partitioned
+by the §5 amendment), `RoundOracle.flix` the §10 rules, `RoundJson.flix` the
+rendering and `RoundMeasure.flix` the commands. `ControlMap.roundCellOf` is the
+dated §5 amendment; `ControlMap.cellOf` stays frozen for control.
+
+Measured delta (details and every number in `rounds/round1.md`):
+
+- Oracle **passes** on every rule: `D50` 3 → 4 (exactly the allowance), `D80`/
+  `D90`/`D95` unchanged, depth-7 reach 0.674 → 0.664 (−0.0108 of the 0.05
+  allowance). The whole landmark drift is 15 starlark label/glob edges in three
+  BUILD files; no `.flix`/`.java` declaration or import edge changes.
+- Topology moves: `cell_cut_4` 0.660 → 0.554, cross-region ratio 0.883 → 0.796,
+  hotspots 17 → 16, max pressure 7 → 6, `max_region_blast` 199 → 139.5, high
+  overlap pairs 45 → 36. `k_way_cut(8)`, the primary objective, is unchanged at
+  96/137 and the two shared World law helpers become the round's cross-cell
+  hotspots.
+- BUILD channel: 437 → 467 analyzed targets, 18 → 23 test targets; cross-cell
+  test invalidation 92 → 55 (−40%) with the experiment's own test targets
+  excluded from the universe comparison.
+
+Independent verification:
+
+```bash
+nix develop --command bazel test //experiments/atlas-work-topology:round_test \
+  //experiments/atlas-work-topology:round1_artifacts_test --config=buildbuddy-rbe
+```
+
+`round_test` is the round's protocol/provenance law suite (identity
+classification, the amended cell cut, the translated comparison basis, the
+identity-carried seed panel, the reported basis-edge drift, T8 under the frozen
+test-side rule, grammar invariance). `round1_artifacts_test` re-derives the
+identity map, topology and oracle from the committed control evidence and
+asserts byte-for-byte equality with the committed `round1/` artifacts.
+
