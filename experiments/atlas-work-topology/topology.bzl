@@ -34,8 +34,11 @@ _TOPOLOGY_SRCS = [
     "//src:Repository/Structure.flix",
     "//src:Repository/Table.flix",
     "//src:ScientificIdentity.flix",
-    "//src:ScientificTable.flix",
-    "//src:ScientificTable/Columns.flix",
+    "//src:Scientific.flix",
+    "//src:Scientific/Parquet.flix",
+    "//src:Scientific/Row.flix",
+    "//src:Scientific/Schema.flix",
+    "//src:Scientific/Value.flix",
 ]
 
 _TOPOLOGY_JAVA_DEPS = [

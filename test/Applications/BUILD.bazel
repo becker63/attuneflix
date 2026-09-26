@@ -48,7 +48,7 @@ flix_check(
         "PopulationTableTest.flix",
         "//src:Population.flix",
         "//src:Population/Table.flix",
-        "//test:kernel_table_law_sources",
+        "//test:kernel_table_transport_law_sources",
     ],
     command = "test",
     java_deps = ["//src/native/parquet:attune_parquet"],

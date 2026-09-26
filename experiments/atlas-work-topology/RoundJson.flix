@@ -79,7 +79,7 @@ mod RoundJson {
             ("basis", obj(Vector#{
                 ("use_edges", int(Vector.length(edges))),
                 ("cross_region_edges", int(cross)),
-                ("cross_region_edge_ratio", real(ScientificTable.ratio(cross, Vector.length(edges)))),
+                ("cross_region_edge_ratio", real(Scientific.Value.ratio(cross, Vector.length(edges)))),
                 ("other_edges", int(Vector.count(match (f, t) -> f == "other" or t == "other", edges)))
             })),
             ("regions", regionsJson(world, mapping, edges)),
@@ -116,7 +116,7 @@ mod RoundJson {
             obj(Vector#{
                 ("k", int(k)),
                 ("cross_edges", int(Vector.count(match (f, t) -> ControlTopology.crosses(groups, f, t), edges))),
-                ("fraction", real(ScientificTable.ratio(
+                ("fraction", real(Scientific.Value.ratio(
                     Vector.count(match (f, t) -> ControlTopology.crosses(groups, f, t), edges), Vector.length(edges)))),
                 ("groups", arr(Vector.map(match (name, members0) -> obj(Vector#{
                     ("name", str(name)),

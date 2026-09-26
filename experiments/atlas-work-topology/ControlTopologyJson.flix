@@ -48,7 +48,7 @@ mod ControlTopologyJson {
             ("unresolved_imports", int(world#unresolvedImports)),
             ("unresolved_calls", int(world#unresolvedCalls)),
             ("cross_region_edges", int(cross)),
-            ("cross_region_edge_ratio", real(ScientificTable.ratio(cross, Vector.length(edges)))),
+            ("cross_region_edge_ratio", real(Scientific.Value.ratio(cross, Vector.length(edges)))),
             ("other_edges", int(Vector.count(match (f, t) -> f == "other" or t == "other", edges))),
             ("other_internal_edges", int(Vector.count(match (f, t) -> f == "other" and t == "other", edges)))
         })
@@ -99,7 +99,7 @@ mod ControlTopologyJson {
             obj(Vector#{
                 ("k", int(k)),
                 ("cross_edges", int(cross)),
-                ("fraction", real(ScientificTable.ratio(cross, Vector.length(edges)))),
+                ("fraction", real(Scientific.Value.ratio(cross, Vector.length(edges)))),
                 ("groups", arr(Vector.map(match (name, members0) -> obj(Vector#{
                     ("name", str(name)),
                     ("regions", arr(Vector.map(str, Vector.sort(Set.toVector(members0)))))

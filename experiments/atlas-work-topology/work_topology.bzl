@@ -39,8 +39,11 @@ def attune_control_acquisition(name = "acquire"):
             "//src:Repository/Grit.flix",
             "//src:Repository/Structure.flix",
             "//src:ScientificIdentity.flix",
-            "//src:ScientificTable.flix",
-            "//src:ScientificTable/Columns.flix",
+            "//src:Scientific.flix",
+            "//src:Scientific/Parquet.flix",
+            "//src:Scientific/Row.flix",
+            "//src:Scientific/Schema.flix",
+            "//src:Scientific/Value.flix",
         ],
         java_deps = [
             "//src/native/grit:attune_grit",

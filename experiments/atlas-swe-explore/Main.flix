@@ -99,12 +99,12 @@ mod CensusMain {
             }) {
                 case Err(error) => bug!(error)
                 case Ok(output) => {
-                    let _ = ScientificTable.write(Experiment.property("attune.output_observations"),
+                    let _ = Scientific.Parquet.write(Experiment.property("attune.output_observations"),
                         Atlas.Signature.Table.observations(), output#observations);
-                    let _ = ScientificTable.write(Experiment.property("attune.output_physical"),
+                    let _ = Scientific.Parquet.write(Experiment.property("attune.output_physical"),
                         Atlas.Signature.Table.physical(), output#physical);
                     let manifestCaseCount = Integer.parseInt(Experiment.property("attune.manifest_case_count"));
-                    let _ = ScientificTable.write(Experiment.property("attune.output_snapshot"),
+                    let _ = Scientific.Parquet.write(Experiment.property("attune.output_snapshot"),
                         Atlas.Signature.Table.snapshots(), Vector#{
                             Atlas.Signature.Table.snapshotRow(snapshot, world, manifestCaseCount)
                         });

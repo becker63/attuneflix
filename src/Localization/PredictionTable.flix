@@ -1,6 +1,6 @@
 /// Typed durable output of the current localization sandwich.
 pub mod Localization.PredictionTable {
-    use ScientificTable.Columns.{text, int32, optionalInt32, float64}
+    use Scientific.Schema.{text, int32, optionalInt32, float64}
 
     pub def summary(): Kernel.Contract.Schema = {
         format = "attune-localization-prediction-summary-v2",

@@ -4,7 +4,7 @@
 /// their deterministic, reusable projection: one protocol row, the exact
 /// document corpus, and the exact ranked field consumed by Atlas.
 pub mod Localization.PriorTable {
-    use ScientificTable.Columns.{text, int32, optionalInt32, float64}
+    use Scientific.Schema.{text, int32, optionalInt32, float64}
 
     pub def metadata(): Kernel.Contract.Schema = {
         format = "attune-semantic-prior-metadata-v1",

@@ -208,20 +208,20 @@ mod ControlCoChange {
             ("region_internal_share", arr(Vector.map(region0 -> obj(Vector#{
                 ("region", str(region0)),
                 ("raw_mass", int(regionInternalRaw(entries, region0))),
-                ("share", real(ScientificTable.ratio(regionInternalRaw(entries, region0), totalRaw0)))
+                ("share", real(Scientific.Value.ratio(regionInternalRaw(entries, region0), totalRaw0)))
             }), regionNames(entries)))),
             ("cross_region", obj(Vector#{
                 ("raw_mass", int(crossRaw)),
-                ("raw_ratio", real(ScientificTable.ratio(crossRaw, totalRaw0))),
+                ("raw_ratio", real(Scientific.Value.ratio(crossRaw, totalRaw0))),
                 ("normalized_mass", real(crossNormalized)),
                 ("normalized_ratio", real(if (totalNormalized0 == 0.0) 0.0 else crossNormalized / totalNormalized0)),
                 ("line_weighted_mass", int(crossLine)),
-                ("line_weighted_ratio", real(ScientificTable.ratio(crossLine, totalLine0)))
+                ("line_weighted_ratio", real(Scientific.Value.ratio(crossLine, totalLine0)))
             })),
             ("cochange_cut_8", obj(Vector#{
                 ("cross_mass_raw", int(cutMass)),
                 ("total_mass_raw", int(totalRaw0)),
-                ("fraction", real(ScientificTable.ratio(cutMass, totalRaw0))),
+                ("fraction", real(Scientific.Value.ratio(cutMass, totalRaw0))),
                 ("groups", arr(Vector.map(match (name, members0) -> obj(Vector#{
                     ("name", str(name)),
                     ("regions", arr(Vector.map(str, Vector.sort(Set.toVector(members0)))))

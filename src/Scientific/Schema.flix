@@ -1,7 +1,8 @@
-/// Shared explicit-column constructors for the typed scientific tables.
-/// Every table module declares its schemas through these so the
-/// {name, kind, nullable} literal has exactly one owner.
-pub mod ScientificTable.Columns {
+/// Pure scientific schema construction: the explicit column constructors every
+/// typed table declares its schema through, so the `{name, kind, nullable}`
+/// literal has exactly one owner. The schema types themselves stay in the
+/// kernel (`Kernel.Contract`); this module adds no I/O and no native seam.
+pub mod Scientific.Schema {
     pub def text(name: String): Kernel.Contract.Column = {name = name, kind = Kernel.Contract.ColumnType.Text, nullable = false}
     pub def optionalText(name: String): Kernel.Contract.Column = {name = name, kind = Kernel.Contract.ColumnType.Text, nullable = true}
     pub def textList(name: String): Kernel.Contract.Column = {name = name, kind = Kernel.Contract.ColumnType.TextList, nullable = false}

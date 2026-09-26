@@ -60,7 +60,7 @@ mod ControlMeasure {
         let cut = ControlTopology.cellCut(ControlTopology.cellEdges(world0));
         Vector.foldLeft((_, entry) -> match entry {
             case (k, cross) =>
-                println("CUT k=${k} cross=${cross} fraction=${ScientificTable.ratio(cross, useEdges)}")
+                println("CUT k=${k} cross=${cross} fraction=${Scientific.Value.ratio(cross, useEdges)}")
         }, (), ControlTopology.cutCounts(world0));
         println("TOPOLOGY use_edges=${useEdges} non_empty_regions=${Vector.length(ControlTopology.nonEmptyRegions(world0))} " +
             "cell_cut_4=${cut#fraction} shared_hotspots=${Vector.length(ControlTopology.hotspotFiles(world0))} " +
@@ -78,7 +78,7 @@ mod ControlMeasure {
         }, 0, entries);
         println("COCHANGE commits=${Vector.length(history)} " +
             "commits_touching_admitted=${ControlCoChange.commitsTouchingAdmitted(history, admitted)} " +
-            "pairs=${Vector.length(entries)} total_raw=${total} cross_region_raw_ratio=${ScientificTable.ratio(cross, total)} " +
+            "pairs=${Vector.length(entries)} total_raw=${total} cross_region_raw_ratio=${Scientific.Value.ratio(cross, total)} " +
             "total_line_weighted=${ControlCoChange.totalLineWeighted(entries)}")
     }
 

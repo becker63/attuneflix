@@ -28,8 +28,11 @@ flix_fatjar(
         "//src:Repository/Grit.flix",
         "//src:Repository/Structure.flix",
         "//src:ScientificIdentity.flix",
-        "//src:ScientificTable.flix",
-        "//src:ScientificTable/Columns.flix",
+        "//src:Scientific.flix",
+        "//src:Scientific/Parquet.flix",
+        "//src:Scientific/Row.flix",
+        "//src:Scientific/Schema.flix",
+        "//src:Scientific/Value.flix",
     ],
     java_deps = [
         "//src/native/grit:attune_grit",
@@ -53,7 +56,7 @@ java_binary(
 )
 
 # The self-signature parallelism instrument (PREREGISTRATION.md). Compiles
-# against the permanent Atlas/Repository/ScientificTable machinery only.
+# against the permanent Atlas/Repository/scientific-table machinery only.
 flix_fatjar(
     name = "parallelism_flix",
     srcs = [
@@ -75,8 +78,11 @@ flix_fatjar(
         "//src:Repository/Table.flix",
         "//src:Repository/Structure.flix",
         "//src:ScientificIdentity.flix",
-        "//src:ScientificTable.flix",
-        "//src:ScientificTable/Columns.flix",
+        "//src:Scientific.flix",
+        "//src:Scientific/Parquet.flix",
+        "//src:Scientific/Row.flix",
+        "//src:Scientific/Schema.flix",
+        "//src:Scientific/Value.flix",
     ],
     java_deps = [
         "//src/native/identity:attune_identity",
@@ -314,8 +320,11 @@ flix_check(
         "//src:Repository/Structure.flix",
         "//src:Repository/Table.flix",
         "//src:ScientificIdentity.flix",
-        "//src:ScientificTable.flix",
-        "//src:ScientificTable/Columns.flix",
+        "//src:Scientific.flix",
+        "//src:Scientific/Parquet.flix",
+        "//src:Scientific/Row.flix",
+        "//src:Scientific/Schema.flix",
+        "//src:Scientific/Value.flix",
     ],
     command = "test",
     java_deps = [

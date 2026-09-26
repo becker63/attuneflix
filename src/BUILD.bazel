@@ -27,8 +27,11 @@ exports_files([
     "Repository/Table.flix",
     "Repository/Grit.flix",
     "Repository/Structure.flix",
-    "ScientificTable.flix",
-    "ScientificTable/Columns.flix",
+    "Scientific.flix",
+    "Scientific/Parquet.flix",
+    "Scientific/Row.flix",
+    "Scientific/Schema.flix",
+    "Scientific/Value.flix",
 ])
 
 # Every tracked production Flix source, for the LOC law (`//:flix_loc_law_test`).
@@ -64,7 +67,10 @@ filegroup(
         "Repository/Structure.flix",
         "Repository/Table.flix",
         "ScientificIdentity.flix",
-        "ScientificTable.flix",
-        "ScientificTable/Columns.flix",
+        "Scientific.flix",
+        "Scientific/Parquet.flix",
+        "Scientific/Row.flix",
+        "Scientific/Schema.flix",
+        "Scientific/Value.flix",
     ],
 )

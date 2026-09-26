@@ -122,7 +122,7 @@ mod ControlSignature {
             Vector.map(_ -> 0.0, Vector.range(1, 8))
         else
             Vector.map(depth -> Vector.foldLeft((total, perSeed) ->
-                total + ScientificTable.ratio(Set.size(Vector.get(depth - 1, perSeed)), fileCount),
+                total + Scientific.Value.ratio(Set.size(Vector.get(depth - 1, perSeed)), fileCount),
                 0.0, reaches) / Int32.toFloat64(panel),
                 Vector.range(1, 8));
         {
@@ -209,8 +209,8 @@ mod ControlSignature {
             ("physical_transition_evaluations", Int32.toFloat64(evaluations)),
             ("physical_transition_reuses", Int32.toFloat64(reuses)),
             ("memo_cells", Int32.toFloat64(evaluations)),
-            ("logical_per_unique_state", ScientificTable.ratio(logical, unique)),
-            ("logical_per_physical_evaluation", ScientificTable.ratio(logical, evaluations))
+            ("logical_per_unique_state", Scientific.Value.ratio(logical, unique)),
+            ("logical_per_physical_evaluation", Scientific.Value.ratio(logical, evaluations))
         })
     }
 
@@ -252,8 +252,8 @@ mod ControlSignature {
         "snapshot_id" => Value.Text(snapshot#snapshotId),
         "scope" => Value.Text(scope),
         "seed_domain" => Value.Text(domain),
-        "depth" => ScientificTable.optionalInt32Value(depth),
-        "last_atom" => ScientificTable.optionalTextValue(lastAtom),
+        "depth" => Scientific.Value.optionalInt32Value(depth),
+        "last_atom" => Scientific.Value.optionalTextValue(lastAtom),
         "metric" => Value.Text(metric),
         "value" => Value.Float64(value),
         "sample_count" => Value.Int64(Int32.toInt64(sampleCount))
@@ -274,9 +274,9 @@ mod ControlSignature {
         let landmarks0 = landmarks(world0, computed);
         let summaries = summaryRows(snapshot, computed, observations, landmarks0);
         let entries = ControlIdentity.entries(sources, facts);
-        let _ = ScientificTable.write(Experiment.property("attune.output_signatures"),
+        let _ = Scientific.Parquet.write(Experiment.property("attune.output_signatures"),
             Atlas.Signature.Table.observations(), observations);
-        let _ = ScientificTable.write(Experiment.property("attune.output_summaries"),
+        let _ = Scientific.Parquet.write(Experiment.property("attune.output_summaries"),
             Atlas.Signature.Summary.schema(), summaries);
         let _ = Files.writeString(Paths.get(Experiment.property("attune.output_identity")),
             ControlIdentity.json(entries));
@@ -311,9 +311,9 @@ mod ControlSignature {
         let landmarks0 = landmarks(world0, computed);
         let entries = ControlIdentity.entries(sources, facts);
         let committedIdentity = Files.readString(Paths.get(Experiment.property("attune.identity")));
-        let committedSignatures = ScientificTable.read(Experiment.property("attune.signatures"),
+        let committedSignatures = Scientific.Parquet.read(Experiment.property("attune.signatures"),
             Atlas.Signature.Table.observations());
-        let committedSummaries = ScientificTable.read(Experiment.property("attune.summaries"),
+        let committedSummaries = Scientific.Parquet.read(Experiment.property("attune.summaries"),
             Atlas.Signature.Summary.schema());
         let dMetrics = Vector#{("D50", landmarks0#d50), ("D80", landmarks0#d80),
             ("D90", landmarks0#d90), ("D95", landmarks0#d95)};

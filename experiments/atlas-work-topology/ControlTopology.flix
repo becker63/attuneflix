@@ -64,7 +64,7 @@ mod ControlTopology {
 
     /// T6 `c(R) = internal(R) / (internal(R) + outgoing(R))`.
     pub def coherence(edges: Vector[(String, String)], region0: String): Float64 =
-        ScientificTable.ratio(internalEdges(edges, region0),
+        Scientific.Value.ratio(internalEdges(edges, region0),
             internalEdges(edges, region0) + outgoingEdges(edges, region0))
 
     /// T8: no non-test-side, non-region file uses into the region.
@@ -157,7 +157,7 @@ mod ControlTopology {
         {
             shared = shared,
             considered = Vector.length(considered),
-            fraction = ScientificTable.ratio(shared, Vector.length(considered)),
+            fraction = Scientific.Value.ratio(shared, Vector.length(considered)),
             kernelEdges = Vector.count(match (a, b) -> a == "kernel" or b == "kernel", cells),
             lawEdges = Vector.count(match (a, b) -> a == "law" or b == "law", cells),
             otherEdges = Vector.count(match (a, b) -> a == "other" or b == "other", cells)
@@ -171,7 +171,7 @@ mod ControlTopology {
         {
             shared = shared,
             considered = Vector.length(considered),
-            fraction = ScientificTable.ratio(shared, Vector.length(considered)),
+            fraction = Scientific.Value.ratio(shared, Vector.length(considered)),
             kernelEdges = Vector.count(match (a, b) -> a == "kernel" or b == "kernel", cells),
             lawEdges = Vector.count(match (a, b) -> a == "law" or b == "law", cells),
             otherEdges = Vector.count(match (a, b) -> a == "other" or b == "other", cells)
@@ -232,7 +232,7 @@ mod ControlTopology {
         Set.filter(member -> Set.memberOf(member, right), left)
 
     pub def jaccard(left: Set[String], right: Set[String]): Float64 =
-        ScientificTable.ratio(Set.size(intersectionOf(left, right)), Set.size(Set.union(left, right)))
+        Scientific.Value.ratio(Set.size(intersectionOf(left, right)), Set.size(Set.union(left, right)))
 
     pub type alias Overlap = {left = String, right = String, jaccard = Float64}
 

@@ -3,7 +3,7 @@
 The instrument re-admits the committed control evidence and evaluates the
 frozen depth-7 Atlas family in Flix; these rules only pass the committed
 evidence (as read-only inputs) and the artifact paths (as JVM properties). It
-reuses the frozen Atlas/Repository/ScientificTable machinery unchanged and
+reuses the frozen Atlas/Repository/scientific-table machinery unchanged and
 adds no grammar, atom or evaluator.
 """
 
@@ -32,8 +32,11 @@ _SIGNATURE_SRCS = [
     "//src:Repository/Structure.flix",
     "//src:Repository/Table.flix",
     "//src:ScientificIdentity.flix",
-    "//src:ScientificTable.flix",
-    "//src:ScientificTable/Columns.flix",
+    "//src:Scientific.flix",
+    "//src:Scientific/Parquet.flix",
+    "//src:Scientific/Row.flix",
+    "//src:Scientific/Schema.flix",
+    "//src:Scientific/Value.flix",
 ]
 
 _SIGNATURE_JAVA_DEPS = [

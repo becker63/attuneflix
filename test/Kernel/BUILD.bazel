@@ -1,9 +1,10 @@
 # Stable Kernel law surface.
 #
-# The K4 substrate (`ScientificIdentity`, `ScientificTable`) is not one of the
+# The K4 substrate (`ScientificIdentity`, the `Scientific.Schema`/`Value`/`Row`
+# semantics, and the isolated `Scientific.Parquet` transport) is not one of the
 # four cells: it is the high-fan-in, low-edit-frequency kernel every cell reads.
-# Its laws (identity and typed-table round-trips, driven by the two native
-# seams) are owned here so kernel edits invalidate only kernel laws.
+# Its laws (identity and typed-table round-trips, driven by the single native
+# Parquet seam) are owned here so kernel edits invalidate only kernel laws.
 load("//test/build:flix.bzl", "checked_test", "flix_check")
 
 package(default_visibility = ["//visibility:public"])
@@ -29,6 +30,10 @@ checked_test(
     check = ":identity_check",
 )
 
+# The pure scientific schema and row meaning: stated in Flix, compiled with NO
+# `java_deps`. The absence of the native transport from this action is the
+# schema/transport separation law (VAL-DECOMP-001 / VAL-KERN-002): the table
+# meaning needs no FFI, no disk, and no Parquet.
 flix_check(
     name = "scientific_table_check",
     srcs = [
@@ -36,13 +41,32 @@ flix_check(
         "//test:kernel_table_law_sources",
     ],
     command = "test",
-    java_deps = ["//src/native/parquet:attune_parquet"],
     threads = 2,
 )
 
 checked_test(
     name = "scientific_table_test",
     check = ":scientific_table_check",
+)
+
+# The one Parquet/Arrow transport seam, and its boundary law: the Arrow engine
+# only ever moves the canonical payload Flix composes, so the wire contract is
+# asserted here while the native engine itself is exercised by
+# `//src/native/parquet:attune_parquet_test`.
+flix_check(
+    name = "parquet_transport_check",
+    srcs = [
+        "ParquetTransportTest.flix",
+        "//test:kernel_table_transport_law_sources",
+    ],
+    command = "test",
+    java_deps = ["//src/native/parquet:attune_parquet"],
+    threads = 2,
+)
+
+checked_test(
+    name = "parquet_transport_test",
+    check = ":parquet_transport_check",
 )
 
 # Candidate A: the pure contract kernel. Compiled with no `java_deps`, which is
@@ -80,13 +104,14 @@ checked_test(
 
 # Candidate B: the production and replay handlers. Compiled with the three
 # native seams as `java_deps`, which is how the production bridge to
-# AttuneIdentity / AttuneGrit / AttuneParquet / Files is enforced; the replay
-# law runs entirely from in-memory fixtures (VAL-EFF-002/003).
+# AttuneIdentity / AttuneGrit / Files and the delegated Parquet transport is
+# enforced; the replay law runs entirely from in-memory fixtures (VAL-EFF-002/003).
 flix_check(
     name = "handler_check",
     srcs = [
         "HandlerTest.flix",
         "//test:kernel_effect_law_sources",
+        "//test:kernel_table_transport_law_sources",
         "//src:Kernel/Handler.flix",
         "//src:Kernel/DigestHandler.flix",
         "//src:Repository.flix",
@@ -112,6 +137,7 @@ test_suite(
     tests = [
         ":identity_test",
         ":scientific_table_test",
+        ":parquet_transport_test",
         ":contract_test",
         ":effect_test",
         ":handler_test",

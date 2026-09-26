@@ -1,6 +1,6 @@
 use Fs.FileSystem
 use Kernel.Contract.Value
-use ScientificTable.Columns.{text, int64, float64}
+use Scientific.Schema.{text, int64, float64}
 
 type alias Summary = {
     repository = String, snapshot = String, scope = String, domain = String,
@@ -37,11 +37,11 @@ type alias RepositoryResult = {
 }
 
 def main(): Unit \ {FileSystem, IO} = {
-    let summaries0 = ScientificTable.read(Experiment.property("attune.input_summaries"),
+    let summaries0 = Scientific.Parquet.read(Experiment.property("attune.input_summaries"),
         Atlas.Signature.Summary.schema());
-    let snapshots0 = ScientificTable.read(Experiment.property("attune.input_snapshots"),
+    let snapshots0 = Scientific.Parquet.read(Experiment.property("attune.input_snapshots"),
         Atlas.Signature.Table.snapshots());
-    let physical0 = ScientificTable.read(Experiment.property("attune.input_physical"),
+    let physical0 = Scientific.Parquet.read(Experiment.property("attune.input_physical"),
         Atlas.Signature.Table.physical());
     match Vector.traverse(decodeSummary, summaries0) |> Result.flatMap(summaries ->
         Vector.traverse(decodeSnapshot, snapshots0) |> Result.flatMap(snapshots ->
@@ -53,7 +53,7 @@ def main(): Unit \ {FileSystem, IO} = {
             let repositories = Vector.map(row -> row#repository, snapshots)
                 |> Vector.toSet |> Set.toVector |> Vector.sort;
             let results = Vector.map(repository -> repositoryResult(repository, snapshots, features), repositories);
-            let written = ScientificTable.write(Experiment.property("attune.output_repository_summaries"),
+            let written = Scientific.Parquet.write(Experiment.property("attune.output_repository_summaries"),
                 repositorySchema(), Vector.map(repositoryRow, results));
             let report0 = report(summaries, snapshots, physical, features, results);
             match FileSystem.write(str = report0, Experiment.property("attune.output_report")) {
@@ -105,7 +105,7 @@ def repositoryResult(repository: String, snapshots: Vector[Snapshot], features: 
         callAsymmetry = middle(selected, row -> row#callAsymmetry),
         physicalCompression = middle(selected, row -> row#physicalCompression),
         reuseFraction = middle(selected, row -> row#reuseFraction),
-        driftMean = meanValues(ranges), driftMax = ScientificTable.maximum(ranges)
+        driftMean = meanValues(ranges), driftMax = Scientific.Value.maximum(ranges)
     }
 }
 
@@ -264,7 +264,7 @@ def repositoryRow(row: RepositoryResult): Kernel.Contract.Row = Map#{
 def decodeSummary(row: Kernel.Contract.Row): Result[String, Summary] = forM (
     repository <- Kernel.Contract.text(row, "repository"); snapshot <- Kernel.Contract.text(row, "snapshot_id");
     scope <- Kernel.Contract.text(row, "scope"); domain <- Kernel.Contract.text(row, "seed_domain");
-    depth <- ScientificTable.optionalInt32(row, "depth"); atom <- ScientificTable.optionalText(row, "last_atom");
+    depth <- Scientific.Value.optionalInt32(row, "depth"); atom <- Scientific.Value.optionalText(row, "last_atom");
     metric0 <- Kernel.Contract.text(row, "metric"); value <- Kernel.Contract.number(row, "value")
 ) yield {repository = repository, snapshot = snapshot, scope = scope, domain = domain,
     depth = depth, atom = atom, metric = metric0, value = value}
@@ -291,7 +291,7 @@ def median(values: Vector[Float64]): Float64 = {
 }
 def range(rows: Vector[a], accessor: a -> Float64): Float64 = {
     let values = Vector.map(accessor, rows);
-    if (Vector.isEmpty(values)) 0.0 else ScientificTable.maximum(values) - minimum(values)
+    if (Vector.isEmpty(values)) 0.0 else Scientific.Value.maximum(values) - minimum(values)
 }
 def relativeRange(rows: Vector[a], accessor: a -> Float64): Float64 = {
     let center = absolute(middle(rows, accessor));

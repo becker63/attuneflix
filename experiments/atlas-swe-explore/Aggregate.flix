@@ -14,13 +14,13 @@ def main(): Unit \ IO = {
                 Experiment.property("attune.population_metadata"),
                 Experiment.property("attune.population_cases")) |> Experiment.require;
             let _populationProof = validatePopulation(population#cases, snapshots) |> Experiment.require;
-            let writtenSummaries = ScientificTable.write(
+            let writtenSummaries = Scientific.Parquet.write(
                 Experiment.property("attune.output_summaries"),
                 Atlas.Signature.Summary.schema(), summaries);
-            let writtenSnapshots = ScientificTable.write(
+            let writtenSnapshots = Scientific.Parquet.write(
                 Experiment.property("attune.output_snapshots"),
                 Atlas.Signature.Table.snapshots(), snapshots);
-            let writtenPhysical = ScientificTable.write(
+            let writtenPhysical = Scientific.Parquet.write(
                 Experiment.property("attune.output_physical"),
                 Atlas.Signature.Table.physical(), physical);
             if (Vector.length(summaries0) != Vector.length(writtenSnapshots))
@@ -61,7 +61,7 @@ def load(summaryPaths: Vector[String], snapshotPaths: Vector[String], physicalPa
         summaries = summaries, snapshots = snapshots, physical = physical
     } else {
         load(summaryPaths, snapshotPaths, physicalPaths, index + 1,
-            ScientificTable.read(Vector.get(index, summaryPaths), Atlas.Signature.Summary.schema()) :: summaries,
-            ScientificTable.read(Vector.get(index, snapshotPaths), Atlas.Signature.Table.snapshots()) :: snapshots,
-            ScientificTable.read(Vector.get(index, physicalPaths), Atlas.Signature.Table.physical()) :: physical)
+            Scientific.Parquet.read(Vector.get(index, summaryPaths), Atlas.Signature.Summary.schema()) :: summaries,
+            Scientific.Parquet.read(Vector.get(index, snapshotPaths), Atlas.Signature.Table.snapshots()) :: snapshots,
+            Scientific.Parquet.read(Vector.get(index, physicalPaths), Atlas.Signature.Table.physical()) :: physical)
     }

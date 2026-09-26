@@ -1,7 +1,7 @@
 /// Canonical admitted issue text used by localization.
 /// External benchmark JSON is converted once; replay sees only this table.
 pub mod Localization.IssueTable {
-    use ScientificTable.Columns.text
+    use Scientific.Schema.text
 
     pub def schema(): Kernel.Contract.Schema = {
         format = "attune-localization-issue-v1",

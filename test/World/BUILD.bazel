@@ -65,7 +65,7 @@ flix_check(
         "RepositoryTableTest.flix",
         "//src:Repository/Table.flix",
         "//test:kernel_identity_law_sources",
-        "//test:kernel_table_law_sources",
+        "//test:kernel_table_transport_law_sources",
         "//test:world_admission_law_sources",
         "//src:Kernel/Effect.flix",
         "//src:Kernel/DigestHandler.flix",
@@ -99,6 +99,7 @@ flix_check(
         "//src:Repository.flix",
         "//src:Repository/Grit.flix",
         "//src:Repository/Structure.flix",
+        "//test:kernel_table_transport_law_sources",
     ],
     command = "test",
     java_deps = [

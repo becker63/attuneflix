@@ -1,7 +1,7 @@
 /// Explicit Parquet schemas for the frozen population and protocol.
 pub mod Population.Table {
     use Kernel.Contract.Value
-    use ScientificTable.Columns.{text, optionalText, int32}
+    use Scientific.Schema.{text, optionalText, int32}
 
     pub type alias Tables = {
         metadata = Vector[Kernel.Contract.Row],
@@ -37,15 +37,15 @@ pub mod Population.Table {
 
     pub def read(metadataPath: String, casesPath: String): Result[String, Population.Frozen] \ IO =
         frozen({
-            metadata = ScientificTable.read(metadataPath, metadata()),
-            cases = ScientificTable.read(casesPath, cases())
+            metadata = Scientific.Parquet.read(metadataPath, metadata()),
+            cases = Scientific.Parquet.read(casesPath, cases())
         })
 
     pub def frozen(tables: Tables): Result[String, Population.Frozen] = forM (
-        row <- ScientificTable.exactlyOne("population metadata", tables#metadata);
+        row <- Scientific.Row.exactlyOne("population metadata", tables#metadata);
         protocol0 <- decodeMetadata(row);
         cases0 <- Vector.traverse(decodeCase, tables#cases);
-        _ <- ScientificTable.requireContiguous("population ordinals must be contiguous", Vector.map(value -> (value#ordinal, value), cases0));
+        _ <- Scientific.Row.requireContiguous("population ordinals must be contiguous", Vector.map(value -> (value#ordinal, value), cases0));
         _ <- if (Vector.length(cases0) == 78) Ok(()) else Err("population must contain 78 cases")
     ) yield {protocol = protocol0, cases = cases0}
 
@@ -74,7 +74,7 @@ pub mod Population.Table {
     }
 
     def decodeMetadata(row: Kernel.Contract.Row): Result[String, Population.Protocol] = forM (
-        _ <- ScientificTable.requireText("protocol", protocol(), row, "population");
+        _ <- Scientific.Row.requireText("protocol", protocol(), row, "population");
         benchmark <- Kernel.Contract.text(row, "benchmark_revision");
         multilingual <- Kernel.Contract.text(row, "multilingual_revision");
         pro <- Kernel.Contract.text(row, "pro_revision");
@@ -91,7 +91,7 @@ pub mod Population.Table {
     }
 
     def decodeCase(row: Kernel.Contract.Row): Result[String, Population.Case] = forM (
-        _ <- ScientificTable.requireText("protocol", protocol(), row, "population");
+        _ <- Scientific.Row.requireText("protocol", protocol(), row, "population");
         ordinal <- Kernel.Contract.int32(row, "ordinal");
         instanceId <- Kernel.Contract.text(row, "instance_id");
         repository <- Kernel.Contract.text(row, "repository");
@@ -103,7 +103,7 @@ pub mod Population.Table {
         routing <- Kernel.Contract.text(row, "source_routing");
         source <- Kernel.Contract.text(row, "source_identity");
         outcome <- Kernel.Contract.text(row, "outcome");
-        reason <- ScientificTable.optionalText(row, "censor_reason");
+        reason <- Scientific.Value.optionalText(row, "censor_reason");
         outcome0 <- decodeOutcome(outcome, reason)
     ) yield {
         ordinal = ordinal, instanceId = instanceId, repository = repository,

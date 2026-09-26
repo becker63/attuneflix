@@ -110,7 +110,7 @@ mod Parallelism {
         }
 
     def identityOf(metadataPath: String): Result[String, Repository.Table.Identity] \ IO =
-        ScientificTable.exactlyOne("self-world metadata", ScientificTable.read(metadataPath, Repository.Table.metadata()))
+        Scientific.Row.exactlyOne("self-world metadata", Scientific.Parquet.read(metadataPath, Repository.Table.metadata()))
             |> Result.flatMap(row -> forM (
                 repository <- Kernel.Contract.text(row, "repository"); baseRevision <- Kernel.Contract.text(row, "base_revision");
                 sourceTreeIdentity <- Kernel.Contract.text(row, "source_tree_identity"); factIdentity <- Kernel.Contract.text(row, "fact_identity");
@@ -172,7 +172,7 @@ mod Parallelism {
         Set.filter(member -> Set.memberOf(member, b), a)
 
     def jaccard(a: Set[String], b: Set[String]): Float64 =
-        ScientificTable.ratio(Set.size(intersectionOf(a, b)), Set.size(Set.union(a, b)))
+        Scientific.Value.ratio(Set.size(intersectionOf(a, b)), Set.size(Set.union(a, b)))
 
     /// Nearest-rank percentile over an Int32 sample (PREREGISTRATION.md M5).
     def percentile(values0: Vector[Int32], p: Int32): Int32 = {
@@ -220,7 +220,7 @@ mod Parallelism {
     def coherence(edges: Vector[(String, String)], region0: String): Float64 = {
         let internal = Vector.length(Vector.filter(match (f, g) -> f == region0 and g == region0, edges));
         let outgoing = Vector.length(Vector.filter(match (f, g) -> f == region0 and g != region0, edges));
-        ScientificTable.ratio(internal, internal + outgoing)
+        Scientific.Value.ratio(internal, internal + outgoing)
     }
 
     def groupName(group: (String, Set[String])): String = match group {
@@ -286,7 +286,7 @@ mod Parallelism {
         Vector#{
             ("tracked_files", Int32.toFloat64(Vector.length(world#files))),
             ("use_edges", Int32.toFloat64(Vector.length(edges))),
-            ("cross_region_edge_ratio", ScientificTable.ratio(
+            ("cross_region_edge_ratio", Scientific.Value.ratio(
                 Vector.length(Vector.filter(match (f, g) -> f != g, edges)), Vector.length(edges))),
             ("median_file_blast", Int32.toFloat64(percentile(blasts, 50))),
             ("p90_file_blast", Int32.toFloat64(percentile(blasts, 90))),
@@ -338,11 +338,11 @@ mod Parallelism {
     pub def membersSchema(): Kernel.Contract.Schema = {
         format = "attuneflix-parallelism-members-v1",
         columns = Vector#{
-            ScientificTable.Columns.text("revision"), ScientificTable.Columns.text("region"),
-            ScientificTable.Columns.int32("seed_size"), ScientificTable.Columns.int32("result_size"),
-            ScientificTable.Columns.float64("coherence"),
-            ScientificTable.Columns.boolean("independently_testable"),
-            ScientificTable.Columns.textList("members")
+            Scientific.Schema.text("revision"), Scientific.Schema.text("region"),
+            Scientific.Schema.int32("seed_size"), Scientific.Schema.int32("result_size"),
+            Scientific.Schema.float64("coherence"),
+            Scientific.Schema.boolean("independently_testable"),
+            Scientific.Schema.textList("members")
         }
     }
 
@@ -350,9 +350,9 @@ mod Parallelism {
     pub def pairsSchema(): Kernel.Contract.Schema = {
         format = "attuneflix-parallelism-pairs-v1",
         columns = Vector#{
-            ScientificTable.Columns.text("revision"), ScientificTable.Columns.text("region_a"),
-            ScientificTable.Columns.text("region_b"), ScientificTable.Columns.int32("union_size"),
-            ScientificTable.Columns.int32("intersection_size"), ScientificTable.Columns.float64("jaccard")
+            Scientific.Schema.text("revision"), Scientific.Schema.text("region_a"),
+            Scientific.Schema.text("region_b"), Scientific.Schema.int32("union_size"),
+            Scientific.Schema.int32("intersection_size"), Scientific.Schema.float64("jaccard")
         }
     }
 
@@ -371,16 +371,16 @@ mod Parallelism {
                 case Err(error) => bug!(error)
                 case Ok(signature) => {
                     let snapshot = snapshotOf(identity);
-                    let _ = ScientificTable.write(Experiment.property("attune.output_observations"),
+                    let _ = Scientific.Parquet.write(Experiment.property("attune.output_observations"),
                         Atlas.Signature.Table.observations(),
                         Kernel.DigestHandler.runDigest(() ->
                             Atlas.Signature.Table.observationRows(snapshot, seed0, signature)));
-                    let _ = ScientificTable.write(Experiment.property("attune.output_physical"),
+                    let _ = Scientific.Parquet.write(Experiment.property("attune.output_physical"),
                         Atlas.Signature.Table.physical(),
                         Vector#{Atlas.Signature.Table.physicalRow(snapshot, seed0, signature)});
                     let edges = edgeRegions(world);
                     let union = neighborhood(world, region0);
-                    let _ = ScientificTable.write(Experiment.property("attune.output_members"),
+                    let _ = Scientific.Parquet.write(Experiment.property("attune.output_members"),
                         membersSchema(), Vector#{Map#{
                             "revision" => Value.Text(identity#baseRevision), "region" => Value.Text(region0),
                             "seed_size" => Value.Int32(Set.size(seed)), "result_size" => Value.Int32(Set.size(union)),
@@ -418,9 +418,9 @@ mod Parallelism {
             Experiment.property("attune.after_metadata"),
             Experiment.property("attune.after_entities"),
             Experiment.property("attune.after_relations")));
-        let _ = ScientificTable.write(Experiment.property("attune.baseline_pairs"),
+        let _ = Scientific.Parquet.write(Experiment.property("attune.baseline_pairs"),
             pairsSchema(), pairsRows(baselineIdentity, baseline));
-        let _ = ScientificTable.write(Experiment.property("attune.after_pairs"),
+        let _ = Scientific.Parquet.write(Experiment.property("attune.after_pairs"),
             pairsSchema(), pairsRows(afterIdentity, after));
         // Diagnostic (not a preregistered metric): which pair attains M7's max.
         println("argmax_pair ${argmaxPair(after)}");
@@ -468,10 +468,10 @@ mod Parallelism {
     /// One shard's members row: (region, coherence, independently testable,
     /// neighborhood members).
     def shardRow(path: String): (String, Float64, Bool, Set[String]) \ IO =
-        ScientificTable.exactlyOne("parallelism members", ScientificTable.read(path, membersSchema()))
+        Scientific.Row.exactlyOne("parallelism members", Scientific.Parquet.read(path, membersSchema()))
             |> Result.flatMap(row -> forM (
                 region0 <- Kernel.Contract.text(row, "region"); c <- Kernel.Contract.number(row, "coherence");
-                t <- ScientificTable.boolean(row, "independently_testable"); members0 <- textListOf(row, "members")
+                t <- Scientific.Value.boolean(row, "independently_testable"); members0 <- textListOf(row, "members")
             ) yield (region0, c, t, Vector.toSet(members0))) |> Experiment.require
 
     def textListOf(row: Kernel.Contract.Row, name: String): Result[String, Vector[String]] =
@@ -533,17 +533,17 @@ mod Parallelism {
     /// Long-form four-row table: one row per (row label, subject, metric).
     pub def rowTableSchema(): Kernel.Contract.Schema = {
         format = "attuneflix-parallelism-rows-v2",
-        columns = Vector#{ScientificTable.Columns.text("row"), ScientificTable.Columns.text("revision"),
-            ScientificTable.Columns.text("subject"), ScientificTable.Columns.text("metric"),
-            ScientificTable.Columns.text("class"), ScientificTable.Columns.float64("value")}
+        columns = Vector#{Scientific.Schema.text("row"), Scientific.Schema.text("revision"),
+            Scientific.Schema.text("subject"), Scientific.Schema.text("metric"),
+            Scientific.Schema.text("class"), Scientific.Schema.float64("value")}
     }
 
     pub def fourPairsSchema(): Kernel.Contract.Schema = {
         format = "attuneflix-parallelism-four-pairs-v2",
-        columns = Vector#{ScientificTable.Columns.text("row"), ScientificTable.Columns.text("revision"),
-            ScientificTable.Columns.text("region_a"), ScientificTable.Columns.text("region_b"),
-            ScientificTable.Columns.int32("union_size"), ScientificTable.Columns.int32("intersection_size"),
-            ScientificTable.Columns.float64("jaccard")}
+        columns = Vector#{Scientific.Schema.text("row"), Scientific.Schema.text("revision"),
+            Scientific.Schema.text("region_a"), Scientific.Schema.text("region_b"),
+            Scientific.Schema.int32("union_size"), Scientific.Schema.int32("intersection_size"),
+            Scientific.Schema.float64("jaccard")}
     }
 
     def longRow(row: FourRow, subject: String, metric: String, value: Float64): Kernel.Contract.Row = Map#{
@@ -593,10 +593,10 @@ mod Parallelism {
     /// committed artifact; the printed block is the table of record.
     def writeFourRows(): Unit \ IO = {
         let rows = Vector.map(fourRow, Vector.range(0, Experiment.count("attune.rows")));
-        let _ = ScientificTable.write(Experiment.property("attune.output_rows"), rowTableSchema(),
+        let _ = Scientific.Parquet.write(Experiment.property("attune.output_rows"), rowTableSchema(),
             Vector.flatMap(row -> Vector.append(Vector.append(worldMetrics(row), regionMetrics(row)),
                 hotspotMetrics(row)), rows));
-        let _ = ScientificTable.write(Experiment.property("attune.output_pairs"), fourPairsSchema(),
+        let _ = Scientific.Parquet.write(Experiment.property("attune.output_pairs"), fourPairsSchema(),
             Vector.flatMap(row -> pairMetrics(row), rows));
         Vector.foldLeft((_, row) -> printFourRow(row), (), rows)
     }

@@ -18,7 +18,10 @@
 # implementation and is read only by that cell's own laws (and, for Cell D, by
 # the instrument).
 #
-#   stable kernel : ScientificIdentity, ScientificTable, ScientificTable/Columns
+#   stable kernel : ScientificIdentity, Scientific.Schema, Scientific.Value,
+#                   Scientific.Row, Scientific.Parquet
+#                   (the Parquet/Arrow seam is the one kernel-stage transport;
+#                    the schema/value/row modules are pure and carry no IO)
 #   cell A world  : Repository, Repository/Structure
 #                   (internal: Repository/Grit, Repository/Acquire,
 #                    Repository/Reference, Repository/Table)
@@ -120,19 +123,34 @@ filegroup(
     ],
 )
 
-# Kernel — the move-stable identity and table contracts.
+# Kernel — the move-stable identity and pure table contracts.
 filegroup(
     name = "kernel_identity_law_sources",
     srcs = ["//src:ScientificIdentity.flix"],
 )
 
+# The pure scientific schema/row semantics. No `java_deps` is needed to compile
+# this catalog, which is what proves the schema/transport separation
+# (VAL-DECOMP-001): the schema and row meaning carry no native seam.
 filegroup(
     name = "kernel_table_law_sources",
     srcs = [
         "//src:Kernel.flix",
         "//src:Kernel/Contract.flix",
-        "//src:ScientificTable.flix",
-        "//src:ScientificTable/Columns.flix",
+        "//src:Scientific.flix",
+        "//src:Scientific/Row.flix",
+        "//src:Scientific/Schema.flix",
+        "//src:Scientific/Value.flix",
+    ],
+)
+
+# The isolated Parquet/Arrow transport. Only a target that actually performs
+# table I/O declares this wider catalog (and the native transport dependency).
+filegroup(
+    name = "kernel_table_transport_law_sources",
+    srcs = [
+        ":kernel_table_law_sources",
+        "//src:Scientific/Parquet.flix",
     ],
 )
 

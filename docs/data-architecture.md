@@ -35,11 +35,17 @@ Bazel File handles
 declared action inputs
         |
         v
-ScientificTable JVM boundary
+Scientific.Parquet JVM boundary
         |
         v
 typed Flix values
 ```
+
+The schema and the row meaning are pure Flix: `Kernel.Contract` declares
+`ColumnType`/`Column`/`Schema`/`Value`/`Row`, and `Scientific.Schema`,
+`Scientific.Value`, `Scientific.Row` hold their semantics (constructors,
+accessors, canonical encoding) with no IO. `Scientific.Parquet` is the one
+module that talks to the native Arrow/Parquet layer.
 
 The Java Arrow/Parquet layer accepts only the schema and primitive/list values
 declared by Flix. It does not interpret repository, Atlas, localization, or

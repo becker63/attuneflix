@@ -4,7 +4,7 @@
 /// Arrow/Parquet.
 pub mod Atlas.Signature.Summary {
     use Kernel.Contract.Value
-    use ScientificTable.Columns.{text, optionalText, optionalInt32, int64, float64}
+    use Scientific.Schema.{text, optionalText, optionalInt32, int64, float64}
 
     type alias Datum = {
         signatureProtocol  = String,
@@ -108,11 +108,11 @@ pub mod Atlas.Signature.Summary {
             fraction("reach_ge_0_90_fraction", row -> row#reachFraction >= 0.90, data),
             metric("unique_semantic_states", Int32.toFloat64(Vector.length(multiplicities)), count),
             metric("logical_per_unique_state",
-                ScientificTable.ratio(count, Vector.length(multiplicities)), count),
+                Scientific.Value.ratio(count, Vector.length(multiplicities)), count),
             distribution("state_multiplicity_p50", multiplicities, 50),
             distribution("state_multiplicity_p90", multiplicities, 90),
             distribution("state_multiplicity_p99", multiplicities, 99),
-            metric("state_multiplicity_max", ScientificTable.maximum(multiplicities), Vector.length(multiplicities)),
+            metric("state_multiplicity_max", Scientific.Value.maximum(multiplicities), Vector.length(multiplicities)),
             fraction("same_as_input_fraction", row -> row#sameAsInput, data)
         }
     }
@@ -131,11 +131,11 @@ pub mod Atlas.Signature.Summary {
         metric(name, quantile(values, percentile), Vector.length(values))
 
     def fraction(name: String, predicate: Datum -> Bool, data: Vector[Datum]): Metric =
-        metric(name, ScientificTable.ratio(Vector.count(predicate, data), Vector.length(data)), Vector.length(data))
+        metric(name, Scientific.Value.ratio(Vector.count(predicate, data), Vector.length(data)), Vector.length(data))
 
     def fractionOption(name: String, predicate: Float64 -> Bool, data: Vector[Datum]): Metric = {
         let values = Vector.filterMap(row -> row#expansionRatio, data);
-        metric(name, ScientificTable.ratio(Vector.count(predicate, values), Vector.length(values)), Vector.length(values))
+        metric(name, Scientific.Value.ratio(Vector.count(predicate, values), Vector.length(values)), Vector.length(values))
     }
 
     def metric(name: String, value: Float64, sampleCount: Int32): Metric =
@@ -192,8 +192,8 @@ pub mod Atlas.Signature.Summary {
         "snapshot_id" => Value.Text(identity#snapshotId),
         "scope" => Value.Text(group#scope),
         "seed_domain" => Value.Text(group#seedDomain),
-        "depth" => ScientificTable.optionalInt32Value(group#depth),
-        "last_atom" => ScientificTable.optionalTextValue(group#lastAtom),
+        "depth" => Scientific.Value.optionalInt32Value(group#depth),
+        "last_atom" => Scientific.Value.optionalTextValue(group#lastAtom),
         "metric" => Value.Text(metric0#name),
         "value" => Value.Float64(metric0#value),
         "sample_count" => Value.Int64(Int32.toInt64(metric0#sampleCount))
@@ -211,12 +211,12 @@ pub mod Atlas.Signature.Summary {
         depth <- Kernel.Contract.int32(row0, "depth");
         lastAtom <- Kernel.Contract.text(row0, "last_atom");
         outputCardinality <- Kernel.Contract.number(row0, "output_cardinality");
-        expansionRatio <- ScientificTable.optionalFloat64(row0, "expansion_ratio");
+        expansionRatio <- Scientific.Value.optionalFloat64(row0, "expansion_ratio");
         reachFraction <- Kernel.Contract.number(row0, "reach_fraction");
-        extinct <- ScientificTable.boolean(row0, "extinct");
-        firstExtinction <- ScientificTable.optionalInt32(row0, "first_extinction_depth");
+        extinct <- Scientific.Value.boolean(row0, "extinct");
+        firstExtinction <- Scientific.Value.optionalInt32(row0, "first_extinction_depth");
         semanticStateId <- Kernel.Contract.text(row0, "semantic_state_id");
-        sameAsInput <- ScientificTable.boolean(row0, "same_as_input")
+        sameAsInput <- Scientific.Value.boolean(row0, "same_as_input")
     ) yield {
         signatureProtocol = signatureProtocol, atlasProtocol = atlasProtocol,
         repository = repository, baseRevision = baseRevision,

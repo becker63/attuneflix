@@ -1,13 +1,12 @@
 /// The effectful shell: the one place the world enters. `runProduction` bridges
 /// the six capabilities to the native seams (AttuneIdentity, AttuneGrit,
-/// AttuneParquet, `java.nio.file.Files`); `runReplay` supplies deterministic
+/// `java.nio.file.Files`); `readTable` delegates to the one Parquet/Arrow
+/// transport seam (`Scientific.Parquet`); `runReplay` supplies deterministic
 /// in-memory fixtures so every law runs keyless. The pure `Kernel.Contract` and
 /// the declared `Kernel.Effect` capabilities stay untouched by this module.
 pub mod Kernel.Handler {
     import attune.grit.AttuneGrit
-    import attune.parquet.AttuneParquet
     import java.io.IOException
-    import java.lang.Exception
     import java.nio.file.{Files, Paths}
 
     use Kernel.Contract.{CandidateSet, FactKind, RawFact, Row, Schema, Selection}
@@ -34,16 +33,14 @@ pub mod Kernel.Handler {
             def decide(_issue, _candidates, resume) = resume(Err(CapabilityError.Rejected("judge model is not configured in production")))
         }
 
-    /// Production typed-table bridge: read one Parquet table through the native
-    /// Arrow seam and decode it against the pure kernel schema.
+    /// Production typed-table bridge: read one Parquet table through the
+    /// isolated transport seam and report the failure as a capability error.
     pub def readTable(path: String, schema: Schema): Result[CapabilityError, Vector[Row]] \ IO =
-        try {
-            AttuneParquet.readTable(path, Kernel.Contract.schemaPayload(schema))
-                |> Kernel.Contract.decodeRows(schema)
-                |> Result.mapErr(error -> CapabilityError.Malformed(error))
-        } catch {
-            case _: Exception => Err(CapabilityError.Unavailable(path))
-        }
+        Scientific.Parquet.readResult(path, schema)
+            |> Result.mapErr(match error -> match error {
+                case Scientific.Parquet.TableError.Unavailable(path0) => CapabilityError.Unavailable(path0)
+                case Scientific.Parquet.TableError.Malformed(message) => CapabilityError.Malformed(message)
+            })
 
     /// Keyless deterministic replay: every capability is supplied by a pure
     /// in-memory fixture, so stage transformations run with no disk, network,

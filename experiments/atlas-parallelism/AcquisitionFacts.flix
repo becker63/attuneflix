@@ -9,7 +9,7 @@
 /// measures is the canonical admitted basis — never a second experiment graph.
 mod AcquisitionFacts {
     use Kernel.Contract.Value
-    use ScientificTable.Columns.{text, int32}
+    use Scientific.Schema.{text, int32}
 
     /// One admitted source file of a frozen revision.
     pub type alias Source = {
@@ -59,20 +59,20 @@ mod AcquisitionFacts {
         }, facts)
 
     pub def writeSources(path: String, sources: Vector[Source]): Unit \ IO = {
-        let _ = ScientificTable.write(path, sourcesSchema(), sourceRows(sources));
+        let _ = Scientific.Parquet.write(path, sourcesSchema(), sourceRows(sources));
         ()
     }
 
     pub def writeFacts(path: String, facts: Vector[FactRow]): Unit \ IO = {
-        let _ = ScientificTable.write(path, factsSchema(), factRows(facts));
+        let _ = Scientific.Parquet.write(path, factsSchema(), factRows(facts));
         ()
     }
 
     pub def readSources(path: String): Vector[Source] \ IO =
-        Vector.traverse(sourceOf, ScientificTable.read(path, sourcesSchema())) |> Experiment.require
+        Vector.traverse(sourceOf, Scientific.Parquet.read(path, sourcesSchema())) |> Experiment.require
 
     pub def readFacts(path: String): Vector[FactRow] \ IO =
-        Vector.traverse(factOf, ScientificTable.read(path, factsSchema())) |> Experiment.require
+        Vector.traverse(factOf, Scientific.Parquet.read(path, factsSchema())) |> Experiment.require
 
     def sourceOf(row: Kernel.Contract.Row): Result[String, Source] = forM (
         path <- Kernel.Contract.text(row, "path");

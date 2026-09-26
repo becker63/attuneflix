@@ -2,8 +2,8 @@
 /// are the scientific data model; the Arrow boundary only realizes them.
 pub mod Atlas.Signature.Table {
     use Kernel.Contract.Value
-    use ScientificTable.Columns.{text, optionalText, textList, int32, optionalInt32}
-    use ScientificTable.Columns.{int64, optionalInt64, float64, optionalFloat64, boolean}
+    use Scientific.Schema.{text, optionalText, textList, int32, optionalInt32}
+    use Scientific.Schema.{int64, optionalInt64, float64, optionalFloat64, boolean}
 
     pub type alias SnapshotIdentity = {
         signatureProtocol  = String,
@@ -111,8 +111,8 @@ pub mod Atlas.Signature.Table {
             "physical_transition_requests" => Value.Int64(Int32.toInt64(evaluations + reuses)),
             "physical_transition_evaluations" => Value.Int64(Int32.toInt64(evaluations)),
             "physical_transition_reuses" => Value.Int64(Int32.toInt64(reuses)),
-            "logical_per_unique_state" => Value.Float64(ScientificTable.ratio(logical, unique)),
-            "logical_per_physical_evaluation" => Value.Float64(ScientificTable.ratio(logical, evaluations)),
+            "logical_per_unique_state" => Value.Float64(Scientific.Value.ratio(logical, unique)),
+            "logical_per_physical_evaluation" => Value.Float64(Scientific.Value.ratio(logical, evaluations)),
             "memo_cells" => Value.Int64(Int32.toInt64(evaluations)),
             "compiled_dag_nodes" => Value.Null
         })
@@ -154,10 +154,10 @@ pub mod Atlas.Signature.Table {
             "input_cardinality" => Value.Int64(Int32.toInt64(observation#inputCardinality)),
             "output_cardinality" => Value.Int64(Int32.toInt64(observation#outputCardinality)),
             "domain_cardinality" => Value.Int64(Int32.toInt64(observation#domainCardinality)),
-            "expansion_ratio" => ScientificTable.optionalFloat64Value(observation#expansionRatio),
+            "expansion_ratio" => Scientific.Value.optionalFloat64Value(observation#expansionRatio),
             "reach_fraction" => Value.Float64(observation#reachFraction),
             "extinct" => Value.Boolean(observation#extinct),
-            "first_extinction_depth" => ScientificTable.optionalInt32Value(observation#firstExtinctionDepth),
+            "first_extinction_depth" => Scientific.Value.optionalInt32Value(observation#firstExtinctionDepth),
             "semantic_state_id" => Value.Text(stateId0),
             "same_as_input" => Value.Boolean(observation#sameAsInput)
         })

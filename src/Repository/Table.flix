@@ -6,7 +6,7 @@
 /// checkout path, Nix, or Marzano.
 pub mod Repository.Table {
     use Kernel.Contract.Value
-    use ScientificTable.Columns.{text, optionalText, int32, optionalInt32}
+    use Scientific.Schema.{text, optionalText, int32, optionalInt32}
 
     pub type alias Identity = {
         repository         = String,
@@ -117,9 +117,9 @@ pub mod Repository.Table {
     ): Rows \ IO = {
         let encoded = rows(identity, world);
         {
-            metadata = ScientificTable.write(metadataPath, metadata(), encoded#metadata),
-            entities = ScientificTable.write(entitiesPath, entities(), encoded#entities),
-            relations = ScientificTable.write(relationsPath, relations(), encoded#relations)
+            metadata = Scientific.Parquet.write(metadataPath, metadata(), encoded#metadata),
+            entities = Scientific.Parquet.write(entitiesPath, entities(), encoded#entities),
+            relations = Scientific.Parquet.write(relationsPath, relations(), encoded#relations)
         }
     }
 
@@ -129,9 +129,9 @@ pub mod Repository.Table {
         relationsPath: String,
         identity: Identity
     ): Result[String, Repository.World] \ IO = world(identity, {
-        metadata = ScientificTable.read(metadataPath, metadata()),
-        entities = ScientificTable.read(entitiesPath, entities()),
-        relations = ScientificTable.read(relationsPath, relations())
+        metadata = Scientific.Parquet.read(metadataPath, metadata()),
+        entities = Scientific.Parquet.read(entitiesPath, entities()),
+        relations = Scientific.Parquet.read(relationsPath, relations())
     })
 
     def metadataRow(identity: Identity, world: Repository.World): Kernel.Contract.Row = Map#{
@@ -217,16 +217,16 @@ pub mod Repository.Table {
         else {
             let row = Vector.get(0, rows0);
             forM (
-                _ <- ScientificTable.requireText("repository", expected#repository, row, "repository world");
-                _ <- ScientificTable.requireText("base_revision", expected#baseRevision, row, "repository world");
-                _ <- ScientificTable.requireText("source_tree_identity", expected#sourceTreeIdentity, row, "repository world");
-                _ <- ScientificTable.requireText("fact_identity", expected#factIdentity, row, "repository world");
-                _ <- ScientificTable.requireText("snapshot_id", expected#snapshotId, row, "repository world")
+                _ <- Scientific.Row.requireText("repository", expected#repository, row, "repository world");
+                _ <- Scientific.Row.requireText("base_revision", expected#baseRevision, row, "repository world");
+                _ <- Scientific.Row.requireText("source_tree_identity", expected#sourceTreeIdentity, row, "repository world");
+                _ <- Scientific.Row.requireText("fact_identity", expected#factIdentity, row, "repository world");
+                _ <- Scientific.Row.requireText("snapshot_id", expected#snapshotId, row, "repository world")
             ) yield ()
         }
 
     def decodeEntity(snapshotId: String, row: Kernel.Contract.Row): Result[String, Entity] = forM (
-        _ <- ScientificTable.requireText("snapshot_id", snapshotId, row, "repository world");
+        _ <- Scientific.Row.requireText("snapshot_id", snapshotId, row, "repository world");
         domain <- Kernel.Contract.text(row, "domain");
         id <- Kernel.Contract.int32(row, "entity_id");
         ordinal <- Kernel.Contract.int32(row, "ordinal");
@@ -248,7 +248,7 @@ pub mod Repository.Table {
     ) yield entity
 
     def decodeRelation(snapshotId: String, row: Kernel.Contract.Row): Result[String, Relation] = forM (
-        _ <- ScientificTable.requireText("snapshot_id", snapshotId, row, "repository world");
+        _ <- Scientific.Row.requireText("snapshot_id", snapshotId, row, "repository world");
         relation <- Kernel.Contract.text(row, "relation");
         sourceDomain <- Kernel.Contract.text(row, "source_domain");
         source <- Kernel.Contract.int32(row, "source_id");
@@ -267,8 +267,8 @@ pub mod Repository.Table {
         let entries = Vector.filterMap(match entity -> match entity {
             case Entity.File(ordinal, path) => Some((ordinal, path))
             case _ => None
-        }, entities0) |> ScientificTable.canonicalOrdinals;
-        ScientificTable.requireContiguous("repository entity ordinals must be contiguous from zero", entries)
+        }, entities0) |> Scientific.Row.canonicalOrdinals;
+        Scientific.Row.requireContiguous("repository entity ordinals must be contiguous from zero", entries)
             |> Result.map(_ -> Vector.map(match (_, path) -> path, entries))
     }
 
@@ -278,8 +278,8 @@ pub mod Repository.Table {
                 path = path, name = name, startByte = start, endByte = end
             }))
             case _ => None
-        }, entities0) |> ScientificTable.canonicalOrdinals;
-        ScientificTable.requireContiguous("repository entity ordinals must be contiguous from zero", entries)
+        }, entities0) |> Scientific.Row.canonicalOrdinals;
+        Scientific.Row.requireContiguous("repository entity ordinals must be contiguous from zero", entries)
             |> Result.map(_ -> Vector.map(match (_, value) -> value, entries))
     }
 
