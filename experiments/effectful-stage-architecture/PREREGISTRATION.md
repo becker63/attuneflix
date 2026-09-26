@@ -504,3 +504,66 @@ before this file's change, and every candidate measurement follows it.
 control record and the frozen control specimen, and no change under
 `experiments/effectful-stage-architecture/` that measures a candidate predates
 it.
+
+## 16. Amendment — supplementary stage-partition path re-key (2026-09-26, pre-measurement, Candidate D)
+
+Appended before the Candidate D measurement, per the §0 amendment rule, and not
+a metric-formula, admission-rule, oracle, or region-partition change. It adds a
+supplementary, clearly-labelled reading of the frozen stage partition defined in
+§2.3 and does not replace the metric of record.
+
+**What the frozen §2.3 table fixes.** §2.3 defines the stage partition as *"a
+second, independent path function: a stage is a writable unit of the pipeline"*
+and states the partition *"is the pre-image of the mission's six typed stages
+plus the stable kernel"*. The path rules printed in §2.3 are the instantiation
+of that definition for the **control specimen's** path set.
+
+**Why the instantiation had to follow the DAG.** M2 and M3 built the mission's
+own stage units at new paths — `src/Kernel.flix` (the kernel root anchor),
+`src/Scientific*` (the pure schema the kernel owns, renamed from
+`src/ScientificTable*`), `src/World/*` (the §8 "decompose Repository.flix into
+World.Admission, World.Language.*" unit), and `src/Stage/*` (the six typed stage
+modules). None of those paths matched a §2.3 rule, so the implementation
+classified every one of them as the residual bucket `other`. That is not a
+measurement of the DAG: it attributes exactly the mission's writable stage units
+to the bucket that means "matches no stage". The same stale-instantiation defect
+was already recorded for the *region* partition at Candidate C (`tables` region
+emptied by the `ScientificTable*` -> `Scientific*` rename, K 9 -> 8).
+
+**The amendment (supplementary reading, not a substitution).** The frozen
+§2.3 rules remain the *metric of record*: `mutable_cross_stage_edges` and
+`cross_stage_test_invalidation` are computed exactly as §3.4 and §4 state, so
+every candidate stays directly comparable to `baseline-metrics.json`. The
+instrument additionally reports a *supplementary* pair of readings
+(`mutable_cross_stage_edges_dagref`,
+`cross_stage_test_invalidation_dagref`) under a second path function
+(`stage_of_dagref`, protocol name `attuneflix-stages-v1/dagref`) that names the
+paths the mission's stages live at, preserving each stage's identity:
+
+| stage | added rule |
+|---|---|
+| `kernel` | `src/Kernel.flix` (the kernel root anchor, alongside `src/Kernel/**`); `src/Scientific.flix`, `src/Scientific/**` (the pure schema, renamed from `ScientificTable*`) |
+| `world` | `src/World.flix`, `src/World/**` (the decomposed Repository); `src/Stage/Acquire.flix`, `src/Stage/World.flix` (DAG nodes 1-2) |
+| `engine` | `src/Stage/Prior.flix`, `src/Stage/Atlas.flix` (DAG nodes 3A/3B) |
+| `applications` | `src/Stage/CandidateSet.flix`, `src/Stage/Judge.flix`, `src/Stage/Projection.flix`, `src/Stage/Pipeline.flix` (DAG nodes 4-6 and the composed pipeline) |
+| `other` | `src/Stage.flix` (the DAG's zero-content namespace anchor, which is no stage unit; reported residual) |
+
+No formula, admission rule, region partition, oracle, or test-stage rule
+changes; the supplementary reading differs only in which files a stage owns.
+
+**Control-neutrality (the check that it is a re-key, not a retune).** No control
+path matches a rule added here: at `09e27244` there is no `src/Kernel.flix`, no
+`src/Scientific.flix`, no `src/World/**`, and no `src/Stage/**`
+(`src/ScientificTable*` is already `kernel` under the original rules). The
+frozen control reading is therefore **identical under both keyings: 59
+tests / 30 edges** (`baseline-metrics.json` is never re-measured). The re-key
+therefore changes the classification of M2/M3-created paths only, and the
+control-relative comparison the §9.4 thresholds use is unchanged whichever
+keying is read.
+
+**Why it is reported.** It separates two explanations of a candidate's BUILD
+reading, which the frozen metric alone cannot: "the architecture coupled more"
+from "the frozen path function does not recognize the architecture's own stage
+units". Candidate D is the first revision whose stage units live at DAG paths,
+so this is where the ambiguity first arises. The frozen reading stays primary
+and is the one the §9.4 comparison and §12 outcome use.

@@ -110,22 +110,35 @@ checked_test = rule(
     },
 )
 
-def flix_loc_law(name, srcs, visibility = None):
+def flix_loc_law(name, srcs, max_total = None, visibility = None):
     """The Flix LOC law as a repo rule (VAL-METRIC-002).
 
-    `srcs` names the tracked Flix source filegroups the law covers (the
-    production `//src` surface and the `//test` law surface). The rule counts
-    CODE lines: a line counts when, after stripping block comments, it has
-    content that is not itself a line comment. Blank and pure-comment lines are
-    documentation, not code, so they do not count. The ceiling is enforced by
-    `flix_loc_law.sh` (total `< 4800` code lines, per-file `<= 400`).
+    `srcs` names the tracked Flix source filegroups the law covers. The rule
+    counts CODE lines: a line counts when, after stripping block comments, it
+    has content that is not itself a line comment. Blank and pure-comment lines
+    are documentation, not code, so they do not count. `flix_loc_law.sh`
+    enforces the per-file ceiling (`<= 400` code lines) and a code-line ceiling.
+
+    `max_total` sets the ceiling for this law's slice of the surface. The law is
+    declared per writable stage so a stage-local edit re-runs only that stage's
+    law and so no law target reaches across the stage DAG. The stage ceilings
+    are chosen so their sum is strictly below the repository's canonical
+    `4,800` code-line ceiling; the combined `src/` + `test/` total is therefore
+    strictly below `4,800` as well, and every stage is additionally bounded on
+    its own (strictly stronger than the single global ceiling). Omitting
+    `max_total` keeps the script's default (`ATTUNE_FLIX_LOC_MAX_TOTAL` or
+    `4,800`).
     """
+    env = {}
+    if max_total != None:
+        env["ATTUNE_FLIX_LOC_MAX_TOTAL"] = str(max_total)
     native.sh_test(
         name = name,
         size = "small",
         srcs = ["//test/build:flix_loc_law.sh"],
         args = ["$(locations %s)" % source for source in srcs],
         data = srcs,
+        env = env,
         visibility = visibility,
     )
 

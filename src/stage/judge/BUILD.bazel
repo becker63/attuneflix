@@ -1,0 +1,19 @@
+# Stage node 5: Judge (`//src/stage/judge:*`).
+#
+# `CandidateSet -> SelectionOutcome` over `eff JudgeModel`; pure over the
+# declared capability.
+package(default_visibility = ["//visibility:public"])
+
+filegroup(
+    name = "flix_sources",
+    srcs = ["//src:Stage/Judge.flix"],
+)
+
+filegroup(
+    name = "closure",
+    srcs = [
+        "//src/kernel:effect",
+        "//src/stage/candidate_set:closure",
+        ":flix_sources",
+    ],
+)

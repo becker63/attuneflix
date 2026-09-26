@@ -1,0 +1,75 @@
+# Stage package: the World stage (`//src/world:*`).
+#
+# Pipeline node 2 (Admission) and the cell that implements it. It owns the
+# admitted-world vocabulary (`World`), the deterministic admission and call
+# indexing (`World.Admission`, `World.CallIndex`), the per-language reference
+# rules (`World.Language.*`), the readable Datalog meaning the evaluator
+# interprets (`Repository.Structure`), and the two table-facing seams
+# (`Repository.Reference`, `Repository.Table`).
+#
+# `Repository.flix` is the empty `mod Repository {}` parent anchor kept for the
+# Datalog meaning; the admission logic itself lives in the World modules.
+package(default_visibility = ["//visibility:public"])
+
+# The empty `mod Repository {}` parent anchor the Datalog meaning and the
+# physical evaluator compile against.
+filegroup(
+    name = "anchor",
+    srcs = ["//src:Repository.flix"],
+)
+
+# The pure Grit fact vocabulary every acquisition path resolves against.
+filegroup(
+    name = "grit",
+    srcs = [
+        ":anchor",
+        "//src:Repository/Grit.flix",
+    ],
+)
+
+# The reduced relational meaning (`Repository.Structure`) alone: the surface an
+# Engine or Applications action reads without pulling full admission in.
+filegroup(
+    name = "structure",
+    srcs = [
+        ":anchor",
+        "//src:Repository/Structure.flix",
+    ],
+)
+
+# Deterministic admission: the world vocabulary, its dense nominal IDs, the
+# call index, and the per-language reference rules.
+filegroup(
+    name = "admission",
+    srcs = [
+        ":grit",
+        "//src:World.flix",
+        "//src:World/Admission.flix",
+        "//src:World/CallIndex.flix",
+        "//src:World/Language.flix",
+        "//src:World/Language/Flix.flix",
+        "//src:World/Language/Java.flix",
+        "//src:World/Language/JavaScript.flix",
+        "//src:World/Language/Starlark.flix",
+    ],
+)
+
+# The whole World stage surface (LOC-law input and build unit).
+filegroup(
+    name = "flix_sources",
+    srcs = [
+        ":admission",
+        "//src:Repository/Reference.flix",
+        "//src:Repository/Table.flix",
+        ":structure",
+    ],
+)
+
+# Upstream: the kernel contract only.
+filegroup(
+    name = "closure",
+    srcs = [
+        "//src/kernel:contract",
+        ":flix_sources",
+    ],
+)

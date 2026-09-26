@@ -1,0 +1,21 @@
+# Stage node 2: World (`//src/stage/world:*`).
+#
+# `RawFactManifest -> AdmittedWorld`: the deterministic admission typed as a
+# pure stage over the World cell's implementation.
+package(default_visibility = ["//visibility:public"])
+
+filegroup(
+    name = "flix_sources",
+    srcs = ["//src:Stage/World.flix"],
+)
+
+# Upstream: the stage namespace and the World admission implementation.
+filegroup(
+    name = "closure",
+    srcs = [
+        "//src/kernel:contract",
+        "//src/stage:closure",
+        "//src/world:admission",
+        ":flix_sources",
+    ],
+)

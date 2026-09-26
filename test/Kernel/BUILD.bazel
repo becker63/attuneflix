@@ -5,13 +5,25 @@
 # four cells: it is the high-fan-in, low-edit-frequency kernel every cell reads.
 # Its laws (identity and typed-table round-trips, driven by the single native
 # Parquet seam) are owned here so kernel edits invalidate only kernel laws.
-load("//test/build:flix.bzl", "checked_test", "flix_check")
+load("//test/build:flix.bzl", "checked_test", "flix_check", "flix_loc_law")
 
 package(default_visibility = ["//visibility:public"])
 
 filegroup(
     name = "flix_sources",
     srcs = glob(["*.flix"]),
+)
+
+# The kernel's slice of the Flix LOC law (VAL-METRIC-002): the Stable Contract &
+# Semantic Kernel, its Parquet/Arrow transport, and this cell's laws.
+flix_loc_law(
+    name = "flix_loc_law_test",
+    srcs = [
+        "//src/kernel:flix_sources",
+        "//src/transport/parquet:flix_sources",
+        ":flix_sources",
+    ],
+    max_total = 715,
 )
 
 flix_check(

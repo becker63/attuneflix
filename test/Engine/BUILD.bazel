@@ -6,13 +6,27 @@
 # (`//test:world_relational_law_sources`) and the shared law surface's
 # parent-module anchor (`//test:Repository.flix`), so it never pulls the full
 # admission surface into an Engine action.
-load("//test/build:flix.bzl", "checked_test", "flix_check")
+load("//test/build:flix.bzl", "checked_test", "flix_check", "flix_loc_law")
 
 package(default_visibility = ["//visibility:public"])
 
 filegroup(
     name = "flix_sources",
     srcs = glob(["*.flix"]),
+)
+
+# The Engine cell's slice of the Flix LOC law (VAL-METRIC-002): the relation
+# algebra, the Atlas family, the physical evaluator, the typed Prior/Atlas stage
+# nodes, and this cell's laws.
+flix_loc_law(
+    name = "flix_loc_law_test",
+    srcs = [
+        "//src/engine:flix_sources",
+        "//src/stage/atlas:flix_sources",
+        "//src/stage/prior:flix_sources",
+        ":flix_sources",
+    ],
+    max_total = 1758,
 )
 
 flix_check(
@@ -22,7 +36,6 @@ flix_check(
         "//test:engine_physical_law_sources",
         "//test:engine_radii_law_sources",
         "//test:world_relational_law_sources",
-        "//test:Repository.flix",
     ],
     command = "test",
     threads = 2,

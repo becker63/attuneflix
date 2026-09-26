@@ -1,0 +1,21 @@
+# Stage node 3B: Atlas (`//src/stage/atlas:*`).
+#
+# `AdmittedWorld -> AtlasCandidateOutcomes`: the six-atom relational grammar
+# evaluated with memoization, structurally independent of Prior.
+package(default_visibility = ["//visibility:public"])
+
+filegroup(
+    name = "flix_sources",
+    srcs = ["//src:Stage/Atlas.flix"],
+)
+
+# Upstream: the stage namespace and the Engine (Atlas grammar, relation
+# algebra, physical evaluator).
+filegroup(
+    name = "closure",
+    srcs = [
+        "//src/engine:closure",
+        "//src/stage:closure",
+        ":flix_sources",
+    ],
+)

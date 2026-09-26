@@ -1,0 +1,19 @@
+# Stage node 3A: Prior (`//src/stage/prior:*`).
+#
+# `AdmittedWorld -> PriorScores` over `eff Embedding`. Structurally independent
+# of node 3B (Atlas): the two read the same immutable world and share no state.
+package(default_visibility = ["//visibility:public"])
+
+filegroup(
+    name = "flix_sources",
+    srcs = ["//src:Stage/Prior.flix"],
+)
+
+filegroup(
+    name = "closure",
+    srcs = [
+        "//src/kernel:effect",
+        "//src/stage:closure",
+        ":flix_sources",
+    ],
+)

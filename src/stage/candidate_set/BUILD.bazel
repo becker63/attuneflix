@@ -1,0 +1,20 @@
+# Stage node 4: CandidateSet (`//src/stage/candidate_set:*`).
+#
+# Merges Prior scores and Atlas reachable states into one deduplicated
+# `CandidateSet`. Pure; no capability.
+package(default_visibility = ["//visibility:public"])
+
+filegroup(
+    name = "flix_sources",
+    srcs = ["//src:Stage/CandidateSet.flix"],
+)
+
+# Upstream: both node-3 branches (Prior and Atlas) through the Atlas closure.
+filegroup(
+    name = "closure",
+    srcs = [
+        "//src/stage/atlas:closure",
+        "//src/stage/prior:closure",
+        ":flix_sources",
+    ],
+)

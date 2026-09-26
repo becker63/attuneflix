@@ -7,20 +7,25 @@ java_binary(
     runtime_deps = ["@flix_compiler//jar"],
 )
 
-# The Flix LOC law as a repo rule (VAL-METRIC-002): every tracked handwritten
-# production and law Flix source, so the `flix_loc_law` test rule can enforce
-# the code-line ceiling over exactly the `src/` + `test/` surface.
-filegroup(
-    name = "flix_law_sources",
-    srcs = [
-        "//src:flix_sources",
-        "//test:flix_sources",
-    ],
-)
-
-flix_loc_law(
+# The Flix LOC law (VAL-METRIC-002), declared per writable stage so a
+# stage-local edit re-runs only that stage's law and no law target reaches
+# across the stage DAG. The stage ceilings sum to 4,792, strictly below the
+# repository's canonical 4,800 code-line ceiling, so the combined `src/` +
+# `test/` total is strictly below 4,800 as well; every stage is additionally
+# bounded on its own (strictly stronger than the single global ceiling). This
+# label still names the whole law: `bazel test //:flix_loc_law_test` runs every
+# stage's slice.
+test_suite(
     name = "flix_loc_law_test",
-    srcs = [":flix_law_sources"],
+    tests = [
+        "//src/research:flix_loc_law_test",
+        "//src/stage:flix_loc_law_test",
+        "//test:flix_loc_law_test",
+        "//test/Applications:flix_loc_law_test",
+        "//test/Engine:flix_loc_law_test",
+        "//test/Kernel:flix_loc_law_test",
+        "//test/World:flix_loc_law_test",
+    ],
 )
 
 # Aggregation only: every law is owned by its cell's suite (`//test/World`,

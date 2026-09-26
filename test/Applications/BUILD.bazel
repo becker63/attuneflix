@@ -3,13 +3,29 @@
 # Owns the Applications cell's law targets (localization, population, and the
 # native inference seam) and declares the Localization/Population production
 # sources it reads. Shared upstream sources come from the `//test` catalogs.
-load("//test/build:flix.bzl", "checked_test", "flix_check")
+load("//test/build:flix.bzl", "checked_test", "flix_check", "flix_loc_law")
 
 package(default_visibility = ["//visibility:public"])
 
 filegroup(
     name = "flix_sources",
     srcs = glob(["*.flix"]),
+)
+
+# The Applications cell's slice of the Flix LOC law (VAL-METRIC-002):
+# localization and population, the typed CandidateSet/Judge/Projection/Pipeline
+# stage nodes, and this cell's laws.
+flix_loc_law(
+    name = "flix_loc_law_test",
+    srcs = [
+        "//src/applications:flix_sources",
+        "//src/stage/candidate_set:flix_sources",
+        "//src/stage/judge:flix_sources",
+        "//src/stage/pipeline:flix_sources",
+        "//src/stage/projection:flix_sources",
+        ":flix_sources",
+    ],
+    max_total = 757,
 )
 
 flix_check(

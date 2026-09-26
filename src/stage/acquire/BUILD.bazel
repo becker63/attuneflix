@@ -1,0 +1,23 @@
+# Stage node 1: Acquire (`//src/stage/acquire:*`).
+#
+# `SourceManifest -> RawFactManifest` over `eff Grit`. Pure over the declared
+# capability: the native engine is supplied by a handler, so the node carries no
+# `java_deps`.
+package(default_visibility = ["//visibility:public"])
+
+filegroup(
+    name = "flix_sources",
+    srcs = ["//src:Stage/Acquire.flix"],
+)
+
+# Upstream: the stage namespace, the `eff Grit` declaration, and the pure Grit
+# fact vocabulary the acquisition resolves against.
+filegroup(
+    name = "closure",
+    srcs = [
+        "//src/kernel:effect",
+        "//src/stage:closure",
+        "//src/world:grit",
+        ":flix_sources",
+    ],
+)

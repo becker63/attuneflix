@@ -1,0 +1,20 @@
+# Stage package: the Research cell's instrument module (`//src/research:*`).
+#
+# `Experiment` is the research-side typed module (the frozen experiment
+# instrument's entry point). It reads the admitted world and the pipeline
+# result types and belongs to no pipeline stage; nothing in the DAG reads it.
+load("//test/build:flix.bzl", "flix_loc_law")
+
+package(default_visibility = ["//visibility:public"])
+
+filegroup(
+    name = "flix_sources",
+    srcs = ["//src:Experiment.flix"],
+)
+
+# The research slice of the Flix LOC law (VAL-METRIC-002).
+flix_loc_law(
+    name = "flix_loc_law_test",
+    srcs = [":flix_sources"],
+    max_total = 17,
+)

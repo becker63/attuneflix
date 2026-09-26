@@ -81,6 +81,8 @@ region_of() {
 # §5 Stage partition (attuneflix-stages-v1): the six typed-stage ownership
 # units plus the stable kernel. A stage is a writable unit of the pipeline; a
 # region is a semantic subsystem. Reported separately, never conflated.
+#
+# The rules below are the frozen §2.3 table (unchanged, the metric of record).
 # ---------------------------------------------------------------------------
 stage_of() {
     case "$1" in
@@ -90,6 +92,42 @@ stage_of() {
         src/Repository.flix|src/Repository/*|src/grit/*|src/native/grit/*) echo world ;;
         src/Radii.flix|src/Radii/*|src/Atlas.flix|src/Atlas/*) echo engine ;;
         src/Localization.flix|src/Localization/*|src/Population.flix|src/Population/*|src/native/inference/*) echo applications ;;
+        src/Experiment.flix|experiments/*) echo research ;;
+        test/World/*) echo world ;;
+        test/Engine/*) echo engine ;;
+        test/Applications/*) echo applications ;;
+        test/Kernel/*) echo kernel ;;
+        test/*|build/*|data/*|BUILD.bazel|MODULE.bazel) echo law ;;
+        *) echo other ;;
+    esac
+}
+
+# ---------------------------------------------------------------------------
+# §5bis Supplementary stage partition ("stageref", PREREGISTRATION.md §16,
+# amendment 2026-09-26 pre-measurement). Same stage identities, re-keyed to the
+# paths the mission's stage DAG actually owns: M2/M3 created the stage modules
+# (`src/Stage/*`), the decomposed Repository (`src/World/*`, the §8
+# "decompose Repository.flix" unit), the kernel root anchor (`src/Kernel.flix`),
+# and the renamed pure schema (`src/Scientific*`, from `ScientificTable*`). The
+# frozen §2.3 table matches none of those, so it classifies the mission's own
+# writable stage units as the residual bucket `other`. This second reading
+# classifies them, and is reported *alongside* the frozen metric of record,
+# never substituted for it. It is control-neutral: no control path matches a
+# rule added here, so the frozen control reading is identical under both
+# keyings. `src/Stage.flix` (the zero-content namespace anchor) stays residual.
+# ---------------------------------------------------------------------------
+stage_of_dagref() {
+    case "$1" in
+        src/Kernel.flix|src/Kernel/*|src/kernel/*) echo kernel ;;
+        src/ScientificIdentity.flix|src/Scientific.flix|src/Scientific/*|src/ScientificTable.flix|src/ScientificTable/*|src/native/identity/*|src/native/parquet/*) echo kernel ;;
+        src/Repository/Physical.flix) echo engine ;;
+        src/Repository.flix|src/Repository/*|src/grit/*|src/native/grit/*) echo world ;;
+        src/World.flix|src/World/*) echo world ;;
+        src/Radii.flix|src/Radii/*|src/Atlas.flix|src/Atlas/*) echo engine ;;
+        src/Localization.flix|src/Localization/*|src/Population.flix|src/Population/*|src/native/inference/*) echo applications ;;
+        src/Stage/Acquire.flix|src/Stage/World.flix) echo world ;;
+        src/Stage/Prior.flix|src/Stage/Atlas.flix) echo engine ;;
+        src/Stage/CandidateSet.flix|src/Stage/Judge.flix|src/Stage/Projection.flix|src/Stage/Pipeline.flix) echo applications ;;
         src/Experiment.flix|experiments/*) echo research ;;
         test/World/*) echo world ;;
         test/Engine/*) echo engine ;;
@@ -225,17 +263,22 @@ while read -r k c; do region_cut["$k"]="$c"; done < <(kway_cut)
 region_groups="$(for f in "${all_flix[@]}"; do echo "${LABEL[$f]}"; done | LC_ALL=C sort -u | wc -l)"
 
 # stage partition: cross-stage edges, hotspots, kernel tax (production surface)
-declare -A STAGE
-for f in "${prod_files[@]}"; do STAGE["$f"]="$(stage_of "$f")"; done
-cross_edges=0
+declare -A STAGE STAGE_DAGREF
+for f in "${prod_files[@]}"; do
+    STAGE["$f"]="$(stage_of "$f")"
+    STAGE_DAGREF["$f"]="$(stage_of_dagref "$f")"
+done
+cross_edges=0; cross_edges_dagref=0
 declare -A hotspot_importers
 for k in "${!edge_keys[@]}"; do
     a="${k%%|*}"; b="${k##*|}"
     case "$a" in src/*) ;; *) continue ;; esac
     case "$b" in src/*) ;; *) continue ;; esac
     sa="${STAGE[$a]}"; sb="${STAGE[$b]}"
+    [ "$sa" != "$sb" ] && cross_edges=$((cross_edges + 1))
+    da="${STAGE_DAGREF[$a]}"; db="${STAGE_DAGREF[$b]}"
+    [ "$da" != "$db" ] && cross_edges_dagref=$((cross_edges_dagref + 1))
     [ "$sa" = "$sb" ] && continue
-    cross_edges=$((cross_edges + 1))
     hotspot_importers["$b"]="${hotspot_importers[$b]:-} $sa"
 done
 hotspots=0; max_pressure=0
@@ -349,21 +392,26 @@ test_stage() {
         *) echo other ;;
     esac
 }
-cross_invalidation=0; cross_invalidation_all=0; analyzed_targets=0; test_targets=0
+cross_invalidation=0; cross_invalidation_all=0; cross_invalidation_dagref=0; analyzed_targets=0; test_targets=0
 if [ "${ATTUNE_SKIP_BUILD:-0}" != 1 ]; then
     analyzed_targets="$(bazel query //... --noshow_progress 2>/dev/null | wc -l)"
     test_targets="$(bazel query "kind(\".*_test\", //...)" --noshow_progress 2>/dev/null | wc -l)"
     for f in "${admitted[@]}"; do
-        fs="$(stage_of "$f")"; name="$(basename "$f")"
+        fs="$(stage_of "$f")"; fdag="$(stage_of_dagref "$f")"; name="$(basename "$f")"
         declaring="$(bazel query "attr(srcs, \"$name\", //...)" --noshow_progress 2>/dev/null | LC_ALL=C sort || true)"
         [ -n "$declaring" ] || continue
         labels="set($(printf '%s ' $declaring))"
         tests="$(bazel query "kind(\".*_test\", rdeps(//..., $labels))" --noshow_progress 2>/dev/null | LC_ALL=C sort || true)"
         while IFS= read -r t; do
             [ -n "$t" ] || continue
-            [ "$(test_stage "$t")" = "$fs" ] && continue
-            cross_invalidation_all=$((cross_invalidation_all + 1))
-            case "$t" in //experiments/*) ;; *) cross_invalidation=$((cross_invalidation + 1)) ;; esac
+            ts="$(test_stage "$t")"
+            if [ "$ts" != "$fs" ]; then
+                cross_invalidation_all=$((cross_invalidation_all + 1))
+                case "$t" in //experiments/*) ;; *) cross_invalidation=$((cross_invalidation + 1)) ;; esac
+            fi
+            if [ "$ts" != "$fdag" ]; then
+                case "$t" in //experiments/*) ;; *) cross_invalidation_dagref=$((cross_invalidation_dagref + 1)) ;; esac
+            fi
         done <<< "$tests"
     done
 fi
@@ -401,6 +449,9 @@ jq -n \
   --argjson cuts "$cuts_json" \
   --argjson cross_stage_edges "$cross_edges" \
   --arg cross_stage_fraction "$(frac "$cross_edges" "$prod_edges")" \
+  --argjson cross_stage_edges_dagref "$cross_edges_dagref" \
+  --arg cross_stage_fraction_dagref "$(frac "$cross_edges_dagref" "$prod_edges")" \
+  --argjson cross_invalidation_dagref "$cross_invalidation_dagref" \
   --argjson shared_writable_hotspots "$region_hotspots" \
   --argjson max_hotspot_pressure "$region_max_pressure" \
   --argjson shared_stage_hotspots "$hotspots" \
@@ -441,6 +492,8 @@ jq -n \
          k_way_cut: $cuts,
          mutable_cross_stage_edges: $cross_stage_edges,
          mutable_cross_stage_fraction: ($cross_stage_fraction|tonumber),
+         mutable_cross_stage_edges_dagref: $cross_stage_edges_dagref,
+         mutable_cross_stage_fraction_dagref: ($cross_stage_fraction_dagref|tonumber),
          shared_writable_hotspots: $shared_writable_hotspots,
          max_hotspot_pressure: $max_hotspot_pressure,
          shared_stage_hotspots: $shared_stage_hotspots,
@@ -458,7 +511,8 @@ jq -n \
          analyzed_targets: $analyzed_targets,
          test_targets: $test_targets,
          cross_stage_test_invalidation: $cross_invalidation,
-         cross_stage_test_invalidation_all_tests: $cross_invalidation_all
+         cross_stage_test_invalidation_all_tests: $cross_invalidation_all,
+         cross_stage_test_invalidation_dagref: $cross_invalidation_dagref
        },
        work: {
          tasks: $tasks,
@@ -480,4 +534,6 @@ jq -c '{control: .control_commit,
         kernel_loc_fraction: .channels.kernel.kernel_loc_fraction,
         kernel_fanin_share: .channels.kernel.kernel_fanin_share,
         cross_invalidation: .channels.build.cross_stage_test_invalidation,
+        cross_stage_edges_dagref: .channels.basis.mutable_cross_stage_edges_dagref,
+        cross_invalidation_dagref: .channels.build.cross_stage_test_invalidation_dagref,
         T_inf_over_T_one: .channels.work.critical_path_fraction}' "$out"

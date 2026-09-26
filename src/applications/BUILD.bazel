@@ -1,0 +1,46 @@
+# Stage package: the Applications (`//src/applications:*`).
+#
+# The layered applications of the Atlas family: repository localization
+# (`Localization.Sandwich`, the sandwich ranking over Atlas reachable states,
+# and its issue/prior/prediction tables) and the population tables. They stand
+# on the Engine and World stages; nothing upstream reads them.
+package(default_visibility = ["//visibility:public"])
+
+filegroup(
+    name = "localization",
+    srcs = [
+        "//src:Localization.flix",
+        "//src:Localization/IssueTable.flix",
+        "//src:Localization/PredictionTable.flix",
+        "//src:Localization/PriorTable.flix",
+        "//src:Localization/Sandwich.flix",
+    ],
+)
+
+filegroup(
+    name = "population",
+    srcs = [
+        "//src:Population.flix",
+        "//src:Population/Table.flix",
+    ],
+)
+
+# The whole Applications stage surface (LOC-law input and build unit).
+filegroup(
+    name = "flix_sources",
+    srcs = [
+        ":localization",
+        ":population",
+    ],
+)
+
+# Upstream: the Engine stage and the Parquet transport the tables round-trip
+# through.
+filegroup(
+    name = "closure",
+    srcs = [
+        "//src/engine:closure",
+        "//src/transport/parquet:closure",
+        ":flix_sources",
+    ],
+)

@@ -1,0 +1,64 @@
+# Stage package: the Engine (`//src/engine:*`).
+#
+# Pipeline node 3 (Prior ‖ Atlas) and the cell that implements it: the
+# reference relation algebra (`Radii`, `Radii.Evaluate`, `Radii.Synthesize`),
+# the frozen Atlas program family (`Atlas`, `Atlas.Signature*`), and the
+# independent physical evaluator (`Repository.Physical`) whose exact parity
+# against the Datalog reference is permanent.
+package(default_visibility = ["//visibility:public"])
+
+# The physical evaluator alone (the parity partner of `Repository.Reference`).
+filegroup(
+    name = "physical",
+    srcs = ["//src:Repository/Physical.flix"],
+)
+
+# The relation algebra and its synthesized evaluation.
+filegroup(
+    name = "radii",
+    srcs = [
+        "//src:Radii.flix",
+        "//src:Radii/Evaluate.flix",
+        "//src:Radii/Synthesize.flix",
+    ],
+)
+
+# The Atlas grammar and the depth-1..7 signature derivation.
+filegroup(
+    name = "atlas",
+    srcs = [
+        "//src:Atlas.flix",
+        "//src:Atlas/Signature.flix",
+    ],
+)
+
+# The Atlas signature tables (schema + value + transport-backed producers).
+filegroup(
+    name = "atlas_table",
+    srcs = [
+        ":atlas",
+        "//src:Atlas/Signature/Summary.flix",
+        "//src:Atlas/Signature/Table.flix",
+    ],
+)
+
+# The whole Engine stage surface (LOC-law input and build unit).
+filegroup(
+    name = "flix_sources",
+    srcs = [
+        ":atlas_table",
+        ":physical",
+        ":radii",
+    ],
+)
+
+# Upstream: the kernel contract and the World stage's reduced relational
+# surface (`Repository.Reference` compiles against `Repository.Structure`).
+filegroup(
+    name = "closure",
+    srcs = [
+        "//src/kernel:schema",
+        "//src/world:structure",
+        ":flix_sources",
+    ],
+)

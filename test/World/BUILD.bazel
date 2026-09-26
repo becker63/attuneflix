@@ -4,13 +4,26 @@
 # cells' laws (the `mod Repository {}` parent anchor and the `TestWorlds` a/b
 # world) live on the horizontal law surface (`//test`), not here, so no other
 # cell's law package reads into this one (Round 2).
-load("//test/build:flix.bzl", "checked_test", "flix_check")
+load("//test/build:flix.bzl", "checked_test", "flix_check", "flix_loc_law")
 
 package(default_visibility = ["//visibility:public"])
 
 filegroup(
     name = "flix_sources",
     srcs = glob(["*.flix"]),
+)
+
+# The World cell's slice of the Flix LOC law (VAL-METRIC-002): the admitted-world
+# implementation, the typed Acquire/World stage nodes, and this cell's laws.
+flix_loc_law(
+    name = "flix_loc_law_test",
+    srcs = [
+        "//src/world:flix_sources",
+        "//src/stage/acquire:flix_sources",
+        "//src/stage/world:flix_sources",
+        ":flix_sources",
+    ],
+    max_total = 1515,
 )
 
 flix_check(

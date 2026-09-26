@@ -1,0 +1,26 @@
+# Stage package: the stage-DAG namespace (`//src/stage:*`).
+#
+# The mutable typed-stage pipeline root. `Stage.flix` declares the shared
+# `Stage` module parent the pipeline nodes hang under; it carries no logic, so
+# it is the DAG's shared namespace anchor rather than any node.
+load("//test/build:flix.bzl", "flix_loc_law")
+
+package(default_visibility = ["//visibility:public"])
+
+filegroup(
+    name = "flix_sources",
+    srcs = ["//src:Stage.flix"],
+)
+
+filegroup(
+    name = "closure",
+    srcs = [":flix_sources"],
+)
+
+# The DAG namespace anchor's slice of the Flix LOC law (VAL-METRIC-002). The
+# node modules are covered by the cell law of the stage that owns them.
+flix_loc_law(
+    name = "flix_loc_law_test",
+    srcs = [":flix_sources"],
+    max_total = 4,
+)

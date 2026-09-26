@@ -1,87 +1,39 @@
-# The law surface's shared cell source catalogs (K4 Hill-Climb Round 1).
+# The law surface's shared fixtures and its DAG-composed cell source catalogs.
 #
-# Every production source a cell's laws compile against is declared exactly
-# once here, as the narrowest catalog that genuinely shares it; wider catalogs
-# compose narrower ones instead of re-listing their files. The cell law
-# packages (`//test/World`, `//test/Engine`, `//test/Applications`,
-# `//test/Kernel`) consume these catalogs rather than repeating `//src` labels
-# in every target, so a source has one declaration and a change invalidates
-# only the cells whose laws actually read it.
-#
-# This package owns no test target: law targets belong to their cell.
-
-# Cell public surfaces (K4 Hill-Climb Round 2; re-homed here in Round 3).
-#
-# Flix has no top-level module privacy, so a cell's intentional cross-cell
-# surface is declared here rather than enforced by the compiler. A cell exposes
-# only the modules named below; every other module in the cell is internal
-# implementation and is read only by that cell's own laws (and, for Cell D, by
-# the instrument).
-#
-#   stable kernel : ScientificIdentity, Scientific.Schema, Scientific.Value,
-#                   Scientific.Row, Scientific.Parquet
-#                   (the Parquet/Arrow seam is the one kernel-stage transport;
-#                    the schema/value/row modules are pure and carry no IO)
-#   cell A world  : Repository, Repository/Structure
-#                   (internal: Repository/Grit, Repository/Acquire,
-#                    Repository/Reference, Repository/Table)
-#   cell B engine : Radii, Atlas
-#                   (internal: Repository/Physical, Radii/Evaluate,
-#                    Radii/Synthesize, Atlas/Signature*)
-#   cell C apps   : Localization, Population
-#                   (internal: Localization/*Table, Population/Table)
-#   cell D research: Experiment
-#
-# The cross-cell reads in the tree already respect this table: Engine and
-# Applications reach only World/Kernel surfaces, and the only read of a cell
-# internal across a cell boundary is by the Cell D instrument, which is a leaf.
-# The World `Repository.Reference` -> Engine `Radii` read is the permanent
-# reference/physical parity pair (the reference evaluator interprets Radii
-# programs).
-#
-# Round 3 moved this declaration off `src/BUILD.bazel`: a production surface
-# file must stay byte-stable across rounds (the oracle's production-drift rule),
-# so the declared contract lives on the law surface that owns the per-cell
-# catalogs.
+# Candidate D re-homed every production source catalog onto the stage packages
+# (`//src/kernel`, `//src/transport/parquet`, `//src/world`, `//src/engine`,
+# `//src/applications`, `//src/stage/*`). A cell's law surface now composes the
+# stage closures it actually reads instead of repeating `//src` file labels, so
+# each production source is declared by exactly one stage package and a
+# stage-local edit invalidates only the law targets whose stage closure contains
+# it. This package owns no test target: law targets belong to their cell.
+load("//test/build:flix.bzl", "flix_loc_law")
 
 package(default_visibility = ["//visibility:public"])
 
-# Every tracked law Flix source in `//test`, for the LOC law
-# (`//:flix_loc_law_test`). Composed from this package's own files and the four
-# cell law packages' `flix_sources` filegroups.
-filegroup(
-    name = "flix_sources",
-    srcs = glob(["*.flix"]) + [
-        "//test/Applications:flix_sources",
-        "//test/Engine:flix_sources",
-        "//test/Kernel:flix_sources",
-        "//test/World:flix_sources",
-    ],
-)
-
-# The shared law surface (K4 Hill-Climb Round 2). Two fixtures are read by the
-# law tests of more than one cell, so they are owned by the horizontal law
-# surface rather than by any single cell: the reduced `mod Repository {}`
-# parent anchor the Engine parity law compiles `Repository/Reference.flix`
-# against, and the `TestWorlds` a/b fixture the Engine and Applications law
-# surfaces read. Keeping them here means no cell's law package reaches into
-# another cell's law internals.
+# The two fixtures read by more than one cell's laws (the reduced
+# `mod Repository {}` parent anchor and the `TestWorlds` a/b world) live on the
+# horizontal law surface, so no cell's law package reaches into another cell's
+# law internals.
 exports_files([
     "Repository.flix",
     "TestWorlds.flix",
 ])
 
-# World — the reduced relational surface (`Repository/Structure.flix` compiles
-# against a declared parent module) and the full admission surface.
+# ---- World cell law catalogs ------------------------------------------------
+
+# The reduced relational surface: `Repository.Structure` plus the empty
+# `mod Repository {}` parent anchor it compiles against.
 filegroup(
     name = "world_structure_law_sources",
     srcs = [
-        "//src:Kernel.flix",
-        "//src:Kernel/Contract.flix",
-        "//src:Repository/Structure.flix",
+        "//src/kernel:contract",
+        "//src/world:structure",
     ],
 )
 
+# `Repository.Reference` (the Datalog reference meaning) over the relational
+# surface.
 filegroup(
     name = "world_relational_law_sources",
     srcs = [
@@ -90,184 +42,158 @@ filegroup(
     ],
 )
 
+# The full admission surface: the World vocabulary, call index, and per-language
+# rules.
 filegroup(
     name = "world_admission_law_sources",
     srcs = [
-        ":world_structure_law_sources",
-        "//src:Repository.flix",
-        "//src:Repository/Grit.flix",
-        "//src:World.flix",
-        "//src:World/Admission.flix",
-        "//src:World/CallIndex.flix",
-        "//src:World/Language.flix",
-        "//src:World/Language/Flix.flix",
-        "//src:World/Language/Java.flix",
-        "//src:World/Language/JavaScript.flix",
-        "//src:World/Language/Starlark.flix",
+        "//src/kernel:contract",
+        "//src/world:admission",
     ],
 )
 
-# Stage 1 — the typed acquisition stage. It reads the kernel contract and effect
-# declarations, the pure Grit vocabulary, and nothing native: the capability is
-# supplied by a handler, so the stage compiles with no `java_deps`.
+# Stage 1 `Acquire`: the typed acquisition node over `eff Grit`, the pure Grit
+# fact vocabulary, and the stage namespace anchor.
 filegroup(
     name = "stage_acquire_law_sources",
     srcs = [
-        ":kernel_effect_law_sources",
-        "//src:Repository.flix",
-        "//src:Repository/Grit.flix",
-        "//src:Stage.flix",
-        "//src:Stage/Acquire.flix",
+        "//src/kernel:effect",
+        "//src/stage:flix_sources",
+        "//src/stage/acquire:flix_sources",
+        "//src/world:grit",
     ],
 )
 
-# Stage 2 — the pure world-admission stage. It adds the stage modules to the
-# full admission surface; no effect or native seam appears.
+# Stage 2 `World`: the typed admission node.
 filegroup(
     name = "stage_world_law_sources",
     srcs = [
-        ":world_admission_law_sources",
-        "//src:Stage.flix",
-        "//src:Stage/World.flix",
+        "//src/kernel:contract",
+        "//src/stage:flix_sources",
+        "//src/stage/world:flix_sources",
+        "//src/world:admission",
     ],
 )
 
-# Stage 3A — Prior scoring. Pure over the declared `eff Embedding`, so the stage
-# compiles with no `java_deps` and the provider stays a handler concern.
-filegroup(
-    name = "stage_prior_law_sources",
-    srcs = [
-        ":kernel_effect_law_sources",
-        "//src:Stage.flix",
-        "//src:Stage/Prior.flix",
-    ],
-)
+# ---- Engine cell law catalogs -----------------------------------------------
 
-# Stage 3B — Atlas exploration. It composes the Engine's Atlas family and
-# physical evaluator with the pure kernel contract and the `Repository` anchor
-# the physical evaluator declares against.
-filegroup(
-    name = "stage_atlas_law_sources",
-    srcs = [
-        ":engine_atlas_law_sources",
-        ":engine_physical_law_sources",
-        ":engine_radii_law_sources",
-        ":kernel_contract_law_sources",
-        "//src:Repository.flix",
-        "//src:Stage.flix",
-        "//src:Stage/Atlas.flix",
-    ],
-)
-
-# Stage 4/5 — candidate assembly (pure) and judge selection (pure over
-# `eff JudgeModel`, provided by a handler).
-filegroup(
-    name = "stage_candidate_judge_law_sources",
-    srcs = [
-        ":stage_prior_law_sources",
-        "//src:Stage/CandidateSet.flix",
-        "//src:Stage/Judge.flix",
-    ],
-)
-
-# Stage 6 — context projection, pure over the kernel contract.
-filegroup(
-    name = "stage_projection_law_sources",
-    srcs = [
-        ":kernel_contract_law_sources",
-        "//src:Stage.flix",
-        "//src:Stage/Projection.flix",
-    ],
-)
-
-# The composed Stage 3-6 pipeline (`Stage.Pipeline`): Prior, Atlas,
-# CandidateSet, Judge, and Projection in one typed call.
-filegroup(
-    name = "stage_pipeline_law_sources",
-    srcs = [
-        ":stage_atlas_law_sources",
-        ":stage_candidate_judge_law_sources",
-        "//src:Stage/Pipeline.flix",
-        "//src:Stage/Projection.flix",
-    ],
-)
-
-# Engine — the physical evaluator, the relation algebra, and the Atlas family.
 filegroup(
     name = "engine_physical_law_sources",
-    srcs = ["//src:Repository/Physical.flix"],
+    srcs = ["//src/engine:physical"],
 )
 
 filegroup(
     name = "engine_radii_law_sources",
-    srcs = [
-        "//src:Radii.flix",
-        "//src:Radii/Evaluate.flix",
-        "//src:Radii/Synthesize.flix",
-    ],
+    srcs = ["//src/engine:radii"],
 )
 
 filegroup(
     name = "engine_atlas_law_sources",
     srcs = [
-        "//src:Atlas.flix",
-        "//src:Atlas/Signature.flix",
-        "//src:Kernel/Effect.flix",
+        "//src/engine:atlas",
+        "//src/kernel:effect",
     ],
 )
 
-# Kernel — the move-stable identity and pure table contracts.
+# Stage 3B `Atlas`: the Atlas grammar, the relation algebra, the physical
+# evaluator, the kernel contract, and the stage namespace anchor.
 filegroup(
-    name = "kernel_identity_law_sources",
-    srcs = ["//src:ScientificIdentity.flix"],
-)
-
-# The pure scientific schema/row semantics. No `java_deps` is needed to compile
-# this catalog, which is what proves the schema/transport separation
-# (VAL-DECOMP-001): the schema and row meaning carry no native seam.
-filegroup(
-    name = "kernel_table_law_sources",
+    name = "stage_atlas_law_sources",
     srcs = [
-        "//src:Kernel.flix",
-        "//src:Kernel/Contract.flix",
-        "//src:Scientific.flix",
-        "//src:Scientific/Row.flix",
-        "//src:Scientific/Schema.flix",
-        "//src:Scientific/Value.flix",
+        "//src/engine:atlas",
+        "//src/engine:physical",
+        "//src/engine:radii",
+        "//src/kernel:contract",
+        "//src/stage:flix_sources",
+        "//src/stage/atlas:flix_sources",
+        "//src/world:anchor",
     ],
 )
 
-# The isolated Parquet/Arrow transport. Only a target that actually performs
-# table I/O declares this wider catalog (and the native transport dependency).
+# Stage 3A `Prior`: pure over the declared `eff Embedding`.
 filegroup(
-    name = "kernel_table_transport_law_sources",
+    name = "stage_prior_law_sources",
     srcs = [
-        ":kernel_table_law_sources",
-        "//src:Scientific/Parquet.flix",
+        "//src/kernel:effect",
+        "//src/stage:flix_sources",
+        "//src/stage/prior:flix_sources",
     ],
 )
 
-# Kernel — the Candidate A contract surface. The pure contract kernel declares
-# the nominal IDs, relation types, six-atom Atlas grammar, scientific schema,
-# and stage ADTs; its law compiles the module in isolation, which is what
-# proves the zero-FFI / zero-IO / zero-resolver boundary (VAL-KERN-001/2/3).
+# ---- Applications cell law catalogs -----------------------------------------
+
+# Stage 4/5: candidate assembly and judge selection over Prior.
+filegroup(
+    name = "stage_candidate_judge_law_sources",
+    srcs = [
+        ":stage_prior_law_sources",
+        "//src/stage/candidate_set:flix_sources",
+        "//src/stage/judge:flix_sources",
+    ],
+)
+
+# Stage 6: context projection.
+filegroup(
+    name = "stage_projection_law_sources",
+    srcs = [
+        "//src/kernel:contract",
+        "//src/stage:flix_sources",
+        "//src/stage/projection:flix_sources",
+    ],
+)
+
+# The composed 3-6 pipeline: Prior, Atlas, CandidateSet, Judge, and Projection.
+filegroup(
+    name = "stage_pipeline_law_sources",
+    srcs = [
+        ":stage_atlas_law_sources",
+        ":stage_candidate_judge_law_sources",
+        "//src/stage/pipeline:flix_sources",
+        "//src/stage/projection:flix_sources",
+    ],
+)
+
+# ---- Kernel cell law catalogs -----------------------------------------------
+
 filegroup(
     name = "kernel_contract_law_sources",
-    srcs = [
-        "//src:Kernel.flix",
-        "//src:Kernel/Contract.flix",
-    ],
+    srcs = ["//src/kernel:contract"],
 )
 
-# Kernel — the capability effect declarations (Candidate B). The effect module
-# names only pure kernel types, so it inherits the same zero-FFI / zero-IO
-# boundary as the contract: a target that compiles both with no `java_deps` is
-# what proves the declarations delegate all real work to a handler
-# (VAL-EFF-001).
 filegroup(
     name = "kernel_effect_law_sources",
+    srcs = ["//src/kernel:effect"],
+)
+
+filegroup(
+    name = "kernel_identity_law_sources",
+    srcs = ["//src/kernel:identity"],
+)
+
+filegroup(
+    name = "kernel_table_law_sources",
+    srcs = ["//src/kernel:schema"],
+)
+
+filegroup(
+    name = "kernel_table_transport_law_sources",
+    srcs = ["//src/transport/parquet:closure"],
+)
+
+filegroup(
+    name = "kernel_handler_law_sources",
+    srcs = ["//src/kernel:handler"],
+)
+
+# ---- The residual LOC law slice ---------------------------------------------
+
+# The two shared fixtures. Every other law source is covered by its own cell's
+# LOC law, so no single law target reaches across the stage DAG.
+flix_loc_law(
+    name = "flix_loc_law_test",
     srcs = [
-        ":kernel_contract_law_sources",
-        "//src:Kernel/Effect.flix",
+        "Repository.flix",
+        "TestWorlds.flix",
     ],
+    max_total = 26,
 )

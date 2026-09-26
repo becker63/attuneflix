@@ -1,0 +1,90 @@
+# Stage package: the Stable Contract & Semantic Kernel (`//src/kernel:*`).
+#
+# The stage DAG's leaf. It owns the mission's one frozen, read-only boundary:
+# the nominal IDs and pure relation/stage contract (`Kernel.Contract`), the
+# algebraic capability declarations (`Kernel.Effect`), the production/replay
+# handlers (`Kernel.Handler`, `Kernel.DigestHandler`), the pure scientific
+# schema semantics (`Scientific.Schema`/`Value`/`Row`), and the move-stable
+# identity seam (`ScientificIdentity`). Every other stage reads it; it reads
+# nothing.
+#
+# Layout note. Flix module identity is the declared module name, not the file
+# path, and the frozen logical-identity map (PREREGISTRATION.md §7 O6) binds a
+# control identity to a path, so the production `.flix` files stay path-stable:
+# a move would create a new path identity for unchanged meaning. A stage
+# package therefore *owns the stage's build unit* (its source catalog and its
+# independently addressable compile/test targets) rather than relocating the
+# module. The `//src` package keeps the `exports_files` gate the package
+# references; the stage DAG lives in these package edges.
+package(default_visibility = ["//visibility:public"])
+
+# The pure contract kernel: nominal IDs, relation types, the six directed
+# Atlas atoms, the scientific column/schema/value types, and the stage
+# pipeline ADTs. It declares no effect and imports nothing (VAL-KERN-001/2/3).
+filegroup(
+    name = "contract",
+    srcs = [
+        "//src:Kernel.flix",
+        "//src:Kernel/Contract.flix",
+    ],
+)
+
+# The capability effect declarations (`eff Digest`, `eff SourceRead`, `eff Grit`,
+# `eff ArtifactStore`, `eff Embedding`, `eff JudgeModel`). They name only pure
+# contract types, so they inherit the contract's zero-FFI/zero-IO boundary and
+# delegate every real capability to a handler (VAL-EFF-001).
+filegroup(
+    name = "effect",
+    srcs = [
+        ":contract",
+        "//src:Kernel/Effect.flix",
+    ],
+)
+
+# The production and replay capability handlers: the one seam where the
+# effectful shell meets native FFI (VAL-EFF-002/003).
+filegroup(
+    name = "handler",
+    srcs = [
+        ":effect",
+        "//src:Kernel/Handler.flix",
+        "//src:Kernel/DigestHandler.flix",
+    ],
+)
+
+# The pure scientific schema, value, and row semantics. No Parquet/Arrow
+# transport and no native seam appears here (VAL-KERN-002, VAL-DECOMP-001).
+filegroup(
+    name = "schema",
+    srcs = [
+        ":contract",
+        "//src:Scientific.flix",
+        "//src:Scientific/Schema.flix",
+        "//src:Scientific/Value.flix",
+        "//src:Scientific/Row.flix",
+    ],
+)
+
+# The move-stable identity seam (`FileId` derivation). Its own native handler
+# lives in `//src/native/identity`; this catalog is the pure interface.
+filegroup(
+    name = "identity",
+    srcs = ["//src:ScientificIdentity.flix"],
+)
+
+# The whole kernel stage surface. This is the stage's LOC-law input and its
+# independently addressable build unit.
+filegroup(
+    name = "flix_sources",
+    srcs = [
+        ":handler",
+        ":identity",
+        ":schema",
+    ],
+)
+
+# The kernel plus everything upstream of it — nothing.
+filegroup(
+    name = "closure",
+    srcs = [":flix_sources"],
+)

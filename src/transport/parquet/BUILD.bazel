@@ -1,0 +1,22 @@
+# Stage package: the Parquet/Arrow transport (`//src/transport/parquet:*`).
+#
+# The one stage that carries the scientific tables over a native wire. It owns
+# `Scientific.Parquet` alone: the schema/row/value meaning stays in the pure
+# kernel behind it, so a change here can never invalidate a consumer that only
+# reads the table semantics (VAL-DECOMP-001).
+package(default_visibility = ["//visibility:public"])
+
+# The transport stage's own surface (the LOC-law input and build unit).
+filegroup(
+    name = "flix_sources",
+    srcs = ["//src:Scientific/Parquet.flix"],
+)
+
+# Upstream: the pure schema the transport serialises.
+filegroup(
+    name = "closure",
+    srcs = [
+        "//src/kernel:schema",
+        ":flix_sources",
+    ],
+)
