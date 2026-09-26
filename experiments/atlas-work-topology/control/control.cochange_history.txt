@@ -1,0 +1,1927 @@
+C	eca979f524661cbe400d22b90c7e3c305b32052e
+
+1	0	BUILD.bazel
+8	2	README.md
+3	0	experiments/atlas-parallelism/AcquireMain.flix
+108	0	experiments/atlas-parallelism/AcquisitionDriver.flix
+157	0	experiments/atlas-parallelism/AcquisitionFacts.flix
+183	2	experiments/atlas-parallelism/BUILD.bazel
+178	23	experiments/atlas-parallelism/Parallelism.flix
+68	0	experiments/atlas-parallelism/Provenance.flix
+318	12	experiments/atlas-parallelism/REPORT.md
+60	0	experiments/atlas-parallelism/parallelism.bzl
+121	0	experiments/atlas-parallelism/v2/README.md
+55	0	experiments/atlas-parallelism/v2/bazel-locality/baseline.fanout.txt
+41	0	experiments/atlas-parallelism/v2/bazel-locality/baseline.targets.txt
+11	0	experiments/atlas-parallelism/v2/bazel-locality/baseline.tests.txt
+71	0	experiments/atlas-parallelism/v2/bazel-locality/cleaned.fanout.txt
+41	0	experiments/atlas-parallelism/v2/bazel-locality/cleaned.targets.txt
+10	0	experiments/atlas-parallelism/v2/bazel-locality/cleaned.tests.txt
+-	-	experiments/atlas-parallelism/v2/grit/baseline.facts.parquet
+-	-	experiments/atlas-parallelism/v2/grit/cleaned.facts.parquet
+72	0	experiments/atlas-parallelism/v2/sources/baseline.files.txt
+1	0	experiments/atlas-parallelism/v2/sources/baseline.revision.txt
+-	-	experiments/atlas-parallelism/v2/sources/baseline.sources.parquet
+75	0	experiments/atlas-parallelism/v2/sources/cleaned.files.txt
+1	0	experiments/atlas-parallelism/v2/sources/cleaned.revision.txt
+-	-	experiments/atlas-parallelism/v2/sources/cleaned.sources.parquet
+33	0	experiments/atlas-parallelism/v2_bazel_locality.sh
+46	0	experiments/atlas-parallelism/v2_extract.sh
+C	e0154f2b2149f4ada6bee821060380e04bb39ebc
+
+139	0	experiments/atlas-parallelism/PREREGISTRATION.md
+C	059155cf07688afd294232ac4d22f8d71bb037bf
+
+2	0	BUILD.bazel
+1	0	build/BUILD.bazel
+170	0	build/src/GritAcquisitionTest.flix
+1	0	src/BUILD.bazel
+116	1	src/Repository.flix
+70	0	src/Repository/Acquire.flix
+268	1	src/Repository/Grit.flix
+46	15	src/grit/README.md
+50	0	src/grit/calls/flix.grit
+58	0	src/grit/calls/java.grit
+59	0	src/grit/calls/starlark.grit
+77	0	src/grit/defines/flix.grit
+71	0	src/grit/defines/java.grit
+60	0	src/grit/defines/starlark.grit
+52	0	src/grit/imports/flix.grit
+54	0	src/grit/imports/java.grit
+56	0	src/grit/imports/starlark.grit
+51	0	src/native/grit/AttuneGritTest.java
+35	0	test/BUILD.bazel
+C	e6fbdae858b3867a402f7a50a84a9394f9713dcd
+
+7	0	MODULE.bazel
+5	0	build/BUILD.bazel
+110	0	build/grit_patches/flix.rs
+18	0	build/grit_patches/flix_binding.rs
+113	0	build/grit_patches/starlark.rs
+18	0	build/grit_patches/starlark_binding.rs
+72	0	build/grit_patches/textual_metavariable.rs
+432	7	build/grit_repository.bzl
+41	0	src/native/grit/AttuneGritTest.java
+197	0	src/native/grit/lib.rs
+C	e80091cf607450cd0d3d43aad6217b4353ba1c67
+
+3	0	.env.example
+109	0	AGENTS.md
+C	bf7fd84959a195c8af5cae2cbef8f62633bdd766
+
+16	0	README.md
+90	0	experiments/atlas-parallelism/BUILD.bazel
+11	0	experiments/atlas-parallelism/Parallelism.flix
+242	0	experiments/atlas-parallelism/REPORT.md
+42	0	experiments/atlas-parallelism/extracted/after/files.txt
+29	0	experiments/atlas-parallelism/extracted/after/modules.txt
+141	0	experiments/atlas-parallelism/extracted/after/uses.txt
+41	0	experiments/atlas-parallelism/extracted/baseline/files.txt
+29	0	experiments/atlas-parallelism/extracted/baseline/modules.txt
+123	0	experiments/atlas-parallelism/extracted/baseline/uses.txt
+11	38	experiments/atlas-parallelism/parallelism.bzl
+C	ae2f5e68711121f8ecbf9ce94a7926ca7c7833d1
+
+12	0	experiments/atlas-parallelism/BUILD.bazel
+1	3	experiments/atlas-parallelism/Main.flix
+15	3	experiments/atlas-parallelism/PREREGISTRATION.md
+203	136	experiments/atlas-parallelism/Parallelism.flix
+50	0	experiments/atlas-parallelism/extract_self_facts.sh
+160	0	experiments/atlas-parallelism/parallelism.bzl
+C	7f1885fecf53d5428b033db7b9d7dfefb1b258e7
+
+29	0	experiments/atlas-parallelism/BUILD.bazel
+4	0	experiments/atlas-parallelism/Main.flix
+392	0	experiments/atlas-parallelism/Parallelism.flix
+C	396d7a6436438c0dc8b549d5f1e212e68f7336fc
+
+234	0	experiments/atlas-parallelism/PREREGISTRATION.md
+C	0fc742ae1b41644366ff76af51ec68d4d945b10c
+
+6	25	src/Radii/Evaluate.flix
+4	10	test/ParityTest.flix
+C	c5b955cec68468741ebffbe1d1a14ed4de85c69a
+
+1	4	build/src/AtlasSignatureTableTest.flix
+6	22	src/Atlas.flix
+5	7	src/Atlas/Signature.flix
+17	27	src/Atlas/Signature/Table.flix
+6	13	src/Localization/Sandwich.flix
+8	17	src/Repository.flix
+1	4	src/Repository/Physical.flix
+11	16	src/Repository/Table.flix
+1	17	test/ParityTest.flix
+C	54e9cebe8025efd3b9d25517a811a5271373be4b
+
+1	0	build/BUILD.bazel
+2	30	build/src/AtlasTest.flix
+1	21	build/src/LocalizationTest.flix
+23	0	build/src/TestWorlds.flix
+2	0	test/BUILD.bazel
+C	12f8172ebec32add2dd4906b3bd7cb6454235fae
+
+1	1	build/src/LocalizationTest.flix
+0	21	src/Localization.flix
+0	43	src/Localization/IssueTable.flix
+0	52	src/Localization/PredictionTable.flix
+0	194	src/Localization/PriorTable.flix
+0	6	src/ScientificTable.flix
+C	02998c36188a276017d4c3cf567918f50942073b
+
+4	5	build/src/AtlasSignatureTableTest.flix
+2	7	experiments/atlas-swe-explore/Main.flix
+2	3	experiments/atlas-swe-explore/Report.flix
+19	26	src/Atlas/Signature.flix
+4	10	src/Atlas/Signature/Summary.flix
+5	25	src/Atlas/Signature/Table.flix
+8	0	src/ScientificTable.flix
+C	407cd815ab9d196723bc9cfe64f313313cd58bda
+
+5	9	build/src/AtlasTest.flix
+17	39	src/Atlas.flix
+C	c26eadb75522e6f589a79bac87a1da51caf9f038
+
+0	13	src/Radii/Evaluate.flix
+C	d4c8a33f9ba7f598ed0cfbc400a80c44d7af6147
+
+4	0	experiments/atlas-swe-explore/BUILD.bazel
+12	21	experiments/atlas-swe-explore/Report.flix
+20	58	src/Atlas/Signature/Summary.flix
+4	39	src/Atlas/Signature/Table.flix
+1	0	src/BUILD.bazel
+1	3	src/Localization/IssueTable.flix
+1	9	src/Localization/PredictionTable.flix
+1	9	src/Localization/PriorTable.flix
+5	28	src/Population/Table.flix
+29	59	src/Repository/Table.flix
+42	12	src/ScientificTable.flix
+15	0	src/ScientificTable/Columns.flix
+5	0	test/BUILD.bazel
+C	1faa499fcd24aa7a76bd77f56a12e39d0a6566f3
+
+0	1	build/BUILD.bazel
+0	19	build/src/AtlasRepository.flix
+8	4	experiments/atlas-swe-explore/BUILD.bazel
+8	4	test/BUILD.bazel
+C	fe865b19363d1b0d0558307eb728cc87a0b0e67b
+
+2	0	BUILD.bazel
+1	0	build/BUILD.bazel
+18	0	build/src/InferenceBoundaryTest.flix
+48	0	src/native/inference/AttuneDecision.java
+154	0	src/native/inference/AttuneEmbed.java
+27	0	src/native/inference/AttuneInferenceTest.java
+28	0	src/native/inference/BUILD.bazel
+64	0	src/native/inference/OpenRouter.java
+45	0	src/native/inference/README.md
+13	0	test/BUILD.bazel
+C	d315afcd2ba384123416906bc7dd4862de2cbf2a
+
+0	1	BUILD.bazel
+11	8	docs/architecture/native-flix.md
+0	255	src/Repository/Grit.flix
+0	19	test/BUILD.bazel
+C	8486bdd862586b4f06ff74a0b0940ad303527bad
+
+4	0	experiments/atlas-swe-explore/BUILD.bazel
+C	e7435aef1f4ff6d90c5fcf1081d9cfb08ca5d617
+
+3	3	docs/architecture/native-flix.md
+0	88	src/Repository.flix
+8	60	src/Repository/Structure.flix
+C	24152664a0db2ce469e3b5b779d1869882cba523
+
+0	5	.attune/BUILD.bazel
+1	1	.bazelrc
+0	2	BUILD.bazel
+0	3	build/BUILD.bazel
+0	63	build/attune.bzl
+0	2	build/src/Atlas.flix
+0	2	build/src/Atlas/Signature.flix
+0	13	build/src/InferenceBoundaryTest.flix
+1	287	src/native/grit/cargo-bazel-lock.json
+0	48	src/native/inference/AttuneDecision.java
+0	154	src/native/inference/AttuneEmbed.java
+0	27	src/native/inference/AttuneInferenceTest.java
+0	28	src/native/inference/BUILD.bazel
+0	64	src/native/inference/OpenRouter.java
+0	45	src/native/inference/README.md
+0	13	test/BUILD.bazel
+C	bcfc126db7b7c7f535353ccc8afca44465903571
+
+75	21	flake.nix
+C	b6adbe9d576d353e6c8a2bcf0c3642eb96679f5f
+
+22	27	README.md
+129	82	docs/data-architecture.md
+47	0	docs/research/attuneradii-history.md
+4	6	docs/research/repository-signatures.md
+3	0	experiments/atlas-swe-explore/BUILD.bazel
+21	24	experiments/atlas-swe-explore/Main.flix
+3	3	experiments/atlas-swe-explore/PHYSICAL-PLANS.md
+5	7	experiments/atlas-swe-explore/Report.flix
+2	4	experiments/atlas-swe-explore/Summary.flix
+11	0	experiments/atlas-swe-explore/census/census.bzl
+-	-	experiments/atlas-swe-explore/physical.parquet
+-	-	experiments/atlas-swe-explore/repositories.parquet
+-	-	experiments/atlas-swe-explore/snapshots.parquet
+-	-	experiments/atlas-swe-explore/summaries.parquet
+4	1	experiments/jev-policy-hillclimb/iterations/015-learned-route-templates/REPORT.md
+0	19	experiments/jev-policy-hillclimb/iterations/015-learned-route-templates/route-templates.json
+0	19	experiments/jev-policy-hillclimb/iterations/016-template-tournament/route-templates.json
+5	2	experiments/swe-explore-js-ts-scale/BUILD.bazel
+0	1	experiments/swe-explore-js-ts-scale/MANIFEST.json
+49	53	experiments/swe-explore-js-ts-scale/README.md
+13	14	experiments/swe-explore-js-ts-scale/USAGE.md
+-	-	experiments/swe-explore-js-ts-scale/evaluation-metrics.parquet
+-	-	experiments/swe-explore-js-ts-scale/evaluation-proof.parquet
+-	-	experiments/swe-explore-js-ts-scale/evaluation-regions.parquet
+-	-	experiments/swe-explore-js-ts-scale/evaluation-telemetry.parquet
+-	-	experiments/swe-explore-js-ts-scale/replay-proof.parquet
+-	-	experiments/swe-explore-js-ts-scale/results-censored.parquet
+0	46	migration/attuneradii/README.md
+0	115	migration/attuneradii/flake.lock
+0	702	migration/attuneradii/flake.nix
+0	67	migration/attuneradii/grit/typescript/calls.grit
+0	175	migration/attuneradii/grit/typescript/defines.grit
+0	54	migration/attuneradii/grit/typescript/imports.grit
+0	1219	migration/attuneradii/native/grit/Cargo.lock
+0	46	migration/attuneradii/native/grit/Cargo.toml
+0	124	migration/attuneradii/native/grit/src/lib.rs
+0	283	migration/attuneradii/nix/swe-explore.nix
+0	115	migration/attuneradii/pyproject.toml
+0	26	migration/attuneradii/setup.cfg
+0	7127	migration/attuneradii/spec.md
+0	14	migration/attuneradii/src/_attune_grit.pyi
+0	118	migration/attuneradii/src/_nix_ffi.py
+0	275	migration/attuneradii/src/_nix_native.py
+0	1	migration/attuneradii/src/attune_radii/__init__.py
+0	1	migration/attuneradii/src/attune_radii/algebra/__init__.py
+0	164	migration/attuneradii/src/attune_radii/algebra/query.py
+0	371	migration/attuneradii/src/attune_radii/algebra/relation.py
+0	142	migration/attuneradii/src/attune_radii/algebra/structure.py
+0	252	migration/attuneradii/src/attune_radii/grit.py
+0	310	migration/attuneradii/src/attune_radii/model.py
+0	200	migration/attuneradii/src/attune_radii/nix.py
+0	115	migration/attuneradii/src/attune_radii/observation.py
+0	1	migration/attuneradii/src/attune_radii/policies/__init__.py
+0	122	migration/attuneradii/src/attune_radii/policies/radii.py
+0	531	migration/attuneradii/src/attune_radii/routing.py
+0	707	migration/attuneradii/src/attune_radii/world.py
+0	1	migration/attuneradii/tests/__init__.py
+0	88	migration/attuneradii/tests/_profile.py
+0	433	migration/attuneradii/tests/conftest.py
+0	628	migration/attuneradii/tests/test_algebra.py
+0	301	migration/attuneradii/tests/test_architecture.py
+0	280	migration/attuneradii/tests/test_atlas.py
+0	422	migration/attuneradii/tests/test_model.py
+0	242	migration/attuneradii/tests/test_swe_explore.py
+0	158	migration/attuneradii/typings/_attune_nix_abi.pyi
+0	1	migration/attuneradii/typings/pyarrow/__init__.pyi
+0	32	migration/attuneradii/typings/pyarrow/parquet.pyi
+0	31	migration/attuneradii/typings/rote/__init__.pyi
+0	1176	migration/attuneradii/uv.lock
+0	37	migration/population/BUILD.bazel
+0	131	migration/population/Main.flix
+C	4434063a6f3123b9101a93380d56c49b4a910164
+
+0	1	.attune/repository-world-v1/000365e13105629d144db298591cebfc4c6cd58e546ab24d4f3bf6e836a14efe/BUILD.bazel
+0	1	.attune/repository-world-v1/000365e13105629d144db298591cebfc4c6cd58e546ab24d4f3bf6e836a14efe/identity.json
+0	1	.attune/repository-world-v1/002a462e6f58440bbf60071f1e945b38bb304fe46a38ca6fdfd578248693cf01/BUILD.bazel
+0	1	.attune/repository-world-v1/002a462e6f58440bbf60071f1e945b38bb304fe46a38ca6fdfd578248693cf01/identity.json
+0	1	.attune/repository-world-v1/0a4d2c8aacbbd3762bd6976bcf91866f819881ab0aad5580d9fadfdc6bbbd973/BUILD.bazel
+0	1	.attune/repository-world-v1/0a4d2c8aacbbd3762bd6976bcf91866f819881ab0aad5580d9fadfdc6bbbd973/identity.json
+0	1	.attune/repository-world-v1/0ba18a217eefcafd6ba5afe527e293f53643e7b6d5d6e3ae48cf9ad2e5e3171a/BUILD.bazel
+0	1	.attune/repository-world-v1/0ba18a217eefcafd6ba5afe527e293f53643e7b6d5d6e3ae48cf9ad2e5e3171a/identity.json
+0	1	.attune/repository-world-v1/0cc7b7c20b18e7bd7980c4510936b82c6d2a42556bbf86bacb56c23cfd87e6f1/BUILD.bazel
+0	1	.attune/repository-world-v1/0cc7b7c20b18e7bd7980c4510936b82c6d2a42556bbf86bacb56c23cfd87e6f1/identity.json
+0	1	.attune/repository-world-v1/1044506ddb4491ea06a20209ab5bce6b7a278ee23a14e5db259d9a33d6241dcf/BUILD.bazel
+0	1	.attune/repository-world-v1/1044506ddb4491ea06a20209ab5bce6b7a278ee23a14e5db259d9a33d6241dcf/identity.json
+0	1	.attune/repository-world-v1/18c7f4c0686bfee7d0ffe6a5a8a503e14957c7896396801aa9bccfee501cdb94/BUILD.bazel
+0	1	.attune/repository-world-v1/18c7f4c0686bfee7d0ffe6a5a8a503e14957c7896396801aa9bccfee501cdb94/identity.json
+0	1	.attune/repository-world-v1/197d5a4deb6c1c7827e89304714830aa9be2c3f01b252d834427cb9a96ac402b/BUILD.bazel
+0	1	.attune/repository-world-v1/197d5a4deb6c1c7827e89304714830aa9be2c3f01b252d834427cb9a96ac402b/identity.json
+0	1	.attune/repository-world-v1/19fa623c87d7c746cf5b4af08f5b92c9fede4cd02f2e0772da95d223c1b52313/BUILD.bazel
+0	1	.attune/repository-world-v1/19fa623c87d7c746cf5b4af08f5b92c9fede4cd02f2e0772da95d223c1b52313/identity.json
+0	1	.attune/repository-world-v1/1b1bc8349e395c8776a0ad6200d81355c753e089ef067543ebf37cbba0949171/BUILD.bazel
+0	1	.attune/repository-world-v1/1b1bc8349e395c8776a0ad6200d81355c753e089ef067543ebf37cbba0949171/identity.json
+0	1	.attune/repository-world-v1/1dd4f1023c7ec84511b472dc4d888f653fcba7c3cfa07bed8fd24b19f3b5c166/BUILD.bazel
+0	1	.attune/repository-world-v1/1dd4f1023c7ec84511b472dc4d888f653fcba7c3cfa07bed8fd24b19f3b5c166/identity.json
+0	1	.attune/repository-world-v1/1e44a1c45ec4a91bb7774dc6d37a2846a5f56262b6fa7ae5722bcbcc15ba10c7/BUILD.bazel
+0	1	.attune/repository-world-v1/1e44a1c45ec4a91bb7774dc6d37a2846a5f56262b6fa7ae5722bcbcc15ba10c7/identity.json
+0	1	.attune/repository-world-v1/1f1fb6e8cbfb38f8d2f6f641fba3fbce89a1adfde8e9fd6b73cefd08611df23e/BUILD.bazel
+0	1	.attune/repository-world-v1/1f1fb6e8cbfb38f8d2f6f641fba3fbce89a1adfde8e9fd6b73cefd08611df23e/identity.json
+0	1	.attune/repository-world-v1/25054646c3f316d59634b7ef351e4cceae0e15c1ed4ad6e7b6a9e6ea07f4629f/BUILD.bazel
+0	1	.attune/repository-world-v1/25054646c3f316d59634b7ef351e4cceae0e15c1ed4ad6e7b6a9e6ea07f4629f/identity.json
+0	1	.attune/repository-world-v1/262ffb4d4159c53a19b0a2d0e17ba255ad915e6c6c658c91b680e42aa3f6d5d1/BUILD.bazel
+0	1	.attune/repository-world-v1/262ffb4d4159c53a19b0a2d0e17ba255ad915e6c6c658c91b680e42aa3f6d5d1/identity.json
+0	1	.attune/repository-world-v1/29e9da075af8f7bed29e7fdc29b7239fc39b633ef37658be4dd3200802df24f7/BUILD.bazel
+0	1	.attune/repository-world-v1/29e9da075af8f7bed29e7fdc29b7239fc39b633ef37658be4dd3200802df24f7/identity.json
+0	1	.attune/repository-world-v1/2ad7fd77595ba90034705832a91f64bf65800349797341182501c44b6d5c2075/BUILD.bazel
+0	1	.attune/repository-world-v1/2ad7fd77595ba90034705832a91f64bf65800349797341182501c44b6d5c2075/identity.json
+0	1	.attune/repository-world-v1/2d10a775f9683c1ae129907d2ed2345469363a0553b9cee91c210413aacf6c8e/BUILD.bazel
+0	1	.attune/repository-world-v1/2d10a775f9683c1ae129907d2ed2345469363a0553b9cee91c210413aacf6c8e/identity.json
+0	1	.attune/repository-world-v1/2d1fa59b3248944c7ea360bc178a689cddf1fe733db9d3dca1e34529c1939157/BUILD.bazel
+0	1	.attune/repository-world-v1/2d1fa59b3248944c7ea360bc178a689cddf1fe733db9d3dca1e34529c1939157/identity.json
+0	1	.attune/repository-world-v1/38cc6652f9833888aecbff584b825a5baadde579abb249860e0a6157d7221839/BUILD.bazel
+0	1	.attune/repository-world-v1/38cc6652f9833888aecbff584b825a5baadde579abb249860e0a6157d7221839/identity.json
+0	1	.attune/repository-world-v1/3b5f437f41ce2dfe1328116a893b4cada05008f1210045630bef2ed1546038d3/BUILD.bazel
+0	1	.attune/repository-world-v1/3b5f437f41ce2dfe1328116a893b4cada05008f1210045630bef2ed1546038d3/identity.json
+0	1	.attune/repository-world-v1/409e2753ea0dddfc0db2fd2c60a4cd260302ac9e8ef1ef8a5603151a030d23df/BUILD.bazel
+0	1	.attune/repository-world-v1/409e2753ea0dddfc0db2fd2c60a4cd260302ac9e8ef1ef8a5603151a030d23df/identity.json
+0	1	.attune/repository-world-v1/43d1969f5d5b33ddcee39867475aaf1fdde2042171e2425b339e9b2fbffb8e5a/BUILD.bazel
+0	1	.attune/repository-world-v1/43d1969f5d5b33ddcee39867475aaf1fdde2042171e2425b339e9b2fbffb8e5a/identity.json
+0	1	.attune/repository-world-v1/45b8021a93812ab4080edeb1f8ebfcb1acad5ffe4d6d7122a30179a7e409c578/BUILD.bazel
+0	1	.attune/repository-world-v1/45b8021a93812ab4080edeb1f8ebfcb1acad5ffe4d6d7122a30179a7e409c578/identity.json
+0	1	.attune/repository-world-v1/47676c68fbccfe9e87212f9d2225a33ccc4d975a182f5c7d99742069c6bb02e0/BUILD.bazel
+0	1	.attune/repository-world-v1/47676c68fbccfe9e87212f9d2225a33ccc4d975a182f5c7d99742069c6bb02e0/identity.json
+0	1	.attune/repository-world-v1/482aa007034c4569f2c8f66ea1b732faa197ceab18938fa4fbdd2cd559701987/BUILD.bazel
+0	1	.attune/repository-world-v1/482aa007034c4569f2c8f66ea1b732faa197ceab18938fa4fbdd2cd559701987/identity.json
+0	1	.attune/repository-world-v1/4b14c05228d2c59e68c2aaa978fb7d655aed032a75804f35ac94389520607084/BUILD.bazel
+0	1	.attune/repository-world-v1/4b14c05228d2c59e68c2aaa978fb7d655aed032a75804f35ac94389520607084/identity.json
+0	1	.attune/repository-world-v1/4fdaac70f41803332ccc735c2a6991132882f2bdb909d1450b287b9f38b9a24d/BUILD.bazel
+0	1	.attune/repository-world-v1/4fdaac70f41803332ccc735c2a6991132882f2bdb909d1450b287b9f38b9a24d/identity.json
+0	1	.attune/repository-world-v1/50b27b40a91c9d9267da9d5b2620101e4798ef8f819c6e549f32b5f0da02d0ca/BUILD.bazel
+0	1	.attune/repository-world-v1/50b27b40a91c9d9267da9d5b2620101e4798ef8f819c6e549f32b5f0da02d0ca/identity.json
+0	1	.attune/repository-world-v1/5186c9010641e075f7ffc0d7b0f0752b8260f64862e3e5e9f1ec6b592313844f/BUILD.bazel
+0	1	.attune/repository-world-v1/5186c9010641e075f7ffc0d7b0f0752b8260f64862e3e5e9f1ec6b592313844f/identity.json
+0	1	.attune/repository-world-v1/54bbe0595be03ec61e2571706708686925ddbc600bbb001d6d60942dc6e71ede/BUILD.bazel
+0	1	.attune/repository-world-v1/54bbe0595be03ec61e2571706708686925ddbc600bbb001d6d60942dc6e71ede/identity.json
+0	1	.attune/repository-world-v1/55d7a8cefbffbce2fd6aed9ed500e8473d5dc49b8f9308f1eede358dd1593911/BUILD.bazel
+0	1	.attune/repository-world-v1/55d7a8cefbffbce2fd6aed9ed500e8473d5dc49b8f9308f1eede358dd1593911/identity.json
+0	1	.attune/repository-world-v1/5d4287f3c0aaa688c773bd0f4684e2da11fac9a699e511a5c0a49e36e68937a0/BUILD.bazel
+0	1	.attune/repository-world-v1/5d4287f3c0aaa688c773bd0f4684e2da11fac9a699e511a5c0a49e36e68937a0/identity.json
+0	1	.attune/repository-world-v1/678f8ed4bfb9dda19f2f538fe1248da1ae809a11675498575a989b3b3744a9f3/BUILD.bazel
+0	1	.attune/repository-world-v1/678f8ed4bfb9dda19f2f538fe1248da1ae809a11675498575a989b3b3744a9f3/identity.json
+0	1	.attune/repository-world-v1/69e49acea3491b2e42ca15990b137fed59d69f5d9fcb8022a5d91b33722e49f9/BUILD.bazel
+0	1	.attune/repository-world-v1/69e49acea3491b2e42ca15990b137fed59d69f5d9fcb8022a5d91b33722e49f9/identity.json
+0	1	.attune/repository-world-v1/6e2bef41bf19f638be084df8cb82127e4832d4abbafa8ca20ebd5db9be3ac8a9/BUILD.bazel
+0	1	.attune/repository-world-v1/6e2bef41bf19f638be084df8cb82127e4832d4abbafa8ca20ebd5db9be3ac8a9/identity.json
+0	1	.attune/repository-world-v1/6fa65b34fcfd9e959d1cbf442c513bc2648cae8fe87ddd0c4a1217206d65ad17/BUILD.bazel
+0	1	.attune/repository-world-v1/6fa65b34fcfd9e959d1cbf442c513bc2648cae8fe87ddd0c4a1217206d65ad17/identity.json
+0	1	.attune/repository-world-v1/72a6fb2a39b820e1d21bb2059d937358647faf44982002ab988da1df6e04b459/BUILD.bazel
+0	1	.attune/repository-world-v1/72a6fb2a39b820e1d21bb2059d937358647faf44982002ab988da1df6e04b459/identity.json
+0	1	.attune/repository-world-v1/7dcd08c6dcd8558e051002333932a19ab74ee48fe7d3e288acda54dad1129b89/BUILD.bazel
+0	1	.attune/repository-world-v1/7dcd08c6dcd8558e051002333932a19ab74ee48fe7d3e288acda54dad1129b89/identity.json
+0	1	.attune/repository-world-v1/8037ac6f92441b6ba2c9c85ca3cdd7f469430c8c1337a783b44985f6b180829e/BUILD.bazel
+0	1	.attune/repository-world-v1/8037ac6f92441b6ba2c9c85ca3cdd7f469430c8c1337a783b44985f6b180829e/identity.json
+0	1	.attune/repository-world-v1/80b1792c54806b7f668cfe99126d221f59f280188794510cb57425a54dc9bf26/BUILD.bazel
+0	1	.attune/repository-world-v1/80b1792c54806b7f668cfe99126d221f59f280188794510cb57425a54dc9bf26/identity.json
+0	1	.attune/repository-world-v1/8708b4d618d69f1f77980c37d9d04e2c0f4f346fd094745a72cf97861d10762a/BUILD.bazel
+0	1	.attune/repository-world-v1/8708b4d618d69f1f77980c37d9d04e2c0f4f346fd094745a72cf97861d10762a/identity.json
+0	1	.attune/repository-world-v1/8c478416d0cc6588a78c78756fd0579c1c84043c8113b9a67734eb2964f912e4/BUILD.bazel
+0	1	.attune/repository-world-v1/8c478416d0cc6588a78c78756fd0579c1c84043c8113b9a67734eb2964f912e4/identity.json
+0	1	.attune/repository-world-v1/8d83c99061722a8356c0ffdcb23976f0af9c6dc2d77131116cf5bff1dc031c0c/BUILD.bazel
+0	1	.attune/repository-world-v1/8d83c99061722a8356c0ffdcb23976f0af9c6dc2d77131116cf5bff1dc031c0c/identity.json
+0	1	.attune/repository-world-v1/9335add06b4ab87b65c8dbffb8aae507f77073e0b89eab4dcd8e1842782e8232/BUILD.bazel
+0	1	.attune/repository-world-v1/9335add06b4ab87b65c8dbffb8aae507f77073e0b89eab4dcd8e1842782e8232/identity.json
+0	1	.attune/repository-world-v1/945252fe6e867e4d406e48af8ec2d7e9b025c4b63a1f878af2a976945021a29b/BUILD.bazel
+0	1	.attune/repository-world-v1/945252fe6e867e4d406e48af8ec2d7e9b025c4b63a1f878af2a976945021a29b/identity.json
+0	1	.attune/repository-world-v1/962ea6c586b06ccf757b5a22fc7d8eb6a6d69f549949ecd15bfe7b58d5279621/BUILD.bazel
+0	1	.attune/repository-world-v1/962ea6c586b06ccf757b5a22fc7d8eb6a6d69f549949ecd15bfe7b58d5279621/identity.json
+0	1	.attune/repository-world-v1/96c87d8880052c38779278f3f6da6b143c57f5f8fc252f529321c73fdfb32510/BUILD.bazel
+0	1	.attune/repository-world-v1/96c87d8880052c38779278f3f6da6b143c57f5f8fc252f529321c73fdfb32510/identity.json
+0	1	.attune/repository-world-v1/975db8fff535fc05f8590cff0927c3023de27ade911bc314ae3f9a1bbc39fffe/BUILD.bazel
+0	1	.attune/repository-world-v1/975db8fff535fc05f8590cff0927c3023de27ade911bc314ae3f9a1bbc39fffe/identity.json
+0	1	.attune/repository-world-v1/a2fdbccfb962d71870ef586d45621dd5428a00118b09379d96cde4d4e33ef505/BUILD.bazel
+0	1	.attune/repository-world-v1/a2fdbccfb962d71870ef586d45621dd5428a00118b09379d96cde4d4e33ef505/identity.json
+0	1	.attune/repository-world-v1/a57d483946f45be372495cb0243cf4b5903726bdfea1909b01ff6a161864659a/BUILD.bazel
+0	1	.attune/repository-world-v1/a57d483946f45be372495cb0243cf4b5903726bdfea1909b01ff6a161864659a/identity.json
+0	1	.attune/repository-world-v1/accf5131f33552a6d04eff95d31291c1a10f47a2ac05b625004fd7e50da33881/BUILD.bazel
+0	1	.attune/repository-world-v1/accf5131f33552a6d04eff95d31291c1a10f47a2ac05b625004fd7e50da33881/identity.json
+0	1	.attune/repository-world-v1/af4495290bbce5f65c9fd59841254c0fb0460bda2f72ba2cb42658416c3520a6/BUILD.bazel
+0	1	.attune/repository-world-v1/af4495290bbce5f65c9fd59841254c0fb0460bda2f72ba2cb42658416c3520a6/identity.json
+0	1	.attune/repository-world-v1/b01273c831ecb224f2c459aedf2020d5487d20ec961426026d93b25e015c4186/BUILD.bazel
+0	1	.attune/repository-world-v1/b01273c831ecb224f2c459aedf2020d5487d20ec961426026d93b25e015c4186/identity.json
+0	1	.attune/repository-world-v1/b9dd309ede3789e905993b104f3d9ff206a8810300c413fc3d467bbb1c2a1780/BUILD.bazel
+0	1	.attune/repository-world-v1/b9dd309ede3789e905993b104f3d9ff206a8810300c413fc3d467bbb1c2a1780/identity.json
+0	1	.attune/repository-world-v1/bb174a00f1122b9df7e4ebb958bbcad8e5bd9c1842bb8da9add37a00f034747d/BUILD.bazel
+0	1	.attune/repository-world-v1/bb174a00f1122b9df7e4ebb958bbcad8e5bd9c1842bb8da9add37a00f034747d/identity.json
+0	1	.attune/repository-world-v1/bc01d02e8d9bea47c2f2f8628d391c32e7b56a072143f6cdc24f027c51384113/BUILD.bazel
+0	1	.attune/repository-world-v1/bc01d02e8d9bea47c2f2f8628d391c32e7b56a072143f6cdc24f027c51384113/identity.json
+0	1	.attune/repository-world-v1/bde468c0e909ebddbe2138914e2caa0619df93dbeac23ba765a4c701c6554e80/BUILD.bazel
+0	1	.attune/repository-world-v1/bde468c0e909ebddbe2138914e2caa0619df93dbeac23ba765a4c701c6554e80/identity.json
+0	1	.attune/repository-world-v1/be4b21ddb7b9f5c36b7d8004dee3a4592466219b32245d5d58b7e012b2a6bc8d/BUILD.bazel
+0	1	.attune/repository-world-v1/be4b21ddb7b9f5c36b7d8004dee3a4592466219b32245d5d58b7e012b2a6bc8d/identity.json
+0	1	.attune/repository-world-v1/c09c5aceb7270db20383531fa1c5f16b9e592b3592cabb62da376e8a9a41a872/BUILD.bazel
+0	1	.attune/repository-world-v1/c09c5aceb7270db20383531fa1c5f16b9e592b3592cabb62da376e8a9a41a872/identity.json
+0	1	.attune/repository-world-v1/c1e88c310b4d2d00ca66f8b05c98726c0a3ccbc6285496f796377029d53b75ac/BUILD.bazel
+0	1	.attune/repository-world-v1/c1e88c310b4d2d00ca66f8b05c98726c0a3ccbc6285496f796377029d53b75ac/identity.json
+0	1	.attune/repository-world-v1/c39f4787c4aad99b5033c759a3a9acb952f98d199b06d58ffdb231f058760d4e/BUILD.bazel
+0	1	.attune/repository-world-v1/c39f4787c4aad99b5033c759a3a9acb952f98d199b06d58ffdb231f058760d4e/identity.json
+0	1	.attune/repository-world-v1/cb161a51dc34e3348154b57d2c4e6882552e5d5e5c9253dfd0e867c6aea5251b/BUILD.bazel
+0	1	.attune/repository-world-v1/cb161a51dc34e3348154b57d2c4e6882552e5d5e5c9253dfd0e867c6aea5251b/identity.json
+0	1	.attune/repository-world-v1/d13b9c7923b4753ff87cabfe722a0c6b928a50ed9dffebbda85ccb8d3641d9ed/BUILD.bazel
+0	1	.attune/repository-world-v1/d13b9c7923b4753ff87cabfe722a0c6b928a50ed9dffebbda85ccb8d3641d9ed/identity.json
+0	1	.attune/repository-world-v1/d60aff465833ebc595c2c3681e87a2a8fd3b352c0d45499f29deeec2a410e609/BUILD.bazel
+0	1	.attune/repository-world-v1/d60aff465833ebc595c2c3681e87a2a8fd3b352c0d45499f29deeec2a410e609/identity.json
+0	1	.attune/repository-world-v1/d81af495867cd7415488f697c081ce31ea2241c54bced4a8b496d67a894d2178/BUILD.bazel
+0	1	.attune/repository-world-v1/d81af495867cd7415488f697c081ce31ea2241c54bced4a8b496d67a894d2178/identity.json
+0	1	.attune/repository-world-v1/d88ee1076ffd84be98861f5002bbc14c55d667dd31ac773911c490f8cd33d41d/BUILD.bazel
+0	1	.attune/repository-world-v1/d88ee1076ffd84be98861f5002bbc14c55d667dd31ac773911c490f8cd33d41d/identity.json
+0	1	.attune/repository-world-v1/e340eb56a90c936d4a5879ec37f471260b07abeb021a11a29e2f3db0d1e35520/BUILD.bazel
+0	1	.attune/repository-world-v1/e340eb56a90c936d4a5879ec37f471260b07abeb021a11a29e2f3db0d1e35520/identity.json
+0	1	.attune/repository-world-v1/e37e024c1844c2b2f4e4221ead91b3aa396db23e7a4fa1b6e9bbe12238bfa1dc/BUILD.bazel
+0	1	.attune/repository-world-v1/e37e024c1844c2b2f4e4221ead91b3aa396db23e7a4fa1b6e9bbe12238bfa1dc/identity.json
+0	1	.attune/repository-world-v1/e5bfbed1587a474108acc0a043858b1b6c6f118463bcafd6344a0d6e47e4af70/BUILD.bazel
+0	1	.attune/repository-world-v1/e5bfbed1587a474108acc0a043858b1b6c6f118463bcafd6344a0d6e47e4af70/identity.json
+0	1	.attune/repository-world-v1/e798747366601b55aa909a8724b64a2949accb6421a45f773251055d1e0313fa/BUILD.bazel
+0	1	.attune/repository-world-v1/e798747366601b55aa909a8724b64a2949accb6421a45f773251055d1e0313fa/identity.json
+0	1	.attune/repository-world-v1/e87245df2ce6b98863e6644cf146b0cc6992c7a5fdce6a067b997b3e75004230/BUILD.bazel
+0	1	.attune/repository-world-v1/e87245df2ce6b98863e6644cf146b0cc6992c7a5fdce6a067b997b3e75004230/identity.json
+0	1	.attune/repository-world-v1/ea7c1240175d2dd358d6d532075055d20eeb1d10169b4fd814a0f41dd009cb1e/BUILD.bazel
+0	1	.attune/repository-world-v1/ea7c1240175d2dd358d6d532075055d20eeb1d10169b4fd814a0f41dd009cb1e/identity.json
+0	1	.attune/repository-world-v1/ee4256c77f74bb7406db66a8f952d5caad16e8616072c92c82384dfe873797f7/BUILD.bazel
+0	1	.attune/repository-world-v1/ee4256c77f74bb7406db66a8f952d5caad16e8616072c92c82384dfe873797f7/identity.json
+0	1	.attune/repository-world-v1/f0d3c13774ad53f40a97c6e74c61e2705718cdd2b215560b9ede898df79c22da/BUILD.bazel
+0	1	.attune/repository-world-v1/f0d3c13774ad53f40a97c6e74c61e2705718cdd2b215560b9ede898df79c22da/identity.json
+0	1	.attune/repository-world-v1/f4f3fb7417a2711fb1cf379687841dab491f79755758f47824920cb11ea7b0ed/BUILD.bazel
+0	1	.attune/repository-world-v1/f4f3fb7417a2711fb1cf379687841dab491f79755758f47824920cb11ea7b0ed/identity.json
+0	1	.attune/repository-world-v1/f73daccf345e592d08fdcb534b830943dbe1a30c60b1b9cefbd1cbfa6d97ed33/BUILD.bazel
+0	1	.attune/repository-world-v1/f73daccf345e592d08fdcb534b830943dbe1a30c60b1b9cefbd1cbfa6d97ed33/identity.json
+0	1	.attune/repository-world-v1/ff2df8a191125982b3f81183d8edba47888468c0feff1dfd555217faa858a779/BUILD.bazel
+0	1	.attune/repository-world-v1/ff2df8a191125982b3f81183d8edba47888468c0feff1dfd555217faa858a779/identity.json
+7	12	build/attune.bzl
+1	1	build/src/AtlasSignatureTableTest.flix
+1	1	build/src/AtlasTest.flix
+20	0	experiments/atlas-swe-explore/Aggregate.flix
+2	1	experiments/atlas-swe-explore/BUILD.bazel
+3	15	experiments/atlas-swe-explore/Main.flix
+3	1	experiments/atlas-swe-explore/census/BUILD.bazel
+1	0	experiments/atlas-swe-explore/census/census.bzl
+0	291	src/Atlas.flix
+0	1	src/BUILD.bazel
+0	42	src/Repository/Identity.flix
+C	420ff06162370720334d51f293cdbcca34af22b7
+
+1	0	build/BUILD.bazel
+63	0	build/attune.bzl
+41	0	build/src/PopulationTableTest.flix
+9	0	experiments/swe-explore-js-ts-scale/BUILD.bazel
+-	-	experiments/swe-explore-js-ts-scale/population-cases.parquet
+-	-	experiments/swe-explore-js-ts-scale/population-metadata.parquet
+37	0	migration/population/BUILD.bazel
+131	0	migration/population/Main.flix
+2	0	src/BUILD.bazel
+38	0	src/Population.flix
+154	0	src/Population/Table.flix
+18	0	test/BUILD.bazel
+C	d3822857236996968cd6789f2648501ee7d43cdf
+
+4	16	.attune/BUILD.bazel
+1	0	BUILD.bazel
+1	2	build/BUILD.bazel
+3	383	build/attune.bzl
+8	9	build/src/AtlasSignatureTableTest.flix
+0	49	build/src/Localization.flix
+0	2	build/src/LocalizationNamespace.flix
+88	0	build/src/LocalizationTest.flix
+2	2	build/src/RepositoryTableTest.flix
+0	354	experiments/atlas-localization/Analysis.flix
+0	36	experiments/atlas-localization/BUILD.bazel
+4	9	experiments/atlas-localization/README.md
+0	31	experiments/localization-swe-explore/Aggregate.flix
+0	95	experiments/localization-swe-explore/AggregateEvaluation.flix
+0	134	experiments/localization-swe-explore/BUILD.bazel
+0	63	experiments/localization-swe-explore/Evaluate.flix
+0	87	experiments/localization-swe-explore/Main.flix
+0	164	experiments/localization-swe-explore/graph.bzl
+2	9	src/BUILD.bazel
+0	461	src/Decide.flix
+0	106	src/Decide/Table.flix
+53	0	src/Localization.flix
+0	526	src/Localization/Evaluate.flix
+0	358	src/Localization/EvaluationData.flix
+0	50	src/Localization/EvaluationTable.flix
+0	416	src/Localization/Policy.flix
+42	289	src/Localization/PredictionTable.flix
+2	2	src/Localization/PriorTable.flix
+0	95	src/Localization/Result.flix
+133	0	src/Localization/Sandwich.flix
+0	427	src/Localization/Tree.flix
+0	30	src/LocalizationReplay.flix
+31	0	test/BUILD.bazel
+C	64c40a8adc01b49854bbf68b8851e6ee26dbed68
+
+0	159	build/attune.bzl
+0	38	migration/localization/BUILD.bazel
+0	119	migration/localization/Main.flix
+0	39	migration/localization_data/BUILD.bazel
+0	247	migration/localization_data/Main.flix
+0	1	src/BUILD.bazel
+0	159	src/Repository.flix
+0	225	src/ScientificData.flix
+0	112	src/native/parquet/AttuneParquet.java
+1	22	src/native/parquet/AttuneParquetTest.java
+0	2	test/BUILD.bazel
+C	3fcdf81d8839238a1cc2928163d56a365c10cd95
+
+6	3	build/attune.bzl
+0	1	experiments/localization-swe-explore/BUILD.bazel
+7	2	experiments/localization-swe-explore/Evaluate.flix
+2	1	experiments/localization-swe-explore/graph.bzl
+47	136	src/Localization/Evaluate.flix
+C	cb8e04dec7e224d222872a46485a78042baccf5e
+
+6	3	.attune/BUILD.bazel
+44	0	build/attune.bzl
+15	37	experiments/localization-swe-explore/graph.bzl
+C	9f2c79594f77cffa70e6a3c7690d2a6bc62891b0
+
+62	72	build/attune.bzl
+4	70	build/src/Localization.flix
+21	48	experiments/atlas-swe-explore/Aggregate.flix
+1	0	experiments/atlas-swe-explore/BUILD.bazel
+3	11	experiments/localization-swe-explore/Aggregate.flix
+26	34	experiments/localization-swe-explore/AggregateEvaluation.flix
+4	0	experiments/localization-swe-explore/BUILD.bazel
+3	3	experiments/localization-swe-explore/Evaluate.flix
+2	3	experiments/localization-swe-explore/Main.flix
+1	2	experiments/localization-swe-explore/graph.bzl
+1	0	migration/localization/BUILD.bazel
+25	31	migration/localization/Main.flix
+1	0	migration/localization_data/BUILD.bazel
+29	1	migration/localization_data/Main.flix
+2	0	src/BUILD.bazel
+22	0	src/Experiment.flix
+58	0	src/Localization/IssueTable.flix
+C	a98bf8420bf422dabd9cc8e686f9dc98c0eeac8c
+
+35	43	experiments/atlas-localization/Analysis.flix
+20	32	experiments/atlas-swe-explore/Report.flix
+3	3	experiments/localization-swe-explore/Aggregate.flix
+4	7	experiments/localization-swe-explore/AggregateEvaluation.flix
+15	16	experiments/localization-swe-explore/Main.flix
+33	52	src/Atlas/Signature/Summary.flix
+63	65	src/Atlas/Signature/Table.flix
+21	20	src/Decide/Table.flix
+28	28	src/Localization/Evaluate.flix
+23	25	src/Localization/EvaluationData.flix
+43	55	src/Localization/PredictionTable.flix
+26	34	src/Localization/PriorTable.flix
+35	48	src/Repository/Table.flix
+130	11	src/ScientificTable.flix
+C	722c28ce874f99df5531d263837b44f7555a7080
+
+155	22	build/attune.bzl
+4	2	experiments/localization-swe-explore/BUILD.bazel
+7	5	experiments/localization-swe-explore/Evaluate.flix
+25	12	experiments/localization-swe-explore/Main.flix
+17	9	experiments/localization-swe-explore/graph.bzl
+6	2	migration/localization/BUILD.bazel
+16	46	migration/localization/Main.flix
+38	0	migration/localization_data/BUILD.bazel
+219	0	migration/localization_data/Main.flix
+2	0	src/BUILD.bazel
+340	0	src/Localization/PredictionTable.flix
+246	0	src/Localization/PriorTable.flix
+C	3f22370769667b0fa0ebfb0f4a767060ac230d60
+
+7	0	README.md
+50	0	build/attune.bzl
+362	0	experiments/atlas-localization/Analysis.flix
+36	0	experiments/atlas-localization/BUILD.bazel
+26	0	experiments/atlas-localization/README.md
+42	0	experiments/atlas-localization/REPORT.md
+-	-	experiments/atlas-localization/cases.parquet
+8	0	experiments/localization-swe-explore/graph.bzl
+C	19c82d830d273a9f720b2c0188cbfff78cb7a2e3
+
+26	0	MODULE.bazel
+29	0	data/evaluation/BUILD.bazel
+5	0	docs/data-architecture.md
+1	1	src/native/grit/cargo-bazel-lock.json
+C	a4c3713cd092ce28285e3289c75f2facbff0ee27
+
+1	12	.gitignore
+13	12	docs/architecture/native-flix.md
+21	17	docs/data-architecture.md
+5	3	docs/replication/README.md
+15	16	experiments/swe-explore-js-ts-scale/README.md
+C	bb95e4e33a6d20748398863347647d50e1071dc2
+
+3	3	README.md
+16	14	docs/research/jev/localization.md
+3	3	docs/research/jev/overview.md
+0	2	experiments/localization-swe-explore/BUILD.bazel
+0	1	src/BUILD.bazel
+2	2	src/Localization/Evaluate.flix
+7	7	src/Localization/Tree.flix
+0	294	src/Radii/Compiled.flix
+296	175	src/Radii/Evaluate.flix
+4	5	test/BUILD.bazel
+4	17	test/ParityTest.flix
+C	21d4d4ce417898bd413f5ada505a277f7d116556
+
+0	1	experiments/jev-policy-hillclimb/BUILD.bazel
+0	413	experiments/jev-policy-hillclimb/lib/JevPolicyHillclimb.flix
+1	1	experiments/localization-swe-explore/BUILD.bazel
+1	1	experiments/localization-swe-explore/Main.flix
+1	0	src/BUILD.bazel
+416	0	src/Localization/Policy.flix
+C	e8416faa040c7c137e1dd761d6e3925364f30f54
+
+14	0	.attune/BUILD.bazel
+1	0	.gitignore
+23	13	README.md
+0	44	build/attune.bzl
+3	3	experiments/atlas-swe-explore/census/census.bzl
+170	0	experiments/localization-swe-explore/graph.bzl
+0	35	migration/evaluation/BUILD.bazel
+0	109	migration/evaluation/Main.flix
+0	34	migration/world/BUILD.bazel
+0	160	migration/world/Main.flix
+0	90	nix/finalize-world-tables
+0	88	nix/materialize-evaluation-oracles
+0	273	nix/materialize-world-oracles
+0	45	nix/scale-case.nix
+0	89	nix/scale-evaluation.nix
+C	b904f4480dc1d2dd246b65a853e7b3986012eaaf
+
+2	2	README.md
+4	4	experiments/atlas-swe-explore/REPORT.md
+6	0	experiments/atlas-swe-explore/census/BUILD.bazel
+149	0	experiments/atlas-swe-explore/census/census.bzl
+C	7b995f1540471628276e453ec932ff1497d4bec0
+
+15	0	.attune/repository-world-v1/000365e13105629d144db298591cebfc4c6cd58e546ab24d4f3bf6e836a14efe/BUILD.bazel
+-	-	.attune/repository-world-v1/000365e13105629d144db298591cebfc4c6cd58e546ab24d4f3bf6e836a14efe/entities.parquet
+1	0	.attune/repository-world-v1/000365e13105629d144db298591cebfc4c6cd58e546ab24d4f3bf6e836a14efe/identity.json
+-	-	.attune/repository-world-v1/000365e13105629d144db298591cebfc4c6cd58e546ab24d4f3bf6e836a14efe/metadata.parquet
+-	-	.attune/repository-world-v1/000365e13105629d144db298591cebfc4c6cd58e546ab24d4f3bf6e836a14efe/relations.parquet
+15	0	.attune/repository-world-v1/002a462e6f58440bbf60071f1e945b38bb304fe46a38ca6fdfd578248693cf01/BUILD.bazel
+-	-	.attune/repository-world-v1/002a462e6f58440bbf60071f1e945b38bb304fe46a38ca6fdfd578248693cf01/entities.parquet
+1	0	.attune/repository-world-v1/002a462e6f58440bbf60071f1e945b38bb304fe46a38ca6fdfd578248693cf01/identity.json
+-	-	.attune/repository-world-v1/002a462e6f58440bbf60071f1e945b38bb304fe46a38ca6fdfd578248693cf01/metadata.parquet
+-	-	.attune/repository-world-v1/002a462e6f58440bbf60071f1e945b38bb304fe46a38ca6fdfd578248693cf01/relations.parquet
+15	0	.attune/repository-world-v1/0a4d2c8aacbbd3762bd6976bcf91866f819881ab0aad5580d9fadfdc6bbbd973/BUILD.bazel
+-	-	.attune/repository-world-v1/0a4d2c8aacbbd3762bd6976bcf91866f819881ab0aad5580d9fadfdc6bbbd973/entities.parquet
+1	0	.attune/repository-world-v1/0a4d2c8aacbbd3762bd6976bcf91866f819881ab0aad5580d9fadfdc6bbbd973/identity.json
+-	-	.attune/repository-world-v1/0a4d2c8aacbbd3762bd6976bcf91866f819881ab0aad5580d9fadfdc6bbbd973/metadata.parquet
+-	-	.attune/repository-world-v1/0a4d2c8aacbbd3762bd6976bcf91866f819881ab0aad5580d9fadfdc6bbbd973/relations.parquet
+15	0	.attune/repository-world-v1/0ba18a217eefcafd6ba5afe527e293f53643e7b6d5d6e3ae48cf9ad2e5e3171a/BUILD.bazel
+-	-	.attune/repository-world-v1/0ba18a217eefcafd6ba5afe527e293f53643e7b6d5d6e3ae48cf9ad2e5e3171a/entities.parquet
+1	0	.attune/repository-world-v1/0ba18a217eefcafd6ba5afe527e293f53643e7b6d5d6e3ae48cf9ad2e5e3171a/identity.json
+-	-	.attune/repository-world-v1/0ba18a217eefcafd6ba5afe527e293f53643e7b6d5d6e3ae48cf9ad2e5e3171a/metadata.parquet
+-	-	.attune/repository-world-v1/0ba18a217eefcafd6ba5afe527e293f53643e7b6d5d6e3ae48cf9ad2e5e3171a/relations.parquet
+15	0	.attune/repository-world-v1/0cc7b7c20b18e7bd7980c4510936b82c6d2a42556bbf86bacb56c23cfd87e6f1/BUILD.bazel
+-	-	.attune/repository-world-v1/0cc7b7c20b18e7bd7980c4510936b82c6d2a42556bbf86bacb56c23cfd87e6f1/entities.parquet
+1	0	.attune/repository-world-v1/0cc7b7c20b18e7bd7980c4510936b82c6d2a42556bbf86bacb56c23cfd87e6f1/identity.json
+-	-	.attune/repository-world-v1/0cc7b7c20b18e7bd7980c4510936b82c6d2a42556bbf86bacb56c23cfd87e6f1/metadata.parquet
+-	-	.attune/repository-world-v1/0cc7b7c20b18e7bd7980c4510936b82c6d2a42556bbf86bacb56c23cfd87e6f1/relations.parquet
+15	0	.attune/repository-world-v1/1044506ddb4491ea06a20209ab5bce6b7a278ee23a14e5db259d9a33d6241dcf/BUILD.bazel
+-	-	.attune/repository-world-v1/1044506ddb4491ea06a20209ab5bce6b7a278ee23a14e5db259d9a33d6241dcf/entities.parquet
+1	0	.attune/repository-world-v1/1044506ddb4491ea06a20209ab5bce6b7a278ee23a14e5db259d9a33d6241dcf/identity.json
+-	-	.attune/repository-world-v1/1044506ddb4491ea06a20209ab5bce6b7a278ee23a14e5db259d9a33d6241dcf/metadata.parquet
+-	-	.attune/repository-world-v1/1044506ddb4491ea06a20209ab5bce6b7a278ee23a14e5db259d9a33d6241dcf/relations.parquet
+15	0	.attune/repository-world-v1/18c7f4c0686bfee7d0ffe6a5a8a503e14957c7896396801aa9bccfee501cdb94/BUILD.bazel
+-	-	.attune/repository-world-v1/18c7f4c0686bfee7d0ffe6a5a8a503e14957c7896396801aa9bccfee501cdb94/entities.parquet
+1	0	.attune/repository-world-v1/18c7f4c0686bfee7d0ffe6a5a8a503e14957c7896396801aa9bccfee501cdb94/identity.json
+-	-	.attune/repository-world-v1/18c7f4c0686bfee7d0ffe6a5a8a503e14957c7896396801aa9bccfee501cdb94/metadata.parquet
+-	-	.attune/repository-world-v1/18c7f4c0686bfee7d0ffe6a5a8a503e14957c7896396801aa9bccfee501cdb94/relations.parquet
+15	0	.attune/repository-world-v1/197d5a4deb6c1c7827e89304714830aa9be2c3f01b252d834427cb9a96ac402b/BUILD.bazel
+-	-	.attune/repository-world-v1/197d5a4deb6c1c7827e89304714830aa9be2c3f01b252d834427cb9a96ac402b/entities.parquet
+1	0	.attune/repository-world-v1/197d5a4deb6c1c7827e89304714830aa9be2c3f01b252d834427cb9a96ac402b/identity.json
+-	-	.attune/repository-world-v1/197d5a4deb6c1c7827e89304714830aa9be2c3f01b252d834427cb9a96ac402b/metadata.parquet
+-	-	.attune/repository-world-v1/197d5a4deb6c1c7827e89304714830aa9be2c3f01b252d834427cb9a96ac402b/relations.parquet
+15	0	.attune/repository-world-v1/19fa623c87d7c746cf5b4af08f5b92c9fede4cd02f2e0772da95d223c1b52313/BUILD.bazel
+-	-	.attune/repository-world-v1/19fa623c87d7c746cf5b4af08f5b92c9fede4cd02f2e0772da95d223c1b52313/entities.parquet
+1	0	.attune/repository-world-v1/19fa623c87d7c746cf5b4af08f5b92c9fede4cd02f2e0772da95d223c1b52313/identity.json
+-	-	.attune/repository-world-v1/19fa623c87d7c746cf5b4af08f5b92c9fede4cd02f2e0772da95d223c1b52313/metadata.parquet
+-	-	.attune/repository-world-v1/19fa623c87d7c746cf5b4af08f5b92c9fede4cd02f2e0772da95d223c1b52313/relations.parquet
+15	0	.attune/repository-world-v1/1b1bc8349e395c8776a0ad6200d81355c753e089ef067543ebf37cbba0949171/BUILD.bazel
+-	-	.attune/repository-world-v1/1b1bc8349e395c8776a0ad6200d81355c753e089ef067543ebf37cbba0949171/entities.parquet
+1	0	.attune/repository-world-v1/1b1bc8349e395c8776a0ad6200d81355c753e089ef067543ebf37cbba0949171/identity.json
+-	-	.attune/repository-world-v1/1b1bc8349e395c8776a0ad6200d81355c753e089ef067543ebf37cbba0949171/metadata.parquet
+-	-	.attune/repository-world-v1/1b1bc8349e395c8776a0ad6200d81355c753e089ef067543ebf37cbba0949171/relations.parquet
+15	0	.attune/repository-world-v1/1dd4f1023c7ec84511b472dc4d888f653fcba7c3cfa07bed8fd24b19f3b5c166/BUILD.bazel
+-	-	.attune/repository-world-v1/1dd4f1023c7ec84511b472dc4d888f653fcba7c3cfa07bed8fd24b19f3b5c166/entities.parquet
+1	0	.attune/repository-world-v1/1dd4f1023c7ec84511b472dc4d888f653fcba7c3cfa07bed8fd24b19f3b5c166/identity.json
+-	-	.attune/repository-world-v1/1dd4f1023c7ec84511b472dc4d888f653fcba7c3cfa07bed8fd24b19f3b5c166/metadata.parquet
+-	-	.attune/repository-world-v1/1dd4f1023c7ec84511b472dc4d888f653fcba7c3cfa07bed8fd24b19f3b5c166/relations.parquet
+15	0	.attune/repository-world-v1/1e44a1c45ec4a91bb7774dc6d37a2846a5f56262b6fa7ae5722bcbcc15ba10c7/BUILD.bazel
+-	-	.attune/repository-world-v1/1e44a1c45ec4a91bb7774dc6d37a2846a5f56262b6fa7ae5722bcbcc15ba10c7/entities.parquet
+1	0	.attune/repository-world-v1/1e44a1c45ec4a91bb7774dc6d37a2846a5f56262b6fa7ae5722bcbcc15ba10c7/identity.json
+-	-	.attune/repository-world-v1/1e44a1c45ec4a91bb7774dc6d37a2846a5f56262b6fa7ae5722bcbcc15ba10c7/metadata.parquet
+-	-	.attune/repository-world-v1/1e44a1c45ec4a91bb7774dc6d37a2846a5f56262b6fa7ae5722bcbcc15ba10c7/relations.parquet
+15	0	.attune/repository-world-v1/1f1fb6e8cbfb38f8d2f6f641fba3fbce89a1adfde8e9fd6b73cefd08611df23e/BUILD.bazel
+-	-	.attune/repository-world-v1/1f1fb6e8cbfb38f8d2f6f641fba3fbce89a1adfde8e9fd6b73cefd08611df23e/entities.parquet
+1	0	.attune/repository-world-v1/1f1fb6e8cbfb38f8d2f6f641fba3fbce89a1adfde8e9fd6b73cefd08611df23e/identity.json
+-	-	.attune/repository-world-v1/1f1fb6e8cbfb38f8d2f6f641fba3fbce89a1adfde8e9fd6b73cefd08611df23e/metadata.parquet
+-	-	.attune/repository-world-v1/1f1fb6e8cbfb38f8d2f6f641fba3fbce89a1adfde8e9fd6b73cefd08611df23e/relations.parquet
+15	0	.attune/repository-world-v1/25054646c3f316d59634b7ef351e4cceae0e15c1ed4ad6e7b6a9e6ea07f4629f/BUILD.bazel
+-	-	.attune/repository-world-v1/25054646c3f316d59634b7ef351e4cceae0e15c1ed4ad6e7b6a9e6ea07f4629f/entities.parquet
+1	0	.attune/repository-world-v1/25054646c3f316d59634b7ef351e4cceae0e15c1ed4ad6e7b6a9e6ea07f4629f/identity.json
+-	-	.attune/repository-world-v1/25054646c3f316d59634b7ef351e4cceae0e15c1ed4ad6e7b6a9e6ea07f4629f/metadata.parquet
+-	-	.attune/repository-world-v1/25054646c3f316d59634b7ef351e4cceae0e15c1ed4ad6e7b6a9e6ea07f4629f/relations.parquet
+15	0	.attune/repository-world-v1/262ffb4d4159c53a19b0a2d0e17ba255ad915e6c6c658c91b680e42aa3f6d5d1/BUILD.bazel
+-	-	.attune/repository-world-v1/262ffb4d4159c53a19b0a2d0e17ba255ad915e6c6c658c91b680e42aa3f6d5d1/entities.parquet
+1	0	.attune/repository-world-v1/262ffb4d4159c53a19b0a2d0e17ba255ad915e6c6c658c91b680e42aa3f6d5d1/identity.json
+-	-	.attune/repository-world-v1/262ffb4d4159c53a19b0a2d0e17ba255ad915e6c6c658c91b680e42aa3f6d5d1/metadata.parquet
+-	-	.attune/repository-world-v1/262ffb4d4159c53a19b0a2d0e17ba255ad915e6c6c658c91b680e42aa3f6d5d1/relations.parquet
+15	0	.attune/repository-world-v1/29e9da075af8f7bed29e7fdc29b7239fc39b633ef37658be4dd3200802df24f7/BUILD.bazel
+-	-	.attune/repository-world-v1/29e9da075af8f7bed29e7fdc29b7239fc39b633ef37658be4dd3200802df24f7/entities.parquet
+1	0	.attune/repository-world-v1/29e9da075af8f7bed29e7fdc29b7239fc39b633ef37658be4dd3200802df24f7/identity.json
+-	-	.attune/repository-world-v1/29e9da075af8f7bed29e7fdc29b7239fc39b633ef37658be4dd3200802df24f7/metadata.parquet
+-	-	.attune/repository-world-v1/29e9da075af8f7bed29e7fdc29b7239fc39b633ef37658be4dd3200802df24f7/relations.parquet
+15	0	.attune/repository-world-v1/2ad7fd77595ba90034705832a91f64bf65800349797341182501c44b6d5c2075/BUILD.bazel
+-	-	.attune/repository-world-v1/2ad7fd77595ba90034705832a91f64bf65800349797341182501c44b6d5c2075/entities.parquet
+1	0	.attune/repository-world-v1/2ad7fd77595ba90034705832a91f64bf65800349797341182501c44b6d5c2075/identity.json
+-	-	.attune/repository-world-v1/2ad7fd77595ba90034705832a91f64bf65800349797341182501c44b6d5c2075/metadata.parquet
+-	-	.attune/repository-world-v1/2ad7fd77595ba90034705832a91f64bf65800349797341182501c44b6d5c2075/relations.parquet
+15	0	.attune/repository-world-v1/2d10a775f9683c1ae129907d2ed2345469363a0553b9cee91c210413aacf6c8e/BUILD.bazel
+-	-	.attune/repository-world-v1/2d10a775f9683c1ae129907d2ed2345469363a0553b9cee91c210413aacf6c8e/entities.parquet
+1	0	.attune/repository-world-v1/2d10a775f9683c1ae129907d2ed2345469363a0553b9cee91c210413aacf6c8e/identity.json
+-	-	.attune/repository-world-v1/2d10a775f9683c1ae129907d2ed2345469363a0553b9cee91c210413aacf6c8e/metadata.parquet
+-	-	.attune/repository-world-v1/2d10a775f9683c1ae129907d2ed2345469363a0553b9cee91c210413aacf6c8e/relations.parquet
+15	0	.attune/repository-world-v1/2d1fa59b3248944c7ea360bc178a689cddf1fe733db9d3dca1e34529c1939157/BUILD.bazel
+-	-	.attune/repository-world-v1/2d1fa59b3248944c7ea360bc178a689cddf1fe733db9d3dca1e34529c1939157/entities.parquet
+1	0	.attune/repository-world-v1/2d1fa59b3248944c7ea360bc178a689cddf1fe733db9d3dca1e34529c1939157/identity.json
+-	-	.attune/repository-world-v1/2d1fa59b3248944c7ea360bc178a689cddf1fe733db9d3dca1e34529c1939157/metadata.parquet
+-	-	.attune/repository-world-v1/2d1fa59b3248944c7ea360bc178a689cddf1fe733db9d3dca1e34529c1939157/relations.parquet
+15	0	.attune/repository-world-v1/38cc6652f9833888aecbff584b825a5baadde579abb249860e0a6157d7221839/BUILD.bazel
+-	-	.attune/repository-world-v1/38cc6652f9833888aecbff584b825a5baadde579abb249860e0a6157d7221839/entities.parquet
+1	0	.attune/repository-world-v1/38cc6652f9833888aecbff584b825a5baadde579abb249860e0a6157d7221839/identity.json
+-	-	.attune/repository-world-v1/38cc6652f9833888aecbff584b825a5baadde579abb249860e0a6157d7221839/metadata.parquet
+-	-	.attune/repository-world-v1/38cc6652f9833888aecbff584b825a5baadde579abb249860e0a6157d7221839/relations.parquet
+15	0	.attune/repository-world-v1/3b5f437f41ce2dfe1328116a893b4cada05008f1210045630bef2ed1546038d3/BUILD.bazel
+-	-	.attune/repository-world-v1/3b5f437f41ce2dfe1328116a893b4cada05008f1210045630bef2ed1546038d3/entities.parquet
+1	0	.attune/repository-world-v1/3b5f437f41ce2dfe1328116a893b4cada05008f1210045630bef2ed1546038d3/identity.json
+-	-	.attune/repository-world-v1/3b5f437f41ce2dfe1328116a893b4cada05008f1210045630bef2ed1546038d3/metadata.parquet
+-	-	.attune/repository-world-v1/3b5f437f41ce2dfe1328116a893b4cada05008f1210045630bef2ed1546038d3/relations.parquet
+15	0	.attune/repository-world-v1/409e2753ea0dddfc0db2fd2c60a4cd260302ac9e8ef1ef8a5603151a030d23df/BUILD.bazel
+-	-	.attune/repository-world-v1/409e2753ea0dddfc0db2fd2c60a4cd260302ac9e8ef1ef8a5603151a030d23df/entities.parquet
+1	0	.attune/repository-world-v1/409e2753ea0dddfc0db2fd2c60a4cd260302ac9e8ef1ef8a5603151a030d23df/identity.json
+-	-	.attune/repository-world-v1/409e2753ea0dddfc0db2fd2c60a4cd260302ac9e8ef1ef8a5603151a030d23df/metadata.parquet
+-	-	.attune/repository-world-v1/409e2753ea0dddfc0db2fd2c60a4cd260302ac9e8ef1ef8a5603151a030d23df/relations.parquet
+15	0	.attune/repository-world-v1/43d1969f5d5b33ddcee39867475aaf1fdde2042171e2425b339e9b2fbffb8e5a/BUILD.bazel
+-	-	.attune/repository-world-v1/43d1969f5d5b33ddcee39867475aaf1fdde2042171e2425b339e9b2fbffb8e5a/entities.parquet
+1	0	.attune/repository-world-v1/43d1969f5d5b33ddcee39867475aaf1fdde2042171e2425b339e9b2fbffb8e5a/identity.json
+-	-	.attune/repository-world-v1/43d1969f5d5b33ddcee39867475aaf1fdde2042171e2425b339e9b2fbffb8e5a/metadata.parquet
+-	-	.attune/repository-world-v1/43d1969f5d5b33ddcee39867475aaf1fdde2042171e2425b339e9b2fbffb8e5a/relations.parquet
+15	0	.attune/repository-world-v1/45b8021a93812ab4080edeb1f8ebfcb1acad5ffe4d6d7122a30179a7e409c578/BUILD.bazel
+-	-	.attune/repository-world-v1/45b8021a93812ab4080edeb1f8ebfcb1acad5ffe4d6d7122a30179a7e409c578/entities.parquet
+1	0	.attune/repository-world-v1/45b8021a93812ab4080edeb1f8ebfcb1acad5ffe4d6d7122a30179a7e409c578/identity.json
+-	-	.attune/repository-world-v1/45b8021a93812ab4080edeb1f8ebfcb1acad5ffe4d6d7122a30179a7e409c578/metadata.parquet
+-	-	.attune/repository-world-v1/45b8021a93812ab4080edeb1f8ebfcb1acad5ffe4d6d7122a30179a7e409c578/relations.parquet
+15	0	.attune/repository-world-v1/47676c68fbccfe9e87212f9d2225a33ccc4d975a182f5c7d99742069c6bb02e0/BUILD.bazel
+-	-	.attune/repository-world-v1/47676c68fbccfe9e87212f9d2225a33ccc4d975a182f5c7d99742069c6bb02e0/entities.parquet
+1	0	.attune/repository-world-v1/47676c68fbccfe9e87212f9d2225a33ccc4d975a182f5c7d99742069c6bb02e0/identity.json
+-	-	.attune/repository-world-v1/47676c68fbccfe9e87212f9d2225a33ccc4d975a182f5c7d99742069c6bb02e0/metadata.parquet
+-	-	.attune/repository-world-v1/47676c68fbccfe9e87212f9d2225a33ccc4d975a182f5c7d99742069c6bb02e0/relations.parquet
+15	0	.attune/repository-world-v1/482aa007034c4569f2c8f66ea1b732faa197ceab18938fa4fbdd2cd559701987/BUILD.bazel
+-	-	.attune/repository-world-v1/482aa007034c4569f2c8f66ea1b732faa197ceab18938fa4fbdd2cd559701987/entities.parquet
+1	0	.attune/repository-world-v1/482aa007034c4569f2c8f66ea1b732faa197ceab18938fa4fbdd2cd559701987/identity.json
+-	-	.attune/repository-world-v1/482aa007034c4569f2c8f66ea1b732faa197ceab18938fa4fbdd2cd559701987/metadata.parquet
+-	-	.attune/repository-world-v1/482aa007034c4569f2c8f66ea1b732faa197ceab18938fa4fbdd2cd559701987/relations.parquet
+15	0	.attune/repository-world-v1/4b14c05228d2c59e68c2aaa978fb7d655aed032a75804f35ac94389520607084/BUILD.bazel
+-	-	.attune/repository-world-v1/4b14c05228d2c59e68c2aaa978fb7d655aed032a75804f35ac94389520607084/entities.parquet
+1	0	.attune/repository-world-v1/4b14c05228d2c59e68c2aaa978fb7d655aed032a75804f35ac94389520607084/identity.json
+-	-	.attune/repository-world-v1/4b14c05228d2c59e68c2aaa978fb7d655aed032a75804f35ac94389520607084/metadata.parquet
+-	-	.attune/repository-world-v1/4b14c05228d2c59e68c2aaa978fb7d655aed032a75804f35ac94389520607084/relations.parquet
+15	0	.attune/repository-world-v1/4fdaac70f41803332ccc735c2a6991132882f2bdb909d1450b287b9f38b9a24d/BUILD.bazel
+-	-	.attune/repository-world-v1/4fdaac70f41803332ccc735c2a6991132882f2bdb909d1450b287b9f38b9a24d/entities.parquet
+1	0	.attune/repository-world-v1/4fdaac70f41803332ccc735c2a6991132882f2bdb909d1450b287b9f38b9a24d/identity.json
+-	-	.attune/repository-world-v1/4fdaac70f41803332ccc735c2a6991132882f2bdb909d1450b287b9f38b9a24d/metadata.parquet
+-	-	.attune/repository-world-v1/4fdaac70f41803332ccc735c2a6991132882f2bdb909d1450b287b9f38b9a24d/relations.parquet
+15	0	.attune/repository-world-v1/50b27b40a91c9d9267da9d5b2620101e4798ef8f819c6e549f32b5f0da02d0ca/BUILD.bazel
+-	-	.attune/repository-world-v1/50b27b40a91c9d9267da9d5b2620101e4798ef8f819c6e549f32b5f0da02d0ca/entities.parquet
+1	0	.attune/repository-world-v1/50b27b40a91c9d9267da9d5b2620101e4798ef8f819c6e549f32b5f0da02d0ca/identity.json
+-	-	.attune/repository-world-v1/50b27b40a91c9d9267da9d5b2620101e4798ef8f819c6e549f32b5f0da02d0ca/metadata.parquet
+-	-	.attune/repository-world-v1/50b27b40a91c9d9267da9d5b2620101e4798ef8f819c6e549f32b5f0da02d0ca/relations.parquet
+15	0	.attune/repository-world-v1/5186c9010641e075f7ffc0d7b0f0752b8260f64862e3e5e9f1ec6b592313844f/BUILD.bazel
+-	-	.attune/repository-world-v1/5186c9010641e075f7ffc0d7b0f0752b8260f64862e3e5e9f1ec6b592313844f/entities.parquet
+1	0	.attune/repository-world-v1/5186c9010641e075f7ffc0d7b0f0752b8260f64862e3e5e9f1ec6b592313844f/identity.json
+-	-	.attune/repository-world-v1/5186c9010641e075f7ffc0d7b0f0752b8260f64862e3e5e9f1ec6b592313844f/metadata.parquet
+-	-	.attune/repository-world-v1/5186c9010641e075f7ffc0d7b0f0752b8260f64862e3e5e9f1ec6b592313844f/relations.parquet
+15	0	.attune/repository-world-v1/54bbe0595be03ec61e2571706708686925ddbc600bbb001d6d60942dc6e71ede/BUILD.bazel
+-	-	.attune/repository-world-v1/54bbe0595be03ec61e2571706708686925ddbc600bbb001d6d60942dc6e71ede/entities.parquet
+1	0	.attune/repository-world-v1/54bbe0595be03ec61e2571706708686925ddbc600bbb001d6d60942dc6e71ede/identity.json
+-	-	.attune/repository-world-v1/54bbe0595be03ec61e2571706708686925ddbc600bbb001d6d60942dc6e71ede/metadata.parquet
+-	-	.attune/repository-world-v1/54bbe0595be03ec61e2571706708686925ddbc600bbb001d6d60942dc6e71ede/relations.parquet
+15	0	.attune/repository-world-v1/55d7a8cefbffbce2fd6aed9ed500e8473d5dc49b8f9308f1eede358dd1593911/BUILD.bazel
+-	-	.attune/repository-world-v1/55d7a8cefbffbce2fd6aed9ed500e8473d5dc49b8f9308f1eede358dd1593911/entities.parquet
+1	0	.attune/repository-world-v1/55d7a8cefbffbce2fd6aed9ed500e8473d5dc49b8f9308f1eede358dd1593911/identity.json
+-	-	.attune/repository-world-v1/55d7a8cefbffbce2fd6aed9ed500e8473d5dc49b8f9308f1eede358dd1593911/metadata.parquet
+-	-	.attune/repository-world-v1/55d7a8cefbffbce2fd6aed9ed500e8473d5dc49b8f9308f1eede358dd1593911/relations.parquet
+15	0	.attune/repository-world-v1/5d4287f3c0aaa688c773bd0f4684e2da11fac9a699e511a5c0a49e36e68937a0/BUILD.bazel
+-	-	.attune/repository-world-v1/5d4287f3c0aaa688c773bd0f4684e2da11fac9a699e511a5c0a49e36e68937a0/entities.parquet
+1	0	.attune/repository-world-v1/5d4287f3c0aaa688c773bd0f4684e2da11fac9a699e511a5c0a49e36e68937a0/identity.json
+-	-	.attune/repository-world-v1/5d4287f3c0aaa688c773bd0f4684e2da11fac9a699e511a5c0a49e36e68937a0/metadata.parquet
+-	-	.attune/repository-world-v1/5d4287f3c0aaa688c773bd0f4684e2da11fac9a699e511a5c0a49e36e68937a0/relations.parquet
+15	0	.attune/repository-world-v1/678f8ed4bfb9dda19f2f538fe1248da1ae809a11675498575a989b3b3744a9f3/BUILD.bazel
+-	-	.attune/repository-world-v1/678f8ed4bfb9dda19f2f538fe1248da1ae809a11675498575a989b3b3744a9f3/entities.parquet
+1	0	.attune/repository-world-v1/678f8ed4bfb9dda19f2f538fe1248da1ae809a11675498575a989b3b3744a9f3/identity.json
+-	-	.attune/repository-world-v1/678f8ed4bfb9dda19f2f538fe1248da1ae809a11675498575a989b3b3744a9f3/metadata.parquet
+-	-	.attune/repository-world-v1/678f8ed4bfb9dda19f2f538fe1248da1ae809a11675498575a989b3b3744a9f3/relations.parquet
+15	0	.attune/repository-world-v1/69e49acea3491b2e42ca15990b137fed59d69f5d9fcb8022a5d91b33722e49f9/BUILD.bazel
+-	-	.attune/repository-world-v1/69e49acea3491b2e42ca15990b137fed59d69f5d9fcb8022a5d91b33722e49f9/entities.parquet
+1	0	.attune/repository-world-v1/69e49acea3491b2e42ca15990b137fed59d69f5d9fcb8022a5d91b33722e49f9/identity.json
+-	-	.attune/repository-world-v1/69e49acea3491b2e42ca15990b137fed59d69f5d9fcb8022a5d91b33722e49f9/metadata.parquet
+-	-	.attune/repository-world-v1/69e49acea3491b2e42ca15990b137fed59d69f5d9fcb8022a5d91b33722e49f9/relations.parquet
+15	0	.attune/repository-world-v1/6e2bef41bf19f638be084df8cb82127e4832d4abbafa8ca20ebd5db9be3ac8a9/BUILD.bazel
+-	-	.attune/repository-world-v1/6e2bef41bf19f638be084df8cb82127e4832d4abbafa8ca20ebd5db9be3ac8a9/entities.parquet
+1	0	.attune/repository-world-v1/6e2bef41bf19f638be084df8cb82127e4832d4abbafa8ca20ebd5db9be3ac8a9/identity.json
+-	-	.attune/repository-world-v1/6e2bef41bf19f638be084df8cb82127e4832d4abbafa8ca20ebd5db9be3ac8a9/metadata.parquet
+-	-	.attune/repository-world-v1/6e2bef41bf19f638be084df8cb82127e4832d4abbafa8ca20ebd5db9be3ac8a9/relations.parquet
+15	0	.attune/repository-world-v1/6fa65b34fcfd9e959d1cbf442c513bc2648cae8fe87ddd0c4a1217206d65ad17/BUILD.bazel
+-	-	.attune/repository-world-v1/6fa65b34fcfd9e959d1cbf442c513bc2648cae8fe87ddd0c4a1217206d65ad17/entities.parquet
+1	0	.attune/repository-world-v1/6fa65b34fcfd9e959d1cbf442c513bc2648cae8fe87ddd0c4a1217206d65ad17/identity.json
+-	-	.attune/repository-world-v1/6fa65b34fcfd9e959d1cbf442c513bc2648cae8fe87ddd0c4a1217206d65ad17/metadata.parquet
+-	-	.attune/repository-world-v1/6fa65b34fcfd9e959d1cbf442c513bc2648cae8fe87ddd0c4a1217206d65ad17/relations.parquet
+15	0	.attune/repository-world-v1/72a6fb2a39b820e1d21bb2059d937358647faf44982002ab988da1df6e04b459/BUILD.bazel
+-	-	.attune/repository-world-v1/72a6fb2a39b820e1d21bb2059d937358647faf44982002ab988da1df6e04b459/entities.parquet
+1	0	.attune/repository-world-v1/72a6fb2a39b820e1d21bb2059d937358647faf44982002ab988da1df6e04b459/identity.json
+-	-	.attune/repository-world-v1/72a6fb2a39b820e1d21bb2059d937358647faf44982002ab988da1df6e04b459/metadata.parquet
+-	-	.attune/repository-world-v1/72a6fb2a39b820e1d21bb2059d937358647faf44982002ab988da1df6e04b459/relations.parquet
+15	0	.attune/repository-world-v1/7dcd08c6dcd8558e051002333932a19ab74ee48fe7d3e288acda54dad1129b89/BUILD.bazel
+-	-	.attune/repository-world-v1/7dcd08c6dcd8558e051002333932a19ab74ee48fe7d3e288acda54dad1129b89/entities.parquet
+1	0	.attune/repository-world-v1/7dcd08c6dcd8558e051002333932a19ab74ee48fe7d3e288acda54dad1129b89/identity.json
+-	-	.attune/repository-world-v1/7dcd08c6dcd8558e051002333932a19ab74ee48fe7d3e288acda54dad1129b89/metadata.parquet
+-	-	.attune/repository-world-v1/7dcd08c6dcd8558e051002333932a19ab74ee48fe7d3e288acda54dad1129b89/relations.parquet
+15	0	.attune/repository-world-v1/8037ac6f92441b6ba2c9c85ca3cdd7f469430c8c1337a783b44985f6b180829e/BUILD.bazel
+-	-	.attune/repository-world-v1/8037ac6f92441b6ba2c9c85ca3cdd7f469430c8c1337a783b44985f6b180829e/entities.parquet
+1	0	.attune/repository-world-v1/8037ac6f92441b6ba2c9c85ca3cdd7f469430c8c1337a783b44985f6b180829e/identity.json
+-	-	.attune/repository-world-v1/8037ac6f92441b6ba2c9c85ca3cdd7f469430c8c1337a783b44985f6b180829e/metadata.parquet
+-	-	.attune/repository-world-v1/8037ac6f92441b6ba2c9c85ca3cdd7f469430c8c1337a783b44985f6b180829e/relations.parquet
+15	0	.attune/repository-world-v1/80b1792c54806b7f668cfe99126d221f59f280188794510cb57425a54dc9bf26/BUILD.bazel
+-	-	.attune/repository-world-v1/80b1792c54806b7f668cfe99126d221f59f280188794510cb57425a54dc9bf26/entities.parquet
+1	0	.attune/repository-world-v1/80b1792c54806b7f668cfe99126d221f59f280188794510cb57425a54dc9bf26/identity.json
+-	-	.attune/repository-world-v1/80b1792c54806b7f668cfe99126d221f59f280188794510cb57425a54dc9bf26/metadata.parquet
+-	-	.attune/repository-world-v1/80b1792c54806b7f668cfe99126d221f59f280188794510cb57425a54dc9bf26/relations.parquet
+15	0	.attune/repository-world-v1/8708b4d618d69f1f77980c37d9d04e2c0f4f346fd094745a72cf97861d10762a/BUILD.bazel
+-	-	.attune/repository-world-v1/8708b4d618d69f1f77980c37d9d04e2c0f4f346fd094745a72cf97861d10762a/entities.parquet
+1	0	.attune/repository-world-v1/8708b4d618d69f1f77980c37d9d04e2c0f4f346fd094745a72cf97861d10762a/identity.json
+-	-	.attune/repository-world-v1/8708b4d618d69f1f77980c37d9d04e2c0f4f346fd094745a72cf97861d10762a/metadata.parquet
+-	-	.attune/repository-world-v1/8708b4d618d69f1f77980c37d9d04e2c0f4f346fd094745a72cf97861d10762a/relations.parquet
+15	0	.attune/repository-world-v1/8c478416d0cc6588a78c78756fd0579c1c84043c8113b9a67734eb2964f912e4/BUILD.bazel
+-	-	.attune/repository-world-v1/8c478416d0cc6588a78c78756fd0579c1c84043c8113b9a67734eb2964f912e4/entities.parquet
+1	0	.attune/repository-world-v1/8c478416d0cc6588a78c78756fd0579c1c84043c8113b9a67734eb2964f912e4/identity.json
+-	-	.attune/repository-world-v1/8c478416d0cc6588a78c78756fd0579c1c84043c8113b9a67734eb2964f912e4/metadata.parquet
+-	-	.attune/repository-world-v1/8c478416d0cc6588a78c78756fd0579c1c84043c8113b9a67734eb2964f912e4/relations.parquet
+15	0	.attune/repository-world-v1/8d83c99061722a8356c0ffdcb23976f0af9c6dc2d77131116cf5bff1dc031c0c/BUILD.bazel
+-	-	.attune/repository-world-v1/8d83c99061722a8356c0ffdcb23976f0af9c6dc2d77131116cf5bff1dc031c0c/entities.parquet
+1	0	.attune/repository-world-v1/8d83c99061722a8356c0ffdcb23976f0af9c6dc2d77131116cf5bff1dc031c0c/identity.json
+-	-	.attune/repository-world-v1/8d83c99061722a8356c0ffdcb23976f0af9c6dc2d77131116cf5bff1dc031c0c/metadata.parquet
+-	-	.attune/repository-world-v1/8d83c99061722a8356c0ffdcb23976f0af9c6dc2d77131116cf5bff1dc031c0c/relations.parquet
+15	0	.attune/repository-world-v1/9335add06b4ab87b65c8dbffb8aae507f77073e0b89eab4dcd8e1842782e8232/BUILD.bazel
+-	-	.attune/repository-world-v1/9335add06b4ab87b65c8dbffb8aae507f77073e0b89eab4dcd8e1842782e8232/entities.parquet
+1	0	.attune/repository-world-v1/9335add06b4ab87b65c8dbffb8aae507f77073e0b89eab4dcd8e1842782e8232/identity.json
+-	-	.attune/repository-world-v1/9335add06b4ab87b65c8dbffb8aae507f77073e0b89eab4dcd8e1842782e8232/metadata.parquet
+-	-	.attune/repository-world-v1/9335add06b4ab87b65c8dbffb8aae507f77073e0b89eab4dcd8e1842782e8232/relations.parquet
+15	0	.attune/repository-world-v1/945252fe6e867e4d406e48af8ec2d7e9b025c4b63a1f878af2a976945021a29b/BUILD.bazel
+-	-	.attune/repository-world-v1/945252fe6e867e4d406e48af8ec2d7e9b025c4b63a1f878af2a976945021a29b/entities.parquet
+1	0	.attune/repository-world-v1/945252fe6e867e4d406e48af8ec2d7e9b025c4b63a1f878af2a976945021a29b/identity.json
+-	-	.attune/repository-world-v1/945252fe6e867e4d406e48af8ec2d7e9b025c4b63a1f878af2a976945021a29b/metadata.parquet
+-	-	.attune/repository-world-v1/945252fe6e867e4d406e48af8ec2d7e9b025c4b63a1f878af2a976945021a29b/relations.parquet
+15	0	.attune/repository-world-v1/962ea6c586b06ccf757b5a22fc7d8eb6a6d69f549949ecd15bfe7b58d5279621/BUILD.bazel
+-	-	.attune/repository-world-v1/962ea6c586b06ccf757b5a22fc7d8eb6a6d69f549949ecd15bfe7b58d5279621/entities.parquet
+1	0	.attune/repository-world-v1/962ea6c586b06ccf757b5a22fc7d8eb6a6d69f549949ecd15bfe7b58d5279621/identity.json
+-	-	.attune/repository-world-v1/962ea6c586b06ccf757b5a22fc7d8eb6a6d69f549949ecd15bfe7b58d5279621/metadata.parquet
+-	-	.attune/repository-world-v1/962ea6c586b06ccf757b5a22fc7d8eb6a6d69f549949ecd15bfe7b58d5279621/relations.parquet
+15	0	.attune/repository-world-v1/96c87d8880052c38779278f3f6da6b143c57f5f8fc252f529321c73fdfb32510/BUILD.bazel
+-	-	.attune/repository-world-v1/96c87d8880052c38779278f3f6da6b143c57f5f8fc252f529321c73fdfb32510/entities.parquet
+1	0	.attune/repository-world-v1/96c87d8880052c38779278f3f6da6b143c57f5f8fc252f529321c73fdfb32510/identity.json
+-	-	.attune/repository-world-v1/96c87d8880052c38779278f3f6da6b143c57f5f8fc252f529321c73fdfb32510/metadata.parquet
+-	-	.attune/repository-world-v1/96c87d8880052c38779278f3f6da6b143c57f5f8fc252f529321c73fdfb32510/relations.parquet
+15	0	.attune/repository-world-v1/975db8fff535fc05f8590cff0927c3023de27ade911bc314ae3f9a1bbc39fffe/BUILD.bazel
+-	-	.attune/repository-world-v1/975db8fff535fc05f8590cff0927c3023de27ade911bc314ae3f9a1bbc39fffe/entities.parquet
+1	0	.attune/repository-world-v1/975db8fff535fc05f8590cff0927c3023de27ade911bc314ae3f9a1bbc39fffe/identity.json
+-	-	.attune/repository-world-v1/975db8fff535fc05f8590cff0927c3023de27ade911bc314ae3f9a1bbc39fffe/metadata.parquet
+-	-	.attune/repository-world-v1/975db8fff535fc05f8590cff0927c3023de27ade911bc314ae3f9a1bbc39fffe/relations.parquet
+15	0	.attune/repository-world-v1/a2fdbccfb962d71870ef586d45621dd5428a00118b09379d96cde4d4e33ef505/BUILD.bazel
+-	-	.attune/repository-world-v1/a2fdbccfb962d71870ef586d45621dd5428a00118b09379d96cde4d4e33ef505/entities.parquet
+1	0	.attune/repository-world-v1/a2fdbccfb962d71870ef586d45621dd5428a00118b09379d96cde4d4e33ef505/identity.json
+-	-	.attune/repository-world-v1/a2fdbccfb962d71870ef586d45621dd5428a00118b09379d96cde4d4e33ef505/metadata.parquet
+-	-	.attune/repository-world-v1/a2fdbccfb962d71870ef586d45621dd5428a00118b09379d96cde4d4e33ef505/relations.parquet
+15	0	.attune/repository-world-v1/a57d483946f45be372495cb0243cf4b5903726bdfea1909b01ff6a161864659a/BUILD.bazel
+-	-	.attune/repository-world-v1/a57d483946f45be372495cb0243cf4b5903726bdfea1909b01ff6a161864659a/entities.parquet
+1	0	.attune/repository-world-v1/a57d483946f45be372495cb0243cf4b5903726bdfea1909b01ff6a161864659a/identity.json
+-	-	.attune/repository-world-v1/a57d483946f45be372495cb0243cf4b5903726bdfea1909b01ff6a161864659a/metadata.parquet
+-	-	.attune/repository-world-v1/a57d483946f45be372495cb0243cf4b5903726bdfea1909b01ff6a161864659a/relations.parquet
+15	0	.attune/repository-world-v1/accf5131f33552a6d04eff95d31291c1a10f47a2ac05b625004fd7e50da33881/BUILD.bazel
+-	-	.attune/repository-world-v1/accf5131f33552a6d04eff95d31291c1a10f47a2ac05b625004fd7e50da33881/entities.parquet
+1	0	.attune/repository-world-v1/accf5131f33552a6d04eff95d31291c1a10f47a2ac05b625004fd7e50da33881/identity.json
+-	-	.attune/repository-world-v1/accf5131f33552a6d04eff95d31291c1a10f47a2ac05b625004fd7e50da33881/metadata.parquet
+-	-	.attune/repository-world-v1/accf5131f33552a6d04eff95d31291c1a10f47a2ac05b625004fd7e50da33881/relations.parquet
+15	0	.attune/repository-world-v1/af4495290bbce5f65c9fd59841254c0fb0460bda2f72ba2cb42658416c3520a6/BUILD.bazel
+-	-	.attune/repository-world-v1/af4495290bbce5f65c9fd59841254c0fb0460bda2f72ba2cb42658416c3520a6/entities.parquet
+1	0	.attune/repository-world-v1/af4495290bbce5f65c9fd59841254c0fb0460bda2f72ba2cb42658416c3520a6/identity.json
+-	-	.attune/repository-world-v1/af4495290bbce5f65c9fd59841254c0fb0460bda2f72ba2cb42658416c3520a6/metadata.parquet
+-	-	.attune/repository-world-v1/af4495290bbce5f65c9fd59841254c0fb0460bda2f72ba2cb42658416c3520a6/relations.parquet
+15	0	.attune/repository-world-v1/b01273c831ecb224f2c459aedf2020d5487d20ec961426026d93b25e015c4186/BUILD.bazel
+-	-	.attune/repository-world-v1/b01273c831ecb224f2c459aedf2020d5487d20ec961426026d93b25e015c4186/entities.parquet
+1	0	.attune/repository-world-v1/b01273c831ecb224f2c459aedf2020d5487d20ec961426026d93b25e015c4186/identity.json
+-	-	.attune/repository-world-v1/b01273c831ecb224f2c459aedf2020d5487d20ec961426026d93b25e015c4186/metadata.parquet
+-	-	.attune/repository-world-v1/b01273c831ecb224f2c459aedf2020d5487d20ec961426026d93b25e015c4186/relations.parquet
+15	0	.attune/repository-world-v1/b9dd309ede3789e905993b104f3d9ff206a8810300c413fc3d467bbb1c2a1780/BUILD.bazel
+-	-	.attune/repository-world-v1/b9dd309ede3789e905993b104f3d9ff206a8810300c413fc3d467bbb1c2a1780/entities.parquet
+1	0	.attune/repository-world-v1/b9dd309ede3789e905993b104f3d9ff206a8810300c413fc3d467bbb1c2a1780/identity.json
+-	-	.attune/repository-world-v1/b9dd309ede3789e905993b104f3d9ff206a8810300c413fc3d467bbb1c2a1780/metadata.parquet
+-	-	.attune/repository-world-v1/b9dd309ede3789e905993b104f3d9ff206a8810300c413fc3d467bbb1c2a1780/relations.parquet
+15	0	.attune/repository-world-v1/bb174a00f1122b9df7e4ebb958bbcad8e5bd9c1842bb8da9add37a00f034747d/BUILD.bazel
+-	-	.attune/repository-world-v1/bb174a00f1122b9df7e4ebb958bbcad8e5bd9c1842bb8da9add37a00f034747d/entities.parquet
+1	0	.attune/repository-world-v1/bb174a00f1122b9df7e4ebb958bbcad8e5bd9c1842bb8da9add37a00f034747d/identity.json
+-	-	.attune/repository-world-v1/bb174a00f1122b9df7e4ebb958bbcad8e5bd9c1842bb8da9add37a00f034747d/metadata.parquet
+-	-	.attune/repository-world-v1/bb174a00f1122b9df7e4ebb958bbcad8e5bd9c1842bb8da9add37a00f034747d/relations.parquet
+15	0	.attune/repository-world-v1/bc01d02e8d9bea47c2f2f8628d391c32e7b56a072143f6cdc24f027c51384113/BUILD.bazel
+-	-	.attune/repository-world-v1/bc01d02e8d9bea47c2f2f8628d391c32e7b56a072143f6cdc24f027c51384113/entities.parquet
+1	0	.attune/repository-world-v1/bc01d02e8d9bea47c2f2f8628d391c32e7b56a072143f6cdc24f027c51384113/identity.json
+-	-	.attune/repository-world-v1/bc01d02e8d9bea47c2f2f8628d391c32e7b56a072143f6cdc24f027c51384113/metadata.parquet
+-	-	.attune/repository-world-v1/bc01d02e8d9bea47c2f2f8628d391c32e7b56a072143f6cdc24f027c51384113/relations.parquet
+15	0	.attune/repository-world-v1/bde468c0e909ebddbe2138914e2caa0619df93dbeac23ba765a4c701c6554e80/BUILD.bazel
+-	-	.attune/repository-world-v1/bde468c0e909ebddbe2138914e2caa0619df93dbeac23ba765a4c701c6554e80/entities.parquet
+1	0	.attune/repository-world-v1/bde468c0e909ebddbe2138914e2caa0619df93dbeac23ba765a4c701c6554e80/identity.json
+-	-	.attune/repository-world-v1/bde468c0e909ebddbe2138914e2caa0619df93dbeac23ba765a4c701c6554e80/metadata.parquet
+-	-	.attune/repository-world-v1/bde468c0e909ebddbe2138914e2caa0619df93dbeac23ba765a4c701c6554e80/relations.parquet
+15	0	.attune/repository-world-v1/be4b21ddb7b9f5c36b7d8004dee3a4592466219b32245d5d58b7e012b2a6bc8d/BUILD.bazel
+-	-	.attune/repository-world-v1/be4b21ddb7b9f5c36b7d8004dee3a4592466219b32245d5d58b7e012b2a6bc8d/entities.parquet
+1	0	.attune/repository-world-v1/be4b21ddb7b9f5c36b7d8004dee3a4592466219b32245d5d58b7e012b2a6bc8d/identity.json
+-	-	.attune/repository-world-v1/be4b21ddb7b9f5c36b7d8004dee3a4592466219b32245d5d58b7e012b2a6bc8d/metadata.parquet
+-	-	.attune/repository-world-v1/be4b21ddb7b9f5c36b7d8004dee3a4592466219b32245d5d58b7e012b2a6bc8d/relations.parquet
+15	0	.attune/repository-world-v1/c09c5aceb7270db20383531fa1c5f16b9e592b3592cabb62da376e8a9a41a872/BUILD.bazel
+-	-	.attune/repository-world-v1/c09c5aceb7270db20383531fa1c5f16b9e592b3592cabb62da376e8a9a41a872/entities.parquet
+1	0	.attune/repository-world-v1/c09c5aceb7270db20383531fa1c5f16b9e592b3592cabb62da376e8a9a41a872/identity.json
+-	-	.attune/repository-world-v1/c09c5aceb7270db20383531fa1c5f16b9e592b3592cabb62da376e8a9a41a872/metadata.parquet
+-	-	.attune/repository-world-v1/c09c5aceb7270db20383531fa1c5f16b9e592b3592cabb62da376e8a9a41a872/relations.parquet
+15	0	.attune/repository-world-v1/c1e88c310b4d2d00ca66f8b05c98726c0a3ccbc6285496f796377029d53b75ac/BUILD.bazel
+-	-	.attune/repository-world-v1/c1e88c310b4d2d00ca66f8b05c98726c0a3ccbc6285496f796377029d53b75ac/entities.parquet
+1	0	.attune/repository-world-v1/c1e88c310b4d2d00ca66f8b05c98726c0a3ccbc6285496f796377029d53b75ac/identity.json
+-	-	.attune/repository-world-v1/c1e88c310b4d2d00ca66f8b05c98726c0a3ccbc6285496f796377029d53b75ac/metadata.parquet
+-	-	.attune/repository-world-v1/c1e88c310b4d2d00ca66f8b05c98726c0a3ccbc6285496f796377029d53b75ac/relations.parquet
+15	0	.attune/repository-world-v1/c39f4787c4aad99b5033c759a3a9acb952f98d199b06d58ffdb231f058760d4e/BUILD.bazel
+-	-	.attune/repository-world-v1/c39f4787c4aad99b5033c759a3a9acb952f98d199b06d58ffdb231f058760d4e/entities.parquet
+1	0	.attune/repository-world-v1/c39f4787c4aad99b5033c759a3a9acb952f98d199b06d58ffdb231f058760d4e/identity.json
+-	-	.attune/repository-world-v1/c39f4787c4aad99b5033c759a3a9acb952f98d199b06d58ffdb231f058760d4e/metadata.parquet
+-	-	.attune/repository-world-v1/c39f4787c4aad99b5033c759a3a9acb952f98d199b06d58ffdb231f058760d4e/relations.parquet
+15	0	.attune/repository-world-v1/cb161a51dc34e3348154b57d2c4e6882552e5d5e5c9253dfd0e867c6aea5251b/BUILD.bazel
+-	-	.attune/repository-world-v1/cb161a51dc34e3348154b57d2c4e6882552e5d5e5c9253dfd0e867c6aea5251b/entities.parquet
+1	0	.attune/repository-world-v1/cb161a51dc34e3348154b57d2c4e6882552e5d5e5c9253dfd0e867c6aea5251b/identity.json
+-	-	.attune/repository-world-v1/cb161a51dc34e3348154b57d2c4e6882552e5d5e5c9253dfd0e867c6aea5251b/metadata.parquet
+-	-	.attune/repository-world-v1/cb161a51dc34e3348154b57d2c4e6882552e5d5e5c9253dfd0e867c6aea5251b/relations.parquet
+15	0	.attune/repository-world-v1/d13b9c7923b4753ff87cabfe722a0c6b928a50ed9dffebbda85ccb8d3641d9ed/BUILD.bazel
+-	-	.attune/repository-world-v1/d13b9c7923b4753ff87cabfe722a0c6b928a50ed9dffebbda85ccb8d3641d9ed/entities.parquet
+1	0	.attune/repository-world-v1/d13b9c7923b4753ff87cabfe722a0c6b928a50ed9dffebbda85ccb8d3641d9ed/identity.json
+-	-	.attune/repository-world-v1/d13b9c7923b4753ff87cabfe722a0c6b928a50ed9dffebbda85ccb8d3641d9ed/metadata.parquet
+-	-	.attune/repository-world-v1/d13b9c7923b4753ff87cabfe722a0c6b928a50ed9dffebbda85ccb8d3641d9ed/relations.parquet
+15	0	.attune/repository-world-v1/d60aff465833ebc595c2c3681e87a2a8fd3b352c0d45499f29deeec2a410e609/BUILD.bazel
+-	-	.attune/repository-world-v1/d60aff465833ebc595c2c3681e87a2a8fd3b352c0d45499f29deeec2a410e609/entities.parquet
+1	0	.attune/repository-world-v1/d60aff465833ebc595c2c3681e87a2a8fd3b352c0d45499f29deeec2a410e609/identity.json
+-	-	.attune/repository-world-v1/d60aff465833ebc595c2c3681e87a2a8fd3b352c0d45499f29deeec2a410e609/metadata.parquet
+-	-	.attune/repository-world-v1/d60aff465833ebc595c2c3681e87a2a8fd3b352c0d45499f29deeec2a410e609/relations.parquet
+15	0	.attune/repository-world-v1/d81af495867cd7415488f697c081ce31ea2241c54bced4a8b496d67a894d2178/BUILD.bazel
+-	-	.attune/repository-world-v1/d81af495867cd7415488f697c081ce31ea2241c54bced4a8b496d67a894d2178/entities.parquet
+1	0	.attune/repository-world-v1/d81af495867cd7415488f697c081ce31ea2241c54bced4a8b496d67a894d2178/identity.json
+-	-	.attune/repository-world-v1/d81af495867cd7415488f697c081ce31ea2241c54bced4a8b496d67a894d2178/metadata.parquet
+-	-	.attune/repository-world-v1/d81af495867cd7415488f697c081ce31ea2241c54bced4a8b496d67a894d2178/relations.parquet
+15	0	.attune/repository-world-v1/d88ee1076ffd84be98861f5002bbc14c55d667dd31ac773911c490f8cd33d41d/BUILD.bazel
+-	-	.attune/repository-world-v1/d88ee1076ffd84be98861f5002bbc14c55d667dd31ac773911c490f8cd33d41d/entities.parquet
+1	0	.attune/repository-world-v1/d88ee1076ffd84be98861f5002bbc14c55d667dd31ac773911c490f8cd33d41d/identity.json
+-	-	.attune/repository-world-v1/d88ee1076ffd84be98861f5002bbc14c55d667dd31ac773911c490f8cd33d41d/metadata.parquet
+-	-	.attune/repository-world-v1/d88ee1076ffd84be98861f5002bbc14c55d667dd31ac773911c490f8cd33d41d/relations.parquet
+15	0	.attune/repository-world-v1/e340eb56a90c936d4a5879ec37f471260b07abeb021a11a29e2f3db0d1e35520/BUILD.bazel
+-	-	.attune/repository-world-v1/e340eb56a90c936d4a5879ec37f471260b07abeb021a11a29e2f3db0d1e35520/entities.parquet
+1	0	.attune/repository-world-v1/e340eb56a90c936d4a5879ec37f471260b07abeb021a11a29e2f3db0d1e35520/identity.json
+-	-	.attune/repository-world-v1/e340eb56a90c936d4a5879ec37f471260b07abeb021a11a29e2f3db0d1e35520/metadata.parquet
+-	-	.attune/repository-world-v1/e340eb56a90c936d4a5879ec37f471260b07abeb021a11a29e2f3db0d1e35520/relations.parquet
+15	0	.attune/repository-world-v1/e37e024c1844c2b2f4e4221ead91b3aa396db23e7a4fa1b6e9bbe12238bfa1dc/BUILD.bazel
+-	-	.attune/repository-world-v1/e37e024c1844c2b2f4e4221ead91b3aa396db23e7a4fa1b6e9bbe12238bfa1dc/entities.parquet
+1	0	.attune/repository-world-v1/e37e024c1844c2b2f4e4221ead91b3aa396db23e7a4fa1b6e9bbe12238bfa1dc/identity.json
+-	-	.attune/repository-world-v1/e37e024c1844c2b2f4e4221ead91b3aa396db23e7a4fa1b6e9bbe12238bfa1dc/metadata.parquet
+-	-	.attune/repository-world-v1/e37e024c1844c2b2f4e4221ead91b3aa396db23e7a4fa1b6e9bbe12238bfa1dc/relations.parquet
+15	0	.attune/repository-world-v1/e5bfbed1587a474108acc0a043858b1b6c6f118463bcafd6344a0d6e47e4af70/BUILD.bazel
+-	-	.attune/repository-world-v1/e5bfbed1587a474108acc0a043858b1b6c6f118463bcafd6344a0d6e47e4af70/entities.parquet
+1	0	.attune/repository-world-v1/e5bfbed1587a474108acc0a043858b1b6c6f118463bcafd6344a0d6e47e4af70/identity.json
+-	-	.attune/repository-world-v1/e5bfbed1587a474108acc0a043858b1b6c6f118463bcafd6344a0d6e47e4af70/metadata.parquet
+-	-	.attune/repository-world-v1/e5bfbed1587a474108acc0a043858b1b6c6f118463bcafd6344a0d6e47e4af70/relations.parquet
+15	0	.attune/repository-world-v1/e798747366601b55aa909a8724b64a2949accb6421a45f773251055d1e0313fa/BUILD.bazel
+-	-	.attune/repository-world-v1/e798747366601b55aa909a8724b64a2949accb6421a45f773251055d1e0313fa/entities.parquet
+1	0	.attune/repository-world-v1/e798747366601b55aa909a8724b64a2949accb6421a45f773251055d1e0313fa/identity.json
+-	-	.attune/repository-world-v1/e798747366601b55aa909a8724b64a2949accb6421a45f773251055d1e0313fa/metadata.parquet
+-	-	.attune/repository-world-v1/e798747366601b55aa909a8724b64a2949accb6421a45f773251055d1e0313fa/relations.parquet
+15	0	.attune/repository-world-v1/e87245df2ce6b98863e6644cf146b0cc6992c7a5fdce6a067b997b3e75004230/BUILD.bazel
+-	-	.attune/repository-world-v1/e87245df2ce6b98863e6644cf146b0cc6992c7a5fdce6a067b997b3e75004230/entities.parquet
+1	0	.attune/repository-world-v1/e87245df2ce6b98863e6644cf146b0cc6992c7a5fdce6a067b997b3e75004230/identity.json
+-	-	.attune/repository-world-v1/e87245df2ce6b98863e6644cf146b0cc6992c7a5fdce6a067b997b3e75004230/metadata.parquet
+-	-	.attune/repository-world-v1/e87245df2ce6b98863e6644cf146b0cc6992c7a5fdce6a067b997b3e75004230/relations.parquet
+15	0	.attune/repository-world-v1/ea7c1240175d2dd358d6d532075055d20eeb1d10169b4fd814a0f41dd009cb1e/BUILD.bazel
+-	-	.attune/repository-world-v1/ea7c1240175d2dd358d6d532075055d20eeb1d10169b4fd814a0f41dd009cb1e/entities.parquet
+1	0	.attune/repository-world-v1/ea7c1240175d2dd358d6d532075055d20eeb1d10169b4fd814a0f41dd009cb1e/identity.json
+-	-	.attune/repository-world-v1/ea7c1240175d2dd358d6d532075055d20eeb1d10169b4fd814a0f41dd009cb1e/metadata.parquet
+-	-	.attune/repository-world-v1/ea7c1240175d2dd358d6d532075055d20eeb1d10169b4fd814a0f41dd009cb1e/relations.parquet
+15	0	.attune/repository-world-v1/ee4256c77f74bb7406db66a8f952d5caad16e8616072c92c82384dfe873797f7/BUILD.bazel
+-	-	.attune/repository-world-v1/ee4256c77f74bb7406db66a8f952d5caad16e8616072c92c82384dfe873797f7/entities.parquet
+1	0	.attune/repository-world-v1/ee4256c77f74bb7406db66a8f952d5caad16e8616072c92c82384dfe873797f7/identity.json
+-	-	.attune/repository-world-v1/ee4256c77f74bb7406db66a8f952d5caad16e8616072c92c82384dfe873797f7/metadata.parquet
+-	-	.attune/repository-world-v1/ee4256c77f74bb7406db66a8f952d5caad16e8616072c92c82384dfe873797f7/relations.parquet
+15	0	.attune/repository-world-v1/f0d3c13774ad53f40a97c6e74c61e2705718cdd2b215560b9ede898df79c22da/BUILD.bazel
+-	-	.attune/repository-world-v1/f0d3c13774ad53f40a97c6e74c61e2705718cdd2b215560b9ede898df79c22da/entities.parquet
+1	0	.attune/repository-world-v1/f0d3c13774ad53f40a97c6e74c61e2705718cdd2b215560b9ede898df79c22da/identity.json
+-	-	.attune/repository-world-v1/f0d3c13774ad53f40a97c6e74c61e2705718cdd2b215560b9ede898df79c22da/metadata.parquet
+-	-	.attune/repository-world-v1/f0d3c13774ad53f40a97c6e74c61e2705718cdd2b215560b9ede898df79c22da/relations.parquet
+15	0	.attune/repository-world-v1/f4f3fb7417a2711fb1cf379687841dab491f79755758f47824920cb11ea7b0ed/BUILD.bazel
+-	-	.attune/repository-world-v1/f4f3fb7417a2711fb1cf379687841dab491f79755758f47824920cb11ea7b0ed/entities.parquet
+1	0	.attune/repository-world-v1/f4f3fb7417a2711fb1cf379687841dab491f79755758f47824920cb11ea7b0ed/identity.json
+-	-	.attune/repository-world-v1/f4f3fb7417a2711fb1cf379687841dab491f79755758f47824920cb11ea7b0ed/metadata.parquet
+-	-	.attune/repository-world-v1/f4f3fb7417a2711fb1cf379687841dab491f79755758f47824920cb11ea7b0ed/relations.parquet
+15	0	.attune/repository-world-v1/f73daccf345e592d08fdcb534b830943dbe1a30c60b1b9cefbd1cbfa6d97ed33/BUILD.bazel
+-	-	.attune/repository-world-v1/f73daccf345e592d08fdcb534b830943dbe1a30c60b1b9cefbd1cbfa6d97ed33/entities.parquet
+1	0	.attune/repository-world-v1/f73daccf345e592d08fdcb534b830943dbe1a30c60b1b9cefbd1cbfa6d97ed33/identity.json
+-	-	.attune/repository-world-v1/f73daccf345e592d08fdcb534b830943dbe1a30c60b1b9cefbd1cbfa6d97ed33/metadata.parquet
+-	-	.attune/repository-world-v1/f73daccf345e592d08fdcb534b830943dbe1a30c60b1b9cefbd1cbfa6d97ed33/relations.parquet
+15	0	.attune/repository-world-v1/ff2df8a191125982b3f81183d8edba47888468c0feff1dfd555217faa858a779/BUILD.bazel
+-	-	.attune/repository-world-v1/ff2df8a191125982b3f81183d8edba47888468c0feff1dfd555217faa858a779/entities.parquet
+1	0	.attune/repository-world-v1/ff2df8a191125982b3f81183d8edba47888468c0feff1dfd555217faa858a779/identity.json
+-	-	.attune/repository-world-v1/ff2df8a191125982b3f81183d8edba47888468c0feff1dfd555217faa858a779/metadata.parquet
+-	-	.attune/repository-world-v1/ff2df8a191125982b3f81183d8edba47888468c0feff1dfd555217faa858a779/relations.parquet
+3	1	.gitignore
+10	0	README.md
+3	0	build/attune.bzl
+90	0	nix/finalize-world-tables
+26	10	nix/materialize-world-oracles
+C	1388ea920a53a3ffd1fc557edf4ef916347a0e59
+
+0	4	MODULE.bazel
+5	0	flake.nix
+0	163	maven_install.json
+8	49	src/native/inference/AttuneDecision.java
+79	52	src/native/inference/AttuneEmbed.java
+1	5	src/native/inference/BUILD.bazel
+64	0	src/native/inference/OpenRouter.java
+10	6	src/native/inference/README.md
+C	dc184bb1d4e0b4fdac747e147c88896bacb48502
+
+14	9	README.md
+43	318	flake.nix
+0	12	flix.toml
+0	130	nix/check-data-plane.py
+0	92	nix/evaluation.nix
+0	43	nix/finalize-retained-worlds
+0	121	nix/localization.nix
+0	116	nix/migrate-retained-world
+0	26	nix/migrate-world/flix.toml
+0	161	nix/migrate-world/src/MigrateWorld.flix
+0	130	nix/replication.nix
+0	104	nix/scale-issues.nix
+0	98	nix/scale-population.nix
+0	388	nix/scale-report.py
+0	51	nix/swe-explore.nix
+0	2	src/BUILD.bazel
+0	831	src/Localization.flix
+0	3	src/Main.flix
+0	697	src/Repository/Nix.flix
+0	877	src/ScaleExperiment.flix
+0	19	src/native/grit/build
+0	11	src/native/inference/build
+0	247	src/native/nix/AttuneNix.java
+0	33	src/native/nix/AttuneNixTest.java
+0	15	src/native/nix/attune_nix.h
+0	16	src/native/nix/build
+0	200	src/native/parquet/attune_parquet.py
+0	19	src/native/parquet/build
+0	83	src/native/parquet/pom.xml
+0	552	test/CoreTest.flix
+0	156	test/DecideTest.flix
+0	220	test/JevLocalizationTest.flix
+0	2613	test/JevOracleTest.flix
+0	1	test/JevPolicyHillclimb.flix
+0	170	test/LocalizationTest.flix
+0	90	test/LocalizationTreeTest.flix
+0	194	test/PriorAcquisitionTest.flix
+0	90	test/ScaleExperimentTest.flix
+0	186	test/ScaleGeneralizationTest.flix
+0	67	test/TreeReuseTest.flix
+3	37	verify
+C	3f22bec94cdebcbb0ad28f7e358951999771a159
+
+16	1	README.md
+1	0	build/BUILD.bazel
+149	0	build/attune.bzl
+2	0	build/src/LocalizationNamespace.flix
+106	0	experiments/localization-swe-explore/AggregateEvaluation.flix
+64	0	experiments/localization-swe-explore/BUILD.bazel
+56	0	experiments/localization-swe-explore/Evaluate.flix
+6	0	experiments/swe-explore-js-ts-scale/BUILD.bazel
+58	0	experiments/swe-explore-js-ts-scale/USAGE.md
+35	0	migration/evaluation/BUILD.bazel
+109	0	migration/evaluation/Main.flix
+88	0	nix/materialize-evaluation-oracles
+29	1	nix/materialize-world-oracles
+3	0	src/BUILD.bazel
+615	0	src/Localization/Evaluate.flix
+360	0	src/Localization/EvaluationData.flix
+50	0	src/Localization/EvaluationTable.flix
+C	c7924414aea3d6641afb3c9886a4ebb801770fe6
+
+6	1	README.md
+34	0	build/attune.bzl
+39	0	experiments/localization-swe-explore/Aggregate.flix
+25	0	experiments/localization-swe-explore/BUILD.bazel
+1	29	experiments/localization-swe-explore/Main.flix
+7	2	nix/materialize-world-oracles
+1	0	src/BUILD.bazel
+30	0	src/LocalizationReplay.flix
+C	09914a2907beb7745d292764a0f68b3027b12edd
+
+1	0	build/BUILD.bazel
+151	10	build/attune.bzl
+115	0	build/src/Localization.flix
+1	0	experiments/jev-policy-hillclimb/BUILD.bazel
+9	398	experiments/jev-policy-hillclimb/lib/JevPolicyHillclimb.flix
+42	0	experiments/localization-swe-explore/BUILD.bazel
+104	0	experiments/localization-swe-explore/Main.flix
+33	0	migration/localization/BUILD.bazel
+155	0	migration/localization/Main.flix
+89	3	nix/materialize-world-oracles
+6	0	src/BUILD.bazel
+15	0	src/Decide.flix
+105	0	src/Decide/Table.flix
+30	4	src/Localization.flix
+95	0	src/Localization/Result.flix
+1	1	test/LocalizationTreeTest.flix
+C	b6ba27c2c3cfddf358283321728f00741ed101a6
+
+5	0	.bazelrc
+9	0	.gitignore
+148	5	README.md
+1	0	build/BUILD.bazel
+297	4	build/attune.bzl
+47	0	build/src/RepositoryAdmissionTest.flix
+16	0	build/src/RepositoryTableTest.flix
+74	0	experiments/atlas-swe-explore/Aggregate.flix
+110	1	experiments/atlas-swe-explore/BUILD.bazel
+30	21	experiments/atlas-swe-explore/Main.flix
+124	0	experiments/atlas-swe-explore/REPORT.md
+329	0	experiments/atlas-swe-explore/Report.flix
+14	0	experiments/atlas-swe-explore/Summary.flix
+0	1	flake.nix
+34	0	migration/world/BUILD.bazel
+160	0	migration/world/Main.flix
+43	0	nix/finalize-retained-worlds
+138	0	nix/materialize-world-oracles
+116	0	nix/migrate-retained-world
+26	0	nix/migrate-world/flix.toml
+161	0	nix/migrate-world/src/MigrateWorld.flix
+10	2	nix/scale-case.nix
+293	0	src/Atlas/Signature/Summary.flix
+21	6	src/Atlas/Signature/Table.flix
+4	0	src/BUILD.bazel
+72	22	src/Repository.flix
+42	0	src/Repository/Identity.flix
+100	0	src/Repository/Nix.flix
+68	2	src/Repository/Table.flix
+27	23	src/ScientificData.flix
+27	1	test/BUILD.bazel
+C	1cab828866716f5d01e3e7238133fa5f78cd1f8e
+
+74	3	README.md
+1	0	build/BUILD.bazel
+110	0	build/attune.bzl
+20	0	build/src/AtlasSignatureTableTest.flix
+23	1	experiments/atlas-swe-explore/BUILD.bazel
+144	6	experiments/atlas-swe-explore/Main.flix
+198	0	experiments/atlas-swe-explore/PHYSICAL-PLANS.md
+6	0	experiments/atlas-swe-explore/PREREGISTRATION.md
+11	2	src/Atlas.flix
+52	1	src/Atlas/Signature.flix
+21	0	src/Atlas/Signature/Table.flix
+C	3043e27a7084696aca3be5db96715e5c9ff0d50b
+
+1	0	BUILD.bazel
+1	0	build/BUILD.bazel
+71	0	build/src/RepositoryTableTest.flix
+1	0	src/BUILD.bazel
+324	0	src/Repository/Table.flix
+19	0	test/BUILD.bazel
+C	5df0bf40b90804c6df9a8e80f686821833c0b862
+
+21	12	README.md
+C	0d18f49a3886842b6128c1f100d77219a46f3733
+
+38	2	src/Atlas.flix
+9	1	src/Radii/Compiled.flix
+C	2df049ea07535401c2264b16d3dbb37651ab689c
+
+66	9	build/flix.bzl
+36	0	experiments/atlas-swe-explore/BUILD.bazel
+10	0	experiments/atlas-swe-explore/Main.flix
+35	2	src/Atlas.flix
+C	2c985ccab4880082ce5f51810b183bd558cbfd76
+
+38	2	README.md
+67	0	build/src/AtlasSignatureTableTest.flix
+21	0	build/src/AtlasTest.flix
+5	0	experiments/atlas-swe-explore/PREREGISTRATION.md
+48	0	src/Atlas/Signature.flix
+121	1	src/Atlas/Signature/Table.flix
+13	3	test/BUILD.bazel
+C	cf93b6fdce603be612d7296a2496d3959276431c
+
+32	0	README.md
+C	34fae550e59e0e34b385f5d94a8c9af7dc79eba9
+
+191	0	README.md
+C	5433840a79ada4ce2a860fcd5dc02064a0d8e50c
+
+2	0	BUILD.bazel
+1	0	build/BUILD.bazel
+7	0	build/src/IdentityTest.flix
+1	0	src/BUILD.bazel
+11	0	src/ScientificIdentity.flix
+21	0	src/native/identity/AttuneIdentity.java
+11	0	src/native/identity/AttuneIdentityTest.java
+17	0	src/native/identity/BUILD.bazel
+16	0	test/BUILD.bazel
+C	50ca7121124981264f5d78d8722e2e5793de9da3
+
+1	0	BUILD.bazel
+3	0	build/BUILD.bazel
+2	0	build/src/Atlas.flix
+2	0	build/src/Atlas/Signature.flix
+22	0	build/src/AtlasSignatureTableTest.flix
+12	0	docs/data-architecture.md
+7	0	experiments/atlas-swe-explore/PREREGISTRATION.md
+82	0	src/Atlas/Signature/Table.flix
+1	0	src/BUILD.bazel
+2	0	src/ScientificTable.flix
+8	0	src/native/parquet/AttuneParquet.java
+2	1	src/native/parquet/AttuneParquetTest.java
+19	0	test/BUILD.bazel
+C	312a7bec35c3231415f27de7917e5679495540ea
+
+1	0	BUILD.bazel
+1	0	build/BUILD.bazel
+17	0	build/src/ScientificTableTest.flix
+1	0	src/BUILD.bazel
+81	0	src/ScientificTable.flix
+182	28	src/native/parquet/AttuneParquet.java
+21	0	src/native/parquet/AttuneParquetTest.java
+16	0	test/BUILD.bazel
+C	822f042994785ebc8ffc69702dcedc674e4b47c3
+
+63	18	README.md
+C	dc96b663228016ce2ef66fc2329920338da69157
+
+48	0	build/src/AtlasTest.flix
+23	8	src/Atlas.flix
+125	0	src/Atlas/Signature.flix
+1	0	src/BUILD.bazel
+1	0	test/BUILD.bazel
+C	230dbf1b2232ff963653fc1ff7b21b7bf27b2e43
+
+1	0	BUILD.bazel
+133	36	README.md
+2	0	build/BUILD.bazel
+19	0	build/src/AtlasRepository.flix
+64	0	build/src/AtlasTest.flix
+157	1	src/Atlas.flix
+1	0	src/BUILD.bazel
+19	0	test/BUILD.bazel
+C	d48fe8a2030c3ef62d0f263af6e8a147e97dc350
+
+3	1	README.md
+253	0	experiments/atlas-swe-explore/PREREGISTRATION.md
+14	0	experiments/atlas-swe-explore/README.md
+C	a4b0cab1d76bad5edea0a8c19f9d8bbe11d6f710
+
+4	0	.bazelrc
+1	1	.gitignore
+2	2	.repomixignore
+3	3	BUILD.bazel
+3	3	MODULE.bazel
+139	2	README.md
+1	1	build/src/InferenceBoundaryTest.flix
+7	6	docs/data-architecture.md
+16	16	flake.nix
+1	1	flix.toml
+0	9	grit/BUILD.bazel
+0	34	grit/README.md
+0	72	grit/calls/javascript.grit
+0	72	grit/calls/jsx.grit
+0	72	grit/calls/tsx.grit
+0	71	grit/calls/typescript.grit
+0	180	grit/defines/javascript.grit
+0	180	grit/defines/jsx.grit
+0	180	grit/defines/tsx.grit
+0	179	grit/defines/typescript.grit
+0	59	grit/imports/javascript.grit
+0	59	grit/imports/jsx.grit
+0	59	grit/imports/tsx.grit
+0	58	grit/imports/typescript.grit
+0	89	native/embed/AttuneDecision.java
+0	127	native/embed/AttuneEmbed.java
+0	27	native/embed/AttuneInferenceTest.java
+0	32	native/embed/BUILD.bazel
+0	11	native/embed/build
+0	28	native/grit/AttuneGrit.java
+0	69	native/grit/AttuneGritNative.java
+0	234	native/grit/AttuneGritTest.java
+0	102	native/grit/BUILD.bazel
+0	1091	native/grit/Cargo.lock
+0	37	native/grit/Cargo.toml
+0	35	native/grit/attune_grit.h
+0	19	native/grit/build
+0	20546	native/grit/cargo-bazel-lock.json
+0	462	native/grit/lib.rs
+0	247	native/nix/AttuneNix.java
+0	33	native/nix/AttuneNixTest.java
+0	15	native/nix/attune_nix.h
+0	16	native/nix/build
+0	209	native/parquet/AttuneParquet.java
+0	39	native/parquet/AttuneParquetTest.java
+0	30	native/parquet/BUILD.bazel
+0	200	native/parquet/attune_parquet.py
+0	19	native/parquet/build
+0	83	native/parquet/pom.xml
+1	1	nix/evaluation.nix
+1	1	nix/localization.nix
+1	1	nix/scale-evaluation.nix
+1	1	nix/scale-issues.nix
+1	1	nix/scale-population.nix
+1	1	src/Decide.flix
+1	1	src/Localization.flix
+9	0	src/grit/BUILD.bazel
+34	0	src/grit/README.md
+72	0	src/grit/calls/javascript.grit
+72	0	src/grit/calls/jsx.grit
+72	0	src/grit/calls/tsx.grit
+71	0	src/grit/calls/typescript.grit
+180	0	src/grit/defines/javascript.grit
+180	0	src/grit/defines/jsx.grit
+180	0	src/grit/defines/tsx.grit
+179	0	src/grit/defines/typescript.grit
+59	0	src/grit/imports/javascript.grit
+59	0	src/grit/imports/jsx.grit
+59	0	src/grit/imports/tsx.grit
+58	0	src/grit/imports/typescript.grit
+28	0	src/native/grit/AttuneGrit.java
+69	0	src/native/grit/AttuneGritNative.java
+234	0	src/native/grit/AttuneGritTest.java
+102	0	src/native/grit/BUILD.bazel
+1091	0	src/native/grit/Cargo.lock
+37	0	src/native/grit/Cargo.toml
+35	0	src/native/grit/attune_grit.h
+19	0	src/native/grit/build
+20546	0	src/native/grit/cargo-bazel-lock.json
+462	0	src/native/grit/lib.rs
+89	0	src/native/inference/AttuneDecision.java
+127	0	src/native/inference/AttuneEmbed.java
+27	0	src/native/inference/AttuneInferenceTest.java
+32	0	src/native/inference/BUILD.bazel
+41	0	src/native/inference/README.md
+11	0	src/native/inference/build
+247	0	src/native/nix/AttuneNix.java
+33	0	src/native/nix/AttuneNixTest.java
+15	0	src/native/nix/attune_nix.h
+16	0	src/native/nix/build
+209	0	src/native/parquet/AttuneParquet.java
+39	0	src/native/parquet/AttuneParquetTest.java
+30	0	src/native/parquet/BUILD.bazel
+200	0	src/native/parquet/attune_parquet.py
+19	0	src/native/parquet/build
+83	0	src/native/parquet/pom.xml
+2	2	test/BUILD.bazel
+4	4	verify
+C	104bca0f8d0398514b1d506466f2ca20eb8aa1ab
+
+4	4	.bazelrc
+8	0	.gitignore
+9	0	.repomixignore
+2	0	BUILD.bazel
+11	0	MODULE.bazel
+591	0	MODULE.bazel.lock
+496	8	README.md
+2	0	build/BUILD.bazel
+71	0	build/jextract.bzl
+48	0	build/jextract_repository.bzl
+68	0	docs/research/repository-signatures.md
+1	1	flake.nix
+9	0	grit/BUILD.bazel
+46	0	migration/attuneradii/README.md
+115	0	migration/attuneradii/flake.lock
+702	0	migration/attuneradii/flake.nix
+67	0	migration/attuneradii/grit/typescript/calls.grit
+175	0	migration/attuneradii/grit/typescript/defines.grit
+54	0	migration/attuneradii/grit/typescript/imports.grit
+1219	0	migration/attuneradii/native/grit/Cargo.lock
+46	0	migration/attuneradii/native/grit/Cargo.toml
+124	0	migration/attuneradii/native/grit/src/lib.rs
+283	0	migration/attuneradii/nix/swe-explore.nix
+115	0	migration/attuneradii/pyproject.toml
+26	0	migration/attuneradii/setup.cfg
+7127	0	migration/attuneradii/spec.md
+14	0	migration/attuneradii/src/_attune_grit.pyi
+118	0	migration/attuneradii/src/_nix_ffi.py
+275	0	migration/attuneradii/src/_nix_native.py
+1	0	migration/attuneradii/src/attune_radii/__init__.py
+1	0	migration/attuneradii/src/attune_radii/algebra/__init__.py
+164	0	migration/attuneradii/src/attune_radii/algebra/query.py
+371	0	migration/attuneradii/src/attune_radii/algebra/relation.py
+142	0	migration/attuneradii/src/attune_radii/algebra/structure.py
+252	0	migration/attuneradii/src/attune_radii/grit.py
+310	0	migration/attuneradii/src/attune_radii/model.py
+200	0	migration/attuneradii/src/attune_radii/nix.py
+115	0	migration/attuneradii/src/attune_radii/observation.py
+1	0	migration/attuneradii/src/attune_radii/policies/__init__.py
+122	0	migration/attuneradii/src/attune_radii/policies/radii.py
+531	0	migration/attuneradii/src/attune_radii/routing.py
+707	0	migration/attuneradii/src/attune_radii/world.py
+1	0	migration/attuneradii/tests/__init__.py
+88	0	migration/attuneradii/tests/_profile.py
+433	0	migration/attuneradii/tests/conftest.py
+628	0	migration/attuneradii/tests/test_algebra.py
+301	0	migration/attuneradii/tests/test_architecture.py
+280	0	migration/attuneradii/tests/test_atlas.py
+422	0	migration/attuneradii/tests/test_model.py
+242	0	migration/attuneradii/tests/test_swe_explore.py
+158	0	migration/attuneradii/typings/_attune_nix_abi.pyi
+1	0	migration/attuneradii/typings/pyarrow/__init__.pyi
+32	0	migration/attuneradii/typings/pyarrow/parquet.pyi
+31	0	migration/attuneradii/typings/rote/__init__.pyi
+1176	0	migration/attuneradii/uv.lock
+2	2	native/grit/AttuneGrit.java
+1	0	native/grit/AttuneGritTest.java
+47	0	native/grit/BUILD.bazel
+1	0	src/BUILD.bazel
+1	1	src/Repository/Grit.flix
+16	0	test/BUILD.bazel
+C	bb1a1a3ea3902a081cdb1f5536c0008cc00871f0
+
+2	0	.bazelrc
+37	0	MODULE.bazel
+283	13	MODULE.bazel.lock
+1	0	build/BUILD.bazel
+361	0	build/grit_repository.bzl
+21	16	flake.nix
+55	0	native/grit/BUILD.bazel
+0	198	native/grit/Cargo.lock
+20546	0	native/grit/cargo-bazel-lock.json
+C	1efb99285b967e714b70d305dcb55bc5fc375a1a
+
+1	0	.repomixignore
+403	87	README.md
+104	0	docs/research/repository-signatures.md
+C	bd0eef6d7877b0568d037b21da1e4fa1c815124a
+
+3	1	BUILD.bazel
+8	2	MODULE.bazel
+4	1	build/BUILD.bazel
+47	4	build/flix.bzl
+13	0	build/src/InferenceBoundaryTest.flix
+212	25	maven_install.json
+27	0	native/embed/AttuneInferenceTest.java
+32	0	native/embed/BUILD.bazel
+13	0	test/BUILD.bazel
+C	93a587715d34d121d4a4d21f4c0f6438b30d05aa
+
+24	0	.bazelrc
+2	0	.bazelversion
+6	0	.gitignore
+14	0	BUILD.bazel
+34	0	MODULE.bazel
+690	0	MODULE.bazel.lock
+1	0	build/BUILD.bazel
+59	0	build/flix.bzl
+1	0	build/src/Repository.flix
+61	0	flake.nix
+478	0	maven_install.json
+30	0	native/parquet/BUILD.bazel
+9	0	src/BUILD.bazel
+23	0	test/BUILD.bazel
+C	606c10646b23ac6dacfa20272868fc15ffa47122
+
+188	62	test/JevOracleTest.flix
+C	6d554a395becaad64d9612db5ee6c8b3dbf4399b
+
+32	17	.gitignore
+31	0	.repomixignore
+0	498	ATTUNEFLIX_JEV_AND_CLEANUP_REPORT.md
+0	595	JEV_LOCALIZATION_REPORT.md
+0	1	JEV_LOCALIZATION_RESULTS.json
+0	1	JEV_SELECTION_DIAGNOSIS.json
+0	421	JEV_SELECTION_DIAGNOSIS.md
+0	156	NATIVE-FLIX.md
+37	8	README.md
+0	84	REFERENCE.md
+0	270	REPLICATION.md
+0	571	TREE_REUSE_REPORT.md
+84	0	docs/architecture/frozen-radii-reference.md
+156	0	docs/architecture/native-flix.md
+65	0	docs/data-architecture.md
+270	0	docs/replication/README.md
+-	-	docs/replication/replication.parquet
+-	-	docs/research/jev/localization-results.parquet
+595	0	docs/research/jev/localization.md
+498	0	docs/research/jev/overview.md
+421	0	docs/research/jev/selection-diagnosis.md
+-	-	docs/research/jev/selection-diagnosis.parquet
+571	0	docs/research/tree-reuse.md
+0	88	evaluation.nix
+1	1	experiments/jev-policy-hillclimb/iterations/000-v1-baseline/REPORT.md
+0	1216	experiments/jev-policy-hillclimb/iterations/000-v1-baseline/metrics.json
+-	-	experiments/jev-policy-hillclimb/iterations/000-v1-baseline/metrics.parquet
+0	1719	experiments/jev-policy-hillclimb/iterations/001-macro3-terminal-preview/metrics.json
+-	-	experiments/jev-policy-hillclimb/iterations/001-macro3-terminal-preview/metrics.parquet
+0	2286	experiments/jev-policy-hillclimb/iterations/002-two-stage-macro3/metrics.json
+-	-	experiments/jev-policy-hillclimb/iterations/002-two-stage-macro3/metrics.parquet
+0	2571	experiments/jev-policy-hillclimb/iterations/003-force-first-macro/metrics.json
+-	-	experiments/jev-policy-hillclimb/iterations/003-force-first-macro/metrics.parquet
+1	1	experiments/jev-policy-hillclimb/iterations/004-prune-exact-revisits/REPORT.md
+0	2802	experiments/jev-policy-hillclimb/iterations/004-prune-exact-revisits/metrics.json
+-	-	experiments/jev-policy-hillclimb/iterations/004-prune-exact-revisits/metrics.parquet
+1	1	experiments/jev-policy-hillclimb/iterations/005-root-beam2/REPORT.md
+0	4252	experiments/jev-policy-hillclimb/iterations/005-root-beam2/metrics.json
+-	-	experiments/jev-policy-hillclimb/iterations/005-root-beam2/metrics.parquet
+0	2648	experiments/jev-policy-hillclimb/iterations/006-parent-delta/metrics.json
+-	-	experiments/jev-policy-hillclimb/iterations/006-parent-delta/metrics.parquet
+1	1	experiments/jev-policy-hillclimb/iterations/007-retrospective-checkpoint/REPORT.md
+0	2832	experiments/jev-policy-hillclimb/iterations/007-retrospective-checkpoint/metrics.json
+-	-	experiments/jev-policy-hillclimb/iterations/007-retrospective-checkpoint/metrics.parquet
+1	1	experiments/jev-policy-hillclimb/iterations/008-pairwise-root-tournament/REPORT.md
+0	6892	experiments/jev-policy-hillclimb/iterations/008-pairwise-root-tournament/metrics.json
+-	-	experiments/jev-policy-hillclimb/iterations/008-pairwise-root-tournament/metrics.parquet
+1	1	experiments/jev-policy-hillclimb/iterations/009-hierarchical-lookahead/REPORT.md
+0	13415	experiments/jev-policy-hillclimb/iterations/009-hierarchical-lookahead/metrics.json
+-	-	experiments/jev-policy-hillclimb/iterations/009-hierarchical-lookahead/metrics.parquet
+1	1	experiments/jev-policy-hillclimb/iterations/010-plan-checkpoint/REPORT.md
+0	13683	experiments/jev-policy-hillclimb/iterations/010-plan-checkpoint/metrics.json
+-	-	experiments/jev-policy-hillclimb/iterations/010-plan-checkpoint/metrics.parquet
+0	1036	experiments/jev-policy-hillclimb/iterations/011-two-expert-selector/metrics.json
+-	-	experiments/jev-policy-hillclimb/iterations/011-two-expert-selector/metrics.parquet
+1	1	experiments/jev-policy-hillclimb/iterations/012-pruned-planner-portfolio/REPORT.md
+0	1041	experiments/jev-policy-hillclimb/iterations/012-pruned-planner-portfolio/metrics.json
+-	-	experiments/jev-policy-hillclimb/iterations/012-pruned-planner-portfolio/metrics.parquet
+1	1	experiments/jev-policy-hillclimb/iterations/013-deep-planner-portfolio/REPORT.md
+0	1045	experiments/jev-policy-hillclimb/iterations/013-deep-planner-portfolio/metrics.json
+-	-	experiments/jev-policy-hillclimb/iterations/013-deep-planner-portfolio/metrics.parquet
+1	1	experiments/jev-policy-hillclimb/iterations/014-delta-expert-selector/REPORT.md
+0	1052	experiments/jev-policy-hillclimb/iterations/014-delta-expert-selector/metrics.json
+-	-	experiments/jev-policy-hillclimb/iterations/014-delta-expert-selector/metrics.parquet
+0	991	experiments/jev-policy-hillclimb/iterations/015-learned-route-templates/metrics.json
+-	-	experiments/jev-policy-hillclimb/iterations/015-learned-route-templates/metrics.parquet
+0	1027	experiments/jev-policy-hillclimb/iterations/016-template-tournament/metrics.json
+-	-	experiments/jev-policy-hillclimb/iterations/016-template-tournament/metrics.parquet
+7	8	experiments/jev-policy-hillclimb/lib/JevPolicyHillclimb.flix
+69	0	experiments/swe-explore-js-ts-scale/README.md
+175	0	experiments/swe-explore-js-ts-scale/REPORT.md
+170	0	experiments/swe-explore-js-ts-scale/USAGE.md
+0	59	experiments/swe-explore-js-ts-scale/logs/facts-smoke.log
+0	14	experiments/swe-explore-js-ts-scale/logs/facts-smoke.time
+-	-	experiments/swe-explore-js-ts-scale/results-censored.parquet
+17	0	flake.nix
+1	0	flix.toml
+5	0	grit/README.md
+0	117	localization.nix
+2	1	native/grit/build
+75	4	native/grit/lib.rs
+2	1	native/nix/build
+209	0	native/parquet/AttuneParquet.java
+39	0	native/parquet/AttuneParquetTest.java
+200	0	native/parquet/attune_parquet.py
+19	0	native/parquet/build
+83	0	native/parquet/pom.xml
+130	0	nix/check-data-plane.py
+92	0	nix/evaluation.nix
+121	0	nix/localization.nix
+130	0	nix/replication.nix
+37	0	nix/scale-case.nix
+89	0	nix/scale-evaluation.nix
+104	0	nix/scale-issues.nix
+98	0	nix/scale-population.nix
+388	0	nix/scale-report.py
+51	0	nix/swe-explore.nix
+0	130	replication.nix
+0	12	replication.tsv
+0	37	scale-case.nix
+0	85	scale-evaluation.nix
+0	100	scale-issues.nix
+0	94	scale-population.nix
+7	5	src/Decide.flix
+4	4	src/Localization.flix
+10	19	src/Repository.flix
+11	8	src/Repository/Nix.flix
+78	25	src/ScaleExperiment.flix
+221	0	src/ScientificData.flix
+0	51	swe-explore.nix
+33	0	test/DecideTest.flix
+7	8	test/JevLocalizationTest.flix
+381	40	test/JevOracleTest.flix
+3	6	test/PriorAcquisitionTest.flix
+20	4	test/ScaleExperimentTest.flix
+49	21	test/ScaleGeneralizationTest.flix
+27	0	verify
+1	1	zed/README.md
+C	f8c0841f2a21c5311691687597d4e56899c5c140
+
+2	2	src/Localization.flix
+22	0	src/Repository.flix
+4	4	src/ScaleExperiment.flix
+3	3	test/JevOracleTest.flix
+7	9	test/ScaleExperimentTest.flix
+3	3	test/ScaleGeneralizationTest.flix
+C	1fb8e97813aee28f6acc2e78f8d78ad341350a8d
+
+85	0	scale-evaluation.nix
+12	0	src/Repository/Nix.flix
+177	0	test/JevOracleTest.flix
+C	6351972d3934993e8d1f3ceae775c6a31530da6a
+
+37	1	experiments/jev-policy-hillclimb/lib/JevPolicyHillclimb.flix
+C	120eea552d094eff82c699aa0f8302d481c04088
+
+158	0	test/ScaleGeneralizationTest.flix
+C	64596d2f8204bdc7ad6a67501b6ddc876544629f
+
+41	0	src/ScaleExperiment.flix
+6	0	test/ScaleExperimentTest.flix
+C	fd95363de0006e6b3cfd0d5a74706fdb71d42e01
+
+100	0	scale-issues.nix
+6	3	scale-population.nix
+33	0	src/Localization.flix
+69	1	src/Repository/Nix.flix
+269	0	src/ScaleExperiment.flix
+24	1	test/ScaleExperimentTest.flix
+C	27ab6c1e93c14d7c11a94f49c8a6e80fa4a50ea2
+
+59	0	experiments/swe-explore-js-ts-scale/logs/facts-smoke.log
+14	0	experiments/swe-explore-js-ts-scale/logs/facts-smoke.time
+37	0	scale-case.nix
+87	0	src/Repository/Nix.flix
+56	0	src/ScaleExperiment.flix
+19	0	test/ScaleExperimentTest.flix
+C	f8706d241003b27c23495d7b647089285d77fe5c
+
+1	0	experiments/swe-explore-js-ts-scale/MANIFEST.json
+91	0	scale-population.nix
+8	4	src/Repository.flix
+81	0	src/Repository/Nix.flix
+458	0	src/ScaleExperiment.flix
+28	0	test/ScaleExperimentTest.flix
+C	75b9248e948ce6db58a3997088cb10dd1955ee13
+
+6	3	flake.nix
+29	0	grit/README.md
+72	0	grit/calls/javascript.grit
+72	0	grit/calls/jsx.grit
+72	0	grit/calls/tsx.grit
+71	0	grit/calls/typescript.grit
+180	0	grit/defines/javascript.grit
+180	0	grit/defines/jsx.grit
+180	0	grit/defines/tsx.grit
+179	0	grit/defines/typescript.grit
+59	0	grit/imports/javascript.grit
+59	0	grit/imports/jsx.grit
+59	0	grit/imports/tsx.grit
+58	0	grit/imports/typescript.grit
+5	6	native/grit/AttuneGrit.java
+11	6	native/grit/AttuneGritTest.java
+0	67	native/grit/calls.grit
+0	175	native/grit/defines.grit
+0	54	native/grit/imports.grit
+4	10	native/grit/lib.rs
+17	11	src/Repository.flix
+19	7	src/Repository/Grit.flix
+75	0	test/CoreTest.flix
+C	30a1094609398089cd1e2371eb0d82adca21417a
+
+215	0	experiments/jev-policy-hillclimb/FINAL_REPORT.md
+4	0	experiments/jev-policy-hillclimb/INDEX.md
+C	346c20ea283f04ac0e4fcdabed87dc14e7b5a39c
+
+1	0	experiments/jev-policy-hillclimb/INDEX.md
+150	0	experiments/jev-policy-hillclimb/iterations/016-template-tournament/REPORT.md
+1027	0	experiments/jev-policy-hillclimb/iterations/016-template-tournament/metrics.json
+19	0	experiments/jev-policy-hillclimb/iterations/016-template-tournament/route-templates.json
+88	20	experiments/jev-policy-hillclimb/lib/JevPolicyHillclimb.flix
+C	7f0f4a7851ac3d6983ca1e0c2c51acb0b65b4236
+
+12	0	experiments/jev-policy-hillclimb/INDEX.md
+156	0	experiments/jev-policy-hillclimb/iterations/015-learned-route-templates/REPORT.md
+991	0	experiments/jev-policy-hillclimb/iterations/015-learned-route-templates/metrics.json
+19	0	experiments/jev-policy-hillclimb/iterations/015-learned-route-templates/route-templates.json
+87	50	experiments/jev-policy-hillclimb/lib/JevPolicyHillclimb.flix
+C	8196c3b248c5f5cbcc6034f5ffc2de665e894eb9
+
+1	0	experiments/jev-policy-hillclimb/INDEX.md
+146	0	experiments/jev-policy-hillclimb/iterations/014-delta-expert-selector/REPORT.md
+1052	0	experiments/jev-policy-hillclimb/iterations/014-delta-expert-selector/metrics.json
+82	9	experiments/jev-policy-hillclimb/lib/JevPolicyHillclimb.flix
+C	78bc967c3563f706d99501480cb85de4d6abb913
+
+1	0	experiments/jev-policy-hillclimb/INDEX.md
+158	0	experiments/jev-policy-hillclimb/iterations/013-deep-planner-portfolio/REPORT.md
+1045	0	experiments/jev-policy-hillclimb/iterations/013-deep-planner-portfolio/metrics.json
+90	39	experiments/jev-policy-hillclimb/lib/JevPolicyHillclimb.flix
+C	cd33f4d09bf7f24934270b596cace7561f17f71f
+
+13	0	experiments/jev-policy-hillclimb/INDEX.md
+159	0	experiments/jev-policy-hillclimb/iterations/012-pruned-planner-portfolio/REPORT.md
+1041	0	experiments/jev-policy-hillclimb/iterations/012-pruned-planner-portfolio/metrics.json
+28	18	experiments/jev-policy-hillclimb/lib/JevPolicyHillclimb.flix
+C	f7ce96f3d33d842006e8ac0d0851decd6eff7e91
+
+13	0	experiments/jev-policy-hillclimb/INDEX.md
+162	0	experiments/jev-policy-hillclimb/iterations/011-two-expert-selector/REPORT.md
+1036	0	experiments/jev-policy-hillclimb/iterations/011-two-expert-selector/metrics.json
+95	106	experiments/jev-policy-hillclimb/lib/JevPolicyHillclimb.flix
+C	d572fd230e6d74711f66a50ca73555c57e1f68de
+
+13	0	experiments/jev-policy-hillclimb/INDEX.md
+139	0	experiments/jev-policy-hillclimb/iterations/010-plan-checkpoint/REPORT.md
+13683	0	experiments/jev-policy-hillclimb/iterations/010-plan-checkpoint/metrics.json
+99	10	experiments/jev-policy-hillclimb/lib/JevPolicyHillclimb.flix
+C	7a70c315dfa7f5f96ecfbea6150bba05b59dd513
+
+1	0	experiments/jev-policy-hillclimb/INDEX.md
+138	0	experiments/jev-policy-hillclimb/iterations/009-hierarchical-lookahead/REPORT.md
+13415	0	experiments/jev-policy-hillclimb/iterations/009-hierarchical-lookahead/metrics.json
+67	34	experiments/jev-policy-hillclimb/lib/JevPolicyHillclimb.flix
+C	36d2111b540acfe656518c4d54dabf2d4c7077e0
+
+2	0	experiments/jev-policy-hillclimb/iterations/008-pairwise-root-tournament/REPORT.md
+C	3020eabf1a824713373c93c9be7412f7246634ea
+
+1	0	experiments/jev-policy-hillclimb/INDEX.md
+138	0	experiments/jev-policy-hillclimb/iterations/008-pairwise-root-tournament/REPORT.md
+6892	0	experiments/jev-policy-hillclimb/iterations/008-pairwise-root-tournament/metrics.json
+72	80	experiments/jev-policy-hillclimb/lib/JevPolicyHillclimb.flix
+C	e10ae6b0f75e7ad6e822cae3300c2de9a4725787
+
+1	0	experiments/jev-policy-hillclimb/INDEX.md
+138	0	experiments/jev-policy-hillclimb/iterations/007-retrospective-checkpoint/REPORT.md
+2832	0	experiments/jev-policy-hillclimb/iterations/007-retrospective-checkpoint/metrics.json
+80	36	experiments/jev-policy-hillclimb/lib/JevPolicyHillclimb.flix
+C	f664fffaef762badd542f748dffbc56a1fdc873b
+
+2	0	.gitignore
+8	0	experiments/jev-policy-hillclimb/INDEX.md
+157	0	experiments/jev-policy-hillclimb/iterations/006-parent-delta/REPORT.md
+2648	0	experiments/jev-policy-hillclimb/iterations/006-parent-delta/metrics.json
+381	0	experiments/jev-policy-hillclimb/lib/JevPolicyHillclimb.flix
+C	fd9cfbaae29ef614cca42372afe172df99f6b739
+
+12	0	experiments/jev-policy-hillclimb/INDEX.md
+133	0	experiments/jev-policy-hillclimb/iterations/005-root-beam2/REPORT.md
+4252	0	experiments/jev-policy-hillclimb/iterations/005-root-beam2/metrics.json
+C	b253be38710feecd372b41c38bab748708f04890
+
+1	0	experiments/jev-policy-hillclimb/INDEX.md
+125	0	experiments/jev-policy-hillclimb/iterations/004-prune-exact-revisits/REPORT.md
+2802	0	experiments/jev-policy-hillclimb/iterations/004-prune-exact-revisits/metrics.json
+C	2f1249c1d84bcc099f4aa76fca06a6770e29b038
+
+1	0	experiments/jev-policy-hillclimb/INDEX.md
+148	0	experiments/jev-policy-hillclimb/iterations/003-force-first-macro/REPORT.md
+2571	0	experiments/jev-policy-hillclimb/iterations/003-force-first-macro/metrics.json
+C	48cd3b13d7080194d737f1f7325d6af6e4fd35a3
+
+1	0	experiments/jev-policy-hillclimb/INDEX.md
+149	0	experiments/jev-policy-hillclimb/iterations/002-two-stage-macro3/REPORT.md
+2286	0	experiments/jev-policy-hillclimb/iterations/002-two-stage-macro3/metrics.json
+C	07adde4f36ed4179997d97966004adfd18975a1b
+
+1	0	experiments/jev-policy-hillclimb/INDEX.md
+153	0	experiments/jev-policy-hillclimb/iterations/001-macro3-terminal-preview/REPORT.md
+1719	0	experiments/jev-policy-hillclimb/iterations/001-macro3-terminal-preview/metrics.json
+24	3	src/Decide.flix
+13	2	src/Localization/Tree.flix
+160	2	test/JevOracleTest.flix
+1	0	test/JevPolicyHillclimb.flix
+C	c40b374814c04bffb187f138dca2844e4a090c81
+
+21	0	experiments/jev-policy-hillclimb/INDEX.md
+21	0	experiments/jev-policy-hillclimb/README.md
+121	0	experiments/jev-policy-hillclimb/iterations/000-v1-baseline/REPORT.md
+1216	0	experiments/jev-policy-hillclimb/iterations/000-v1-baseline/metrics.json
+C	1d531ae455e07263d8ab39a2211e3f98633a261b
+
+4	0	.gitignore
+498	0	ATTUNEFLIX_JEV_AND_CLEANUP_REPORT.md
+595	0	JEV_LOCALIZATION_REPORT.md
+1	0	JEV_LOCALIZATION_RESULTS.json
+1	0	JEV_SELECTION_DIAGNOSIS.json
+421	0	JEV_SELECTION_DIAGNOSIS.md
+270	0	REPLICATION.md
+571	0	TREE_REUSE_REPORT.md
+88	0	evaluation.nix
+128	0	flake.nix
+2	0	flix.toml
+117	0	localization.nix
+89	0	native/embed/AttuneDecision.java
+127	0	native/embed/AttuneEmbed.java
+11	0	native/embed/build
+9	0	native/grit/lib.rs
+247	0	native/nix/AttuneNix.java
+33	0	native/nix/AttuneNixTest.java
+15	0	native/nix/attune_nix.h
+15	0	native/nix/build
+130	0	replication.nix
+12	0	replication.tsv
+198	14	src/Atlas.flix
+398	26	src/Decide.flix
+0	240	src/Grit.flix
+772	0	src/Localization.flix
+416	0	src/Localization/Tree.flix
+1	2	src/Main.flix
+0	228	src/ParityTest.flix
+0	75	src/Physical.flix
+0	143	src/Policy.flix
+143	0	src/Radii.flix
+286	0	src/Radii/Compiled.flix
+248	0	src/Radii/Evaluate.flix
+42	0	src/Radii/Synthesize.flix
+0	130	src/Reference.flix
+220	43	src/Repository.flix
+253	0	src/Repository/Grit.flix
+346	0	src/Repository/Nix.flix
+85	0	src/Repository/Physical.flix
+130	0	src/Repository/Reference.flix
+118	0	src/Repository/Structure.flix
+0	243	src/Semantics.flix
+0	118	src/Structure.flix
+0	42	src/Synthesis.flix
+0	259	src/Test.flix
+51	0	swe-explore.nix
+477	0	test/CoreTest.flix
+123	0	test/DecideTest.flix
+221	0	test/JevLocalizationTest.flix
+1811	0	test/JevOracleTest.flix
+170	0	test/LocalizationTest.flix
+90	0	test/LocalizationTreeTest.flix
+241	0	test/ParityTest.flix
+197	0	test/PriorAcquisitionTest.flix
+67	0	test/TreeReuseTest.flix
+5	0	verify
+C	118c7697330da0b31cba0189c062e0074c86bcb1
+
+26	0	NATIVE-FLIX.md
+12	1	README.md
+7	2	flake.nix
+18	0	native/grit/AttuneGrit.java
+6	3	native/grit/AttuneGritTest.java
+140	0	src/Atlas.flix
+209	4	src/Grit.flix
+301	0	src/Repository.flix
+116	3	src/Test.flix
+C	0a36e0e0a802b33bad9e8c883394bbb041aebaef
+
+1	0	.gitignore
+19	0	NATIVE-FLIX.md
+10	1	README.md
+20	0	REFERENCE.md
+0	16	flake.lock
+89	3	flake.nix
+23	4	native/grit/AttuneGritNative.java
+181	3	native/grit/AttuneGritTest.java
+0	1	native/grit/Cargo.toml
+6	34	native/grit/build
+61	3	native/grit/calls.grit
+127	3	native/grit/defines.grit
+45	1	native/grit/imports.grit
+122	30	native/grit/lib.rs
+3	2	verify
+C	38b4a4684cd41d3ebf933b72b5bf3cb3e5325786
+
+11	0	.gitignore
+111	0	NATIVE-FLIX.md
+58	0	README.md
+64	0	REFERENCE.md
+43	0	flake.lock
+66	0	flake.nix
+9	0	flix.toml
+11	0	native/grit/AttuneGrit.java
+50	0	native/grit/AttuneGritNative.java
+47	0	native/grit/AttuneGritTest.java
+1289	0	native/grit/Cargo.lock
+38	0	native/grit/Cargo.toml
+35	0	native/grit/attune_grit.h
+46	0	native/grit/build
+9	0	native/grit/calls.grit
+51	0	native/grit/defines.grit
+10	0	native/grit/imports.grit
+296	0	native/grit/lib.rs
+41	0	src/Atlas.flix
+51	0	src/Decide.flix
+35	0	src/Grit.flix
+4	0	src/Main.flix
+228	0	src/ParityTest.flix
+75	0	src/Physical.flix
+143	0	src/Policy.flix
+130	0	src/Reference.flix
+243	0	src/Semantics.flix
+118	0	src/Structure.flix
+42	0	src/Synthesis.flix
+146	0	src/Test.flix
+10	0	verify
+836	0	zed/Cargo.lock
+12	0	zed/Cargo.toml
+161	0	zed/HoverProvider.scala
+23	0	zed/README.md
+15	0	zed/extension.toml
+5	0	zed/flix-lsp
+3	0	zed/languages/flix/brackets.scm
+15	0	zed/languages/flix/config.toml
+90	0	zed/languages/flix/highlights.scm
+6	0	zed/languages/flix/outline.scm
+37	0	zed/lib.rs

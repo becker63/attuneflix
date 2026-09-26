@@ -26,5 +26,7 @@ test_suite(
         "//experiments/atlas-work-topology:control_reproducibility_test",
         "//experiments/atlas-work-topology:control_signature_test",
         "//experiments/atlas-work-topology:control_signature_artifacts_test",
+        "//experiments/atlas-work-topology:control_topology_test",
+        "//experiments/atlas-work-topology:control_topology_artifacts_test",
     ],
 )

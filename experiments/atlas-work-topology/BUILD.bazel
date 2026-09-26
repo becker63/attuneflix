@@ -1,13 +1,17 @@
 load(":control_signatures.bzl", "attune_control_signature_artifacts_test", "attune_control_signature_check", "attune_control_signatures")
+load(":topology.bzl", "attune_control_topology", "attune_control_topology_artifacts_test", "attune_control_topology_check")
 load(":work_topology.bzl", "attune_control_acquisition", "attune_control_reproducibility_test")
 
 package(default_visibility = ["//visibility:public"])
 
-# The frozen control evidence (§2, §3, §9, §14). Committed under control/;
-# read-only typed Parquet and the identity map, never hand-edited.
+# The frozen control evidence (§2, §3, §6, §8, §9, §14). Committed under
+# control/; read-only typed Parquet, the identity map, and the frozen topology
+# and co-change documents, never hand-edited.
 filegroup(
     name = "control_files",
     srcs = [
+        "control/control.cochange.json",
+        "control/control.cochange_history.txt",
         "control/control.facts.parquet",
         "control/control.files.txt",
         "control/control.identity_map.json",
@@ -15,8 +19,11 @@ filegroup(
         "control/control.signatures.parquet",
         "control/control.sources.parquet",
         "control/control.summaries.parquet",
+        "control/control.topology.json",
     ],
 )
+
+exports_files(["scripts/measure_bazel_locality.sh"])
 
 # `bazel run //experiments/atlas-work-topology:acquire` materializes the control
 # revision in an isolated /tmp worktree and freezes the typed evidence.
@@ -39,3 +46,18 @@ attune_control_signature_check()
 # independently re-derives the landmarks and identity map from the committed
 # evidence and compares them with the committed artifacts (§3, §9).
 attune_control_signature_artifacts_test()
+
+# `bazel run //experiments/atlas-work-topology:measure_control_topology`
+# freezes the co-change raw extract from the VCS history, re-admits the
+# committed control evidence, and writes `control.topology.json` (cuts k=2..10,
+# the K4 ownership-cell cut, coherence, hotspots, overlap, blast) and
+# `control.cochange.json` (§6, §8).
+attune_control_topology()
+
+# Provenance and protocol law tests for the topology instrument (§4, §5, §6, §8).
+attune_control_topology_check()
+
+# `bazel test //experiments/atlas-work-topology:control_topology_artifacts_test`
+# independently re-derives both documents from the committed evidence and
+# compares them with the committed artifacts (§6, §8).
+attune_control_topology_artifacts_test()

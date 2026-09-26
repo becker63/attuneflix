@@ -77,6 +77,72 @@ family changes; landmarks are monotone; region/cell/identity rules). The
 artifacts test independently re-derives the landmarks and the identity map from
 the committed evidence and asserts they equal the committed artifacts exactly.
 
+## Control work-topology (VAL-TOPOLOGY-001 / -002 / -004)
+
+Command of record:
+
+```bash
+nix develop --command bazel run //experiments/atlas-work-topology:measure_control_topology
+```
+
+It re-admits the committed control evidence, computes the static work-topology
+and the co-change work graph, and writes:
+
+| artifact | content |
+|---|---|
+| `control/control.topology.json` | BASIS cuts `k=2..10`, cross-region ratio, per-region coherence and independence, hotspot pressure, the `other` decomposition, the K4 `cell_cut_4`, and the ATLAS depth-<=2 region-pair Jaccard and blast radii |
+| `control/control.cochange.json` | raw / normalized / line-weighted file-pair co-change, strongest pairs, per-region share, cross-region ratio, and the co-change 8-way cut |
+| `control/control.cochange_history.txt` | the raw `git log --numstat --no-renames` extract the model is computed from |
+
+Measured at control (the mission scoping prior `88/125 = 70.4%` for the 8-way cut
+and `31/125 = 24.8%` for the 4-way cut is reproduced within the control
+revision's larger admitted graph):
+
+- `use_edges = 137` (the control revision admits 81 files versus the parallelism
+  cleaned revision's 75, so both numerator and denominator grow).
+- Cut curve (cross-region edges / 137): `k=2` 14, `k=3` 21, `k=4` **33 (24.1%)**,
+  `k=5` 47, `k=6` 68, `k=7` 81, `k=8` **96 (70.1%)**, `k=9` 108, `k=10` 123.
+- K4 ownership-cell cut `cell_cut_4 = 0.660` (35 of 53 four-cell internal edges);
+  kernel- and law-involved edges (32 and 58 of the 137) are excluded from it and
+  counted separately (the horizontal `law` surface is large and unowned at
+  control).
+- 17 shared hotspots, maximum hotspot pressure 7; median file blast 27, p90 45;
+  `max_pair_jaccard` 0.959 with 45 pairs at Jaccard >= 0.5.
+- Co-change: 66 of 103 commits touch admitted files, 692 pairs, raw mass 1127,
+  cross-region raw ratio 0.734. The history is small and single-author, so this
+  is a weak proxy, reported as such.
+
+Independent verification:
+
+```bash
+nix develop --command bazel test //experiments/atlas-work-topology:control_topology_test \
+  //experiments/atlas-work-topology:control_topology_artifacts_test --config=buildbuddy-rbe
+```
+
+`ControlTopology.flix` owns the measurement, `ControlTopologyJson.flix` its JSON
+rendering, `ControlCoChange.flix` the work graph, and `ControlMeasure.flix` the
+`measure`/`verify` commands.
+
+## Bazel build locality (VAL-TOPOLOGY-003)
+
+Command of record:
+
+```bash
+nix develop --command bash experiments/atlas-work-topology/scripts/measure_bazel_locality.sh control
+```
+
+It is a read-only `bazel query` of the control revision's isolated worktree and
+writes `control/control.targets.txt` (437 analyzed targets),
+`control/control.tests.txt` (18 test targets) and `control/control.fanout.txt`
+(per admitted file: the `srcs` fanout, the direct-dependent count and the
+test-target invalidation). The control revision loads the full `//...` universe
+in its worktree (the older baseline's `crate_universe` limitation does not
+reproduce here); the universe actually queried is recorded in the artifact
+header, and `BAZEL_LOCALITY_UNIVERSE` overrides it for revisions that do need the
+Rust-free substitute. The BUILD graph agrees with the basis hub finding: each
+core file compiles into 7-12 independent actions while every law target
+re-declares the core `srcs`, so a core edit invalidates much of the law suite.
+
 ## Determinism (VAL-CONTROL-003)
 
 ```bash
