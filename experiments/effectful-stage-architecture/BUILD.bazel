@@ -1,14 +1,31 @@
 package(default_visibility = ["//visibility:public"])
 
-# Milestone 1 control record. The frozen control specimen
-# 09e27244af9340aa616116a93ea02472e7521ba5 is documented in CONTROL.md and
-# pinned in machine-readable form in control-baseline.json. Both are evidence
-# documents; the measurement targets for the mission's own control metrics are
-# added by the preregistration work.
+# Milestone 1 — control record and preregistration.
+#
+# `PREREGISTRATION.md` is the frozen specification: the effectful typed-stage
+# hypothesis, the formal Candidate A/B/C/D hypotheses and concurrency targets,
+# the metric formulas (k-way cut, cross-stage invalidation, shared hotspots,
+# kernel size tax, T_inf/T_1 critical path) and the stopping rules.
+# `baseline-metrics.json` is the machine-readable control measurement
+# (VAL-CTRL-002); `CONTROL.md`/`control-baseline.json` pin the frozen control
+# specimen (VAL-CTRL-001).
+#
+# `measure_baseline` is the bootstrap instrument of record. `bazel run` it from
+# the workspace root; it writes `baseline-metrics.json` back into this package.
+# The script is temporary `bazel run` plumbing (the BUILD channel is inherently
+# a `bazel query`); the graph math is scheduled to move to a deterministic Flix
+# analysis target with Starlark wiring (PREREGISTRATION.md §13).
 filegroup(
     name = "control_documents",
     srcs = [
         "CONTROL.md",
+        "PREREGISTRATION.md",
+        "baseline-metrics.json",
         "control-baseline.json",
     ],
+)
+
+sh_binary(
+    name = "measure_baseline",
+    srcs = ["scripts/measure_baseline_metrics.sh"],
 )
