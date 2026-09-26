@@ -24,5 +24,7 @@ test_suite(
         "//test:scientific_table_test",
         "//experiments/atlas-parallelism:parallelism_provenance_test",
         "//experiments/atlas-work-topology:control_reproducibility_test",
+        "//experiments/atlas-work-topology:control_signature_test",
+        "//experiments/atlas-work-topology:control_signature_artifacts_test",
     ],
 )

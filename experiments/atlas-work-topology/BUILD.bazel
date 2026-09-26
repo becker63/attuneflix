@@ -1,16 +1,20 @@
+load(":control_signatures.bzl", "attune_control_signature_artifacts_test", "attune_control_signature_check", "attune_control_signatures")
 load(":work_topology.bzl", "attune_control_acquisition", "attune_control_reproducibility_test")
 
 package(default_visibility = ["//visibility:public"])
 
-# The frozen control acquisition evidence (§2, §14). Committed under control/;
-# read-only typed Parquet, never hand-edited.
+# The frozen control evidence (§2, §3, §9, §14). Committed under control/;
+# read-only typed Parquet and the identity map, never hand-edited.
 filegroup(
     name = "control_files",
     srcs = [
         "control/control.facts.parquet",
         "control/control.files.txt",
+        "control/control.identity_map.json",
         "control/control.revision.txt",
+        "control/control.signatures.parquet",
         "control/control.sources.parquet",
+        "control/control.summaries.parquet",
     ],
 )
 
@@ -21,3 +25,17 @@ attune_control_acquisition()
 # `bazel test //experiments/atlas-work-topology:control_reproducibility_test`
 # re-acquires the same worktree and asserts byte-for-byte equality.
 attune_control_reproducibility_test()
+
+# `bazel run //experiments/atlas-work-topology:compute_control_signatures`
+# re-admits the committed control evidence, evaluates the frozen depth-7 Atlas
+# family over the frozen seed panel, and writes the typed signature tables and
+# the logical identity map (§3, §9).
+attune_control_signatures()
+
+# Provenance and protocol law tests for the signature instrument (§3, §14).
+attune_control_signature_check()
+
+# `bazel test //experiments/atlas-work-topology:control_signature_artifacts_test`
+# independently re-derives the landmarks and identity map from the committed
+# evidence and compares them with the committed artifacts (§3, §9).
+attune_control_signature_artifacts_test()
