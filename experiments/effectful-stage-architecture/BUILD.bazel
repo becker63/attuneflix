@@ -25,12 +25,12 @@ filegroup(
     ],
 )
 
-# Milestone 2 — Candidate A/B measurements (PREREGISTRATION.md §7, §8, §10).
+# Milestone 2/3 — Candidate A/B/C measurements (PREREGISTRATION.md §7, §8, §10).
 #
 # Each record is the identical instrument's reading of a candidate *revision*
 # (measured from a worktree detached at that revision, so the record's
 # `working_commit` names exactly the measured tree). `candidates/README.md`
-# states the provenance recipe, the revision pair and the measured deltas
+# states the provenance recipe, the revision set and the measured deltas
 # against `baseline-metrics.json`, including the negative ones (§7 non-rule).
 filegroup(
     name = "candidate_measurements",
@@ -38,6 +38,7 @@ filegroup(
         "candidates/README.md",
         "candidates/candidate-a.json",
         "candidates/candidate-b.json",
+        "candidates/candidate-c.json",
     ],
 )
 
