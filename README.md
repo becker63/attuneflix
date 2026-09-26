@@ -1624,6 +1624,18 @@ that forces the Atlas dependence, and the frontier analysis are in
 the predicted coordination surfaces against published multi-agent/orchestration
 benchmarks or actual Factory Mission traces.
 
+That baseline was then hill-climbed toward a **K4 ownership-cell architecture**
+(a stable kernel plus World, Engine, Applications, and Research cells) against a
+preregistered depth 1..7 Atlas signature-preservation oracle and a frozen
+work-topology instrument. The
+[work-topology report](experiments/atlas-work-topology/REPORT.md) gives the five
+headline curves (Atlas mixing, work-cut, build invalidation, Factory
+concurrency, and economic scaling) and the honest **Outcome C** classification:
+the refactoring preserved the semantic signature and improved every secondary
+ownership and locality quantity (four-cell cut `0.660 → 0.554`, Bazel
+cross-cell test invalidation `92 → 55`), while the primary 8-way work cut stayed
+structurally pinned (`70.07% → 69.34%`), below both success thresholds.
+
 ## Permanent implementation rules
 
 The semantic path is intentionally short, but structural meaning has two
