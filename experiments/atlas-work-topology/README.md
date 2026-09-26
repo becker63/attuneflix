@@ -233,3 +233,40 @@ artifact boundaries instead of one 10-file list, and
 byte-for-byte against the frozen evidence. Details, the cache-hit logs and the
 declared input closures: `artifact-boundaries.md`.
 
+The round-4 BUILD channel (`round4/round4.{targets,tests,fanout}.txt` and
+`round4/round4.fanout_delta.tsv`) is measured with the same instrument as
+rounds 1–3 and is listed in `:round4_files`. It adds three test targets to the
+`//...` universe (25 → 28) but leaves the architecture-only cross-cell
+invalidation unchanged at 59.
+
+## Final report — the five headline curves (VAL-REPORT-001 / -002)
+
+`REPORT.md` is the authoritative synthesis of the whole experiment. It carries
+the five required headline curves — **Atlas mixing** (depth → semantic reach),
+**work-cut** (ownership cells / workers → crossing exposure), **build
+invalidation** (changed source → test invalidation / critical path), **Factory
+concurrency** (workers → throughput / speedup) and **economic** (workers →
+cost / time per unit work) — and classifies the outcome as **Outcome C**
+(inconclusive / trade-off) with the measured justification: `k_way_cut(8)`
+reached only 69.34% against the `< 50%` Minimum Serious and `≤ 35%` Strong
+thresholds, round 2 required a recorded oracle concession, and stopping rules S6,
+S7 and S10 fired.
+
+The report's five curves, its outcome classification and its headline numbers
+(8-way cut at control and round 4, the round-4 `D50` comparison, the
+architecture-only cross-cell invalidation) are guarded in-graph by
+`//experiments/atlas-work-topology:report_test`, which cross-checks them against
+the frozen artifacts:
+
+```bash
+nix develop --command bazel test //experiments/atlas-work-topology:report_test --config=buildbuddy-rbe
+nix develop --command bazel test //experiments/atlas-work-topology:... --config=buildbuddy-rbe
+```
+
+The second form is the VAL-REPORT-002 tool string: the package declares an
+explicit `...` suite (the colon form is a target name, not the recursive
+wildcard, in this Bazel) that aggregates `:research_tests`, so
+`//experiments/atlas-work-topology/...`, `//experiments/atlas-work-topology:all`
+and `//experiments/atlas-work-topology:...` all run the same 13 targets.
+
+

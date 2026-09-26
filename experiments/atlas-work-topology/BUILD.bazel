@@ -144,16 +144,35 @@ filegroup(
 # carries the full `attune.command=verify` guard like round 1 and round 3. The
 # BUILD-channel artifacts (the locality `targets`/`tests`/`fanout` and the
 # fanout delta) are measured separately by
-# `scripts/measure_bazel_locality.sh round4` and are not listed here.
+# `scripts/measure_bazel_locality.sh round4` and are listed with the rest.
 filegroup(
     name = "round4_files",
     srcs = [
+        "round4/round4.fanout.txt",
+        "round4/round4.fanout_delta.tsv",
         "round4/round4.files.txt",
         "round4/round4.identity_map.json",
         "round4/round4.oracle.json",
         "round4/round4.revision.txt",
         "round4/round4.sources.txt",
+        "round4/round4.targets.txt",
+        "round4/round4.tests.txt",
         "round4/round4.topology.json",
+    ],
+)
+
+# The final synthesis and its per-round narratives (PREREGISTRATION.md §14;
+# VAL-REPORT-001). `REPORT.md` is the authoritative five-curve synthesis;
+# `rounds/*.md` are the per-round delta reports it summarizes. They are inputs
+# to `:report_test`, which guards the curves, the outcome classification and the
+# report's headline numbers against the frozen artifacts.
+filegroup(
+    name = "report_files",
+    srcs = [
+        "REPORT.md",
+        "rounds/round1.md",
+        "rounds/round23.md",
+        "rounds/round4.md",
     ],
 )
 
@@ -262,6 +281,38 @@ attune_round_artifacts_test(name = "round4_artifacts_test", role = "round4")
 # recorded `O4 = false` nevertheless stays pinned by the byte-equality diff.
 attune_round_reproducibility_test(name = "round2_reproducibility_test", role = "round2")
 
+# `bazel test //experiments/atlas-work-topology:report_test`
+# guards the final synthesis (PREREGISTRATION.md §14; VAL-REPORT-001,
+# VAL-REPORT-002): `REPORT.md` must carry the five headline curves, the explicit
+# Outcome C classification and the commands of record, and its headline numbers
+# (the 8-way cut at control and round 4, the round-4 D50 comparison, the
+# architecture-only cross-cell invalidation) must match the frozen artifacts.
+sh_test(
+    name = "report_test",
+    size = "small",
+    srcs = ["report_test.sh"],
+    data = [
+        ":control_files",
+        ":report_files",
+        ":round1_files",
+        ":round2_files",
+        ":round3_files",
+        ":round4_files",
+        "@bazel_tools//tools/bash/runfiles",
+    ],
+)
+
+# VAL-REPORT-002 names the experiment test surface with the literal target
+# pattern `//experiments/atlas-work-topology:...`. In this Bazel that colon form
+# is a *target name* (the recursive wildcard is `/...`, the in-package wildcard
+# `:all`), so the experiment declares the `...` suite explicitly as the whole
+# research test surface. `//experiments/atlas-work-topology/...` and
+# `//experiments/atlas-work-topology:all` resolve to the same tests.
+test_suite(
+    name = "...",
+    tests = [":research_tests"],
+)
+
 # Cell D — Research law surface: one aggregation point for the research cell's
 # replay, signature-provenance, and topology-provenance laws. The frozen
 # historical instrument's provenance law is aggregated here unchanged.
@@ -274,6 +325,7 @@ test_suite(
         ":control_signature_test",
         ":control_topology_artifacts_test",
         ":control_topology_test",
+        ":report_test",
         ":round1_artifacts_test",
         ":round2_reproducibility_test",
         ":round3_artifacts_test",
