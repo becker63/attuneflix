@@ -1,0 +1,305 @@
+{
+  "protocol": "attuneflix-effectful-stage-control-v1",
+  "recorded_at_utc": "2026-09-26T16:11:42Z",
+  "control_commit": {
+    "git_commit": "09e27244af9340aa616116a93ea02472e7521ba5",
+    "git_tree": "a603014e034f1cc5dcc9b0e0d93f9fa8bc0dcbd8",
+    "git_parent": "ad82099e08f541fd05fef3a4019c29c6d00b4333",
+    "git_subject": "README: link the atlas-work-topology work-topology experiment",
+    "git_author": "becker63 <johnsontaylor6320@gmail.com>",
+    "git_date": "Sat Sep 26 11:29:31 2026 +0000",
+    "jj_change_id": "olnnyuutzxsr",
+    "jj_commit_id": "09e27244af9340aa616116a93ea02472e7521ba5",
+    "jj_bookmarks": [
+      "main",
+      "main@origin"
+    ]
+  },
+  "working_head": {
+    "git_commit": "e12a4c15d601a8220525990e3c489df2fdc36aa8",
+    "git_tree": "952bcea1f925f7e5d142463f01fc1b7ecf32b30a",
+    "jj_change_id": "symxpmzqwolx",
+    "delta_vs_control": {
+      "files": [
+        "AGENTS.md"
+      ],
+      "insertions": 2,
+      "deletions": 2,
+      "bazel_input": false,
+      "note": "Documentation edit only; AGENTS.md is referenced by no BUILD.bazel or *.bzl file, so the Bazel derivation graph matches the control specimen."
+    }
+  },
+  "verification": {
+    "command": "./verify",
+    "resolved_command": "nix develop --command bazel test //... --config=buildbuddy-rbe",
+    "exit_code": 0,
+    "targets_found": 30,
+    "tests_passed": 30,
+    "tests_failed": 0,
+    "executed_summary": "Executed 0 out of 30 tests: 30 tests pass.",
+    "elapsed_s": 0.512,
+    "critical_path_s": 0.03,
+    "action_cache_hits": 302,
+    "invocation_id": "40d2fdf0-a06b-4fde-a8d3-b82c3a80d37a",
+    "targets": [
+      {
+        "label": "//experiments/atlas-parallelism:parallelism_provenance_test",
+        "status": "PASSED",
+        "cached": false,
+        "duration_s": 0.0
+      },
+      {
+        "label": "//experiments/atlas-work-topology:artifact_boundary_test",
+        "status": "PASSED",
+        "cached": false,
+        "duration_s": 0.2
+      },
+      {
+        "label": "//experiments/atlas-work-topology:control_reproducibility_test",
+        "status": "PASSED",
+        "cached": false,
+        "duration_s": 156.8
+      },
+      {
+        "label": "//experiments/atlas-work-topology:control_signature_artifacts_test",
+        "status": "PASSED",
+        "cached": false,
+        "duration_s": 12.1
+      },
+      {
+        "label": "//experiments/atlas-work-topology:control_signature_test",
+        "status": "PASSED",
+        "cached": false,
+        "duration_s": 0.1
+      },
+      {
+        "label": "//experiments/atlas-work-topology:control_topology_artifacts_test",
+        "status": "PASSED",
+        "cached": false,
+        "duration_s": 3.1
+      },
+      {
+        "label": "//experiments/atlas-work-topology:control_topology_test",
+        "status": "PASSED",
+        "cached": false,
+        "duration_s": 0.0
+      },
+      {
+        "label": "//experiments/atlas-work-topology:report_test",
+        "status": "PASSED",
+        "cached": false,
+        "duration_s": 0.2
+      },
+      {
+        "label": "//experiments/atlas-work-topology:round1_artifacts_test",
+        "status": "PASSED",
+        "cached": false,
+        "duration_s": 9.8
+      },
+      {
+        "label": "//experiments/atlas-work-topology:round2_reproducibility_test",
+        "status": "PASSED",
+        "cached": false,
+        "duration_s": 10.1
+      },
+      {
+        "label": "//experiments/atlas-work-topology:round3_artifacts_test",
+        "status": "PASSED",
+        "cached": false,
+        "duration_s": 5.4
+      },
+      {
+        "label": "//experiments/atlas-work-topology:round4_artifacts_test",
+        "status": "PASSED",
+        "cached": false,
+        "duration_s": 5.5
+      },
+      {
+        "label": "//experiments/atlas-work-topology:round_test",
+        "status": "PASSED",
+        "cached": false,
+        "duration_s": 0.1
+      },
+      {
+        "label": "//src/native/grit:attune_grit_rust_test",
+        "status": "PASSED",
+        "cached": false,
+        "duration_s": 0.1
+      },
+      {
+        "label": "//src/native/grit:attune_grit_test",
+        "status": "PASSED",
+        "cached": false,
+        "duration_s": 1.6
+      },
+      {
+        "label": "//src/native/identity:attune_identity_test",
+        "status": "PASSED",
+        "cached": false,
+        "duration_s": 0.1
+      },
+      {
+        "label": "//src/native/inference:attune_inference_test",
+        "status": "PASSED",
+        "cached": false,
+        "duration_s": 0.3
+      },
+      {
+        "label": "//src/native/parquet:attune_parquet_test",
+        "status": "PASSED",
+        "cached": false,
+        "duration_s": 0.7
+      },
+      {
+        "label": "//test/Applications:inference_boundary_test",
+        "status": "PASSED",
+        "cached": false,
+        "duration_s": 0.1
+      },
+      {
+        "label": "//test/Applications:localization_sandwich_test",
+        "status": "PASSED",
+        "cached": false,
+        "duration_s": 0.0
+      },
+      {
+        "label": "//test/Applications:population_table_test",
+        "status": "PASSED",
+        "cached": false,
+        "duration_s": 0.0
+      },
+      {
+        "label": "//test/Engine:atlas_grammar_test",
+        "status": "PASSED",
+        "cached": false,
+        "duration_s": 0.1
+      },
+      {
+        "label": "//test/Engine:atlas_signature_table_test",
+        "status": "PASSED",
+        "cached": false,
+        "duration_s": 0.0
+      },
+      {
+        "label": "//test/Engine:core_parity_test",
+        "status": "PASSED",
+        "cached": false,
+        "duration_s": 0.0
+      },
+      {
+        "label": "//test/Kernel:identity_test",
+        "status": "PASSED",
+        "cached": false,
+        "duration_s": 0.0
+      },
+      {
+        "label": "//test/Kernel:scientific_table_test",
+        "status": "PASSED",
+        "cached": false,
+        "duration_s": 0.0
+      },
+      {
+        "label": "//test/World:grit_acquire_test",
+        "status": "PASSED",
+        "cached": false,
+        "duration_s": 0.1
+      },
+      {
+        "label": "//test/World:grit_acquisition_test",
+        "status": "PASSED",
+        "cached": false,
+        "duration_s": 0.1
+      },
+      {
+        "label": "//test/World:repository_admission_test",
+        "status": "PASSED",
+        "cached": false,
+        "duration_s": 0.1
+      },
+      {
+        "label": "//test/World:repository_table_test",
+        "status": "PASSED",
+        "cached": false,
+        "duration_s": 0.0
+      }
+    ]
+  },
+  "loc_law": {
+    "flix_src_test_lines": 4369,
+    "limit": 4800,
+    "headroom": 431,
+    "flix_src_test_files": 38,
+    "max_file": {
+      "path": "src/Repository.flix",
+      "lines": 410
+    },
+    "files_over_400_lines": [
+      "src/Repository.flix"
+    ],
+    "all_tracked_flix_files": 68,
+    "all_tracked_flix_lines": 8952
+  },
+  "frozen_control_evidence": {
+    "source_dir": "experiments/atlas-work-topology/control",
+    "pinned_revision": "eca979f524661cbe400d22b90c7e3c305b32052e",
+    "topology_protocol": "attuneflix-topology-v1",
+    "region_protocol": "attuneflix-regions-v1",
+    "cell_protocol": "attuneflix-cells-v1",
+    "sha256": {
+      "control.cochange.json": "5b47e976b32ec754b01ca8d66c14d51c8c907286e7c8d153ce10ea7e21cf0334",
+      "control.cochange_history.txt": "f11fd46b5733ce718084f196bf7a982cc358b70c93b3c76b65c603fd05a1a83b",
+      "control.facts.parquet": "c9a7974388b023970bbf721c13837f71b896d74d8f9476044135bbdde301b26a",
+      "control.fanout.txt": "72115d4a5cd875cb1d56e3d318b7d401a5da16dfae8f636dece5d69d91b5c080",
+      "control.files.txt": "f2c48c4a3c5ef678df84c4bd020e65e688ca77305b876c489853228723bca843",
+      "control.identity_map.json": "ea6c24a537137705b79729f318171a317b3f11dbb74e05b75991368a5769fb0f",
+      "control.revision.txt": "9ee88e506f0bf9c509708c913bb1bf40dcf71e60b69d88d2a6bb9094cf201fa1",
+      "control.signatures.parquet": "173cc2a9f1c335e940da32761c9632ec9f2db75d1103cf64903cbd3c7241cf0f",
+      "control.sources.parquet": "262589b59bfb8938d95a05740646a4563852b07983db4e23c77078e567091a88",
+      "control.summaries.parquet": "a5b6669c0b75b7aa3288967fdb111eb28f0fa580a8b656c8480d1803e433323a",
+      "control.targets.txt": "f365f5baa63d7825925f2cb2c7835cbe5c0eade65a1ce55c19f5d96dc238c1ed",
+      "control.tests.txt": "09e321dd59ea3fe549a718f5fa3cbae1939d637b08de526ee0830bbfe44c2624",
+      "control.topology.json": "5806fd3643059bdd1381cd7dd38bca44aee85ae7fa8f45f636ca0d58032d8d35"
+    },
+    "topology_metrics_at_eca979f5": {
+      "admitted_files": 81,
+      "symbols": 816,
+      "defines": 816,
+      "calls": 893,
+      "parents": 105,
+      "use_edges": 137,
+      "cross_region_edges": 121,
+      "cross_region_edge_ratio": 0.8832116788321168,
+      "shared_hotspots": 17,
+      "max_hotspot_pressure": 7,
+      "cell_cut_4_fraction": 0.660377358490566,
+      "cell_cut_4_shared_edges": 35,
+      "cell_cut_4_considered_edges": 53,
+      "regions": 10
+    },
+    "atlas_signature_at_control": {
+      "protocol": "atlas-signature-work-topology-v1",
+      "provenance": "experiments/atlas-work-topology/round4/round4.oracle.json (candidate column; signature_ok true)",
+      "d50": 4,
+      "d80": 8,
+      "d90": 8,
+      "d95": 8,
+      "depth7_reach": 0.6635802469135802,
+      "mean_coverage_depths_1_to_7": [
+        0.07561728395061729,
+        0.2685185185185185,
+        0.4722222222222222,
+        0.5910493827160495,
+        0.6327160493827162,
+        0.6512345679012346,
+        0.6635802469135802
+      ]
+    }
+  },
+  "deferred_measurements": [
+    "k-way topological cut and mutable cross-stage edge count at the control specimen",
+    "shared writable hotspot count at the control specimen",
+    "cross-cell Bazel test invalidation count at the control specimen",
+    "Stable Kernel size tax",
+    "task critical-path fraction T_infinity / T_1"
+  ]
+}

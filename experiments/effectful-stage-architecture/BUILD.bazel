@@ -1,0 +1,14 @@
+package(default_visibility = ["//visibility:public"])
+
+# Milestone 1 control record. The frozen control specimen
+# 09e27244af9340aa616116a93ea02472e7521ba5 is documented in CONTROL.md and
+# pinned in machine-readable form in control-baseline.json. Both are evidence
+# documents; the measurement targets for the mission's own control metrics are
+# added by the preregistration work.
+filegroup(
+    name = "control_documents",
+    srcs = [
+        "CONTROL.md",
+        "control-baseline.json",
+    ],
+)
