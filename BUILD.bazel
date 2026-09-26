@@ -1,8 +1,26 @@
+load("//test/build:flix.bzl", "flix_loc_law")
+
 java_binary(
     name = "flix",
     main_class = "ca.uwaterloo.flix.Main",
     visibility = ["//visibility:public"],
     runtime_deps = ["@flix_compiler//jar"],
+)
+
+# The Flix LOC law as a repo rule (VAL-METRIC-002): every tracked handwritten
+# production and law Flix source, so the `flix_loc_law` test rule can enforce
+# the code-line ceiling over exactly the `src/` + `test/` surface.
+filegroup(
+    name = "flix_law_sources",
+    srcs = [
+        "//src:flix_sources",
+        "//test:flix_sources",
+    ],
+)
+
+flix_loc_law(
+    name = "flix_loc_law_test",
+    srcs = [":flix_law_sources"],
 )
 
 # Aggregation only: every law is owned by its cell's suite (`//test/World`,
@@ -12,6 +30,7 @@ java_binary(
 test_suite(
     name = "tests",
     tests = [
+        ":flix_loc_law_test",
         "//test/Applications:applications_tests",
         "//test/Engine:engine_tests",
         "//test/Kernel:kernel_tests",

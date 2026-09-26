@@ -28,12 +28,12 @@ mod ControlTopology {
 
     // ---- The admitted basis graph (BASIS) ----
 
-    pub def fileIdentity(world: Repository.World, id: Repository.Structure.FileId): String =
-        let Repository.Structure.FileId.FileId(index) = id;
+    pub def fileIdentity(world: Repository.World, id: Kernel.Contract.FileId): String =
+        let Kernel.Contract.FileId.FileId(index) = id;
         Vector.get(index, world#files)
 
-    def symbolFile(world: Repository.World, id: Repository.Structure.SymbolId): String =
-        let Repository.Structure.SymbolId.SymbolId(index) = id;
+    def symbolFile(world: Repository.World, id: Kernel.Contract.SymbolId): String =
+        let Kernel.Contract.SymbolId.SymbolId(index) = id;
         Vector.get(index, world#symbols)#path
 
     pub def edgePaths(world: Repository.World): Vector[(String, String)] =
@@ -180,7 +180,7 @@ mod ControlTopology {
 
     // ---- T7: hotspot pressure ----
 
-    pub def pressures(world: Repository.World): Map[Repository.Structure.FileId, Set[String]] =
+    pub def pressures(world: Repository.World): Map[Kernel.Contract.FileId, Set[String]] =
         Vector.foldLeft((acc, edge) -> match edge {
             case (f, g) => {
                 let rf = ControlMap.regionOf(fileIdentity(world, f));
@@ -206,8 +206,8 @@ mod ControlTopology {
 
     pub def family(): Vector[Atlas.Program] = Atlas.programsFrom(Radii.Domain.File, 2)
 
-    def regionSeed(world: Repository.World, region0: String): Set[Repository.Structure.FileId] =
-        Vector.mapWithIndex((index, path) -> (path, Repository.Structure.FileId.FileId(index)), world#files)
+    def regionSeed(world: Repository.World, region0: String): Set[Kernel.Contract.FileId] =
+        Vector.mapWithIndex((index, path) -> (path, Kernel.Contract.FileId.FileId(index)), world#files)
             |> Vector.filterMap(match (path, id) -> if (ControlMap.regionOf(path) == region0) Some(id) else None)
             |> Vector.toSet
 
@@ -218,7 +218,7 @@ mod ControlTopology {
 
     /// The file-space union of every depth-<=2 File-domain route output: every
     /// step is one real `Atlas.evaluate` transition over the admitted world.
-    pub def outputUnion(world: Repository.World, seed: Set[Repository.Structure.FileId]): Set[String] = {
+    pub def outputUnion(world: Repository.World, seed: Set[Kernel.Contract.FileId]): Set[String] = {
         let evaluation = Experiment.require(Atlas.evaluate(world, Atlas.State.Files(seed), family()));
         Vector.foldLeft((acc, output) -> Set.union(acc, stateMembers(world, output)), Set.empty(), evaluation#outputs)
     }
@@ -244,11 +244,11 @@ mod ControlTopology {
     }
 
     /// T10 `b(f)`: the depth-<=2 Atlas output union size from one file seed.
-    pub def blast(world: Repository.World, id: Repository.Structure.FileId): Int32 =
+    pub def blast(world: Repository.World, id: Kernel.Contract.FileId): Int32 =
         Set.size(outputUnion(world, Set#{id}))
 
     pub def fileBlasts(world: Repository.World): Vector[Int32] =
-        Vector.mapWithIndex((index, _) -> blast(world, Repository.Structure.FileId.FileId(index)), world#files)
+        Vector.mapWithIndex((index, _) -> blast(world, Kernel.Contract.FileId.FileId(index)), world#files)
 
     /// Nearest-rank percentile (ascending sort, 0-based `floor(p*n/100)`).
     pub def percentile(values0: Vector[Int32], p: Int32): Int32 =

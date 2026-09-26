@@ -1,16 +1,16 @@
 /// Explicit Parquet schemas for the frozen population and protocol.
 pub mod Population.Table {
-    use ScientificTable.Value
+    use Kernel.Contract.Value
     use ScientificTable.Columns.{text, optionalText, int32}
 
     pub type alias Tables = {
-        metadata = Vector[ScientificTable.Row],
-        cases    = Vector[ScientificTable.Row]
+        metadata = Vector[Kernel.Contract.Row],
+        cases    = Vector[Kernel.Contract.Row]
     }
 
     pub def protocol(): String = "attune-swe-explore-population-v1"
 
-    pub def metadata(): ScientificTable.Schema = {
+    pub def metadata(): Kernel.Contract.Schema = {
         format = "attune-population-metadata-v1",
         columns = Vector#{
             text("protocol"), text("benchmark_revision"), text("multilingual_revision"),
@@ -20,7 +20,7 @@ pub mod Population.Table {
         }
     }
 
-    pub def cases(): ScientificTable.Schema = {
+    pub def cases(): Kernel.Contract.Schema = {
         format = "attune-population-cases-v1",
         columns = Vector#{
             text("protocol"), int32("ordinal"), text("instance_id"), text("repository"),
@@ -49,7 +49,7 @@ pub mod Population.Table {
         _ <- if (Vector.length(cases0) == 78) Ok(()) else Err("population must contain 78 cases")
     ) yield {protocol = protocol0, cases = cases0}
 
-    def metadataRow(value: Population.Protocol): ScientificTable.Row = Map#{
+    def metadataRow(value: Population.Protocol): Kernel.Contract.Row = Map#{
         "protocol" => Value.Text(protocol()),
         "benchmark_revision" => Value.Text(value#benchmarkRevision),
         "multilingual_revision" => Value.Text(value#multilingualRevision),
@@ -62,7 +62,7 @@ pub mod Population.Table {
         "symbol_routes" => Value.Int32(value#symbolRoutes)
     }
 
-    def caseRow(value: Population.Case): ScientificTable.Row = Map#{
+    def caseRow(value: Population.Case): Kernel.Contract.Row = Map#{
         "protocol" => Value.Text(protocol()), "ordinal" => Value.Int32(value#ordinal),
         "instance_id" => Value.Text(value#instanceId), "repository" => Value.Text(value#repository),
         "base_revision" => Value.Text(value#baseRevision), "dataset_family" => Value.Text(value#datasetFamily),
@@ -73,36 +73,36 @@ pub mod Population.Table {
         "censor_reason" => censorReason(value#outcome)
     }
 
-    def decodeMetadata(row: ScientificTable.Row): Result[String, Population.Protocol] = forM (
+    def decodeMetadata(row: Kernel.Contract.Row): Result[String, Population.Protocol] = forM (
         _ <- ScientificTable.requireText("protocol", protocol(), row, "population");
-        benchmark <- ScientificTable.text(row, "benchmark_revision");
-        multilingual <- ScientificTable.text(row, "multilingual_revision");
-        pro <- ScientificTable.text(row, "pro_revision");
-        routing <- ScientificTable.text(row, "source_routing");
-        atlas <- ScientificTable.text(row, "atlas_protocol");
-        depth <- ScientificTable.int32(row, "max_depth");
-        centers <- ScientificTable.int32(row, "center_count");
-        routes <- ScientificTable.int32(row, "logical_routes");
-        symbols <- ScientificTable.int32(row, "symbol_routes")
+        benchmark <- Kernel.Contract.text(row, "benchmark_revision");
+        multilingual <- Kernel.Contract.text(row, "multilingual_revision");
+        pro <- Kernel.Contract.text(row, "pro_revision");
+        routing <- Kernel.Contract.text(row, "source_routing");
+        atlas <- Kernel.Contract.text(row, "atlas_protocol");
+        depth <- Kernel.Contract.int32(row, "max_depth");
+        centers <- Kernel.Contract.int32(row, "center_count");
+        routes <- Kernel.Contract.int32(row, "logical_routes");
+        symbols <- Kernel.Contract.int32(row, "symbol_routes")
     ) yield {
         benchmarkRevision = benchmark, multilingualRevision = multilingual,
         proRevision = pro, sourceRouting = routing, atlasProtocol = atlas,
         maxDepth = depth, centerCount = centers, logicalRoutes = routes, symbolRoutes = symbols
     }
 
-    def decodeCase(row: ScientificTable.Row): Result[String, Population.Case] = forM (
+    def decodeCase(row: Kernel.Contract.Row): Result[String, Population.Case] = forM (
         _ <- ScientificTable.requireText("protocol", protocol(), row, "population");
-        ordinal <- ScientificTable.int32(row, "ordinal");
-        instanceId <- ScientificTable.text(row, "instance_id");
-        repository <- ScientificTable.text(row, "repository");
-        revision <- ScientificTable.text(row, "base_revision");
-        family <- ScientificTable.text(row, "dataset_family");
-        language <- ScientificTable.text(row, "language");
-        population <- ScientificTable.text(row, "population");
-        split <- ScientificTable.text(row, "split");
-        routing <- ScientificTable.text(row, "source_routing");
-        source <- ScientificTable.text(row, "source_identity");
-        outcome <- ScientificTable.text(row, "outcome");
+        ordinal <- Kernel.Contract.int32(row, "ordinal");
+        instanceId <- Kernel.Contract.text(row, "instance_id");
+        repository <- Kernel.Contract.text(row, "repository");
+        revision <- Kernel.Contract.text(row, "base_revision");
+        family <- Kernel.Contract.text(row, "dataset_family");
+        language <- Kernel.Contract.text(row, "language");
+        population <- Kernel.Contract.text(row, "population");
+        split <- Kernel.Contract.text(row, "split");
+        routing <- Kernel.Contract.text(row, "source_routing");
+        source <- Kernel.Contract.text(row, "source_identity");
+        outcome <- Kernel.Contract.text(row, "outcome");
         reason <- ScientificTable.optionalText(row, "censor_reason");
         outcome0 <- decodeOutcome(outcome, reason)
     ) yield {
@@ -124,7 +124,7 @@ pub mod Population.Table {
         case Population.Outcome.Censored(_) => "censored"
     }
 
-    def censorReason(value: Population.Outcome): ScientificTable.Value = match value {
+    def censorReason(value: Population.Outcome): Kernel.Contract.Value = match value {
         case Population.Outcome.Completed => Value.Null
         case Population.Outcome.Censored(reason) => Value.Text(reason)
     }

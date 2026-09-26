@@ -96,19 +96,19 @@ mod RoundOracle {
     ): Option[Atlas.Signature.Seed] = match seed#state {
         case Atlas.State.Files(ids) => {
             let paths = Vector.map(id -> {
-                let Repository.Structure.FileId.FileId(index) = id;
+                let Kernel.Contract.FileId.FileId(index) = id;
                 RoundTopology.current(mapping, Vector.get(index, world#files))
             }, Set.toVector(ids));
             match collect(paths, files) {
                 case None => None
                 case Some(indices) => Some({domain = seed#domain, identity = seed#identity, ordinal = seed#ordinal,
-                    state = Atlas.State.Files(Set.map(index -> Repository.Structure.FileId.FileId(index),
+                    state = Atlas.State.Files(Set.map(index -> Kernel.Contract.FileId.FileId(index),
                         Vector.toSet(indices)))})
             }
         }
         case Atlas.State.Symbols(ids) => {
             let keys = Vector.map(id -> {
-                let Repository.Structure.SymbolId.SymbolId(index) = id;
+                let Kernel.Contract.SymbolId.SymbolId(index) = id;
                 let symbol = Vector.get(index, world#symbols);
                 symbolKey({path = RoundTopology.current(mapping, symbol#path), name = symbol#name,
                     startByte = symbol#startByte, endByte = symbol#endByte})
@@ -116,7 +116,7 @@ mod RoundOracle {
             match collect(keys, symbols) {
                 case None => None
                 case Some(indices) => Some({domain = seed#domain, identity = seed#identity, ordinal = seed#ordinal,
-                    state = Atlas.State.Symbols(Set.map(index -> Repository.Structure.SymbolId.SymbolId(index),
+                    state = Atlas.State.Symbols(Set.map(index -> Kernel.Contract.SymbolId.SymbolId(index),
                         Vector.toSet(indices)))})
             }
         }

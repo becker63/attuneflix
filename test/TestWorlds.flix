@@ -2,10 +2,10 @@
 /// law tests: a.js defines a, b.js defines b, a imports b, and a calls b.
 pub mod TestWorlds {
     pub def abWorld(): Repository.World = {
-        let f0 = Repository.Structure.FileId.FileId(0);
-        let f1 = Repository.Structure.FileId.FileId(1);
-        let s0 = Repository.Structure.SymbolId.SymbolId(0);
-        let s1 = Repository.Structure.SymbolId.SymbolId(1);
+        let f0 = Kernel.Contract.FileId.FileId(0);
+        let f1 = Kernel.Contract.FileId.FileId(1);
+        let s0 = Kernel.Contract.SymbolId.SymbolId(0);
+        let s1 = Kernel.Contract.SymbolId.SymbolId(1);
         {
             files = Vector#{"a.js", "b.js"},
             symbols = Vector#{

@@ -6,7 +6,7 @@
 pub mod Localization.PriorTable {
     use ScientificTable.Columns.{text, int32, optionalInt32, float64}
 
-    pub def metadata(): ScientificTable.Schema = {
+    pub def metadata(): Kernel.Contract.Schema = {
         format = "attune-semantic-prior-metadata-v1",
         columns = Vector#{
             text("protocol"), text("instance_id"), text("repository"),
@@ -17,7 +17,7 @@ pub mod Localization.PriorTable {
         }
     }
 
-    pub def documents(): ScientificTable.Schema = {
+    pub def documents(): Kernel.Contract.Schema = {
         format = "attune-semantic-prior-documents-v1",
         columns = Vector#{
             text("protocol"), text("instance_id"), int32("ordinal"),
@@ -26,7 +26,7 @@ pub mod Localization.PriorTable {
         }
     }
 
-    pub def ranking(): ScientificTable.Schema = {
+    pub def ranking(): Kernel.Contract.Schema = {
         format = "attune-semantic-prior-ranking-v1",
         columns = Vector#{
             text("protocol"), text("instance_id"), int32("rank"),

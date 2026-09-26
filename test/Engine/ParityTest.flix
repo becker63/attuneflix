@@ -1,15 +1,15 @@
 mod ParityTest {
     type alias Basis = {
         name    = String,
-        defines = Repository.Structure.Defines,
-        imports = Repository.Structure.Imports,
-        calls   = Repository.Structure.Calls,
-        parents = Repository.Structure.Parents
+        defines = Kernel.Contract.Defines,
+        imports = Kernel.Contract.Imports,
+        calls   = Kernel.Contract.Calls,
+        parents = Kernel.Contract.Parents
     }
 
-    def file(n: Int32): Repository.Structure.FileId = Repository.Structure.FileId.FileId(n)
-    def symbol(n: Int32): Repository.Structure.SymbolId = Repository.Structure.SymbolId.SymbolId(n)
-    def location(n: Int32): Repository.Structure.LocationId = Repository.Structure.LocationId.LocationId(n)
+    def file(n: Int32): Kernel.Contract.FileId = Kernel.Contract.FileId.FileId(n)
+    def symbol(n: Int32): Kernel.Contract.SymbolId = Kernel.Contract.SymbolId.SymbolId(n)
+    def location(n: Int32): Kernel.Contract.LocationId = Kernel.Contract.LocationId.LocationId(n)
 
     def publicAtoms(): List[Radii.Atom] =
         Radii.Atom.Defines ::

@@ -111,13 +111,13 @@ pub mod Atlas.Signature {
 
     def fileSeeds(files: Vector[String]): Vector[Seed] \ IO =
         panel(Radii.Domain.File, files, ordinal ->
-            Atlas.State.Files(Set.singleton(Repository.Structure.FileId.FileId(ordinal))))
+            Atlas.State.Files(Set.singleton(Kernel.Contract.FileId.FileId(ordinal))))
 
     def symbolSeeds(symbols: Vector[Repository.Symbol]): Vector[Seed] \ IO =
         panel(Radii.Domain.Symbol, Vector.map(symbol ->
             "${symbol#path}\u0000${symbol#name}\u0000${symbol#startByte}\u0000${symbol#endByte}", symbols),
             ordinal ->
-            Atlas.State.Symbols(Set.singleton(Repository.Structure.SymbolId.SymbolId(ordinal))))
+            Atlas.State.Symbols(Set.singleton(Kernel.Contract.SymbolId.SymbolId(ordinal))))
 
     /// One select-sort-truncate-project seed panel: hash each identity under
     /// the frozen atlas-signature-seeds-v1 domain-prefix bytes, order by
@@ -201,15 +201,15 @@ pub mod Atlas.Signature {
         case Radii.Domain.Location => 0
     }
 
-    def orderedFiles(values: Set[Repository.Structure.FileId]): Vector[String] =
+    def orderedFiles(values: Set[Kernel.Contract.FileId]): Vector[String] =
         Set.toVector(values)
-            |> Vector.map(match Repository.Structure.FileId.FileId(value) -> value)
+            |> Vector.map(match Kernel.Contract.FileId.FileId(value) -> value)
             |> Vector.sort
             |> Vector.map(value -> "${value}")
 
-    def orderedSymbols(values: Set[Repository.Structure.SymbolId]): Vector[String] =
+    def orderedSymbols(values: Set[Kernel.Contract.SymbolId]): Vector[String] =
         Set.toVector(values)
-            |> Vector.map(match Repository.Structure.SymbolId.SymbolId(value) -> value)
+            |> Vector.map(match Kernel.Contract.SymbolId.SymbolId(value) -> value)
             |> Vector.sort
             |> Vector.map(value -> "${value}")
 }

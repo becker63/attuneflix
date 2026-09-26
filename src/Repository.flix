@@ -15,10 +15,10 @@ mod Repository {
     pub type alias World = {
         files             = Vector[String],
         symbols           = Vector[Symbol],
-        defines           = Repository.Structure.Defines,
-        imports           = Repository.Structure.Imports,
-        calls             = Repository.Structure.Calls,
-        parents           = Repository.Structure.Parents,
+        defines           = Kernel.Contract.Defines,
+        imports           = Kernel.Contract.Imports,
+        calls             = Kernel.Contract.Calls,
+        parents           = Kernel.Contract.Parents,
         unresolvedImports = Int32,
         unresolvedCalls   = Int32
     }
@@ -27,10 +27,10 @@ mod Repository {
         case UnknownFactPath(String)
     }
 
-    type alias Identity = (Repository.Grit.Fact, Repository.Structure.SymbolId)
+    type alias Identity = (Repository.Grit.Fact, Kernel.Contract.SymbolId)
 
     type alias Resolution[a, b] = {
-        edges    = Repository.Structure.Relation[a, b],
+        edges    = Kernel.Contract.Relation[a, b],
         rejected = Int32
     }
 
@@ -43,10 +43,10 @@ mod Repository {
     ): Result[Error, World] = {
         let definitions = canonicalDefinitions(definitions0);
         let paths = Vector.map(source -> source#path, sources);
-        let fileIds = Vector.mapWithIndex((index, path) -> (path, Repository.Structure.FileId.FileId(index)), paths)
+        let fileIds = Vector.mapWithIndex((index, path) -> (path, Kernel.Contract.FileId.FileId(index)), paths)
             |> Vector.toMap;
         let identities = Vector.mapWithIndex(
-            (index, fact) -> (fact, Repository.Structure.SymbolId.SymbolId(index)),
+            (index, fact) -> (fact, Kernel.Contract.SymbolId.SymbolId(index)),
             definitions
         );
         let called = resolveCalls(identities, callFacts);
@@ -94,7 +94,7 @@ mod Repository {
     def factKey(fact: Repository.Grit.Fact): (String, Int32, Int32, String) =
         (fact#path, fact#startByte, fact#endByte, fact#value)
 
-    def definitionEdges(files: Map[String, Repository.Structure.FileId], identities: Vector[Identity]): Result[Error, Repository.Structure.Defines] =
+    def definitionEdges(files: Map[String, Kernel.Contract.FileId], identities: Vector[Identity]): Result[Error, Kernel.Contract.Defines] =
         Vector.traverse(match (fact, symbol) ->
             Map.get(fact#path, files)
                 |> Option.toOk(Error.UnknownFactPath(fact#path))
@@ -102,7 +102,7 @@ mod Repository {
             identities)
         |> Result.map(Vector.toSet)
 
-    def resolveImports(files: Map[String, Repository.Structure.FileId], facts: Vector[Repository.Grit.Fact]): Result[Error, Resolution[Repository.Structure.FileId, Repository.Structure.FileId]] =
+    def resolveImports(files: Map[String, Kernel.Contract.FileId], facts: Vector[Repository.Grit.Fact]): Result[Error, Resolution[Kernel.Contract.FileId, Kernel.Contract.FileId]] =
         Vector.foldLeft((checked, fact) -> checked |> Result.flatMap(resolved ->
             match Map.get(fact#path, files) {
                 case None => Err(Error.UnknownFactPath(fact#path))
@@ -119,7 +119,7 @@ mod Repository {
     /// Import/reference resolution is explicitly per-language behind ONE
     /// admission abstraction. The frontend hands over normalized source text;
     /// only the rule that turns it into an admitted file differs by language.
-    def importTarget(fact: Repository.Grit.Fact, files: Map[String, Repository.Structure.FileId]): Option[Repository.Structure.FileId] =
+    def importTarget(fact: Repository.Grit.Fact, files: Map[String, Kernel.Contract.FileId]): Option[Kernel.Contract.FileId] =
         match Repository.Grit.language(fact#path) {
             case Some(Repository.Grit.Language.Java)     => dottedFile(fact#value, files, ".java")
             case Some(Repository.Grit.Language.Flix)     => flixImport(fact#value, files)
@@ -129,7 +129,7 @@ mod Repository {
         }
 
     /// JavaScript/TypeScript relative module resolution.
-    def javascriptImport(fact: Repository.Grit.Fact, files: Map[String, Repository.Structure.FileId]): Option[Repository.Structure.FileId] = {
+    def javascriptImport(fact: Repository.Grit.Fact, files: Map[String, Kernel.Contract.FileId]): Option[Kernel.Contract.FileId] = {
         let value = String.trim(fact#value);
         let length = String.length(value);
         if (length < 2)
@@ -161,7 +161,7 @@ mod Repository {
     /// Flix resolves a qualified module reference to the admitted file whose
     /// module path it names. The longest dotted prefix that names an admitted
     /// file wins; only a unique file is admitted.
-    def flixImport(value: String, files: Map[String, Repository.Structure.FileId]): Option[Repository.Structure.FileId] =
+    def flixImport(value: String, files: Map[String, Kernel.Contract.FileId]): Option[Kernel.Contract.FileId] =
         match dottedName(value) {
             case None       => None
             case Some(name) => firstResolved(files, moduleCandidates(String.splitOn(substr = ".", name)))
@@ -176,7 +176,7 @@ mod Repository {
 
     /// Java resolves a dotted type reference to its source file. The package
     /// path is tried first, then the bare type file as a conservative fallback.
-    def dottedFile(value: String, files: Map[String, Repository.Structure.FileId], suffix: String): Option[Repository.Structure.FileId] =
+    def dottedFile(value: String, files: Map[String, Kernel.Contract.FileId], suffix: String): Option[Kernel.Contract.FileId] =
         match dottedName(value) {
             case None       => None
             case Some(name) =>
@@ -192,7 +192,7 @@ mod Repository {
     /// Starlark resolves a repository-relative label that names a source file
     /// (`//tools:defs.bzl` -> `tools/defs.bzl`). External and target-only labels
     /// are conservatively rejected: they do not name an admitted file.
-    def starlarkImport(value: String, files: Map[String, Repository.Structure.FileId]): Option[Repository.Structure.FileId] =
+    def starlarkImport(value: String, files: Map[String, Kernel.Contract.FileId]): Option[Kernel.Contract.FileId] =
         match labelPath(String.trim(value)) {
             case None       => None
             case Some(path) => uniqueSuffix(files, path)
@@ -219,7 +219,7 @@ mod Repository {
             }
         }
 
-    def firstResolved(files: Map[String, Repository.Structure.FileId], candidates: List[String]): Option[Repository.Structure.FileId] = match candidates {
+    def firstResolved(files: Map[String, Kernel.Contract.FileId], candidates: List[String]): Option[Kernel.Contract.FileId] = match candidates {
         case Nil               => None
         case candidate :: rest => match uniqueSuffix(files, candidate) {
             case None       => firstResolved(files, rest)
@@ -227,7 +227,7 @@ mod Repository {
         }
     }
 
-    def uniqueSuffix(files: Map[String, Repository.Structure.FileId], candidate: String): Option[Repository.Structure.FileId] = {
+    def uniqueSuffix(files: Map[String, Kernel.Contract.FileId], candidate: String): Option[Kernel.Contract.FileId] = {
         let matches = Vector.filterMap(entry -> {
             let (path, file) = entry;
             if (path == candidate or String.endsWith(suffix = "/" + candidate, path)) Some(file) else None
@@ -263,11 +263,11 @@ mod Repository {
     /// definition-vector scans from every observed call.
     type alias CallIndex = {
         byPath        = Map[String, Vector[Identity]],
-        localTargets  = Map[(String, String), Set[Repository.Structure.SymbolId]],
-        globalTargets = Map[String, Set[Repository.Structure.SymbolId]]
+        localTargets  = Map[(String, String), Set[Kernel.Contract.SymbolId]],
+        globalTargets = Map[String, Set[Kernel.Contract.SymbolId]]
     }
 
-    def resolveCalls(identities: Vector[Identity], facts: Vector[Repository.Grit.Fact]): Resolution[Repository.Structure.SymbolId, Repository.Structure.SymbolId] = {
+    def resolveCalls(identities: Vector[Identity], facts: Vector[Repository.Grit.Fact]): Resolution[Kernel.Contract.SymbolId, Kernel.Contract.SymbolId] = {
         let index = callIndex(identities);
         Vector.foldLeft((result, fact) -> match callEdge(index, fact) {
             case None => {edges = result#edges, rejected = result#rejected + 1}
@@ -275,7 +275,7 @@ mod Repository {
         }, {edges = Set.empty(), rejected = 0}, facts)
     }
 
-    def callEdge(index: CallIndex, call: Repository.Grit.Fact): Option[(Repository.Structure.SymbolId, Repository.Structure.SymbolId)] =
+    def callEdge(index: CallIndex, call: Repository.Grit.Fact): Option[(Kernel.Contract.SymbolId, Kernel.Contract.SymbolId)] =
         match owner(index, call) {
             case None => None
             case Some(caller) =>
@@ -285,7 +285,7 @@ mod Repository {
                     |> Option.map(found -> (caller, found))
         }
 
-    def owner(index: CallIndex, call: Repository.Grit.Fact): Option[Repository.Structure.SymbolId] =
+    def owner(index: CallIndex, call: Repository.Grit.Fact): Option[Kernel.Contract.SymbolId] =
         Vector.foldLeft((best, identity) -> match identity {
             case (definition, symbol) =>
                 if (definition#startByte <= call#startByte and call#endByte <= definition#endByte)
@@ -296,16 +296,16 @@ mod Repository {
         |> Option.map(match (_, symbol) -> symbol)
 
     def narrowerOwner(
-        best: Option[(Int32, Repository.Structure.SymbolId)],
+        best: Option[(Int32, Kernel.Contract.SymbolId)],
         width: Int32,
-        symbol: Repository.Structure.SymbolId
-    ): Option[(Int32, Repository.Structure.SymbolId)] = match best {
+        symbol: Kernel.Contract.SymbolId
+    ): Option[(Int32, Kernel.Contract.SymbolId)] = match best {
         case None => Some((width, symbol))
         case Some((current, _)) if width < current => Some((width, symbol))
         case _ => best
     }
 
-    def target(index: CallIndex, path: String, name: String): Option[Repository.Structure.SymbolId] = {
+    def target(index: CallIndex, path: String, name: String): Option[Kernel.Contract.SymbolId] = {
         let local = Map.getWithDefault((path, name), Set.empty(), index#localTargets);
         if (Set.size(local) == 1)
             Some(Vector.get(0, Set.toVector(local)))
@@ -346,7 +346,7 @@ mod Repository {
         case Some(index) => String.sliceRight(start = index + 1, callee)
     }
 
-    def parentEdges(paths: Vector[String]): Repository.Structure.Parents = {
+    def parentEdges(paths: Vector[String]): Kernel.Contract.Parents = {
         let directories = Vector.foldLeft(
             (known, path) -> Set.union(known, directoryPrefixes(directory(path))),
             Set.singleton(""),
@@ -354,12 +354,12 @@ mod Repository {
         ) |> Set.toVector |> Vector.sort;
         let offset = Vector.length(paths);
         let identities = Vector.mapWithIndex(
-            (index, path) -> (path, Repository.Structure.LocationId.LocationId(offset + index)),
+            (index, path) -> (path, Kernel.Contract.LocationId.LocationId(offset + index)),
             directories
         ) |> Vector.toMap;
         let fileParents = Vector.mapWithIndex((index, path) ->
-            (Repository.Structure.LocationId.LocationId(index), Option.getWithDefault(
-                Repository.Structure.LocationId.LocationId(0),
+            (Kernel.Contract.LocationId.LocationId(index), Option.getWithDefault(
+                Kernel.Contract.LocationId.LocationId(0),
                 Map.get(directory(path), identities)
             )), paths);
         let directoryParents = Vector.filterMap(path ->

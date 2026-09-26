@@ -8,6 +8,11 @@ load("//test/build:flix.bzl", "checked_test", "flix_check")
 
 package(default_visibility = ["//visibility:public"])
 
+filegroup(
+    name = "flix_sources",
+    srcs = glob(["*.flix"]),
+)
+
 flix_check(
     name = "identity_check",
     srcs = [
@@ -73,6 +78,34 @@ checked_test(
     check = ":effect_check",
 )
 
+# Candidate B: the production and replay handlers. Compiled with the three
+# native seams as `java_deps`, which is how the production bridge to
+# AttuneIdentity / AttuneGrit / AttuneParquet / Files is enforced; the replay
+# law runs entirely from in-memory fixtures (VAL-EFF-002/003).
+flix_check(
+    name = "handler_check",
+    srcs = [
+        "HandlerTest.flix",
+        "//test:kernel_effect_law_sources",
+        "//src:Kernel/Handler.flix",
+        "//src:Repository.flix",
+        "//src:Repository/Grit.flix",
+        "//src:Repository/Structure.flix",
+    ],
+    command = "test",
+    java_deps = [
+        "//src/native/grit:attune_grit",
+        "//src/native/identity:attune_identity",
+        "//src/native/parquet:attune_parquet",
+    ],
+    threads = 2,
+)
+
+checked_test(
+    name = "handler_test",
+    check = ":handler_check",
+)
+
 test_suite(
     name = "kernel_tests",
     tests = [
@@ -80,6 +113,7 @@ test_suite(
         ":scientific_table_test",
         ":contract_test",
         ":effect_test",
+        ":handler_test",
         "//src/native/identity:attune_identity_test",
         "//src/native/parquet:attune_parquet_test",
     ],

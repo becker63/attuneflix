@@ -32,8 +32,8 @@ def facts(path: String, source: String, wire: Wire): Vector[Fact] \ Assert =
         case Err(error)  => { Assert.fail(ToString.toString(error)); Vector.empty() }
     }
 
-def fileId(index: Int32): Repository.Structure.FileId = Repository.Structure.FileId.FileId(index)
-def symbolId(index: Int32): Repository.Structure.SymbolId = Repository.Structure.SymbolId.SymbolId(index)
+def fileId(index: Int32): Kernel.Contract.FileId = Kernel.Contract.FileId.FileId(index)
+def symbolId(index: Int32): Kernel.Contract.SymbolId = Kernel.Contract.SymbolId.SymbolId(index)
 
 @Test
 def languageDetectionRoutesEveryAdmittedFileKind(): Unit \ Assert = {

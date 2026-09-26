@@ -103,8 +103,8 @@ mod RoundTopology {
 
     // ---- T9/T10: ATLAS depth-<=2 neighborhoods over candidate regions ----
 
-    def regionSeed(world: Repository.World, mapping: Mapping, region0: String): Set[Repository.Structure.FileId] =
-        Vector.mapWithIndex((index, path) -> (path, Repository.Structure.FileId.FileId(index)), world#files)
+    def regionSeed(world: Repository.World, mapping: Mapping, region0: String): Set[Kernel.Contract.FileId] =
+        Vector.mapWithIndex((index, path) -> (path, Kernel.Contract.FileId.FileId(index)), world#files)
             |> Vector.filterMap(match (path, id) ->
                 if (ControlMap.regionOf(current(mapping, path)) == region0) Some(id) else None)
             |> Vector.toSet

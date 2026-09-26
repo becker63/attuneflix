@@ -8,6 +8,11 @@ load("//test/build:flix.bzl", "checked_test", "flix_check")
 
 package(default_visibility = ["//visibility:public"])
 
+filegroup(
+    name = "flix_sources",
+    srcs = glob(["*.flix"]),
+)
+
 flix_check(
     name = "repository_admission_check",
     srcs = [
@@ -76,11 +81,42 @@ checked_test(
     check = ":repository_table_check",
 )
 
+# Candidate B: the production capability handler over the real native Grit
+# engine (AttuneGrit) and identity seam. This is where VAL-EFF-002's
+# `//test/World:*` tool surface actually bridges algebraic capabilities to
+# native FFI, not just fixture data.
+flix_check(
+    name = "handler_production_check",
+    srcs = [
+        "HandlerProductionTest.flix",
+        "//src:Kernel.flix",
+        "//src:Kernel/Contract.flix",
+        "//src:Kernel/Effect.flix",
+        "//src:Kernel/Handler.flix",
+        "//src:Repository.flix",
+        "//src:Repository/Grit.flix",
+        "//src:Repository/Structure.flix",
+    ],
+    command = "test",
+    java_deps = [
+        "//src/native/grit:attune_grit",
+        "//src/native/identity:attune_identity",
+        "//src/native/parquet:attune_parquet",
+    ],
+    threads = 2,
+)
+
+checked_test(
+    name = "handler_production_test",
+    check = ":handler_production_check",
+)
+
 test_suite(
     name = "world_tests",
     tests = [
         ":grit_acquire_test",
         ":grit_acquisition_test",
+        ":handler_production_test",
         ":repository_admission_test",
         ":repository_table_test",
         "//src/native/grit:attune_grit_rust_test",

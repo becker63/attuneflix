@@ -36,7 +36,7 @@ def indexedCallAdmissionPreservesOwnerAndTargetRules(): Unit \ Assert = {
     match Repository.admit(sources, definitions, Vector.empty(), calls) {
         case Err(error) => Assert.fail(ToString.toString(error))
         case Ok(world) => {
-            let symbol = Repository.Structure.SymbolId.SymbolId;
+            let symbol = Kernel.Contract.SymbolId.SymbolId;
             Assert.assertEq(expected = Set#{
                 (symbol(1), symbol(2)),
                 (symbol(0), symbol(3))

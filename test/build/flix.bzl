@@ -110,6 +110,25 @@ checked_test = rule(
     },
 )
 
+def flix_loc_law(name, srcs, visibility = None):
+    """The Flix LOC law as a repo rule (VAL-METRIC-002).
+
+    `srcs` names the tracked Flix source filegroups the law covers (the
+    production `//src` surface and the `//test` law surface). The rule counts
+    CODE lines: a line counts when, after stripping block comments, it has
+    content that is not itself a line comment. Blank and pure-comment lines are
+    documentation, not code, so they do not count. The ceiling is enforced by
+    `flix_loc_law.sh` (total `< 4800` code lines, per-file `<= 400`).
+    """
+    native.sh_test(
+        name = name,
+        size = "small",
+        srcs = ["//test/build:flix_loc_law.sh"],
+        args = ["$(locations %s)" % source for source in srcs],
+        data = srcs,
+        visibility = visibility,
+    )
+
 def _flix_fatjar_impl(ctx):
     project = _flix_project(ctx, "Bazel-owned Flix executable")
 

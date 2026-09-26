@@ -4,21 +4,21 @@ pub mod Repository.Physical {
     /// Level 3 stores only admitted relations and their inexpensive inverses.
     /// Large derived relations (notably same-file cliques) are never materialized.
     pub type alias World = {
-        defines    = Index[Repository.Structure.FileId, Repository.Structure.SymbolId],
-        definedIn  = Index[Repository.Structure.SymbolId, Repository.Structure.FileId],
-        imports    = Index[Repository.Structure.FileId, Repository.Structure.FileId],
-        importedBy = Index[Repository.Structure.FileId, Repository.Structure.FileId],
-        calls      = Index[Repository.Structure.SymbolId, Repository.Structure.SymbolId],
-        callers    = Index[Repository.Structure.SymbolId, Repository.Structure.SymbolId],
-        parents    = Index[Repository.Structure.LocationId, Repository.Structure.LocationId],
-        children   = Index[Repository.Structure.LocationId, Repository.Structure.LocationId]
+        defines    = Index[Kernel.Contract.FileId, Kernel.Contract.SymbolId],
+        definedIn  = Index[Kernel.Contract.SymbolId, Kernel.Contract.FileId],
+        imports    = Index[Kernel.Contract.FileId, Kernel.Contract.FileId],
+        importedBy = Index[Kernel.Contract.FileId, Kernel.Contract.FileId],
+        calls      = Index[Kernel.Contract.SymbolId, Kernel.Contract.SymbolId],
+        callers    = Index[Kernel.Contract.SymbolId, Kernel.Contract.SymbolId],
+        parents    = Index[Kernel.Contract.LocationId, Kernel.Contract.LocationId],
+        children   = Index[Kernel.Contract.LocationId, Kernel.Contract.LocationId]
     }
 
     pub def fromBasis(
-        defines: Repository.Structure.Defines,
-        imports: Repository.Structure.Imports,
-        calls: Repository.Structure.Calls,
-        parents: Repository.Structure.Parents
+        defines: Kernel.Contract.Defines,
+        imports: Kernel.Contract.Imports,
+        calls: Kernel.Contract.Calls,
+        parents: Kernel.Contract.Parents
     ): World = {
         defines = index(defines),
         definedIn = reverseIndex(defines),
@@ -30,49 +30,49 @@ pub mod Repository.Physical {
         children = reverseIndex(parents)
     }
 
-    pub def defines(world: World, files: Set[Repository.Structure.FileId]): Set[Repository.Structure.SymbolId] =
+    pub def defines(world: World, files: Set[Kernel.Contract.FileId]): Set[Kernel.Contract.SymbolId] =
         apply(world#defines, files)
 
-    pub def definedIn(world: World, symbols: Set[Repository.Structure.SymbolId]): Set[Repository.Structure.FileId] =
+    pub def definedIn(world: World, symbols: Set[Kernel.Contract.SymbolId]): Set[Kernel.Contract.FileId] =
         apply(world#definedIn, symbols)
 
-    pub def imports(world: World, files: Set[Repository.Structure.FileId]): Set[Repository.Structure.FileId] =
+    pub def imports(world: World, files: Set[Kernel.Contract.FileId]): Set[Kernel.Contract.FileId] =
         apply(world#imports, files)
 
-    pub def importedBy(world: World, files: Set[Repository.Structure.FileId]): Set[Repository.Structure.FileId] =
+    pub def importedBy(world: World, files: Set[Kernel.Contract.FileId]): Set[Kernel.Contract.FileId] =
         apply(world#importedBy, files)
 
-    pub def calls(world: World, symbols: Set[Repository.Structure.SymbolId]): Set[Repository.Structure.SymbolId] =
+    pub def calls(world: World, symbols: Set[Kernel.Contract.SymbolId]): Set[Kernel.Contract.SymbolId] =
         apply(world#calls, symbols)
 
-    pub def callers(world: World, symbols: Set[Repository.Structure.SymbolId]): Set[Repository.Structure.SymbolId] =
+    pub def callers(world: World, symbols: Set[Kernel.Contract.SymbolId]): Set[Kernel.Contract.SymbolId] =
         apply(world#callers, symbols)
 
-    pub def sameFile(world: World, symbols: Set[Repository.Structure.SymbolId]): Set[Repository.Structure.SymbolId] =
+    pub def sameFile(world: World, symbols: Set[Kernel.Contract.SymbolId]): Set[Kernel.Contract.SymbolId] =
         defines(world, definedIn(world, symbols))
 
-    pub def importNeighbors(world: World, symbols: Set[Repository.Structure.SymbolId]): Set[Repository.Structure.SymbolId] =
+    pub def importNeighbors(world: World, symbols: Set[Kernel.Contract.SymbolId]): Set[Kernel.Contract.SymbolId] =
         defines(world, imports(world, definedIn(world, symbols)))
 
-    pub def importerNeighbors(world: World, symbols: Set[Repository.Structure.SymbolId]): Set[Repository.Structure.SymbolId] =
+    pub def importerNeighbors(world: World, symbols: Set[Kernel.Contract.SymbolId]): Set[Kernel.Contract.SymbolId] =
         defines(world, importedBy(world, definedIn(world, symbols)))
 
-    pub def parents(world: World, locations: Set[Repository.Structure.LocationId]): Set[Repository.Structure.LocationId] =
+    pub def parents(world: World, locations: Set[Kernel.Contract.LocationId]): Set[Kernel.Contract.LocationId] =
         apply(world#parents, locations)
 
-    pub def children(world: World, locations: Set[Repository.Structure.LocationId]): Set[Repository.Structure.LocationId] =
+    pub def children(world: World, locations: Set[Kernel.Contract.LocationId]): Set[Kernel.Contract.LocationId] =
         apply(world#children, locations)
 
-    pub def repositoryAdjacent(world: World, locations: Set[Repository.Structure.LocationId]): Set[Repository.Structure.LocationId] =
+    pub def repositoryAdjacent(world: World, locations: Set[Kernel.Contract.LocationId]): Set[Kernel.Contract.LocationId] =
         Set.union(parents(world, locations), children(world, locations))
 
-    def index(edges: Repository.Structure.Relation[a, b]): Index[a, b] with Order[a], Order[b] =
+    def index(edges: Kernel.Contract.Relation[a, b]): Index[a, b] with Order[a], Order[b] =
         Set.foldLeft((known, edge) -> {
             let (source, target) = edge;
             Map.insert(source, Set.insert(target, Map.getWithDefault(source, Set.empty(), known)), known)
         }, Map.empty(), edges)
 
-    def reverseIndex(edges: Repository.Structure.Relation[a, b]): Index[b, a] with Order[a], Order[b] =
+    def reverseIndex(edges: Kernel.Contract.Relation[a, b]): Index[b, a] with Order[a], Order[b] =
         index(Set.map(match (source, target) -> (target, source), edges))
 
     def apply(edges: Index[a, b], input: Set[a]): Set[b] with Order[a], Order[b] =

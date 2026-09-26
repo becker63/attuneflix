@@ -1,5 +1,5 @@
 use Fs.FileSystem
-use ScientificTable.Value
+use Kernel.Contract.Value
 use ScientificTable.Columns.{text, int64, float64}
 
 type alias Summary = {
@@ -235,7 +235,7 @@ def squareRootFrom(value: Float64, estimate: Float64, iteration: Int32): Float64
     if (iteration >= 32) estimate
     else squareRootFrom(value, (estimate + value / estimate) / 2.0, iteration + 1)
 
-def repositorySchema(): ScientificTable.Schema = {
+def repositorySchema(): Kernel.Contract.Schema = {
     format = "attune-atlas-repository-summary-v1",
     columns = Vector#{text("repository"), int64("snapshot_count"), float64("file_count_p50"),
         float64("symbol_count_p50"), float64("file_extinction"), float64("symbol_extinction"),
@@ -245,7 +245,7 @@ def repositorySchema(): ScientificTable.Schema = {
         float64("feature_range_mean"), float64("feature_range_max")}
 }
 
-def repositoryRow(row: RepositoryResult): ScientificTable.Row = Map#{
+def repositoryRow(row: RepositoryResult): Kernel.Contract.Row = Map#{
     "repository" => Value.Text(row#repository), "snapshot_count" => Value.Int64(Int32.toInt64(row#snapshots)),
     "file_count_p50" => Value.Float64(row#files), "symbol_count_p50" => Value.Float64(row#symbols),
     "file_extinction" => Value.Float64(row#fileExtinction),
@@ -261,25 +261,25 @@ def repositoryRow(row: RepositoryResult): ScientificTable.Row = Map#{
     "feature_range_max" => Value.Float64(row#driftMax)
 }
 
-def decodeSummary(row: ScientificTable.Row): Result[String, Summary] = forM (
-    repository <- ScientificTable.text(row, "repository"); snapshot <- ScientificTable.text(row, "snapshot_id");
-    scope <- ScientificTable.text(row, "scope"); domain <- ScientificTable.text(row, "seed_domain");
+def decodeSummary(row: Kernel.Contract.Row): Result[String, Summary] = forM (
+    repository <- Kernel.Contract.text(row, "repository"); snapshot <- Kernel.Contract.text(row, "snapshot_id");
+    scope <- Kernel.Contract.text(row, "scope"); domain <- Kernel.Contract.text(row, "seed_domain");
     depth <- ScientificTable.optionalInt32(row, "depth"); atom <- ScientificTable.optionalText(row, "last_atom");
-    metric0 <- ScientificTable.text(row, "metric"); value <- ScientificTable.number(row, "value")
+    metric0 <- Kernel.Contract.text(row, "metric"); value <- Kernel.Contract.number(row, "value")
 ) yield {repository = repository, snapshot = snapshot, scope = scope, domain = domain,
     depth = depth, atom = atom, metric = metric0, value = value}
 
-def decodeSnapshot(row: ScientificTable.Row): Result[String, Snapshot] = forM (
-    repository <- ScientificTable.text(row, "repository"); revision <- ScientificTable.text(row, "base_revision");
-    snapshot <- ScientificTable.text(row, "snapshot_id"); files <- ScientificTable.number(row, "file_count");
-    symbols <- ScientificTable.number(row, "symbol_count")
+def decodeSnapshot(row: Kernel.Contract.Row): Result[String, Snapshot] = forM (
+    repository <- Kernel.Contract.text(row, "repository"); revision <- Kernel.Contract.text(row, "base_revision");
+    snapshot <- Kernel.Contract.text(row, "snapshot_id"); files <- Kernel.Contract.number(row, "file_count");
+    symbols <- Kernel.Contract.number(row, "symbol_count")
 ) yield {repository = repository, revision = revision, snapshot = snapshot, files = files, symbols = symbols}
 
-def decodePhysical(row: ScientificTable.Row): Result[String, Physical] = forM (
-    repository <- ScientificTable.text(row, "repository"); snapshot <- ScientificTable.text(row, "snapshot_id");
-    compression <- ScientificTable.number(row, "logical_per_physical_evaluation");
-    requests <- ScientificTable.number(row, "physical_transition_requests");
-    reuses <- ScientificTable.number(row, "physical_transition_reuses")
+def decodePhysical(row: Kernel.Contract.Row): Result[String, Physical] = forM (
+    repository <- Kernel.Contract.text(row, "repository"); snapshot <- Kernel.Contract.text(row, "snapshot_id");
+    compression <- Kernel.Contract.number(row, "logical_per_physical_evaluation");
+    requests <- Kernel.Contract.number(row, "physical_transition_requests");
+    reuses <- Kernel.Contract.number(row, "physical_transition_reuses")
 ) yield {repository = repository, snapshot = snapshot, logicalPerEvaluation = compression,
     requests = requests, reuses = reuses}
 

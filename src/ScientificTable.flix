@@ -1,48 +1,13 @@
-/// Typed scientific tables. Flix declares the schema and owns row meaning;
-/// Java only transfers these primitive columns through Arrow and Parquet.
+/// Typed scientific tables. Flix declares the schema and owns row meaning in
+/// the Stable Contract Kernel; Java only transfers those primitive columns
+/// through Arrow and Parquet. This module is the sole table transport seam.
 pub mod ScientificTable {
     import attune.parquet.AttuneParquet
 
+    use Kernel.Contract.{Row, Schema, Value, decodeRows, schemaPayload}
     use Util.Json
     use Util.Json.Json.{JArray, JBool, JNull, JNumber, JObject, JString}
-    use Util.Json.FromJson
     use Util.Json.ToJson
-
-    pub enum ColumnType with Eq, ToString {
-        case Text
-        case Int32
-        case Int64
-        case Float64
-        case Boolean
-        case TextList
-    }
-
-    pub type alias Column = {
-        name     = String,
-        kind     = ColumnType,
-        nullable = Bool
-    }
-
-    /// `format` names the scientific schema. Canonical tables also carry that
-    /// identity in an ordinary typed protocol column so it remains queryable.
-    pub type alias Schema = {
-        format  = String,
-        columns = Vector[Column]
-    }
-
-    /// The closed set of values admitted by Attune's typed scientific tables.
-    /// JSON exists only below this enum as the Java FFI wire envelope.
-    pub enum Value with Eq, ToString {
-        case Text(String)
-        case Int32(Int32)
-        case Int64(Int64)
-        case Float64(Float64)
-        case Boolean(Bool)
-        case TextList(Vector[String])
-        case Null
-    }
-
-    pub type alias Row = Map[String, Value]
 
     pub def read(path: String, schema: Schema): Vector[Row] \ IO =
         AttuneParquet.readTable(path, schemaPayload(schema))
@@ -54,28 +19,6 @@ pub mod ScientificTable {
         AttuneParquet.writeTable(path, schemaPayload(schema), canonicalRows(rows))
             |> decodeRows(schema)
             |> require
-
-    pub def text(row: Row, name: String): Result[String, String] = match Map.get(name, row) {
-        case Some(Value.Text(value)) => Ok(value)
-        case Some(_) => Err("${name} must be text")
-        case None => Err("missing ${name}")
-    }
-
-    pub def int32(row: Row, name: String): Result[String, Int32] = match Map.get(name, row) {
-        case Some(Value.Int32(value)) => Ok(value)
-        case Some(_) => Err("${name} must be int32")
-        case None => Err("missing ${name}")
-    }
-
-    /// Numeric projection used only by analyses whose declared metric is a
-    /// Float64 but whose source count is an integer column.
-    pub def number(row: Row, name: String): Result[String, Float64] = match Map.get(name, row) {
-        case Some(Value.Int32(value)) => Ok(Int32.toFloat64(value))
-        case Some(Value.Int64(value)) => Ok(Int64.toFloat64(value))
-        case Some(Value.Float64(value)) => Ok(value)
-        case Some(_) => Err("${name} must be numeric")
-        case None => Err("missing ${name}")
-    }
 
     pub def boolean(row: Row, name: String): Result[String, Bool] = match Map.get(name, row) {
         case Some(Value.Boolean(value)) => Ok(value)
@@ -131,7 +74,7 @@ pub mod ScientificTable {
     /// The named column must carry exactly the expected identity value; the
     /// context names the table in the mismatch diagnostic.
     pub def requireText(name: String, expected: String, row: Row, context: String): Result[String, Unit] =
-        text(row, name) |> Result.flatMap(actual ->
+        Kernel.Contract.text(row, name) |> Result.flatMap(actual ->
             if (actual == expected) Ok(()) else Err("${context} identity mismatch: ${name}"))
 
     /// A protocol table carries exactly one metadata row.
@@ -154,12 +97,6 @@ pub mod ScientificTable {
         if (ordinalsOrdered(entries)) Ok(())
         else Err(message)
 
-    pub def schemaPayload(schema: Schema): String =
-        JObject(Map#{
-            "format" => JString(schema#format),
-            "columns" => JArray(Vector.map(columnJson, schema#columns))
-        }) |> Json.toCompactString
-
     /// Stable wire encoding for identities which cover typed table rows.
     /// Domain modules receive a string, never JSON values.
     pub def canonicalRows(rows: Vector[Row]): String =
@@ -175,56 +112,6 @@ pub mod ScientificTable {
         case Value.Boolean(value0) => JBool(value0)
         case Value.TextList(values) => JArray(Vector.map(JString, values))
         case Value.Null => JNull
-    }
-
-    def columnJson(column: Column): Json = JObject(Map#{
-        "name" => JString(column#name),
-        "type" => JString(typeName(column#kind)),
-        "nullable" => JBool(column#nullable)
-    })
-
-    def typeName(type0: ColumnType): String = match type0 {
-        case ColumnType.Text     => "string"
-        case ColumnType.Int32    => "int32"
-        case ColumnType.Int64    => "int64"
-        case ColumnType.Float64  => "float64"
-        case ColumnType.Boolean  => "boolean"
-        case ColumnType.TextList => "list<string>"
-    }
-
-    def decodeRows(schema: Schema, payload: String): Result[String, Vector[Row]] = match Json.parse(payload) {
-        case Err(error) => Err(ToString.toString(error))
-        case Ok(JArray(values)) => Vector.traverse(match value -> match value {
-            case JObject(fields) => decodeRow(schema, fields)
-            case _ => Err("typed Parquet row must be an object")
-        }, values)
-        case Ok(_) => Err("typed Parquet seam returned a non-array")
-    }
-
-    def decodeRow(schema: Schema, fields: Map[String, Json]): Result[String, Row] =
-        Vector.traverse(column -> match Map.get(column#name, fields) {
-            case None => Err("typed Parquet row is missing ${column#name}")
-            case Some(value) => decodeValue(column, value)
-                |> Result.map(decoded -> (column#name, decoded))
-        }, schema#columns)
-        |> Result.map(Vector.toMap)
-
-    def decodeValue(column: Column, value: Json): Result[String, Value] = match value {
-        case JNull if column#nullable => Ok(Value.Null)
-        case JString(value0) if column#kind == ColumnType.Text => Ok(Value.Text(value0))
-        case JNumber(_) if column#kind == ColumnType.Int32 =>
-            FromJson.fromJson(value) |> Result.map(Value.Int32) |> Result.mapErr(ToString.toString)
-        case JNumber(_) if column#kind == ColumnType.Int64 =>
-            FromJson.fromJson(value) |> Result.map(Value.Int64) |> Result.mapErr(ToString.toString)
-        case JNumber(_) if column#kind == ColumnType.Float64 =>
-            FromJson.fromJson(value) |> Result.map(Value.Float64) |> Result.mapErr(ToString.toString)
-        case JBool(value0) if column#kind == ColumnType.Boolean => Ok(Value.Boolean(value0))
-        case JArray(values) if column#kind == ColumnType.TextList =>
-            Vector.traverse(match item -> match item {
-                case JString(value0) => Ok(value0)
-                case _ => Err("${column#name} contains a non-text value")
-            }, values) |> Result.map(Value.TextList)
-        case _ => Err("${column#name} does not match its declared typed Parquet column")
     }
 
     def require(result: Result[String, a]): a = match result {

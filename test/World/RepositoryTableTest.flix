@@ -1,10 +1,10 @@
-use ScientificTable.Value
+use Kernel.Contract.Value
 
 def repositoryTableFixture(): Repository.World = {
-    let f0 = Repository.Structure.FileId.FileId(0);
-    let f1 = Repository.Structure.FileId.FileId(1);
-    let s0 = Repository.Structure.SymbolId.SymbolId(0);
-    let s1 = Repository.Structure.SymbolId.SymbolId(1);
+    let f0 = Kernel.Contract.FileId.FileId(0);
+    let f1 = Kernel.Contract.FileId.FileId(1);
+    let s0 = Kernel.Contract.SymbolId.SymbolId(0);
+    let s1 = Kernel.Contract.SymbolId.SymbolId(1);
     {
         files = Vector#{"src/a.ts", "src/b.ts"},
         symbols = Vector#{
@@ -15,8 +15,8 @@ def repositoryTableFixture(): Repository.World = {
         imports = Set#{(f0, f1)},
         calls = Set#{(s0, s1)},
         parents = Set#{
-            (Repository.Structure.LocationId.LocationId(0), Repository.Structure.LocationId.LocationId(2)),
-            (Repository.Structure.LocationId.LocationId(1), Repository.Structure.LocationId.LocationId(2))
+            (Kernel.Contract.LocationId.LocationId(0), Kernel.Contract.LocationId.LocationId(2)),
+            (Kernel.Contract.LocationId.LocationId(1), Kernel.Contract.LocationId.LocationId(2))
         },
         unresolvedImports = 4,
         unresolvedCalls = 5

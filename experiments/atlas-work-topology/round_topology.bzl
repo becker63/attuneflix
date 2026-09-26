@@ -25,6 +25,8 @@ _ROUND_SRCS = [
     "//src:Atlas/Signature/Summary.flix",
     "//src:Atlas/Signature/Table.flix",
     "//src:Experiment.flix",
+    "//src:Kernel.flix",
+    "//src:Kernel/Contract.flix",
     "//src:Radii.flix",
     "//src:Repository.flix",
     "//src:Repository/Grit.flix",

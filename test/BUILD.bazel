@@ -43,6 +43,19 @@
 
 package(default_visibility = ["//visibility:public"])
 
+# Every tracked law Flix source in `//test`, for the LOC law
+# (`//:flix_loc_law_test`). Composed from this package's own files and the four
+# cell law packages' `flix_sources` filegroups.
+filegroup(
+    name = "flix_sources",
+    srcs = glob(["*.flix"]) + [
+        "//test/Applications:flix_sources",
+        "//test/Engine:flix_sources",
+        "//test/Kernel:flix_sources",
+        "//test/World:flix_sources",
+    ],
+)
+
 # The shared law surface (K4 Hill-Climb Round 2). Two fixtures are read by the
 # law tests of more than one cell, so they are owned by the horizontal law
 # surface rather than by any single cell: the reduced `mod Repository {}`
@@ -59,7 +72,11 @@ exports_files([
 # against a declared parent module) and the full admission surface.
 filegroup(
     name = "world_structure_law_sources",
-    srcs = ["//src:Repository/Structure.flix"],
+    srcs = [
+        "//src:Kernel.flix",
+        "//src:Kernel/Contract.flix",
+        "//src:Repository/Structure.flix",
+    ],
 )
 
 filegroup(
@@ -111,6 +128,8 @@ filegroup(
 filegroup(
     name = "kernel_table_law_sources",
     srcs = [
+        "//src:Kernel.flix",
+        "//src:Kernel/Contract.flix",
         "//src:ScientificTable.flix",
         "//src:ScientificTable/Columns.flix",
     ],

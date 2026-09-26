@@ -1,10 +1,10 @@
 pub mod Repository.Reference {
     /// Level 2 is built only for verification, research, and selected debug runs.
     pub def fromBasis(
-        defines: Repository.Structure.Defines,
-        imports: Repository.Structure.Imports,
-        calls: Repository.Structure.Calls,
-        parents: Repository.Structure.Parents
+        defines: Kernel.Contract.Defines,
+        imports: Kernel.Contract.Imports,
+        calls: Kernel.Contract.Calls,
+        parents: Kernel.Contract.Parents
     ): Repository.Structure.Repository =
         solve Repository.Structure.repositoryFacts(defines, imports, calls, parents), Repository.Structure.structuralRules()
 
@@ -112,10 +112,10 @@ pub mod Repository.Reference {
         case _ => Err("reversed reference policy/input domain mismatch")
     }
 
-    def reverse(edges: Repository.Structure.Relation[a, b]): Repository.Structure.Relation[b, a] with Order[a], Order[b] =
+    def reverse(edges: Kernel.Contract.Relation[a, b]): Kernel.Contract.Relation[b, a] with Order[a], Order[b] =
         Set.map(match (source, target) -> (target, source), edges)
 
-    def apply(edges: Repository.Structure.Relation[a, b], input: Set[a]): Set[b] with Order[a], Order[b] =
+    def apply(edges: Kernel.Contract.Relation[a, b], input: Set[a]): Set[b] with Order[a], Order[b] =
         Set.foldLeft((output, edge) -> {
             let (source, target) = edge;
             if (Set.memberOf(source, input)) Set.insert(target, output) else output

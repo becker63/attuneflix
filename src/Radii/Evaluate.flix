@@ -1,9 +1,9 @@
 pub mod Radii.Evaluate {
     /// A state cannot pair a domain tag with members from another domain.
     pub enum State with Eq, Order, ToString, Hash {
-        case Files(Set[Repository.Structure.FileId])
-        case Symbols(Set[Repository.Structure.SymbolId])
-        case Locations(Set[Repository.Structure.LocationId])
+        case Files(Set[Kernel.Contract.FileId])
+        case Symbols(Set[Kernel.Contract.SymbolId])
+        case Locations(Set[Kernel.Contract.LocationId])
     }
 
     /// Stable only within one compiled policy family.

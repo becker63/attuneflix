@@ -1,16 +1,8 @@
+/// Repository structure: the readable Datalog meaning. Nominal identities and
+/// the physical relation shapes are owned by the Stable Contract Kernel; this
+/// module keeps only the materialized world type and the permanent rules.
 pub mod Repository.Structure {
-    /// Repository identities are nominal: the compiler rejects mixed domains.
-    pub enum FileId(Int32) with Eq, Order, ToString, Hash
-    pub enum SymbolId(Int32) with Eq, Order, ToString, Hash
-    pub enum LocationId(Int32) with Eq, Order, ToString, Hash
-
-    /// A physical shape, not a semantic relation name.
-    pub type alias Relation[a, b] = Set[(a, b)]
-
-    pub type alias Defines = Relation[FileId, SymbolId]
-    pub type alias Imports = Relation[FileId, FileId]
-    pub type alias Calls = Relation[SymbolId, SymbolId]
-    pub type alias Parents = Relation[LocationId, LocationId]
+    use Kernel.Contract.{Calls, Defines, FileId, Imports, LocationId, Parents, SymbolId}
 
     /// Materialized result of solving the permanent facts with the catalog.
     pub type alias Repository = #{

@@ -93,20 +93,30 @@ them.
 
 ## Tracked Flix LOC law
 
-- Every tracked handwritten `.flix` file counts (there are no generated
-  Flix files); the combined total must stay below 4,800 raw lines. The
-  gate was adjusted 4,000 -> 4,300 -> 4,600 -> 4,800 by user rulings
-  (2026-09-25); `< 4,800` is the single criterion. Measure with exactly:
+- The law covers the handwritten production and law Flix surface (`src/` +
+  `test/`) and is enforced as a repo rule, not by an ad-hoc `wc` command:
+  `bazel test //:flix_loc_law_test` (macro `flix_loc_law` in
+  `test/build/flix.bzl`, script `test/build/flix_loc_law.sh`, source
+  filegroups `//src:flix_sources` + `//test:flix_sources`). It is part of
+  `//:tests`, so `./verify` runs it.
+- **LOC means code lines.** A line counts when, after stripping `/* ... */`
+  blocks, it has content that is not itself `//`/`///`. Blank and pure-comment
+  lines are documentation, not code, and do not count (user ruling
+  2026-09-26). The combined total must stay strictly below 4,800 code lines;
+  the gate was adjusted 4,000 -> 4,300 -> 4,600 -> 4,800 by user rulings
+  (2026-09-25), and `< 4,800` remains the criterion. Override the ceiling with
+  `ATTUNE_FLIX_LOC_MAX_TOTAL` / `ATTUNE_FLIX_LOC_MAX_FILE`.
+- A `.flix` file over 400 code lines is a standing flag. User steering
+  (2026-09-25) relaxed the raw-line flag for the parallelism-experiment
+  instrument `experiments/atlas-parallelism/Parallelism.flix`; it remains the
+  standing per-file limit for every other tracked Flix file.
+- The raw command-line measure remains useful as an informational report:
 
 ```bash
-git ls-files '*.flix' | while read -r f; do printf '%6d  %s\n' "$(wc -l < "$f")" "$f"; done | sort -rn
-git ls-files '*.flix' | xargs wc -l | tail -1
+git ls-files 'src/*.flix' 'src/**/*.flix' 'test/*.flix' 'test/**/*.flix' | while read -r f; do printf '%6d  %s\n' "$(wc -l < "$f")" "$f"; done | sort -rn
+git ls-files 'src/*.flix' 'src/**/*.flix' 'test/*.flix' 'test/**/*.flix' | xargs wc -l | tail -1
 ```
 
-- A tracked `.flix` file over 400 raw lines is a standing flag. User
-  steering (2026-09-25) relaxed the flag for the parallelism-experiment
-  instrument `experiments/atlas-parallelism/Parallelism.flix` (470 lines);
-  it remains the standing limit for every other tracked Flix file.
 - Reduction means fewer concepts and fewer duplicated representations —
   never minification, never semantics moved into other languages, never
   merged giant files, never deleted law tests.

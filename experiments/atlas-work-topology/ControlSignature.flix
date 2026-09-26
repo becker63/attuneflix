@@ -20,7 +20,7 @@
 /// are exact rather than asserted.
 mod ControlSignature {
     import java.nio.file.{Files, Paths}
-    use ScientificTable.Value
+    use Kernel.Contract.Value
 
     pub def signatureProtocol(): String = "atlas-signature-work-topology-v1"
     pub def atlasProtocol(): String = "atlas-composition-depth7-v1"
@@ -86,7 +86,7 @@ mod ControlSignature {
     pub def observationRows(
         snapshot: Atlas.Signature.Table.SnapshotIdentity,
         computed: Vector[(Atlas.Signature.Seed, Atlas.Signature.Signature)]
-    ): Vector[ScientificTable.Row] \ IO =
+    ): Vector[Kernel.Contract.Row] \ IO =
         Vector.flatMap(match (seed, signature) ->
             Atlas.Signature.Table.observationRows(snapshot, seed, signature), computed)
 
@@ -157,12 +157,12 @@ mod ControlSignature {
         case Atlas.State.Symbols(ids) => Set.map(id -> symbolFile(world, id), ids)
     }
 
-    def fileIdentity(world: Repository.World, id: Repository.Structure.FileId): String =
-        let Repository.Structure.FileId.FileId(index) = id;
+    def fileIdentity(world: Repository.World, id: Kernel.Contract.FileId): String =
+        let Kernel.Contract.FileId.FileId(index) = id;
         Vector.get(index, world#files)
 
-    def symbolFile(world: Repository.World, id: Repository.Structure.SymbolId): String =
-        let Repository.Structure.SymbolId.SymbolId(index) = id;
+    def symbolFile(world: Repository.World, id: Kernel.Contract.SymbolId): String =
+        let Kernel.Contract.SymbolId.SymbolId(index) = id;
         Vector.get(index, world#symbols)#path
 
     // ---- Summary rows: reductions, physical work, landmarks ----
@@ -175,23 +175,23 @@ mod ControlSignature {
     pub def summaryRows(
         snapshot: Atlas.Signature.Table.SnapshotIdentity,
         computed: Vector[(Atlas.Signature.Seed, Atlas.Signature.Signature)],
-        observations: Vector[ScientificTable.Row],
+        observations: Vector[Kernel.Contract.Row],
         landmarks0: Landmarks
-    ): Vector[ScientificTable.Row] =
+    ): Vector[Kernel.Contract.Row] =
         Vector.append(Experiment.require(Atlas.Signature.Summary.summarize(observations)),
             Vector.append(physicalRows(snapshot, computed), landmarkRows(snapshot, landmarks0)))
 
     pub def physicalRows(
         snapshot: Atlas.Signature.Table.SnapshotIdentity,
         computed: Vector[(Atlas.Signature.Seed, Atlas.Signature.Signature)]
-    ): Vector[ScientificTable.Row] =
+    ): Vector[Kernel.Contract.Row] =
         Vector.flatMap(domain -> physicalRowsFor(snapshot, computed, domain), Vector#{"file", "symbol"})
 
     def physicalRowsFor(
         snapshot: Atlas.Signature.Table.SnapshotIdentity,
         computed: Vector[(Atlas.Signature.Seed, Atlas.Signature.Signature)],
         domain: String
-    ): Vector[ScientificTable.Row] = {
+    ): Vector[Kernel.Contract.Row] = {
         let selected = Vector.map(match (_, signature) -> signature,
             Vector.filter(match (seed, _) -> Atlas.Signature.domainName(seed#domain) == domain, computed));
         let logical = Vector.foldLeft((total, signature) -> total + signature#logicalPrograms, 0, selected);
@@ -214,7 +214,7 @@ mod ControlSignature {
     pub def landmarkRows(
         snapshot: Atlas.Signature.Table.SnapshotIdentity,
         landmarks0: Landmarks
-    ): Vector[ScientificTable.Row] = {
+    ): Vector[Kernel.Contract.Row] = {
         let coverageRows = Vector.mapWithIndex((index, value) ->
             metricRow(snapshot, "mixing_landmark", "file", None, None,
                 "mean_coverage_d${index + 1}", value, 8),
@@ -239,7 +239,7 @@ mod ControlSignature {
         metric: String,
         value: Float64,
         sampleCount: Int32
-    ): ScientificTable.Row = Map#{
+    ): Kernel.Contract.Row = Map#{
         "signature_protocol" => Value.Text(snapshot#signatureProtocol),
         "atlas_protocol" => Value.Text(snapshot#atlasProtocol),
         "repository" => Value.Text(snapshot#repository),
@@ -354,10 +354,10 @@ mod ControlSignature {
     }
 
     /// Observation counts by depth 1..7 for the committed signature table.
-    def depthHistogram(rows: Vector[ScientificTable.Row]): Vector[Int32] =
+    def depthHistogram(rows: Vector[Kernel.Contract.Row]): Vector[Int32] =
         Vector.map(depth -> Vector.count(row -> int32Of(row, "depth") == Some(depth), rows), Vector.range(1, 8))
 
-    def metricValue(rows: Vector[ScientificTable.Row], scope: String, domain: String, metric: String): Option[Float64] =
+    def metricValue(rows: Vector[Kernel.Contract.Row], scope: String, domain: String, metric: String): Option[Float64] =
         Vector.foldLeft((found, row) -> match found {
             case Some(_) => found
             case None =>
@@ -372,17 +372,17 @@ mod ControlSignature {
         case None => false
     }
 
-    def textOf(row: ScientificTable.Row, name: String): Option[String] = match Map.get(name, row) {
+    def textOf(row: Kernel.Contract.Row, name: String): Option[String] = match Map.get(name, row) {
         case Some(Value.Text(value)) => Some(value)
         case _ => None
     }
 
-    def floatOf(row: ScientificTable.Row, name: String): Option[Float64] = match Map.get(name, row) {
+    def floatOf(row: Kernel.Contract.Row, name: String): Option[Float64] = match Map.get(name, row) {
         case Some(Value.Float64(value)) => Some(value)
         case _ => None
     }
 
-    def int32Of(row: ScientificTable.Row, name: String): Option[Int32] = match Map.get(name, row) {
+    def int32Of(row: Kernel.Contract.Row, name: String): Option[Int32] = match Map.get(name, row) {
         case Some(Value.Int32(value)) => Some(value)
         case _ => None
     }

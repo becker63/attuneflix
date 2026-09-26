@@ -32,6 +32,8 @@ def attune_control_acquisition(name = "acquire"):
             "//experiments/atlas-parallelism:AcquisitionDriver.flix",
             "//experiments/atlas-parallelism:AcquisitionFacts.flix",
             "//src:Experiment.flix",
+            "//src:Kernel.flix",
+            "//src:Kernel/Contract.flix",
             "//src:Repository.flix",
             "//src:Repository/Acquire.flix",
             "//src:Repository/Grit.flix",

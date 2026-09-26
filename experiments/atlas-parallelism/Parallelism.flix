@@ -5,7 +5,7 @@
 mod Parallelism {
     import java.lang.Double
     import java.nio.file.{Files, Paths}
-    use ScientificTable.Value
+    use Kernel.Contract.Value
 
     /// The fixed region partition (attuneflix-regions-v1): first match wins.
     pub def regionOf(path: String): String =
@@ -39,13 +39,13 @@ mod Parallelism {
     pub def selfWorld(files0: Vector[String], modules: Vector[(String, String)],
                       uses: Vector[(String, String)]): Repository.World = {
         let fileIds = Vector.mapWithIndex((index, path) ->
-            (path, Repository.Structure.FileId.FileId(index)), files0) |> Vector.toMap;
+            (path, Kernel.Contract.FileId.FileId(index)), files0) |> Vector.toMap;
         {
             files = files0,
             symbols = Vector.map(match (module0, path) ->
                 {path = path, name = module0, startByte = 0, endByte = 0}, modules),
             defines = Vector.mapWithIndex((index, entry) -> match entry {
-                case (_, path) => (fileIdOf(fileIds, path), Repository.Structure.SymbolId.SymbolId(index))
+                case (_, path) => (fileIdOf(fileIds, path), Kernel.Contract.SymbolId.SymbolId(index))
             }, modules) |> Vector.toSet,
             imports = Vector.map(match (source, target) ->
                 (fileIdOf(fileIds, source), fileIdOf(fileIds, target)), uses) |> Vector.toSet,
@@ -56,7 +56,7 @@ mod Parallelism {
         }
     }
 
-    def fileIdOf(fileIds: Map[String, Repository.Structure.FileId], path: String): Repository.Structure.FileId =
+    def fileIdOf(fileIds: Map[String, Kernel.Contract.FileId], path: String): Kernel.Contract.FileId =
         match Map.get(path, fileIds) {
             case Some(id) => id
             case None => bug!("extractor named an unknown file: ${path}")
@@ -109,9 +109,9 @@ mod Parallelism {
     def identityOf(metadataPath: String): Result[String, Repository.Table.Identity] \ IO =
         ScientificTable.exactlyOne("self-world metadata", ScientificTable.read(metadataPath, Repository.Table.metadata()))
             |> Result.flatMap(row -> forM (
-                repository <- ScientificTable.text(row, "repository"); baseRevision <- ScientificTable.text(row, "base_revision");
-                sourceTreeIdentity <- ScientificTable.text(row, "source_tree_identity"); factIdentity <- ScientificTable.text(row, "fact_identity");
-                snapshotId <- ScientificTable.text(row, "snapshot_id")
+                repository <- Kernel.Contract.text(row, "repository"); baseRevision <- Kernel.Contract.text(row, "base_revision");
+                sourceTreeIdentity <- Kernel.Contract.text(row, "source_tree_identity"); factIdentity <- Kernel.Contract.text(row, "fact_identity");
+                snapshotId <- Kernel.Contract.text(row, "snapshot_id")
             ) yield {
                 repository = repository, baseRevision = baseRevision, sourceTreeIdentity = sourceTreeIdentity,
                 factIdentity = factIdentity, snapshotId = snapshotId
@@ -120,8 +120,8 @@ mod Parallelism {
     // Measurement.
 
     /// The region's file frontier under the fixed partition rule.
-    pub def regionSeed(world: Repository.World, region0: String): Set[Repository.Structure.FileId] =
-        Vector.mapWithIndex((index, path) -> (path, Repository.Structure.FileId.FileId(index)), world#files)
+    pub def regionSeed(world: Repository.World, region0: String): Set[Kernel.Contract.FileId] =
+        Vector.mapWithIndex((index, path) -> (path, Kernel.Contract.FileId.FileId(index)), world#files)
             |> Vector.filterMap(match (path, id) -> if (regionOf(path) == region0) Some(id) else None)
             |> Vector.toSet
 
@@ -131,33 +131,33 @@ mod Parallelism {
         case Atlas.State.Symbols(ids) => Set.map(symbolFile(world), ids)
     }
 
-    def fileIdentity(world: Repository.World, id: Repository.Structure.FileId): String =
-        let Repository.Structure.FileId.FileId(index) = id;
+    def fileIdentity(world: Repository.World, id: Kernel.Contract.FileId): String =
+        let Kernel.Contract.FileId.FileId(index) = id;
         Vector.get(index, world#files)
 
-    def symbolFile(world: Repository.World, id: Repository.Structure.SymbolId): String =
-        let Repository.Structure.SymbolId.SymbolId(index) = id;
+    def symbolFile(world: Repository.World, id: Kernel.Contract.SymbolId): String =
+        let Kernel.Contract.SymbolId.SymbolId(index) = id;
         Vector.get(index, world#symbols)#path
 
-    def regionAt(world: Repository.World, id: Repository.Structure.FileId): String =
+    def regionAt(world: Repository.World, id: Kernel.Contract.FileId): String =
         regionOf(fileIdentity(world, id))
 
     /// The file-space union of every output of one Atlas family from one File
     /// seed. This is the whole neighborhood expansion: every step is one real
     /// `Atlas.evaluate` transition over the admitted world.
-    pub def expansion(world: Repository.World, seed: Set[Repository.Structure.FileId],
+    pub def expansion(world: Repository.World, seed: Set[Kernel.Contract.FileId],
                       family0: Vector[Atlas.Program]): Set[String] = {
         let evaluation = Experiment.require(Atlas.evaluate(world, Atlas.State.Files(seed), family0));
         Vector.foldLeft((acc, output) -> Set.union(acc, members(output, world)), Set.empty(), evaluation#outputs)
     }
 
     /// The preregistered depth-2 family expansion from one File seed.
-    pub def outputUnion(world: Repository.World, seed: Set[Repository.Structure.FileId]): Set[String] =
+    pub def outputUnion(world: Repository.World, seed: Set[Kernel.Contract.FileId]): Set[String] =
         expansion(world, seed, family())
 
     /// M5 file blast radius: the output union size from one single-file seed.
     def blast(world: Repository.World, index: Int32): Int32 =
-        Set.size(outputUnion(world, Set#{Repository.Structure.FileId.FileId(index)}))
+        Set.size(outputUnion(world, Set#{Kernel.Contract.FileId.FileId(index)}))
 
     /// M7 neighborhood: the depth-<=2 member union including the seed files.
     def neighborhood(world: Repository.World, region0: String): Set[String] = {
@@ -190,7 +190,7 @@ mod Parallelism {
 
     /// M8 basis statistic: for each admitted file, the set of regions whose
     /// files import it from a different region.
-    pub def pressures(world: Repository.World): Map[Repository.Structure.FileId, Set[String]] =
+    pub def pressures(world: Repository.World): Map[Kernel.Contract.FileId, Set[String]] =
         Vector.foldLeft((acc, edge) -> match edge {
             case (f, g) => {
                 let rf = regionAt(world, f);
@@ -332,7 +332,7 @@ mod Parallelism {
     /// The union-member row schema: one row per region shard carrying the
     /// depth-<=2 neighborhood membership plus the region's coherence and
     /// independence (the per-region quantities the oracle asserts).
-    pub def membersSchema(): ScientificTable.Schema = {
+    pub def membersSchema(): Kernel.Contract.Schema = {
         format = "attuneflix-parallelism-members-v1",
         columns = Vector#{
             ScientificTable.Columns.text("revision"), ScientificTable.Columns.text("region"),
@@ -344,7 +344,7 @@ mod Parallelism {
     }
 
     /// The region-pairs schema (PREREGISTRATION.md artifact schemas).
-    pub def pairsSchema(): ScientificTable.Schema = {
+    pub def pairsSchema(): Kernel.Contract.Schema = {
         format = "attuneflix-parallelism-pairs-v1",
         columns = Vector#{
             ScientificTable.Columns.text("revision"), ScientificTable.Columns.text("region_a"),
@@ -390,7 +390,7 @@ mod Parallelism {
             }
         })
 
-    def pairsRows(identity: Repository.Table.Identity, world: Repository.World): Vector[ScientificTable.Row] = {
+    def pairsRows(identity: Repository.Table.Identity, world: Repository.World): Vector[Kernel.Contract.Row] = {
         let hoods = Vector.map(region0 -> (region0, neighborhood(world, region0)), nonEmptyRegions(world));
         Vector.flatMap(match (a, ha) ->
             Vector.filterMap(match (b, hb) -> if (a < b) Some((a, b, ha, hb)) else None, hoods), hoods)
@@ -466,11 +466,11 @@ mod Parallelism {
     def shardRow(path: String): (String, Float64, Bool, Set[String]) \ IO =
         ScientificTable.exactlyOne("parallelism members", ScientificTable.read(path, membersSchema()))
             |> Result.flatMap(row -> forM (
-                region0 <- ScientificTable.text(row, "region"); c <- ScientificTable.number(row, "coherence");
+                region0 <- Kernel.Contract.text(row, "region"); c <- Kernel.Contract.number(row, "coherence");
                 t <- ScientificTable.boolean(row, "independently_testable"); members0 <- textListOf(row, "members")
             ) yield (region0, c, t, Vector.toSet(members0))) |> Experiment.require
 
-    def textListOf(row: ScientificTable.Row, name: String): Result[String, Vector[String]] =
+    def textListOf(row: Kernel.Contract.Row, name: String): Result[String, Vector[String]] =
         match Map.get(name, row) {
             case Some(Value.TextList(values)) => Ok(values)
             case _ => Err("missing ${name} text list")
@@ -524,14 +524,14 @@ mod Parallelism {
         else "basis"
 
     /// Long-form four-row table: one row per (row label, subject, metric).
-    pub def rowTableSchema(): ScientificTable.Schema = {
+    pub def rowTableSchema(): Kernel.Contract.Schema = {
         format = "attuneflix-parallelism-rows-v2",
         columns = Vector#{ScientificTable.Columns.text("row"), ScientificTable.Columns.text("revision"),
             ScientificTable.Columns.text("subject"), ScientificTable.Columns.text("metric"),
             ScientificTable.Columns.text("class"), ScientificTable.Columns.float64("value")}
     }
 
-    pub def fourPairsSchema(): ScientificTable.Schema = {
+    pub def fourPairsSchema(): Kernel.Contract.Schema = {
         format = "attuneflix-parallelism-four-pairs-v2",
         columns = Vector#{ScientificTable.Columns.text("row"), ScientificTable.Columns.text("revision"),
             ScientificTable.Columns.text("region_a"), ScientificTable.Columns.text("region_b"),
@@ -539,16 +539,16 @@ mod Parallelism {
             ScientificTable.Columns.float64("jaccard")}
     }
 
-    def longRow(row: FourRow, subject: String, metric: String, value: Float64): ScientificTable.Row = Map#{
+    def longRow(row: FourRow, subject: String, metric: String, value: Float64): Kernel.Contract.Row = Map#{
         "row" => Value.Text(row#label), "revision" => Value.Text(row#revision),
         "subject" => Value.Text(subject), "metric" => Value.Text(metric),
         "class" => Value.Text(metricClass(metric)), "value" => Value.Float64(value)
     }
 
-    def worldMetrics(row: FourRow): Vector[ScientificTable.Row] =
+    def worldMetrics(row: FourRow): Vector[Kernel.Contract.Row] =
         Vector.map(match (name, value) -> longRow(row, "-", name, value), quantities(row#world))
 
-    def regionMetrics(row: FourRow): Vector[ScientificTable.Row] = {
+    def regionMetrics(row: FourRow): Vector[Kernel.Contract.Row] = {
         let world = row#world;
         let edges = edgeRegions(world);
         Vector.flatMap(region0 -> Vector#{
@@ -560,7 +560,7 @@ mod Parallelism {
         }, nonEmptyRegions(world))
     }
 
-    def hotspotMetrics(row: FourRow): Vector[ScientificTable.Row] = {
+    def hotspotMetrics(row: FourRow): Vector[Kernel.Contract.Row] = {
         let world = row#world;
         Vector.flatMap(match (file, regions0) -> Vector#{
             longRow(row, fileIdentity(world, file), "hotspot_pressure", Int32.toFloat64(Set.size(regions0))),
@@ -568,7 +568,7 @@ mod Parallelism {
         }, Map.toVector(pressures(world)))
     }
 
-    def pairMetrics(row: FourRow): Vector[ScientificTable.Row] = {
+    def pairMetrics(row: FourRow): Vector[Kernel.Contract.Row] = {
         let hoods = Vector.map(region0 -> (region0, neighborhood(row#world, region0)), nonEmptyRegions(row#world));
         Vector.flatMap(match (a, ha) ->
             Vector.filterMap(match (b, hb) -> if (a < b) Some(Map#{

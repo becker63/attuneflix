@@ -1,7 +1,7 @@
 /// Canonical typed Parquet schemas for the Atlas census. These declarations
 /// are the scientific data model; the Arrow boundary only realizes them.
 pub mod Atlas.Signature.Table {
-    use ScientificTable.Value
+    use Kernel.Contract.Value
     use ScientificTable.Columns.{text, optionalText, textList, int32, optionalInt32}
     use ScientificTable.Columns.{int64, optionalInt64, float64, optionalFloat64, boolean}
 
@@ -15,7 +15,7 @@ pub mod Atlas.Signature.Table {
         snapshotId         = String
     }
 
-    pub def observations(): ScientificTable.Schema = {
+    pub def observations(): Kernel.Contract.Schema = {
         format = "attune-atlas-signature-observations-v1",
         columns = Vector#{
             text("signature_protocol"), text("atlas_protocol"), text("repository"),
@@ -31,7 +31,7 @@ pub mod Atlas.Signature.Table {
         }
     }
 
-    pub def snapshots(): ScientificTable.Schema = {
+    pub def snapshots(): Kernel.Contract.Schema = {
         format = "attune-atlas-signature-snapshots-v1",
         columns = Vector.append(identityColumns(), Vector#{
             int64("file_count"), int64("symbol_count"), int64("defines_count"),
@@ -40,7 +40,7 @@ pub mod Atlas.Signature.Table {
         })
     }
 
-    pub def physical(): ScientificTable.Schema = {
+    pub def physical(): Kernel.Contract.Schema = {
         format = "attune-atlas-signature-physical-v1",
         columns = Vector.append(identityColumns(), Vector#{
             text("seed_domain"), text("seed_identity"), int32("seed_ordinal"),
@@ -60,7 +60,7 @@ pub mod Atlas.Signature.Table {
         snapshot: SnapshotIdentity,
         seed: Atlas.Signature.Seed,
         signature: Atlas.Signature.Signature
-    ): Vector[ScientificTable.Row] \ IO = {
+    ): Vector[Kernel.Contract.Row] \ IO = {
         // Many logical routes intentionally converge on the same exact set.
         // Canonicalizing that large set once per unique semantic state keeps
         // persisted identity exact without repeatedly sorting identical IDs.
@@ -97,7 +97,7 @@ pub mod Atlas.Signature.Table {
         snapshot: SnapshotIdentity,
         seed: Atlas.Signature.Seed,
         signature: Atlas.Signature.Signature
-    ): ScientificTable.Row = {
+    ): Kernel.Contract.Row = {
         let evaluations = signature#physicalTransitions;
         let reuses = signature#transitionReuses;
         let logical = signature#logicalPrograms;
@@ -122,7 +122,7 @@ pub mod Atlas.Signature.Table {
         snapshot: SnapshotIdentity,
         repository: Repository.World,
         manifestCaseCount: Int32
-    ): ScientificTable.Row = Map.union(identityRow(snapshot), Map#{
+    ): Kernel.Contract.Row = Map.union(identityRow(snapshot), Map#{
         "file_count" => Value.Int64(Int32.toInt64(Vector.length(repository#files))),
         "symbol_count" => Value.Int64(Int32.toInt64(Vector.length(repository#symbols))),
         "defines_count" => Value.Int64(Int32.toInt64(Set.size(repository#defines))),
@@ -137,7 +137,7 @@ pub mod Atlas.Signature.Table {
         seed: Atlas.Signature.Seed,
         observation: Atlas.Signature.Observation,
         stateId0: String
-    ): ScientificTable.Row \ IO = {
+    ): Kernel.Contract.Row \ IO = {
         let routeId = Atlas.Signature.routeId(observation#program);
         let atoms = Vector.map(Atlas.Signature.atomName, observation#program#steps);
         Map.union(identityRow(snapshot), Map#{
@@ -163,7 +163,7 @@ pub mod Atlas.Signature.Table {
         })
     }
 
-    def identityColumns(): Vector[ScientificTable.Column] = Vector#{
+    def identityColumns(): Vector[Kernel.Contract.Column] = Vector#{
         text("signature_protocol"), text("atlas_protocol"), text("repository"),
         text("base_revision"), text("source_tree_identity"), text("fact_identity"),
         text("snapshot_id")

@@ -36,7 +36,7 @@ mod ControlSignatureTest {
 
     @Test
     def depthResponseChangesWhenAnAdmittedRelationChanges(): Unit \ Assert = {
-        let seed = Atlas.State.Files(Set#{Repository.Structure.FileId.FileId(0)});
+        let seed = Atlas.State.Files(Set#{Kernel.Contract.FileId.FileId(0)});
         let isolatedCards = Vector.map(observation -> (observation#depth, observation#outputCardinality),
             Experiment.require(Atlas.Signature.compute(isolated(), seed, 1))#observations);
         let linkedCards = Vector.map(observation -> (observation#depth, observation#outputCardinality),
@@ -47,7 +47,7 @@ mod ControlSignatureTest {
     @Test
     def depthResponseChangesWhenTheFamilyChanges(): Unit \ Assert = {
         let world = linked();
-        let seed = Atlas.State.Files(Set#{Repository.Structure.FileId.FileId(0)});
+        let seed = Atlas.State.Files(Set#{Kernel.Contract.FileId.FileId(0)});
         let depthOne = Experiment.require(Atlas.Signature.compute(world, seed, 1));
         let depthTwo = Experiment.require(Atlas.Signature.compute(world, seed, 2));
         Assert.assertEq(expected = 3, depthOne#logicalPrograms);

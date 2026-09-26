@@ -24,9 +24,9 @@ def depthSevenAtlasProgramsAreCompleteAndStable(): Unit \ Assert = {
 
 @Test
 def atlasEvaluationReturnsExactTypedStatesAndReusesTransitions(): Unit \ Assert = {
-    let f0 = Repository.Structure.FileId.FileId(0);
-    let s0 = Repository.Structure.SymbolId.SymbolId(0);
-    let s1 = Repository.Structure.SymbolId.SymbolId(1);
+    let f0 = Kernel.Contract.FileId.FileId(0);
+    let s0 = Kernel.Contract.SymbolId.SymbolId(0);
+    let s1 = Kernel.Contract.SymbolId.SymbolId(1);
     let world = TestWorlds.abWorld();
     match Atlas.evaluate(world, Atlas.State.Symbols(Set.singleton(s0)), Atlas.programs(2)) {
         case Err(error) => Assert.fail(error)
@@ -48,7 +48,7 @@ def atlasEvaluationReturnsExactTypedStatesAndReusesTransitions(): Unit \ Assert 
 
 @Test
 def atlasSignatureExplainsExtinctionExpansionReachAndReuse(): Unit \ Assert = {
-    let s0 = Repository.Structure.SymbolId.SymbolId(0);
+    let s0 = Kernel.Contract.SymbolId.SymbolId(0);
     let world = TestWorlds.abWorld();
     match Atlas.Signature.compute(world, Atlas.State.Symbols(Set.singleton(s0)), 2) {
         case Err(error) => Assert.fail(error)
@@ -82,8 +82,8 @@ def atlasSignatureExplainsExtinctionExpansionReachAndReuse(): Unit \ Assert = {
 @Test
 def atlasRouteAndStateIdentitiesIgnoreEvaluationAllocation(): Unit \ {Assert, IO} = {
     let route = Vector.get(3, Atlas.programs(2));
-    let s0 = Repository.Structure.SymbolId.SymbolId(0);
-    let s1 = Repository.Structure.SymbolId.SymbolId(1);
+    let s0 = Kernel.Contract.SymbolId.SymbolId(0);
+    let s1 = Kernel.Contract.SymbolId.SymbolId(1);
     let state = Atlas.State.Symbols(Set#{s1, s0});
 
     Assert.assertEq(expected = "defined_in,defines",

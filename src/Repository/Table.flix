@@ -5,7 +5,7 @@
 /// Atlas. A warm structural action therefore does not need source text, a
 /// checkout path, Nix, or Marzano.
 pub mod Repository.Table {
-    use ScientificTable.Value
+    use Kernel.Contract.Value
     use ScientificTable.Columns.{text, optionalText, int32, optionalInt32}
 
     pub type alias Identity = {
@@ -17,9 +17,9 @@ pub mod Repository.Table {
     }
 
     pub type alias Rows = {
-        metadata  = Vector[ScientificTable.Row],
-        entities  = Vector[ScientificTable.Row],
-        relations = Vector[ScientificTable.Row]
+        metadata  = Vector[Kernel.Contract.Row],
+        entities  = Vector[Kernel.Contract.Row],
+        relations = Vector[Kernel.Contract.Row]
     }
 
     enum Entity {
@@ -28,13 +28,13 @@ pub mod Repository.Table {
     }
 
     enum Relation {
-        case Defines(Repository.Structure.FileId, Repository.Structure.SymbolId)
-        case Imports(Repository.Structure.FileId, Repository.Structure.FileId)
-        case Calls(Repository.Structure.SymbolId, Repository.Structure.SymbolId)
-        case Parent(Repository.Structure.LocationId, Repository.Structure.LocationId)
+        case Defines(Kernel.Contract.FileId, Kernel.Contract.SymbolId)
+        case Imports(Kernel.Contract.FileId, Kernel.Contract.FileId)
+        case Calls(Kernel.Contract.SymbolId, Kernel.Contract.SymbolId)
+        case Parent(Kernel.Contract.LocationId, Kernel.Contract.LocationId)
     }
 
-    pub def metadata(): ScientificTable.Schema = {
+    pub def metadata(): Kernel.Contract.Schema = {
         format = "attune-repository-world-metadata-v1",
         columns = Vector#{
             text("repository"), text("base_revision"), text("source_tree_identity"),
@@ -48,7 +48,7 @@ pub mod Repository.Table {
     /// Files and Symbols share nominal integer storage but retain an explicit
     /// domain. Symbol-only source geometry is nullable; File rows must leave it
     /// empty and Symbol rows must populate it.
-    pub def entities(): ScientificTable.Schema = {
+    pub def entities(): Kernel.Contract.Schema = {
         format = "attune-repository-world-entities-v1",
         columns = Vector#{
             text("snapshot_id"), text("domain"), int32("entity_id"),
@@ -60,7 +60,7 @@ pub mod Repository.Table {
     /// The four admitted basis relations. Derived inverses and neighborhoods
     /// are intentionally absent: Datalog and the physical evaluator derive
     /// them from this smaller authoritative basis.
-    pub def relations(): ScientificTable.Schema = {
+    pub def relations(): Kernel.Contract.Schema = {
         format = "attune-repository-world-relations-v1",
         columns = Vector#{
             text("snapshot_id"), text("relation"), text("source_domain"),
@@ -132,7 +132,7 @@ pub mod Repository.Table {
         relations = ScientificTable.read(relationsPath, relations())
     })
 
-    def metadataRow(identity: Identity, world: Repository.World): ScientificTable.Row = Map#{
+    def metadataRow(identity: Identity, world: Repository.World): Kernel.Contract.Row = Map#{
         "repository" => Value.Text(identity#repository),
         "base_revision" => Value.Text(identity#baseRevision),
         "source_tree_identity" => Value.Text(identity#sourceTreeIdentity),
@@ -174,7 +174,7 @@ pub mod Repository.Table {
 
     def field(value: String): String = "${String.length(value)}:${value}"
 
-    def fileRows(snapshotId: String, files0: Vector[String]): Vector[ScientificTable.Row] =
+    def fileRows(snapshotId: String, files0: Vector[String]): Vector[Kernel.Contract.Row] =
         Vector.mapWithIndex((ordinal, path) -> Map#{
             "snapshot_id" => Value.Text(snapshotId), "domain" => Value.Text("file"),
             "entity_id" => Value.Int32(ordinal), "ordinal" => Value.Int32(ordinal),
@@ -182,7 +182,7 @@ pub mod Repository.Table {
             "start_byte" => Value.Null, "end_byte" => Value.Null
         }, files0)
 
-    def symbolRows(snapshotId: String, symbols0: Vector[Repository.Symbol]): Vector[ScientificTable.Row] =
+    def symbolRows(snapshotId: String, symbols0: Vector[Repository.Symbol]): Vector[Kernel.Contract.Row] =
         Vector.mapWithIndex((ordinal, symbol) -> Map#{
             "snapshot_id" => Value.Text(snapshotId), "domain" => Value.Text("symbol"),
             "entity_id" => Value.Int32(ordinal), "ordinal" => Value.Int32(ordinal),
@@ -191,7 +191,7 @@ pub mod Repository.Table {
             "end_byte" => Value.Int32(symbol#endByte)
         }, symbols0)
 
-    def relationRows(snapshotId: String, world: Repository.World): Vector[ScientificTable.Row] =
+    def relationRows(snapshotId: String, world: Repository.World): Vector[Kernel.Contract.Row] =
         Vector.flatten(Vector#{
             Set.toVector(world#defines) |> Vector.map(match (source, target) ->
                 relationRow(snapshotId, "defines", "file", fileId(source), "symbol", symbolId(target))),
@@ -204,13 +204,13 @@ pub mod Repository.Table {
         })
 
     def relationRow(snapshotId: String, relation: String, sourceDomain: String,
-                    source: Int32, targetDomain: String, target: Int32): ScientificTable.Row = Map#{
+                    source: Int32, targetDomain: String, target: Int32): Kernel.Contract.Row = Map#{
         "snapshot_id" => Value.Text(snapshotId), "relation" => Value.Text(relation),
         "source_domain" => Value.Text(sourceDomain), "source_id" => Value.Int32(source),
         "target_domain" => Value.Text(targetDomain), "target_id" => Value.Int32(target)
     }
 
-    def requireMetadata(expected: Identity, rows0: Vector[ScientificTable.Row]): Result[String, Unit] =
+    def requireMetadata(expected: Identity, rows0: Vector[Kernel.Contract.Row]): Result[String, Unit] =
         if (Vector.length(rows0) != 1) Err("repository world requires exactly one metadata row")
         else {
             let row = Vector.get(0, rows0);
@@ -223,13 +223,13 @@ pub mod Repository.Table {
             ) yield ()
         }
 
-    def decodeEntity(snapshotId: String, row: ScientificTable.Row): Result[String, Entity] = forM (
+    def decodeEntity(snapshotId: String, row: Kernel.Contract.Row): Result[String, Entity] = forM (
         _ <- ScientificTable.requireText("snapshot_id", snapshotId, row, "repository world");
-        domain <- ScientificTable.text(row, "domain");
-        id <- ScientificTable.int32(row, "entity_id");
-        ordinal <- ScientificTable.int32(row, "ordinal");
+        domain <- Kernel.Contract.text(row, "domain");
+        id <- Kernel.Contract.int32(row, "entity_id");
+        ordinal <- Kernel.Contract.int32(row, "ordinal");
         _ <- if (id == ordinal) Ok(()) else Err("repository entity id/ordinal mismatch");
-        path <- ScientificTable.text(row, "path");
+        path <- Kernel.Contract.text(row, "path");
         entity <- match domain {
             case "file" => forM (
                 _ <- requireNull("name", row);
@@ -237,21 +237,21 @@ pub mod Repository.Table {
                 _ <- requireNull("end_byte", row)
             ) yield Entity.File(ordinal, path)
             case "symbol" => forM (
-                name <- ScientificTable.text(row, "name");
-                start <- ScientificTable.int32(row, "start_byte");
-                end <- ScientificTable.int32(row, "end_byte")
+                name <- Kernel.Contract.text(row, "name");
+                start <- Kernel.Contract.int32(row, "start_byte");
+                end <- Kernel.Contract.int32(row, "end_byte")
             ) yield Entity.Symbol(ordinal, path, name, start, end)
             case _ => Err("unknown repository entity domain: ${domain}")
         }
     ) yield entity
 
-    def decodeRelation(snapshotId: String, row: ScientificTable.Row): Result[String, Relation] = forM (
+    def decodeRelation(snapshotId: String, row: Kernel.Contract.Row): Result[String, Relation] = forM (
         _ <- ScientificTable.requireText("snapshot_id", snapshotId, row, "repository world");
-        relation <- ScientificTable.text(row, "relation");
-        sourceDomain <- ScientificTable.text(row, "source_domain");
-        source <- ScientificTable.int32(row, "source_id");
-        targetDomain <- ScientificTable.text(row, "target_domain");
-        target <- ScientificTable.int32(row, "target_id");
+        relation <- Kernel.Contract.text(row, "relation");
+        sourceDomain <- Kernel.Contract.text(row, "source_domain");
+        source <- Kernel.Contract.int32(row, "source_id");
+        targetDomain <- Kernel.Contract.text(row, "target_domain");
+        target <- Kernel.Contract.int32(row, "target_id");
         edge <- match (relation, sourceDomain, targetDomain) {
             case ("defines", "file", "symbol") => Ok(Relation.Defines(file(source), symbol(target)))
             case ("imports", "file", "file") => Ok(Relation.Imports(file(source), file(target)))
@@ -281,10 +281,10 @@ pub mod Repository.Table {
             |> Result.map(_ -> Vector.map(match (_, value) -> value, entries))
     }
 
-    def makeWorld(files0: Vector[String], symbols0: Vector[Repository.Symbol], relations0: Vector[Relation], metadata0: Vector[ScientificTable.Row]): Result[String, Repository.World] =
+    def makeWorld(files0: Vector[String], symbols0: Vector[Repository.Symbol], relations0: Vector[Relation], metadata0: Vector[Kernel.Contract.Row]): Result[String, Repository.World] =
         forM (
-            unresolvedImports <- ScientificTable.int32(Vector.get(0, metadata0), "unresolved_imports");
-            unresolvedCalls <- ScientificTable.int32(Vector.get(0, metadata0), "unresolved_calls")
+            unresolvedImports <- Kernel.Contract.int32(Vector.get(0, metadata0), "unresolved_imports");
+            unresolvedCalls <- Kernel.Contract.int32(Vector.get(0, metadata0), "unresolved_calls")
         ) yield {
             files = files0,
             symbols = symbols0,
@@ -296,47 +296,47 @@ pub mod Repository.Table {
             unresolvedCalls = unresolvedCalls
         }
 
-    def definesEdge(edge: Relation): Option[(Repository.Structure.FileId, Repository.Structure.SymbolId)] = match edge {
+    def definesEdge(edge: Relation): Option[(Kernel.Contract.FileId, Kernel.Contract.SymbolId)] = match edge {
         case Relation.Defines(source, target) => Some((source, target))
         case _ => None
     }
 
-    def importsEdge(edge: Relation): Option[(Repository.Structure.FileId, Repository.Structure.FileId)] = match edge {
+    def importsEdge(edge: Relation): Option[(Kernel.Contract.FileId, Kernel.Contract.FileId)] = match edge {
         case Relation.Imports(source, target) => Some((source, target))
         case _ => None
     }
 
-    def callsEdge(edge: Relation): Option[(Repository.Structure.SymbolId, Repository.Structure.SymbolId)] = match edge {
+    def callsEdge(edge: Relation): Option[(Kernel.Contract.SymbolId, Kernel.Contract.SymbolId)] = match edge {
         case Relation.Calls(source, target) => Some((source, target))
         case _ => None
     }
 
-    def parentEdge(edge: Relation): Option[(Repository.Structure.LocationId, Repository.Structure.LocationId)] = match edge {
+    def parentEdge(edge: Relation): Option[(Kernel.Contract.LocationId, Kernel.Contract.LocationId)] = match edge {
         case Relation.Parent(source, target) => Some((source, target))
         case _ => None
     }
 
-    def requireCounts(world: Repository.World, row: ScientificTable.Row): Result[String, Unit] = {
+    def requireCounts(world: Repository.World, row: Kernel.Contract.Row): Result[String, Unit] = {
         let actual = Vector#{
             ("file_count", Vector.length(world#files)), ("symbol_count", Vector.length(world#symbols)),
             ("defines_count", Set.size(world#defines)), ("imports_count", Set.size(world#imports)),
             ("calls_count", Set.size(world#calls)), ("parent_count", Set.size(world#parents))
         };
-        Vector.traverse(match (name, count) -> ScientificTable.int32(row, name)
+        Vector.traverse(match (name, count) -> Kernel.Contract.int32(row, name)
             |> Result.flatMap(expected -> if (expected == count) Ok(()) else Err("repository world count mismatch: ${name}")), actual)
             |> Result.map(_ -> ())
     }
 
-    def requireNull(name: String, row: ScientificTable.Row): Result[String, Unit] = match Map.get(name, row) {
+    def requireNull(name: String, row: Kernel.Contract.Row): Result[String, Unit] = match Map.get(name, row) {
         case Some(Value.Null) => Ok(())
         case Some(_) => Err("repository world field must be null: ${name}")
         case None => Err("missing repository world field: ${name}")
     }
 
-    def file(value: Int32): Repository.Structure.FileId = Repository.Structure.FileId.FileId(value)
-    def symbol(value: Int32): Repository.Structure.SymbolId = Repository.Structure.SymbolId.SymbolId(value)
-    def location(value: Int32): Repository.Structure.LocationId = Repository.Structure.LocationId.LocationId(value)
-    def fileId(value: Repository.Structure.FileId): Int32 = let Repository.Structure.FileId.FileId(id) = value; id
-    def symbolId(value: Repository.Structure.SymbolId): Int32 = let Repository.Structure.SymbolId.SymbolId(id) = value; id
-    def locationId(value: Repository.Structure.LocationId): Int32 = let Repository.Structure.LocationId.LocationId(id) = value; id
+    def file(value: Int32): Kernel.Contract.FileId = Kernel.Contract.FileId.FileId(value)
+    def symbol(value: Int32): Kernel.Contract.SymbolId = Kernel.Contract.SymbolId.SymbolId(value)
+    def location(value: Int32): Kernel.Contract.LocationId = Kernel.Contract.LocationId.LocationId(value)
+    def fileId(value: Kernel.Contract.FileId): Int32 = let Kernel.Contract.FileId.FileId(id) = value; id
+    def symbolId(value: Kernel.Contract.SymbolId): Int32 = let Kernel.Contract.SymbolId.SymbolId(id) = value; id
+    def locationId(value: Kernel.Contract.LocationId): Int32 = let Kernel.Contract.LocationId.LocationId(id) = value; id
 }

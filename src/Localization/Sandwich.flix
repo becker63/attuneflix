@@ -121,6 +121,6 @@ pub mod Localization.Sandwich {
             (Set.empty(), Vector.empty()), pairs)
             |> snd
 
-    def symbol(ordinal: Int32): Repository.Structure.SymbolId =
-        Repository.Structure.SymbolId.SymbolId(ordinal)
+    def symbol(ordinal: Int32): Kernel.Contract.SymbolId =
+        Kernel.Contract.SymbolId.SymbolId(ordinal)
 }

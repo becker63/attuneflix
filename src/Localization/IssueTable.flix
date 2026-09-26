@@ -3,7 +3,7 @@
 pub mod Localization.IssueTable {
     use ScientificTable.Columns.text
 
-    pub def schema(): ScientificTable.Schema = {
+    pub def schema(): Kernel.Contract.Schema = {
         format = "attune-localization-issue-v1",
         columns = Vector#{
             text("protocol"), text("instance_id"), text("repository"),

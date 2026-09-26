@@ -9,8 +9,8 @@ mod CensusMain {
     import java.lang.Integer
 
     type alias Output = {
-        observations = Vector[ScientificTable.Row],
-        physical     = Vector[ScientificTable.Row]
+        observations = Vector[Kernel.Contract.Row],
+        physical     = Vector[Kernel.Contract.Row]
     }
 
     pub def execute(): Unit \ IO = {
@@ -26,8 +26,8 @@ mod CensusMain {
     /// Small remote-action fixture. The world and every identity are supplied
     /// by the Bazel rule; Flix still owns the typed scientific rows.
     def writeFixture(): Unit \ IO = {
-        let file = Repository.Structure.FileId.FileId(0);
-        let symbol = Repository.Structure.SymbolId.SymbolId(0);
+        let file = Kernel.Contract.FileId.FileId(0);
+        let symbol = Kernel.Contract.SymbolId.SymbolId(0);
         let world: Repository.World = {
             files = Vector#{"src/fixture.ts"},
             symbols = Vector#{{

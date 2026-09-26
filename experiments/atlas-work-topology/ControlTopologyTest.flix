@@ -113,7 +113,7 @@ mod ControlTopologyTest {
         let paths = Vector#{"src/Atlas.flix", "src/Radii.flix", "src/Repository.flix", "test/T.flix"};
         let isolated = worldOf(paths, Vector.empty());
         let linked = worldOf(paths, Vector#{importFact("test/T.flix", "Repository")});
-        let repository = Repository.Structure.FileId.FileId(2);
+        let repository = Kernel.Contract.FileId.FileId(2);
         Assert.assertEq(expected = 12, Vector.length(ControlTopology.family()));
         Assert.assertTrue(ControlTopology.blast(linked, repository) > ControlTopology.blast(isolated, repository));
         Assert.assertTrue(ControlTopology.blast(linked, repository) > 0)

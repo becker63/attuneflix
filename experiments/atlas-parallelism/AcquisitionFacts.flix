@@ -8,7 +8,7 @@
 /// graph re-admits those facts through ordinary `Repository.admit`, so what it
 /// measures is the canonical admitted basis — never a second experiment graph.
 mod AcquisitionFacts {
-    use ScientificTable.Value
+    use Kernel.Contract.Value
     use ScientificTable.Columns.{text, int32}
 
     /// One admitted source file of a frozen revision.
@@ -31,12 +31,12 @@ mod AcquisitionFacts {
         value        = String
     }
 
-    pub def sourcesSchema(): ScientificTable.Schema = {
+    pub def sourcesSchema(): Kernel.Contract.Schema = {
         format = "attuneflix-grit-sources-v2",
         columns = Vector#{text("path"), text("sha256"), int32("byte_length"), text("language")}
     }
 
-    pub def factsSchema(): ScientificTable.Schema = {
+    pub def factsSchema(): Kernel.Contract.Schema = {
         format = "attuneflix-grit-facts-v2",
         columns = Vector#{
             text("path"), text("source_sha256"), text("language"), text("program"),
@@ -44,13 +44,13 @@ mod AcquisitionFacts {
         }
     }
 
-    pub def sourceRows(sources: Vector[Source]): Vector[ScientificTable.Row] =
+    pub def sourceRows(sources: Vector[Source]): Vector[Kernel.Contract.Row] =
         Vector.map(source -> Map#{
             "path" => Value.Text(source#path), "sha256" => Value.Text(source#sha256),
             "byte_length" => Value.Int32(source#bytes), "language" => Value.Text(source#language)
         }, sources)
 
-    pub def factRows(facts: Vector[FactRow]): Vector[ScientificTable.Row] =
+    pub def factRows(facts: Vector[FactRow]): Vector[Kernel.Contract.Row] =
         Vector.map(fact -> Map#{
             "path" => Value.Text(fact#path), "source_sha256" => Value.Text(fact#sourceSha256),
             "language" => Value.Text(fact#language), "program" => Value.Text(fact#program),
@@ -74,22 +74,22 @@ mod AcquisitionFacts {
     pub def readFacts(path: String): Vector[FactRow] \ IO =
         Vector.traverse(factOf, ScientificTable.read(path, factsSchema())) |> Experiment.require
 
-    def sourceOf(row: ScientificTable.Row): Result[String, Source] = forM (
-        path <- ScientificTable.text(row, "path");
-        sha256 <- ScientificTable.text(row, "sha256");
-        bytes <- ScientificTable.int32(row, "byte_length");
-        language <- ScientificTable.text(row, "language")
+    def sourceOf(row: Kernel.Contract.Row): Result[String, Source] = forM (
+        path <- Kernel.Contract.text(row, "path");
+        sha256 <- Kernel.Contract.text(row, "sha256");
+        bytes <- Kernel.Contract.int32(row, "byte_length");
+        language <- Kernel.Contract.text(row, "language")
     ) yield {path = path, sha256 = sha256, bytes = bytes, language = language}
 
-    def factOf(row: ScientificTable.Row): Result[String, FactRow] = forM (
-        path <- ScientificTable.text(row, "path");
-        sourceSha256 <- ScientificTable.text(row, "source_sha256");
-        language <- ScientificTable.text(row, "language");
-        program <- ScientificTable.text(row, "program");
-        kind <- ScientificTable.text(row, "kind");
-        startByte <- ScientificTable.int32(row, "start_byte");
-        endByte <- ScientificTable.int32(row, "end_byte");
-        value <- ScientificTable.text(row, "value")
+    def factOf(row: Kernel.Contract.Row): Result[String, FactRow] = forM (
+        path <- Kernel.Contract.text(row, "path");
+        sourceSha256 <- Kernel.Contract.text(row, "source_sha256");
+        language <- Kernel.Contract.text(row, "language");
+        program <- Kernel.Contract.text(row, "program");
+        kind <- Kernel.Contract.text(row, "kind");
+        startByte <- Kernel.Contract.int32(row, "start_byte");
+        endByte <- Kernel.Contract.int32(row, "end_byte");
+        value <- Kernel.Contract.text(row, "value")
     ) yield {
         path = path, sourceSha256 = sourceSha256, language = language, program = program,
         kind = kind, startByte = startByte, endByte = endByte, value = value

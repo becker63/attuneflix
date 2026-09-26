@@ -149,7 +149,7 @@ mod RoundTest {
         // Control's `build/src/A.flix` file seed becomes candidate's
         // `test/World/A.flix`, which sorts second: [src/Atlas.flix, test/World/A.flix].
         Assert.assertTrue(Vector.exists(seed ->
-            seed#state == Atlas.State.Files(Set#{Repository.Structure.FileId.FileId(1)}), seeds))
+            seed#state == Atlas.State.Files(Set#{Kernel.Contract.FileId.FileId(1)}), seeds))
     }
 
     def twoFileAcquisition(): (Vector[Source], Vector[AcquisitionFacts.FactRow]) = (

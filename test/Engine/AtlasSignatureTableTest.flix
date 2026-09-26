@@ -1,4 +1,4 @@
-use ScientificTable.Value
+use Kernel.Contract.Value
 
 @Test
 def atlasCensusSchemasAreExplicitAndStable(): Unit \ Assert = {
@@ -23,8 +23,8 @@ def atlasCensusSchemasAreExplicitAndStable(): Unit \ Assert = {
 
 @Test
 def atlasCensusRowsCarryExactRouteStateAndWorkIdentities(): Unit \ {Assert, IO} = {
-    let s0 = Repository.Structure.SymbolId.SymbolId(0);
-    let s1 = Repository.Structure.SymbolId.SymbolId(1);
+    let s0 = Kernel.Contract.SymbolId.SymbolId(0);
+    let s1 = Kernel.Contract.SymbolId.SymbolId(1);
     let program = Vector.get(1, Atlas.programs(1));
     let observation: Atlas.Signature.Observation = {
         program = program,
@@ -85,8 +85,8 @@ def atlasCensusRowsCarryExactRouteStateAndWorkIdentities(): Unit \ {Assert, IO} 
 
 @Test
 def atlasCensusUsesTypedFileAndSymbolSeedFamilies(): Unit \ {Assert, IO} = {
-    let f0 = Repository.Structure.FileId.FileId(0);
-    let s0 = Repository.Structure.SymbolId.SymbolId(0);
+    let f0 = Kernel.Contract.FileId.FileId(0);
+    let s0 = Kernel.Contract.SymbolId.SymbolId(0);
     let world: Repository.World = {
         files = Vector#{"src/a.ts"},
         symbols = Vector#{{path = "src/a.ts", name = "a", startByte = 0, endByte = 1}},

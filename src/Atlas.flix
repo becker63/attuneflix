@@ -79,8 +79,8 @@ mod Atlas {
     }
 
     pub enum State with Eq, Order, Hash, ToString {
-        case Files(Set[Repository.Structure.FileId])
-        case Symbols(Set[Repository.Structure.SymbolId])
+        case Files(Set[Kernel.Contract.FileId])
+        case Symbols(Set[Kernel.Contract.SymbolId])
     }
 
     pub type alias Evaluation = {

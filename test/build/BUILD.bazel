@@ -8,4 +8,7 @@
 # preserved so the rule file keeps its label identity.
 package(default_visibility = ["//visibility:public"])
 
-exports_files(["flix.bzl"])
+exports_files([
+    "flix.bzl",
+    "flix_loc_law.sh",
+])

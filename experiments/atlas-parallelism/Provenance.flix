@@ -41,7 +41,7 @@ mod Provenance {
     def fact(kind: String, path: String, start: Int32, end: Int32, value: String): Fact =
         {kind = kind, path = path, startByte = start, endByte = end, value = value}
 
-    def fileId(index: Int32): Repository.Structure.FileId = Repository.Structure.FileId.FileId(index)
+    def fileId(index: Int32): Kernel.Contract.FileId = Kernel.Contract.FileId.FileId(index)
 
     @Test
     def neighborhoodsComeFromActualAtlasTransitions(): Unit \ Assert = {

@@ -10,6 +10,11 @@ load("//test/build:flix.bzl", "checked_test", "flix_check")
 
 package(default_visibility = ["//visibility:public"])
 
+filegroup(
+    name = "flix_sources",
+    srcs = glob(["*.flix"]),
+)
+
 flix_check(
     name = "core_parity_check",
     srcs = [

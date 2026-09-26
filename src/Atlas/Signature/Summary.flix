@@ -3,7 +3,7 @@
 /// declared reductions used by reports; Java only moves typed columns through
 /// Arrow/Parquet.
 pub mod Atlas.Signature.Summary {
-    use ScientificTable.Value
+    use Kernel.Contract.Value
     use ScientificTable.Columns.{text, optionalText, optionalInt32, int64, float64}
 
     type alias Datum = {
@@ -35,7 +35,7 @@ pub mod Atlas.Signature.Summary {
 
     type alias Metric = {name = String, value = Float64, sampleCount = Int32}
 
-    pub def schema(): ScientificTable.Schema = {
+    pub def schema(): Kernel.Contract.Schema = {
         format = "attune-atlas-signature-summary-v1",
         columns = Vector#{
             text("signature_protocol"), text("atlas_protocol"), text("repository"),
@@ -48,7 +48,7 @@ pub mod Atlas.Signature.Summary {
 
     /// Produce domain, domain/depth, and domain/depth/direction groups. Empty
     /// impossible type combinations are omitted rather than reported as zero.
-    pub def summarize(rows: Vector[ScientificTable.Row]): Result[String, Vector[ScientificTable.Row]] =
+    pub def summarize(rows: Vector[Kernel.Contract.Row]): Result[String, Vector[Kernel.Contract.Row]] =
         Vector.traverse(decode, rows)
             |> Result.map(data -> Vector.flatMap(group -> summarizeGroup(data, group), groups(data)))
 
@@ -71,7 +71,7 @@ pub mod Atlas.Signature.Summary {
             |> Vector.filter(group -> not Vector.isEmpty(Vector.filter(row -> matches(group, row), data)))
     }
 
-    def summarizeGroup(data: Vector[Datum], group: Group): Vector[ScientificTable.Row] = {
+    def summarizeGroup(data: Vector[Datum], group: Group): Vector[Kernel.Contract.Row] = {
         let selected = Vector.filter(row -> matches(group, row), data);
         let first = Vector.get(0, selected);
         Vector.map(metric -> row(first, group, metric), metrics(selected))
@@ -182,7 +182,7 @@ pub mod Atlas.Signature.Summary {
         case Some(value) => value == actual
     }
 
-    def row(identity: Datum, group: Group, metric0: Metric): ScientificTable.Row = Map#{
+    def row(identity: Datum, group: Group, metric0: Metric): Kernel.Contract.Row = Map#{
         "signature_protocol" => Value.Text(identity#signatureProtocol),
         "atlas_protocol" => Value.Text(identity#atlasProtocol),
         "repository" => Value.Text(identity#repository),
@@ -199,23 +199,23 @@ pub mod Atlas.Signature.Summary {
         "sample_count" => Value.Int64(Int32.toInt64(metric0#sampleCount))
     }
 
-    def decode(row0: ScientificTable.Row): Result[String, Datum] = forM (
-        signatureProtocol <- ScientificTable.text(row0, "signature_protocol");
-        atlasProtocol <- ScientificTable.text(row0, "atlas_protocol");
-        repository <- ScientificTable.text(row0, "repository");
-        baseRevision <- ScientificTable.text(row0, "base_revision");
-        sourceTreeIdentity <- ScientificTable.text(row0, "source_tree_identity");
-        factIdentity <- ScientificTable.text(row0, "fact_identity");
-        snapshotId <- ScientificTable.text(row0, "snapshot_id");
-        seedDomain <- ScientificTable.text(row0, "seed_domain");
-        depth <- ScientificTable.int32(row0, "depth");
-        lastAtom <- ScientificTable.text(row0, "last_atom");
-        outputCardinality <- ScientificTable.number(row0, "output_cardinality");
+    def decode(row0: Kernel.Contract.Row): Result[String, Datum] = forM (
+        signatureProtocol <- Kernel.Contract.text(row0, "signature_protocol");
+        atlasProtocol <- Kernel.Contract.text(row0, "atlas_protocol");
+        repository <- Kernel.Contract.text(row0, "repository");
+        baseRevision <- Kernel.Contract.text(row0, "base_revision");
+        sourceTreeIdentity <- Kernel.Contract.text(row0, "source_tree_identity");
+        factIdentity <- Kernel.Contract.text(row0, "fact_identity");
+        snapshotId <- Kernel.Contract.text(row0, "snapshot_id");
+        seedDomain <- Kernel.Contract.text(row0, "seed_domain");
+        depth <- Kernel.Contract.int32(row0, "depth");
+        lastAtom <- Kernel.Contract.text(row0, "last_atom");
+        outputCardinality <- Kernel.Contract.number(row0, "output_cardinality");
         expansionRatio <- ScientificTable.optionalFloat64(row0, "expansion_ratio");
-        reachFraction <- ScientificTable.number(row0, "reach_fraction");
+        reachFraction <- Kernel.Contract.number(row0, "reach_fraction");
         extinct <- ScientificTable.boolean(row0, "extinct");
         firstExtinction <- ScientificTable.optionalInt32(row0, "first_extinction_depth");
-        semanticStateId <- ScientificTable.text(row0, "semantic_state_id");
+        semanticStateId <- Kernel.Contract.text(row0, "semantic_state_id");
         sameAsInput <- ScientificTable.boolean(row0, "same_as_input")
     ) yield {
         signatureProtocol = signatureProtocol, atlasProtocol = atlasProtocol,
