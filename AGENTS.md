@@ -44,8 +44,8 @@ and laws. Nothing here changes what the code means.
 - The credential is `BUILDBUDDY_API_KEY` in the environment; the
   credential helper reads the env var first and the git-ignored `.env`
   file as a local fallback (see `.env.example`). Never print or commit it.
-- Never run `bazel clean`, never delete local or remote caches, never
-  touch the `bazel-*` / `bazel-out` symlinks.
+- Remote cache on BuildBuddy is authoritative; `bazel clean` is safe when
+  local disk recovery is needed. Never delete remote caches.
 
 ## jj workflow
 
