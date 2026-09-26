@@ -3,9 +3,9 @@
 # Owns the Engine cell's law targets: the permanent `Repository.Reference` vs
 # `Repository.Physical` parity law, the Atlas grammar law, and the Atlas
 # signature table law. The parity law reads World's reduced surface
-# (`//test:world_relational_law_sources`) and World's parent-module anchor
-# (`//test/World:Repository.flix`), so it never pulls the full admission
-# surface into an Engine action.
+# (`//test:world_relational_law_sources`) and the shared law surface's
+# parent-module anchor (`//test:Repository.flix`), so it never pulls the full
+# admission surface into an Engine action.
 load("//build:flix.bzl", "checked_test", "flix_check")
 
 package(default_visibility = ["//visibility:public"])
@@ -17,7 +17,7 @@ flix_check(
         "//test:engine_physical_law_sources",
         "//test:engine_radii_law_sources",
         "//test:world_relational_law_sources",
-        "//test/World:Repository.flix",
+        "//test:Repository.flix",
     ],
     command = "test",
     threads = 2,
@@ -37,7 +37,7 @@ flix_check(
         "//test:engine_radii_law_sources",
         "//test:kernel_identity_law_sources",
         "//test:world_admission_law_sources",
-        "//test/World:TestWorlds.flix",
+        "//test:TestWorlds.flix",
     ],
     command = "test",
     java_deps = ["//src/native/identity:attune_identity"],

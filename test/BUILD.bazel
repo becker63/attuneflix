@@ -12,6 +12,18 @@
 
 package(default_visibility = ["//visibility:public"])
 
+# The shared law surface (K4 Hill-Climb Round 2). Two fixtures are read by the
+# law tests of more than one cell, so they are owned by the horizontal law
+# surface rather than by any single cell: the reduced `mod Repository {}`
+# parent anchor the Engine parity law compiles `Repository/Reference.flix`
+# against, and the `TestWorlds` a/b fixture the Engine and Applications law
+# surfaces read. Keeping them here means no cell's law package reaches into
+# another cell's law internals.
+exports_files([
+    "Repository.flix",
+    "TestWorlds.flix",
+])
+
 # World — the reduced relational surface (`Repository/Structure.flix` compiles
 # against a declared parent module) and the full admission surface.
 filegroup(

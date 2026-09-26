@@ -1,19 +1,12 @@
 # Cell A — World law surface.
 #
-# Owns the World cell's law targets and its law-owned sources: the reduced
-# `mod Repository {}` parent anchor `//test/Engine:core_parity_test` compiles
-# `Repository/Reference.flix` against, and the shared `TestWorlds` a/b fixture
-# the Engine and Applications law surfaces also read.
+# Owns the World cell's own law targets. The two fixtures shared with other
+# cells' laws (the `mod Repository {}` parent anchor and the `TestWorlds` a/b
+# world) live on the horizontal law surface (`//test`), not here, so no other
+# cell's law package reads into this one (Round 2).
 load("//build:flix.bzl", "checked_test", "flix_check")
 
 package(default_visibility = ["//visibility:public"])
-
-exports_files(
-    [
-        "Repository.flix",
-        "TestWorlds.flix",
-    ],
-)
 
 flix_check(
     name = "repository_admission_check",

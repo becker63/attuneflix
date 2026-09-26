@@ -22,7 +22,7 @@ flix_check(
         "//test:kernel_identity_law_sources",
         "//test:kernel_table_law_sources",
         "//test:world_admission_law_sources",
-        "//test/World:TestWorlds.flix",
+        "//test:TestWorlds.flix",
     ],
     command = "test",
     java_deps = [
