@@ -1,14 +1,21 @@
 #!/bin/bash
-# Committed-artifact verification (PREREGISTRATION.md §9, §10; VAL-HC1-002).
+# Committed-artifact verification (PREREGISTRATION.md §9, §10; VAL-HC1-002,
+# VAL-HC23-003).
 #
-#   nix develop --command bazel test //experiments/atlas-work-topology:round1_artifacts_test --config=buildbuddy-rbe
+#   nix develop --command bazel test \
+#     //experiments/atlas-work-topology:round1_artifacts_test \
+#     //experiments/atlas-work-topology:round3_artifacts_test --config=buildbuddy-rbe
 #
 # Re-derives the round identity map, static work-topology and signature oracle
 # from the committed control evidence and the round's admitted path/source
 # manifests, and compares them with the committed artifacts. Every comparison
 # runs in Flix (`attune.command=verify`); a mismatch is a non-zero exit. The
-# test never touches the candidate worktree or the network.
+# test never touches the candidate worktree or the network. The role is the
+# first argument so one script guards round 1 and (for revisions that pass the
+# full verdict set) round 3.
 set -euo pipefail
+
+role="${1:-round1}"
 
 if [ -n "${TEST_SRCDIR:-}" ]; then
     export RUNFILES_DIR="$TEST_SRCDIR" JAVA_RUNFILES="$TEST_SRCDIR"
@@ -28,16 +35,16 @@ source "${RUNFILES_DIR:-/dev/null}/$f" 2>/dev/null || \
 
 bin="$(rlocation _main/experiments/atlas-work-topology/round_topology_bin)"
 rel="experiments/atlas-work-topology"
-dir="$(dirname "$(rlocation _main/$rel/round1/round1.files.txt)")"
+dir="$(dirname "$(rlocation _main/$rel/$role/$role.files.txt)")"
 control="$(dirname "$(rlocation _main/$rel/control/control.files.txt)")"
 
 "$bin" "--jvm_flag=-Dattune.command=verify" \
-       "--jvm_flag=-Dattune.revision=$dir/round1.revision.txt" \
+       "--jvm_flag=-Dattune.revision=$dir/$role.revision.txt" \
        "--jvm_flag=-Dattune.control_revision=$control/control.revision.txt" \
        "--jvm_flag=-Dattune.control_sources=$control/control.sources.parquet" \
        "--jvm_flag=-Dattune.control_facts=$control/control.facts.parquet" \
-       "--jvm_flag=-Dattune.files=$dir/round1.files.txt" \
-       "--jvm_flag=-Dattune.sources=$dir/round1.sources.txt" \
-       "--jvm_flag=-Dattune.output_identity=$dir/round1.identity_map.json" \
-       "--jvm_flag=-Dattune.output_topology=$dir/round1.topology.json" \
-       "--jvm_flag=-Dattune.output_oracle=$dir/round1.oracle.json"
+       "--jvm_flag=-Dattune.files=$dir/$role.files.txt" \
+       "--jvm_flag=-Dattune.sources=$dir/$role.sources.txt" \
+       "--jvm_flag=-Dattune.output_identity=$dir/$role.identity_map.json" \
+       "--jvm_flag=-Dattune.output_topology=$dir/$role.topology.json" \
+       "--jvm_flag=-Dattune.output_oracle=$dir/$role.oracle.json"

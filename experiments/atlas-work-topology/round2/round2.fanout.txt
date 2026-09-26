@@ -1,0 +1,1941 @@
+# round2.fanout.txt — Bazel direct target fanout per admitted source file (PREREGISTRATION.md §7)
+# worktree=/tmp/attuneflix-round1 revision=10f3a212d0c4d10a6c06a8f1570b0e2dd284c920 universe=//...
+# declaring_actions: targets declaring the file basename in srcs (one analysis action each)
+# direct_dependents: rdeps(universe, declaring, 1) minus the declaring targets
+# test_invalidation: independently runnable test targets in rdeps(universe, declaring)
+# basename matching is the bound §7 protocol; a shared basename is reported, never hidden
+== BUILD.bazel
+declaring_actions: 0
+direct_dependents: 0
+test_invalidation: 0
+declaring_targets:
+direct_dependent_targets:
+test_invalidation_targets:
+== MODULE.bazel
+declaring_actions: 0
+direct_dependents: 0
+test_invalidation: 0
+declaring_targets:
+direct_dependent_targets:
+test_invalidation_targets:
+== build/BUILD.bazel
+declaring_actions: 0
+direct_dependents: 0
+test_invalidation: 0
+declaring_targets:
+direct_dependent_targets:
+test_invalidation_targets:
+== build/attune.bzl
+declaring_actions: 0
+direct_dependents: 0
+test_invalidation: 0
+declaring_targets:
+direct_dependent_targets:
+test_invalidation_targets:
+== build/flix.bzl
+declaring_actions: 0
+direct_dependents: 0
+test_invalidation: 0
+declaring_targets:
+direct_dependent_targets:
+test_invalidation_targets:
+== build/grit_repository.bzl
+declaring_actions: 0
+direct_dependents: 0
+test_invalidation: 0
+declaring_targets:
+direct_dependent_targets:
+test_invalidation_targets:
+== build/jextract.bzl
+declaring_actions: 0
+direct_dependents: 0
+test_invalidation: 0
+declaring_targets:
+direct_dependent_targets:
+test_invalidation_targets:
+== build/jextract_repository.bzl
+declaring_actions: 0
+direct_dependents: 0
+test_invalidation: 0
+declaring_targets:
+direct_dependent_targets:
+test_invalidation_targets:
+== data/evaluation/BUILD.bazel
+declaring_actions: 0
+direct_dependents: 0
+test_invalidation: 0
+declaring_targets:
+direct_dependent_targets:
+test_invalidation_targets:
+== experiments/atlas-parallelism/AcquireMain.flix
+declaring_actions: 1
+direct_dependents: 1
+test_invalidation: 0
+declaring_targets:
+  //experiments/atlas-parallelism:acquire_flix
+direct_dependent_targets:
+  //experiments/atlas-parallelism:acquire
+test_invalidation_targets:
+== experiments/atlas-parallelism/AcquisitionDriver.flix
+declaring_actions: 2
+direct_dependents: 2
+test_invalidation: 1
+declaring_targets:
+  //experiments/atlas-parallelism:acquire_flix
+  //experiments/atlas-work-topology:acquire_flix
+direct_dependent_targets:
+  //experiments/atlas-parallelism:acquire
+  //experiments/atlas-work-topology:acquire_bin
+test_invalidation_targets:
+  //experiments/atlas-work-topology:control_reproducibility_test
+== experiments/atlas-parallelism/AcquisitionFacts.flix
+declaring_actions: 10
+direct_dependents: 10
+test_invalidation: 8
+declaring_targets:
+  //experiments/atlas-parallelism:acquire_flix
+  //experiments/atlas-parallelism:parallelism_flix
+  //experiments/atlas-parallelism:parallelism_provenance_check
+  //experiments/atlas-work-topology:acquire_flix
+  //experiments/atlas-work-topology:control_signature_check
+  //experiments/atlas-work-topology:control_signatures_flix
+  //experiments/atlas-work-topology:control_topology_check
+  //experiments/atlas-work-topology:control_topology_flix
+  //experiments/atlas-work-topology:round_check
+  //experiments/atlas-work-topology:round_topology_flix
+direct_dependent_targets:
+  //experiments/atlas-parallelism:acquire
+  //experiments/atlas-parallelism:parallelism
+  //experiments/atlas-parallelism:parallelism_provenance_test
+  //experiments/atlas-work-topology:acquire_bin
+  //experiments/atlas-work-topology:control_signature_test
+  //experiments/atlas-work-topology:control_signatures_bin
+  //experiments/atlas-work-topology:control_topology_bin
+  //experiments/atlas-work-topology:control_topology_test
+  //experiments/atlas-work-topology:round_test
+  //experiments/atlas-work-topology:round_topology_bin
+test_invalidation_targets:
+  //experiments/atlas-parallelism:parallelism_provenance_test
+  //experiments/atlas-work-topology:control_reproducibility_test
+  //experiments/atlas-work-topology:control_signature_artifacts_test
+  //experiments/atlas-work-topology:control_signature_test
+  //experiments/atlas-work-topology:control_topology_artifacts_test
+  //experiments/atlas-work-topology:control_topology_test
+  //experiments/atlas-work-topology:round1_artifacts_test
+  //experiments/atlas-work-topology:round_test
+== experiments/atlas-parallelism/BUILD.bazel
+declaring_actions: 0
+direct_dependents: 0
+test_invalidation: 0
+declaring_targets:
+direct_dependent_targets:
+test_invalidation_targets:
+== experiments/atlas-parallelism/Main.flix
+declaring_actions: 7
+direct_dependents: 7
+test_invalidation: 4
+declaring_targets:
+  //experiments/atlas-parallelism:acquire_flix
+  //experiments/atlas-parallelism:parallelism_flix
+  //experiments/atlas-swe-explore:signature_flix
+  //experiments/atlas-work-topology:acquire_flix
+  //experiments/atlas-work-topology:control_signatures_flix
+  //experiments/atlas-work-topology:control_topology_flix
+  //experiments/atlas-work-topology:round_topology_flix
+direct_dependent_targets:
+  //experiments/atlas-parallelism:acquire
+  //experiments/atlas-parallelism:parallelism
+  //experiments/atlas-swe-explore:signature
+  //experiments/atlas-work-topology:acquire_bin
+  //experiments/atlas-work-topology:control_signatures_bin
+  //experiments/atlas-work-topology:control_topology_bin
+  //experiments/atlas-work-topology:round_topology_bin
+test_invalidation_targets:
+  //experiments/atlas-work-topology:control_reproducibility_test
+  //experiments/atlas-work-topology:control_signature_artifacts_test
+  //experiments/atlas-work-topology:control_topology_artifacts_test
+  //experiments/atlas-work-topology:round1_artifacts_test
+== experiments/atlas-parallelism/Parallelism.flix
+declaring_actions: 2
+direct_dependents: 2
+test_invalidation: 1
+declaring_targets:
+  //experiments/atlas-parallelism:parallelism_flix
+  //experiments/atlas-parallelism:parallelism_provenance_check
+direct_dependent_targets:
+  //experiments/atlas-parallelism:parallelism
+  //experiments/atlas-parallelism:parallelism_provenance_test
+test_invalidation_targets:
+  //experiments/atlas-parallelism:parallelism_provenance_test
+== experiments/atlas-parallelism/Provenance.flix
+declaring_actions: 1
+direct_dependents: 1
+test_invalidation: 1
+declaring_targets:
+  //experiments/atlas-parallelism:parallelism_provenance_check
+direct_dependent_targets:
+  //experiments/atlas-parallelism:parallelism_provenance_test
+test_invalidation_targets:
+  //experiments/atlas-parallelism:parallelism_provenance_test
+== experiments/atlas-parallelism/parallelism.bzl
+declaring_actions: 0
+direct_dependents: 0
+test_invalidation: 0
+declaring_targets:
+direct_dependent_targets:
+test_invalidation_targets:
+== experiments/atlas-swe-explore/Aggregate.flix
+declaring_actions: 1
+direct_dependents: 1
+test_invalidation: 0
+declaring_targets:
+  //experiments/atlas-swe-explore:aggregate_flix
+direct_dependent_targets:
+  //experiments/atlas-swe-explore:aggregate
+test_invalidation_targets:
+== experiments/atlas-swe-explore/BUILD.bazel
+declaring_actions: 0
+direct_dependents: 0
+test_invalidation: 0
+declaring_targets:
+direct_dependent_targets:
+test_invalidation_targets:
+== experiments/atlas-swe-explore/Main.flix
+declaring_actions: 7
+direct_dependents: 7
+test_invalidation: 4
+declaring_targets:
+  //experiments/atlas-parallelism:acquire_flix
+  //experiments/atlas-parallelism:parallelism_flix
+  //experiments/atlas-swe-explore:signature_flix
+  //experiments/atlas-work-topology:acquire_flix
+  //experiments/atlas-work-topology:control_signatures_flix
+  //experiments/atlas-work-topology:control_topology_flix
+  //experiments/atlas-work-topology:round_topology_flix
+direct_dependent_targets:
+  //experiments/atlas-parallelism:acquire
+  //experiments/atlas-parallelism:parallelism
+  //experiments/atlas-swe-explore:signature
+  //experiments/atlas-work-topology:acquire_bin
+  //experiments/atlas-work-topology:control_signatures_bin
+  //experiments/atlas-work-topology:control_topology_bin
+  //experiments/atlas-work-topology:round_topology_bin
+test_invalidation_targets:
+  //experiments/atlas-work-topology:control_reproducibility_test
+  //experiments/atlas-work-topology:control_signature_artifacts_test
+  //experiments/atlas-work-topology:control_topology_artifacts_test
+  //experiments/atlas-work-topology:round1_artifacts_test
+== experiments/atlas-swe-explore/Report.flix
+declaring_actions: 1
+direct_dependents: 1
+test_invalidation: 0
+declaring_targets:
+  //experiments/atlas-swe-explore:report_flix
+direct_dependent_targets:
+  //experiments/atlas-swe-explore:report
+test_invalidation_targets:
+== experiments/atlas-swe-explore/Summary.flix
+declaring_actions: 9
+direct_dependents: 9
+test_invalidation: 6
+declaring_targets:
+  //experiments/atlas-swe-explore:aggregate_flix
+  //experiments/atlas-swe-explore:report_flix
+  //experiments/atlas-swe-explore:summary_flix
+  //experiments/atlas-work-topology:control_signature_check
+  //experiments/atlas-work-topology:control_signatures_flix
+  //experiments/atlas-work-topology:control_topology_check
+  //experiments/atlas-work-topology:control_topology_flix
+  //experiments/atlas-work-topology:round_check
+  //experiments/atlas-work-topology:round_topology_flix
+direct_dependent_targets:
+  //experiments/atlas-swe-explore:aggregate
+  //experiments/atlas-swe-explore:report
+  //experiments/atlas-swe-explore:summary
+  //experiments/atlas-work-topology:control_signature_test
+  //experiments/atlas-work-topology:control_signatures_bin
+  //experiments/atlas-work-topology:control_topology_bin
+  //experiments/atlas-work-topology:control_topology_test
+  //experiments/atlas-work-topology:round_test
+  //experiments/atlas-work-topology:round_topology_bin
+test_invalidation_targets:
+  //experiments/atlas-work-topology:control_signature_artifacts_test
+  //experiments/atlas-work-topology:control_signature_test
+  //experiments/atlas-work-topology:control_topology_artifacts_test
+  //experiments/atlas-work-topology:control_topology_test
+  //experiments/atlas-work-topology:round1_artifacts_test
+  //experiments/atlas-work-topology:round_test
+== experiments/atlas-swe-explore/census/BUILD.bazel
+declaring_actions: 0
+direct_dependents: 0
+test_invalidation: 0
+declaring_targets:
+direct_dependent_targets:
+test_invalidation_targets:
+== experiments/atlas-swe-explore/census/census.bzl
+declaring_actions: 0
+direct_dependents: 0
+test_invalidation: 0
+declaring_targets:
+direct_dependent_targets:
+test_invalidation_targets:
+== experiments/atlas-work-topology/BUILD.bazel
+declaring_actions: 0
+direct_dependents: 0
+test_invalidation: 0
+declaring_targets:
+direct_dependent_targets:
+test_invalidation_targets:
+== experiments/atlas-work-topology/ControlAcquisition.flix
+declaring_actions: 1
+direct_dependents: 1
+test_invalidation: 1
+declaring_targets:
+  //experiments/atlas-work-topology:acquire_flix
+direct_dependent_targets:
+  //experiments/atlas-work-topology:acquire_bin
+test_invalidation_targets:
+  //experiments/atlas-work-topology:control_reproducibility_test
+== experiments/atlas-work-topology/ControlCoChange.flix
+declaring_actions: 2
+direct_dependents: 2
+test_invalidation: 2
+declaring_targets:
+  //experiments/atlas-work-topology:control_topology_check
+  //experiments/atlas-work-topology:control_topology_flix
+direct_dependent_targets:
+  //experiments/atlas-work-topology:control_topology_bin
+  //experiments/atlas-work-topology:control_topology_test
+test_invalidation_targets:
+  //experiments/atlas-work-topology:control_topology_artifacts_test
+  //experiments/atlas-work-topology:control_topology_test
+== experiments/atlas-work-topology/ControlIdentity.flix
+declaring_actions: 6
+direct_dependents: 6
+test_invalidation: 6
+declaring_targets:
+  //experiments/atlas-work-topology:control_signature_check
+  //experiments/atlas-work-topology:control_signatures_flix
+  //experiments/atlas-work-topology:control_topology_check
+  //experiments/atlas-work-topology:control_topology_flix
+  //experiments/atlas-work-topology:round_check
+  //experiments/atlas-work-topology:round_topology_flix
+direct_dependent_targets:
+  //experiments/atlas-work-topology:control_signature_test
+  //experiments/atlas-work-topology:control_signatures_bin
+  //experiments/atlas-work-topology:control_topology_bin
+  //experiments/atlas-work-topology:control_topology_test
+  //experiments/atlas-work-topology:round_test
+  //experiments/atlas-work-topology:round_topology_bin
+test_invalidation_targets:
+  //experiments/atlas-work-topology:control_signature_artifacts_test
+  //experiments/atlas-work-topology:control_signature_test
+  //experiments/atlas-work-topology:control_topology_artifacts_test
+  //experiments/atlas-work-topology:control_topology_test
+  //experiments/atlas-work-topology:round1_artifacts_test
+  //experiments/atlas-work-topology:round_test
+== experiments/atlas-work-topology/ControlMain.flix
+declaring_actions: 1
+direct_dependents: 1
+test_invalidation: 1
+declaring_targets:
+  //experiments/atlas-work-topology:acquire_flix
+direct_dependent_targets:
+  //experiments/atlas-work-topology:acquire_bin
+test_invalidation_targets:
+  //experiments/atlas-work-topology:control_reproducibility_test
+== experiments/atlas-work-topology/ControlMap.flix
+declaring_actions: 7
+direct_dependents: 7
+test_invalidation: 7
+declaring_targets:
+  //experiments/atlas-work-topology:acquire_flix
+  //experiments/atlas-work-topology:control_signature_check
+  //experiments/atlas-work-topology:control_signatures_flix
+  //experiments/atlas-work-topology:control_topology_check
+  //experiments/atlas-work-topology:control_topology_flix
+  //experiments/atlas-work-topology:round_check
+  //experiments/atlas-work-topology:round_topology_flix
+direct_dependent_targets:
+  //experiments/atlas-work-topology:acquire_bin
+  //experiments/atlas-work-topology:control_signature_test
+  //experiments/atlas-work-topology:control_signatures_bin
+  //experiments/atlas-work-topology:control_topology_bin
+  //experiments/atlas-work-topology:control_topology_test
+  //experiments/atlas-work-topology:round_test
+  //experiments/atlas-work-topology:round_topology_bin
+test_invalidation_targets:
+  //experiments/atlas-work-topology:control_reproducibility_test
+  //experiments/atlas-work-topology:control_signature_artifacts_test
+  //experiments/atlas-work-topology:control_signature_test
+  //experiments/atlas-work-topology:control_topology_artifacts_test
+  //experiments/atlas-work-topology:control_topology_test
+  //experiments/atlas-work-topology:round1_artifacts_test
+  //experiments/atlas-work-topology:round_test
+== experiments/atlas-work-topology/ControlMeasure.flix
+declaring_actions: 2
+direct_dependents: 2
+test_invalidation: 2
+declaring_targets:
+  //experiments/atlas-work-topology:control_topology_check
+  //experiments/atlas-work-topology:control_topology_flix
+direct_dependent_targets:
+  //experiments/atlas-work-topology:control_topology_bin
+  //experiments/atlas-work-topology:control_topology_test
+test_invalidation_targets:
+  //experiments/atlas-work-topology:control_topology_artifacts_test
+  //experiments/atlas-work-topology:control_topology_test
+== experiments/atlas-work-topology/ControlMeasureMain.flix
+declaring_actions: 1
+direct_dependents: 1
+test_invalidation: 1
+declaring_targets:
+  //experiments/atlas-work-topology:control_topology_flix
+direct_dependent_targets:
+  //experiments/atlas-work-topology:control_topology_bin
+test_invalidation_targets:
+  //experiments/atlas-work-topology:control_topology_artifacts_test
+== experiments/atlas-work-topology/ControlSignature.flix
+declaring_actions: 6
+direct_dependents: 6
+test_invalidation: 6
+declaring_targets:
+  //experiments/atlas-work-topology:control_signature_check
+  //experiments/atlas-work-topology:control_signatures_flix
+  //experiments/atlas-work-topology:control_topology_check
+  //experiments/atlas-work-topology:control_topology_flix
+  //experiments/atlas-work-topology:round_check
+  //experiments/atlas-work-topology:round_topology_flix
+direct_dependent_targets:
+  //experiments/atlas-work-topology:control_signature_test
+  //experiments/atlas-work-topology:control_signatures_bin
+  //experiments/atlas-work-topology:control_topology_bin
+  //experiments/atlas-work-topology:control_topology_test
+  //experiments/atlas-work-topology:round_test
+  //experiments/atlas-work-topology:round_topology_bin
+test_invalidation_targets:
+  //experiments/atlas-work-topology:control_signature_artifacts_test
+  //experiments/atlas-work-topology:control_signature_test
+  //experiments/atlas-work-topology:control_topology_artifacts_test
+  //experiments/atlas-work-topology:control_topology_test
+  //experiments/atlas-work-topology:round1_artifacts_test
+  //experiments/atlas-work-topology:round_test
+== experiments/atlas-work-topology/ControlSignatureTest.flix
+declaring_actions: 1
+direct_dependents: 1
+test_invalidation: 1
+declaring_targets:
+  //experiments/atlas-work-topology:control_signature_check
+direct_dependent_targets:
+  //experiments/atlas-work-topology:control_signature_test
+test_invalidation_targets:
+  //experiments/atlas-work-topology:control_signature_test
+== experiments/atlas-work-topology/ControlSignaturesMain.flix
+declaring_actions: 1
+direct_dependents: 1
+test_invalidation: 1
+declaring_targets:
+  //experiments/atlas-work-topology:control_signatures_flix
+direct_dependent_targets:
+  //experiments/atlas-work-topology:control_signatures_bin
+test_invalidation_targets:
+  //experiments/atlas-work-topology:control_signature_artifacts_test
+== experiments/atlas-work-topology/ControlTopology.flix
+declaring_actions: 4
+direct_dependents: 4
+test_invalidation: 4
+declaring_targets:
+  //experiments/atlas-work-topology:control_topology_check
+  //experiments/atlas-work-topology:control_topology_flix
+  //experiments/atlas-work-topology:round_check
+  //experiments/atlas-work-topology:round_topology_flix
+direct_dependent_targets:
+  //experiments/atlas-work-topology:control_topology_bin
+  //experiments/atlas-work-topology:control_topology_test
+  //experiments/atlas-work-topology:round_test
+  //experiments/atlas-work-topology:round_topology_bin
+test_invalidation_targets:
+  //experiments/atlas-work-topology:control_topology_artifacts_test
+  //experiments/atlas-work-topology:control_topology_test
+  //experiments/atlas-work-topology:round1_artifacts_test
+  //experiments/atlas-work-topology:round_test
+== experiments/atlas-work-topology/ControlTopologyJson.flix
+declaring_actions: 2
+direct_dependents: 2
+test_invalidation: 2
+declaring_targets:
+  //experiments/atlas-work-topology:control_topology_check
+  //experiments/atlas-work-topology:control_topology_flix
+direct_dependent_targets:
+  //experiments/atlas-work-topology:control_topology_bin
+  //experiments/atlas-work-topology:control_topology_test
+test_invalidation_targets:
+  //experiments/atlas-work-topology:control_topology_artifacts_test
+  //experiments/atlas-work-topology:control_topology_test
+== experiments/atlas-work-topology/ControlTopologyTest.flix
+declaring_actions: 1
+direct_dependents: 1
+test_invalidation: 1
+declaring_targets:
+  //experiments/atlas-work-topology:control_topology_check
+direct_dependent_targets:
+  //experiments/atlas-work-topology:control_topology_test
+test_invalidation_targets:
+  //experiments/atlas-work-topology:control_topology_test
+== experiments/atlas-work-topology/RoundIdentity.flix
+declaring_actions: 2
+direct_dependents: 2
+test_invalidation: 2
+declaring_targets:
+  //experiments/atlas-work-topology:round_check
+  //experiments/atlas-work-topology:round_topology_flix
+direct_dependent_targets:
+  //experiments/atlas-work-topology:round_test
+  //experiments/atlas-work-topology:round_topology_bin
+test_invalidation_targets:
+  //experiments/atlas-work-topology:round1_artifacts_test
+  //experiments/atlas-work-topology:round_test
+== experiments/atlas-work-topology/RoundJson.flix
+declaring_actions: 2
+direct_dependents: 2
+test_invalidation: 2
+declaring_targets:
+  //experiments/atlas-work-topology:round_check
+  //experiments/atlas-work-topology:round_topology_flix
+direct_dependent_targets:
+  //experiments/atlas-work-topology:round_test
+  //experiments/atlas-work-topology:round_topology_bin
+test_invalidation_targets:
+  //experiments/atlas-work-topology:round1_artifacts_test
+  //experiments/atlas-work-topology:round_test
+== experiments/atlas-work-topology/RoundMeasure.flix
+declaring_actions: 2
+direct_dependents: 2
+test_invalidation: 2
+declaring_targets:
+  //experiments/atlas-work-topology:round_check
+  //experiments/atlas-work-topology:round_topology_flix
+direct_dependent_targets:
+  //experiments/atlas-work-topology:round_test
+  //experiments/atlas-work-topology:round_topology_bin
+test_invalidation_targets:
+  //experiments/atlas-work-topology:round1_artifacts_test
+  //experiments/atlas-work-topology:round_test
+== experiments/atlas-work-topology/RoundMeasureMain.flix
+declaring_actions: 1
+direct_dependents: 1
+test_invalidation: 1
+declaring_targets:
+  //experiments/atlas-work-topology:round_topology_flix
+direct_dependent_targets:
+  //experiments/atlas-work-topology:round_topology_bin
+test_invalidation_targets:
+  //experiments/atlas-work-topology:round1_artifacts_test
+== experiments/atlas-work-topology/RoundOracle.flix
+declaring_actions: 2
+direct_dependents: 2
+test_invalidation: 2
+declaring_targets:
+  //experiments/atlas-work-topology:round_check
+  //experiments/atlas-work-topology:round_topology_flix
+direct_dependent_targets:
+  //experiments/atlas-work-topology:round_test
+  //experiments/atlas-work-topology:round_topology_bin
+test_invalidation_targets:
+  //experiments/atlas-work-topology:round1_artifacts_test
+  //experiments/atlas-work-topology:round_test
+== experiments/atlas-work-topology/RoundTest.flix
+declaring_actions: 1
+direct_dependents: 1
+test_invalidation: 1
+declaring_targets:
+  //experiments/atlas-work-topology:round_check
+direct_dependent_targets:
+  //experiments/atlas-work-topology:round_test
+test_invalidation_targets:
+  //experiments/atlas-work-topology:round_test
+== experiments/atlas-work-topology/RoundTopology.flix
+declaring_actions: 2
+direct_dependents: 2
+test_invalidation: 2
+declaring_targets:
+  //experiments/atlas-work-topology:round_check
+  //experiments/atlas-work-topology:round_topology_flix
+direct_dependent_targets:
+  //experiments/atlas-work-topology:round_test
+  //experiments/atlas-work-topology:round_topology_bin
+test_invalidation_targets:
+  //experiments/atlas-work-topology:round1_artifacts_test
+  //experiments/atlas-work-topology:round_test
+== experiments/atlas-work-topology/control_signatures.bzl
+declaring_actions: 0
+direct_dependents: 0
+test_invalidation: 0
+declaring_targets:
+direct_dependent_targets:
+test_invalidation_targets:
+== experiments/atlas-work-topology/round_topology.bzl
+declaring_actions: 0
+direct_dependents: 0
+test_invalidation: 0
+declaring_targets:
+direct_dependent_targets:
+test_invalidation_targets:
+== experiments/atlas-work-topology/topology.bzl
+declaring_actions: 0
+direct_dependents: 0
+test_invalidation: 0
+declaring_targets:
+direct_dependent_targets:
+test_invalidation_targets:
+== experiments/atlas-work-topology/work_topology.bzl
+declaring_actions: 0
+direct_dependents: 0
+test_invalidation: 0
+declaring_targets:
+direct_dependent_targets:
+test_invalidation_targets:
+== experiments/swe-explore-js-ts-scale/BUILD.bazel
+declaring_actions: 0
+direct_dependents: 0
+test_invalidation: 0
+declaring_targets:
+direct_dependent_targets:
+test_invalidation_targets:
+== src/Atlas.flix
+declaring_actions: 13
+direct_dependents: 15
+test_invalidation: 10
+declaring_targets:
+  //experiments/atlas-parallelism:parallelism_flix
+  //experiments/atlas-parallelism:parallelism_provenance_check
+  //experiments/atlas-swe-explore:aggregate_flix
+  //experiments/atlas-swe-explore:report_flix
+  //experiments/atlas-swe-explore:signature_flix
+  //experiments/atlas-swe-explore:summary_flix
+  //experiments/atlas-work-topology:control_signature_check
+  //experiments/atlas-work-topology:control_signatures_flix
+  //experiments/atlas-work-topology:control_topology_check
+  //experiments/atlas-work-topology:control_topology_flix
+  //experiments/atlas-work-topology:round_check
+  //experiments/atlas-work-topology:round_topology_flix
+  //test:engine_atlas_law_sources
+direct_dependent_targets:
+  //experiments/atlas-parallelism:parallelism
+  //experiments/atlas-parallelism:parallelism_provenance_test
+  //experiments/atlas-swe-explore:aggregate
+  //experiments/atlas-swe-explore:report
+  //experiments/atlas-swe-explore:signature
+  //experiments/atlas-swe-explore:summary
+  //experiments/atlas-work-topology:control_signature_test
+  //experiments/atlas-work-topology:control_signatures_bin
+  //experiments/atlas-work-topology:control_topology_bin
+  //experiments/atlas-work-topology:control_topology_test
+  //experiments/atlas-work-topology:round_test
+  //experiments/atlas-work-topology:round_topology_bin
+  //test/Applications:localization_sandwich_check
+  //test/Engine:atlas_grammar_check
+  //test/Engine:atlas_signature_table_check
+test_invalidation_targets:
+  //experiments/atlas-parallelism:parallelism_provenance_test
+  //experiments/atlas-work-topology:control_signature_artifacts_test
+  //experiments/atlas-work-topology:control_signature_test
+  //experiments/atlas-work-topology:control_topology_artifacts_test
+  //experiments/atlas-work-topology:control_topology_test
+  //experiments/atlas-work-topology:round1_artifacts_test
+  //experiments/atlas-work-topology:round_test
+  //test/Applications:localization_sandwich_test
+  //test/Engine:atlas_grammar_test
+  //test/Engine:atlas_signature_table_test
+== src/Atlas/Signature.flix
+declaring_actions: 13
+direct_dependents: 15
+test_invalidation: 10
+declaring_targets:
+  //experiments/atlas-parallelism:parallelism_flix
+  //experiments/atlas-parallelism:parallelism_provenance_check
+  //experiments/atlas-swe-explore:aggregate_flix
+  //experiments/atlas-swe-explore:report_flix
+  //experiments/atlas-swe-explore:signature_flix
+  //experiments/atlas-swe-explore:summary_flix
+  //experiments/atlas-work-topology:control_signature_check
+  //experiments/atlas-work-topology:control_signatures_flix
+  //experiments/atlas-work-topology:control_topology_check
+  //experiments/atlas-work-topology:control_topology_flix
+  //experiments/atlas-work-topology:round_check
+  //experiments/atlas-work-topology:round_topology_flix
+  //test:engine_atlas_law_sources
+direct_dependent_targets:
+  //experiments/atlas-parallelism:parallelism
+  //experiments/atlas-parallelism:parallelism_provenance_test
+  //experiments/atlas-swe-explore:aggregate
+  //experiments/atlas-swe-explore:report
+  //experiments/atlas-swe-explore:signature
+  //experiments/atlas-swe-explore:summary
+  //experiments/atlas-work-topology:control_signature_test
+  //experiments/atlas-work-topology:control_signatures_bin
+  //experiments/atlas-work-topology:control_topology_bin
+  //experiments/atlas-work-topology:control_topology_test
+  //experiments/atlas-work-topology:round_test
+  //experiments/atlas-work-topology:round_topology_bin
+  //test/Applications:localization_sandwich_check
+  //test/Engine:atlas_grammar_check
+  //test/Engine:atlas_signature_table_check
+test_invalidation_targets:
+  //experiments/atlas-parallelism:parallelism_provenance_test
+  //experiments/atlas-work-topology:control_signature_artifacts_test
+  //experiments/atlas-work-topology:control_signature_test
+  //experiments/atlas-work-topology:control_topology_artifacts_test
+  //experiments/atlas-work-topology:control_topology_test
+  //experiments/atlas-work-topology:round1_artifacts_test
+  //experiments/atlas-work-topology:round_test
+  //test/Applications:localization_sandwich_test
+  //test/Engine:atlas_grammar_test
+  //test/Engine:atlas_signature_table_test
+== src/Atlas/Signature/Summary.flix
+declaring_actions: 9
+direct_dependents: 9
+test_invalidation: 6
+declaring_targets:
+  //experiments/atlas-swe-explore:aggregate_flix
+  //experiments/atlas-swe-explore:report_flix
+  //experiments/atlas-swe-explore:summary_flix
+  //experiments/atlas-work-topology:control_signature_check
+  //experiments/atlas-work-topology:control_signatures_flix
+  //experiments/atlas-work-topology:control_topology_check
+  //experiments/atlas-work-topology:control_topology_flix
+  //experiments/atlas-work-topology:round_check
+  //experiments/atlas-work-topology:round_topology_flix
+direct_dependent_targets:
+  //experiments/atlas-swe-explore:aggregate
+  //experiments/atlas-swe-explore:report
+  //experiments/atlas-swe-explore:summary
+  //experiments/atlas-work-topology:control_signature_test
+  //experiments/atlas-work-topology:control_signatures_bin
+  //experiments/atlas-work-topology:control_topology_bin
+  //experiments/atlas-work-topology:control_topology_test
+  //experiments/atlas-work-topology:round_test
+  //experiments/atlas-work-topology:round_topology_bin
+test_invalidation_targets:
+  //experiments/atlas-work-topology:control_signature_artifacts_test
+  //experiments/atlas-work-topology:control_signature_test
+  //experiments/atlas-work-topology:control_topology_artifacts_test
+  //experiments/atlas-work-topology:control_topology_test
+  //experiments/atlas-work-topology:round1_artifacts_test
+  //experiments/atlas-work-topology:round_test
+== src/Atlas/Signature/Table.flix
+declaring_actions: 19
+direct_dependents: 19
+test_invalidation: 13
+declaring_targets:
+  //experiments/atlas-parallelism:acquire_flix
+  //experiments/atlas-parallelism:parallelism_flix
+  //experiments/atlas-parallelism:parallelism_provenance_check
+  //experiments/atlas-swe-explore:aggregate_flix
+  //experiments/atlas-swe-explore:report_flix
+  //experiments/atlas-swe-explore:signature_flix
+  //experiments/atlas-swe-explore:summary_flix
+  //experiments/atlas-work-topology:acquire_flix
+  //experiments/atlas-work-topology:control_signature_check
+  //experiments/atlas-work-topology:control_signatures_flix
+  //experiments/atlas-work-topology:control_topology_check
+  //experiments/atlas-work-topology:control_topology_flix
+  //experiments/atlas-work-topology:round_check
+  //experiments/atlas-work-topology:round_topology_flix
+  //test/Applications:localization_sandwich_check
+  //test/Applications:population_table_check
+  //test/Engine:atlas_signature_table_check
+  //test/World:repository_table_check
+  //test:kernel_table_law_sources
+direct_dependent_targets:
+  //experiments/atlas-parallelism:acquire
+  //experiments/atlas-parallelism:parallelism
+  //experiments/atlas-parallelism:parallelism_provenance_test
+  //experiments/atlas-swe-explore:aggregate
+  //experiments/atlas-swe-explore:report
+  //experiments/atlas-swe-explore:signature
+  //experiments/atlas-swe-explore:summary
+  //experiments/atlas-work-topology:acquire_bin
+  //experiments/atlas-work-topology:control_signature_test
+  //experiments/atlas-work-topology:control_signatures_bin
+  //experiments/atlas-work-topology:control_topology_bin
+  //experiments/atlas-work-topology:control_topology_test
+  //experiments/atlas-work-topology:round_test
+  //experiments/atlas-work-topology:round_topology_bin
+  //test/Applications:localization_sandwich_test
+  //test/Applications:population_table_test
+  //test/Engine:atlas_signature_table_test
+  //test/Kernel:scientific_table_check
+  //test/World:repository_table_test
+test_invalidation_targets:
+  //experiments/atlas-parallelism:parallelism_provenance_test
+  //experiments/atlas-work-topology:control_reproducibility_test
+  //experiments/atlas-work-topology:control_signature_artifacts_test
+  //experiments/atlas-work-topology:control_signature_test
+  //experiments/atlas-work-topology:control_topology_artifacts_test
+  //experiments/atlas-work-topology:control_topology_test
+  //experiments/atlas-work-topology:round1_artifacts_test
+  //experiments/atlas-work-topology:round_test
+  //test/Applications:localization_sandwich_test
+  //test/Applications:population_table_test
+  //test/Engine:atlas_signature_table_test
+  //test/Kernel:scientific_table_test
+  //test/World:repository_table_test
+== src/BUILD.bazel
+declaring_actions: 0
+direct_dependents: 0
+test_invalidation: 0
+declaring_targets:
+direct_dependent_targets:
+test_invalidation_targets:
+== src/Experiment.flix
+declaring_actions: 14
+direct_dependents: 14
+test_invalidation: 8
+declaring_targets:
+  //experiments/atlas-parallelism:acquire_flix
+  //experiments/atlas-parallelism:parallelism_flix
+  //experiments/atlas-parallelism:parallelism_provenance_check
+  //experiments/atlas-swe-explore:aggregate_flix
+  //experiments/atlas-swe-explore:report_flix
+  //experiments/atlas-swe-explore:signature_flix
+  //experiments/atlas-swe-explore:summary_flix
+  //experiments/atlas-work-topology:acquire_flix
+  //experiments/atlas-work-topology:control_signature_check
+  //experiments/atlas-work-topology:control_signatures_flix
+  //experiments/atlas-work-topology:control_topology_check
+  //experiments/atlas-work-topology:control_topology_flix
+  //experiments/atlas-work-topology:round_check
+  //experiments/atlas-work-topology:round_topology_flix
+direct_dependent_targets:
+  //experiments/atlas-parallelism:acquire
+  //experiments/atlas-parallelism:parallelism
+  //experiments/atlas-parallelism:parallelism_provenance_test
+  //experiments/atlas-swe-explore:aggregate
+  //experiments/atlas-swe-explore:report
+  //experiments/atlas-swe-explore:signature
+  //experiments/atlas-swe-explore:summary
+  //experiments/atlas-work-topology:acquire_bin
+  //experiments/atlas-work-topology:control_signature_test
+  //experiments/atlas-work-topology:control_signatures_bin
+  //experiments/atlas-work-topology:control_topology_bin
+  //experiments/atlas-work-topology:control_topology_test
+  //experiments/atlas-work-topology:round_test
+  //experiments/atlas-work-topology:round_topology_bin
+test_invalidation_targets:
+  //experiments/atlas-parallelism:parallelism_provenance_test
+  //experiments/atlas-work-topology:control_reproducibility_test
+  //experiments/atlas-work-topology:control_signature_artifacts_test
+  //experiments/atlas-work-topology:control_signature_test
+  //experiments/atlas-work-topology:control_topology_artifacts_test
+  //experiments/atlas-work-topology:control_topology_test
+  //experiments/atlas-work-topology:round1_artifacts_test
+  //experiments/atlas-work-topology:round_test
+== src/Localization.flix
+declaring_actions: 1
+direct_dependents: 1
+test_invalidation: 1
+declaring_targets:
+  //test/Applications:localization_sandwich_check
+direct_dependent_targets:
+  //test/Applications:localization_sandwich_test
+test_invalidation_targets:
+  //test/Applications:localization_sandwich_test
+== src/Localization/IssueTable.flix
+declaring_actions: 1
+direct_dependents: 1
+test_invalidation: 1
+declaring_targets:
+  //test/Applications:localization_sandwich_check
+direct_dependent_targets:
+  //test/Applications:localization_sandwich_test
+test_invalidation_targets:
+  //test/Applications:localization_sandwich_test
+== src/Localization/PredictionTable.flix
+declaring_actions: 1
+direct_dependents: 1
+test_invalidation: 1
+declaring_targets:
+  //test/Applications:localization_sandwich_check
+direct_dependent_targets:
+  //test/Applications:localization_sandwich_test
+test_invalidation_targets:
+  //test/Applications:localization_sandwich_test
+== src/Localization/PriorTable.flix
+declaring_actions: 1
+direct_dependents: 1
+test_invalidation: 1
+declaring_targets:
+  //test/Applications:localization_sandwich_check
+direct_dependent_targets:
+  //test/Applications:localization_sandwich_test
+test_invalidation_targets:
+  //test/Applications:localization_sandwich_test
+== src/Localization/Sandwich.flix
+declaring_actions: 1
+direct_dependents: 1
+test_invalidation: 1
+declaring_targets:
+  //test/Applications:localization_sandwich_check
+direct_dependent_targets:
+  //test/Applications:localization_sandwich_test
+test_invalidation_targets:
+  //test/Applications:localization_sandwich_test
+== src/Population.flix
+declaring_actions: 2
+direct_dependents: 2
+test_invalidation: 1
+declaring_targets:
+  //experiments/atlas-swe-explore:aggregate_flix
+  //test/Applications:population_table_check
+direct_dependent_targets:
+  //experiments/atlas-swe-explore:aggregate
+  //test/Applications:population_table_test
+test_invalidation_targets:
+  //test/Applications:population_table_test
+== src/Population/Table.flix
+declaring_actions: 19
+direct_dependents: 19
+test_invalidation: 13
+declaring_targets:
+  //experiments/atlas-parallelism:acquire_flix
+  //experiments/atlas-parallelism:parallelism_flix
+  //experiments/atlas-parallelism:parallelism_provenance_check
+  //experiments/atlas-swe-explore:aggregate_flix
+  //experiments/atlas-swe-explore:report_flix
+  //experiments/atlas-swe-explore:signature_flix
+  //experiments/atlas-swe-explore:summary_flix
+  //experiments/atlas-work-topology:acquire_flix
+  //experiments/atlas-work-topology:control_signature_check
+  //experiments/atlas-work-topology:control_signatures_flix
+  //experiments/atlas-work-topology:control_topology_check
+  //experiments/atlas-work-topology:control_topology_flix
+  //experiments/atlas-work-topology:round_check
+  //experiments/atlas-work-topology:round_topology_flix
+  //test/Applications:localization_sandwich_check
+  //test/Applications:population_table_check
+  //test/Engine:atlas_signature_table_check
+  //test/World:repository_table_check
+  //test:kernel_table_law_sources
+direct_dependent_targets:
+  //experiments/atlas-parallelism:acquire
+  //experiments/atlas-parallelism:parallelism
+  //experiments/atlas-parallelism:parallelism_provenance_test
+  //experiments/atlas-swe-explore:aggregate
+  //experiments/atlas-swe-explore:report
+  //experiments/atlas-swe-explore:signature
+  //experiments/atlas-swe-explore:summary
+  //experiments/atlas-work-topology:acquire_bin
+  //experiments/atlas-work-topology:control_signature_test
+  //experiments/atlas-work-topology:control_signatures_bin
+  //experiments/atlas-work-topology:control_topology_bin
+  //experiments/atlas-work-topology:control_topology_test
+  //experiments/atlas-work-topology:round_test
+  //experiments/atlas-work-topology:round_topology_bin
+  //test/Applications:localization_sandwich_test
+  //test/Applications:population_table_test
+  //test/Engine:atlas_signature_table_test
+  //test/Kernel:scientific_table_check
+  //test/World:repository_table_test
+test_invalidation_targets:
+  //experiments/atlas-parallelism:parallelism_provenance_test
+  //experiments/atlas-work-topology:control_reproducibility_test
+  //experiments/atlas-work-topology:control_signature_artifacts_test
+  //experiments/atlas-work-topology:control_signature_test
+  //experiments/atlas-work-topology:control_topology_artifacts_test
+  //experiments/atlas-work-topology:control_topology_test
+  //experiments/atlas-work-topology:round1_artifacts_test
+  //experiments/atlas-work-topology:round_test
+  //test/Applications:localization_sandwich_test
+  //test/Applications:population_table_test
+  //test/Engine:atlas_signature_table_test
+  //test/Kernel:scientific_table_test
+  //test/World:repository_table_test
+== src/Radii.flix
+declaring_actions: 13
+direct_dependents: 16
+test_invalidation: 11
+declaring_targets:
+  //experiments/atlas-parallelism:parallelism_flix
+  //experiments/atlas-parallelism:parallelism_provenance_check
+  //experiments/atlas-swe-explore:aggregate_flix
+  //experiments/atlas-swe-explore:report_flix
+  //experiments/atlas-swe-explore:signature_flix
+  //experiments/atlas-swe-explore:summary_flix
+  //experiments/atlas-work-topology:control_signature_check
+  //experiments/atlas-work-topology:control_signatures_flix
+  //experiments/atlas-work-topology:control_topology_check
+  //experiments/atlas-work-topology:control_topology_flix
+  //experiments/atlas-work-topology:round_check
+  //experiments/atlas-work-topology:round_topology_flix
+  //test:engine_radii_law_sources
+direct_dependent_targets:
+  //experiments/atlas-parallelism:parallelism
+  //experiments/atlas-parallelism:parallelism_provenance_test
+  //experiments/atlas-swe-explore:aggregate
+  //experiments/atlas-swe-explore:report
+  //experiments/atlas-swe-explore:signature
+  //experiments/atlas-swe-explore:summary
+  //experiments/atlas-work-topology:control_signature_test
+  //experiments/atlas-work-topology:control_signatures_bin
+  //experiments/atlas-work-topology:control_topology_bin
+  //experiments/atlas-work-topology:control_topology_test
+  //experiments/atlas-work-topology:round_test
+  //experiments/atlas-work-topology:round_topology_bin
+  //test/Applications:localization_sandwich_check
+  //test/Engine:atlas_grammar_check
+  //test/Engine:atlas_signature_table_check
+  //test/Engine:core_parity_check
+test_invalidation_targets:
+  //experiments/atlas-parallelism:parallelism_provenance_test
+  //experiments/atlas-work-topology:control_signature_artifacts_test
+  //experiments/atlas-work-topology:control_signature_test
+  //experiments/atlas-work-topology:control_topology_artifacts_test
+  //experiments/atlas-work-topology:control_topology_test
+  //experiments/atlas-work-topology:round1_artifacts_test
+  //experiments/atlas-work-topology:round_test
+  //test/Applications:localization_sandwich_test
+  //test/Engine:atlas_grammar_test
+  //test/Engine:atlas_signature_table_test
+  //test/Engine:core_parity_test
+== src/Radii/Evaluate.flix
+declaring_actions: 1
+direct_dependents: 4
+test_invalidation: 4
+declaring_targets:
+  //test:engine_radii_law_sources
+direct_dependent_targets:
+  //test/Applications:localization_sandwich_check
+  //test/Engine:atlas_grammar_check
+  //test/Engine:atlas_signature_table_check
+  //test/Engine:core_parity_check
+test_invalidation_targets:
+  //test/Applications:localization_sandwich_test
+  //test/Engine:atlas_grammar_test
+  //test/Engine:atlas_signature_table_test
+  //test/Engine:core_parity_test
+== src/Radii/Synthesize.flix
+declaring_actions: 1
+direct_dependents: 4
+test_invalidation: 4
+declaring_targets:
+  //test:engine_radii_law_sources
+direct_dependent_targets:
+  //test/Applications:localization_sandwich_check
+  //test/Engine:atlas_grammar_check
+  //test/Engine:atlas_signature_table_check
+  //test/Engine:core_parity_check
+test_invalidation_targets:
+  //test/Applications:localization_sandwich_test
+  //test/Engine:atlas_grammar_test
+  //test/Engine:atlas_signature_table_test
+  //test/Engine:core_parity_test
+== src/Repository.flix
+declaring_actions: 16
+direct_dependents: 22
+test_invalidation: 16
+declaring_targets:
+  //experiments/atlas-parallelism:acquire_flix
+  //experiments/atlas-parallelism:parallelism_flix
+  //experiments/atlas-parallelism:parallelism_provenance_check
+  //experiments/atlas-swe-explore:aggregate_flix
+  //experiments/atlas-swe-explore:report_flix
+  //experiments/atlas-swe-explore:signature_flix
+  //experiments/atlas-swe-explore:summary_flix
+  //experiments/atlas-work-topology:acquire_flix
+  //experiments/atlas-work-topology:control_signature_check
+  //experiments/atlas-work-topology:control_signatures_flix
+  //experiments/atlas-work-topology:control_topology_check
+  //experiments/atlas-work-topology:control_topology_flix
+  //experiments/atlas-work-topology:round_check
+  //experiments/atlas-work-topology:round_topology_flix
+  //test/Engine:core_parity_check
+  //test:world_admission_law_sources
+direct_dependent_targets:
+  //experiments/atlas-parallelism:acquire
+  //experiments/atlas-parallelism:parallelism
+  //experiments/atlas-parallelism:parallelism_provenance_test
+  //experiments/atlas-swe-explore:aggregate
+  //experiments/atlas-swe-explore:report
+  //experiments/atlas-swe-explore:signature
+  //experiments/atlas-swe-explore:summary
+  //experiments/atlas-work-topology:acquire_bin
+  //experiments/atlas-work-topology:control_signature_test
+  //experiments/atlas-work-topology:control_signatures_bin
+  //experiments/atlas-work-topology:control_topology_bin
+  //experiments/atlas-work-topology:control_topology_test
+  //experiments/atlas-work-topology:round_test
+  //experiments/atlas-work-topology:round_topology_bin
+  //test/Applications:localization_sandwich_check
+  //test/Engine:atlas_grammar_check
+  //test/Engine:atlas_signature_table_check
+  //test/Engine:core_parity_test
+  //test/World:grit_acquire_check
+  //test/World:grit_acquisition_check
+  //test/World:repository_admission_check
+  //test/World:repository_table_check
+test_invalidation_targets:
+  //experiments/atlas-parallelism:parallelism_provenance_test
+  //experiments/atlas-work-topology:control_reproducibility_test
+  //experiments/atlas-work-topology:control_signature_artifacts_test
+  //experiments/atlas-work-topology:control_signature_test
+  //experiments/atlas-work-topology:control_topology_artifacts_test
+  //experiments/atlas-work-topology:control_topology_test
+  //experiments/atlas-work-topology:round1_artifacts_test
+  //experiments/atlas-work-topology:round_test
+  //test/Applications:localization_sandwich_test
+  //test/Engine:atlas_grammar_test
+  //test/Engine:atlas_signature_table_test
+  //test/Engine:core_parity_test
+  //test/World:grit_acquire_test
+  //test/World:grit_acquisition_test
+  //test/World:repository_admission_test
+  //test/World:repository_table_test
+== src/Repository/Acquire.flix
+declaring_actions: 3
+direct_dependents: 3
+test_invalidation: 2
+declaring_targets:
+  //experiments/atlas-parallelism:acquire_flix
+  //experiments/atlas-work-topology:acquire_flix
+  //test/World:grit_acquire_check
+direct_dependent_targets:
+  //experiments/atlas-parallelism:acquire
+  //experiments/atlas-work-topology:acquire_bin
+  //test/World:grit_acquire_test
+test_invalidation_targets:
+  //experiments/atlas-work-topology:control_reproducibility_test
+  //test/World:grit_acquire_test
+== src/Repository/Grit.flix
+declaring_actions: 15
+direct_dependents: 21
+test_invalidation: 15
+declaring_targets:
+  //experiments/atlas-parallelism:acquire_flix
+  //experiments/atlas-parallelism:parallelism_flix
+  //experiments/atlas-parallelism:parallelism_provenance_check
+  //experiments/atlas-swe-explore:aggregate_flix
+  //experiments/atlas-swe-explore:report_flix
+  //experiments/atlas-swe-explore:signature_flix
+  //experiments/atlas-swe-explore:summary_flix
+  //experiments/atlas-work-topology:acquire_flix
+  //experiments/atlas-work-topology:control_signature_check
+  //experiments/atlas-work-topology:control_signatures_flix
+  //experiments/atlas-work-topology:control_topology_check
+  //experiments/atlas-work-topology:control_topology_flix
+  //experiments/atlas-work-topology:round_check
+  //experiments/atlas-work-topology:round_topology_flix
+  //test:world_admission_law_sources
+direct_dependent_targets:
+  //experiments/atlas-parallelism:acquire
+  //experiments/atlas-parallelism:parallelism
+  //experiments/atlas-parallelism:parallelism_provenance_test
+  //experiments/atlas-swe-explore:aggregate
+  //experiments/atlas-swe-explore:report
+  //experiments/atlas-swe-explore:signature
+  //experiments/atlas-swe-explore:summary
+  //experiments/atlas-work-topology:acquire_bin
+  //experiments/atlas-work-topology:control_signature_test
+  //experiments/atlas-work-topology:control_signatures_bin
+  //experiments/atlas-work-topology:control_topology_bin
+  //experiments/atlas-work-topology:control_topology_test
+  //experiments/atlas-work-topology:round_test
+  //experiments/atlas-work-topology:round_topology_bin
+  //test/Applications:localization_sandwich_check
+  //test/Engine:atlas_grammar_check
+  //test/Engine:atlas_signature_table_check
+  //test/World:grit_acquire_check
+  //test/World:grit_acquisition_check
+  //test/World:repository_admission_check
+  //test/World:repository_table_check
+test_invalidation_targets:
+  //experiments/atlas-parallelism:parallelism_provenance_test
+  //experiments/atlas-work-topology:control_reproducibility_test
+  //experiments/atlas-work-topology:control_signature_artifacts_test
+  //experiments/atlas-work-topology:control_signature_test
+  //experiments/atlas-work-topology:control_topology_artifacts_test
+  //experiments/atlas-work-topology:control_topology_test
+  //experiments/atlas-work-topology:round1_artifacts_test
+  //experiments/atlas-work-topology:round_test
+  //test/Applications:localization_sandwich_test
+  //test/Engine:atlas_grammar_test
+  //test/Engine:atlas_signature_table_test
+  //test/World:grit_acquire_test
+  //test/World:grit_acquisition_test
+  //test/World:repository_admission_test
+  //test/World:repository_table_test
+== src/Repository/Physical.flix
+declaring_actions: 13
+direct_dependents: 16
+test_invalidation: 11
+declaring_targets:
+  //experiments/atlas-parallelism:parallelism_flix
+  //experiments/atlas-parallelism:parallelism_provenance_check
+  //experiments/atlas-swe-explore:aggregate_flix
+  //experiments/atlas-swe-explore:report_flix
+  //experiments/atlas-swe-explore:signature_flix
+  //experiments/atlas-swe-explore:summary_flix
+  //experiments/atlas-work-topology:control_signature_check
+  //experiments/atlas-work-topology:control_signatures_flix
+  //experiments/atlas-work-topology:control_topology_check
+  //experiments/atlas-work-topology:control_topology_flix
+  //experiments/atlas-work-topology:round_check
+  //experiments/atlas-work-topology:round_topology_flix
+  //test:engine_physical_law_sources
+direct_dependent_targets:
+  //experiments/atlas-parallelism:parallelism
+  //experiments/atlas-parallelism:parallelism_provenance_test
+  //experiments/atlas-swe-explore:aggregate
+  //experiments/atlas-swe-explore:report
+  //experiments/atlas-swe-explore:signature
+  //experiments/atlas-swe-explore:summary
+  //experiments/atlas-work-topology:control_signature_test
+  //experiments/atlas-work-topology:control_signatures_bin
+  //experiments/atlas-work-topology:control_topology_bin
+  //experiments/atlas-work-topology:control_topology_test
+  //experiments/atlas-work-topology:round_test
+  //experiments/atlas-work-topology:round_topology_bin
+  //test/Applications:localization_sandwich_check
+  //test/Engine:atlas_grammar_check
+  //test/Engine:atlas_signature_table_check
+  //test/Engine:core_parity_check
+test_invalidation_targets:
+  //experiments/atlas-parallelism:parallelism_provenance_test
+  //experiments/atlas-work-topology:control_signature_artifacts_test
+  //experiments/atlas-work-topology:control_signature_test
+  //experiments/atlas-work-topology:control_topology_artifacts_test
+  //experiments/atlas-work-topology:control_topology_test
+  //experiments/atlas-work-topology:round1_artifacts_test
+  //experiments/atlas-work-topology:round_test
+  //test/Applications:localization_sandwich_test
+  //test/Engine:atlas_grammar_test
+  //test/Engine:atlas_signature_table_test
+  //test/Engine:core_parity_test
+== src/Repository/Reference.flix
+declaring_actions: 1
+direct_dependents: 1
+test_invalidation: 1
+declaring_targets:
+  //test:world_relational_law_sources
+direct_dependent_targets:
+  //test/Engine:core_parity_check
+test_invalidation_targets:
+  //test/Engine:core_parity_test
+== src/Repository/Structure.flix
+declaring_actions: 15
+direct_dependents: 16
+test_invalidation: 16
+declaring_targets:
+  //experiments/atlas-parallelism:acquire_flix
+  //experiments/atlas-parallelism:parallelism_flix
+  //experiments/atlas-parallelism:parallelism_provenance_check
+  //experiments/atlas-swe-explore:aggregate_flix
+  //experiments/atlas-swe-explore:report_flix
+  //experiments/atlas-swe-explore:signature_flix
+  //experiments/atlas-swe-explore:summary_flix
+  //experiments/atlas-work-topology:acquire_flix
+  //experiments/atlas-work-topology:control_signature_check
+  //experiments/atlas-work-topology:control_signatures_flix
+  //experiments/atlas-work-topology:control_topology_check
+  //experiments/atlas-work-topology:control_topology_flix
+  //experiments/atlas-work-topology:round_check
+  //experiments/atlas-work-topology:round_topology_flix
+  //test:world_structure_law_sources
+direct_dependent_targets:
+  //experiments/atlas-parallelism:acquire
+  //experiments/atlas-parallelism:parallelism
+  //experiments/atlas-parallelism:parallelism_provenance_test
+  //experiments/atlas-swe-explore:aggregate
+  //experiments/atlas-swe-explore:report
+  //experiments/atlas-swe-explore:signature
+  //experiments/atlas-swe-explore:summary
+  //experiments/atlas-work-topology:acquire_bin
+  //experiments/atlas-work-topology:control_signature_test
+  //experiments/atlas-work-topology:control_signatures_bin
+  //experiments/atlas-work-topology:control_topology_bin
+  //experiments/atlas-work-topology:control_topology_test
+  //experiments/atlas-work-topology:round_test
+  //experiments/atlas-work-topology:round_topology_bin
+  //test:world_admission_law_sources
+  //test:world_relational_law_sources
+test_invalidation_targets:
+  //experiments/atlas-parallelism:parallelism_provenance_test
+  //experiments/atlas-work-topology:control_reproducibility_test
+  //experiments/atlas-work-topology:control_signature_artifacts_test
+  //experiments/atlas-work-topology:control_signature_test
+  //experiments/atlas-work-topology:control_topology_artifacts_test
+  //experiments/atlas-work-topology:control_topology_test
+  //experiments/atlas-work-topology:round1_artifacts_test
+  //experiments/atlas-work-topology:round_test
+  //test/Applications:localization_sandwich_test
+  //test/Engine:atlas_grammar_test
+  //test/Engine:atlas_signature_table_test
+  //test/Engine:core_parity_test
+  //test/World:grit_acquire_test
+  //test/World:grit_acquisition_test
+  //test/World:repository_admission_test
+  //test/World:repository_table_test
+== src/Repository/Table.flix
+declaring_actions: 19
+direct_dependents: 19
+test_invalidation: 13
+declaring_targets:
+  //experiments/atlas-parallelism:acquire_flix
+  //experiments/atlas-parallelism:parallelism_flix
+  //experiments/atlas-parallelism:parallelism_provenance_check
+  //experiments/atlas-swe-explore:aggregate_flix
+  //experiments/atlas-swe-explore:report_flix
+  //experiments/atlas-swe-explore:signature_flix
+  //experiments/atlas-swe-explore:summary_flix
+  //experiments/atlas-work-topology:acquire_flix
+  //experiments/atlas-work-topology:control_signature_check
+  //experiments/atlas-work-topology:control_signatures_flix
+  //experiments/atlas-work-topology:control_topology_check
+  //experiments/atlas-work-topology:control_topology_flix
+  //experiments/atlas-work-topology:round_check
+  //experiments/atlas-work-topology:round_topology_flix
+  //test/Applications:localization_sandwich_check
+  //test/Applications:population_table_check
+  //test/Engine:atlas_signature_table_check
+  //test/World:repository_table_check
+  //test:kernel_table_law_sources
+direct_dependent_targets:
+  //experiments/atlas-parallelism:acquire
+  //experiments/atlas-parallelism:parallelism
+  //experiments/atlas-parallelism:parallelism_provenance_test
+  //experiments/atlas-swe-explore:aggregate
+  //experiments/atlas-swe-explore:report
+  //experiments/atlas-swe-explore:signature
+  //experiments/atlas-swe-explore:summary
+  //experiments/atlas-work-topology:acquire_bin
+  //experiments/atlas-work-topology:control_signature_test
+  //experiments/atlas-work-topology:control_signatures_bin
+  //experiments/atlas-work-topology:control_topology_bin
+  //experiments/atlas-work-topology:control_topology_test
+  //experiments/atlas-work-topology:round_test
+  //experiments/atlas-work-topology:round_topology_bin
+  //test/Applications:localization_sandwich_test
+  //test/Applications:population_table_test
+  //test/Engine:atlas_signature_table_test
+  //test/Kernel:scientific_table_check
+  //test/World:repository_table_test
+test_invalidation_targets:
+  //experiments/atlas-parallelism:parallelism_provenance_test
+  //experiments/atlas-work-topology:control_reproducibility_test
+  //experiments/atlas-work-topology:control_signature_artifacts_test
+  //experiments/atlas-work-topology:control_signature_test
+  //experiments/atlas-work-topology:control_topology_artifacts_test
+  //experiments/atlas-work-topology:control_topology_test
+  //experiments/atlas-work-topology:round1_artifacts_test
+  //experiments/atlas-work-topology:round_test
+  //test/Applications:localization_sandwich_test
+  //test/Applications:population_table_test
+  //test/Engine:atlas_signature_table_test
+  //test/Kernel:scientific_table_test
+  //test/World:repository_table_test
+== src/ScientificIdentity.flix
+declaring_actions: 15
+direct_dependents: 19
+test_invalidation: 13
+declaring_targets:
+  //experiments/atlas-parallelism:acquire_flix
+  //experiments/atlas-parallelism:parallelism_flix
+  //experiments/atlas-parallelism:parallelism_provenance_check
+  //experiments/atlas-swe-explore:aggregate_flix
+  //experiments/atlas-swe-explore:report_flix
+  //experiments/atlas-swe-explore:signature_flix
+  //experiments/atlas-swe-explore:summary_flix
+  //experiments/atlas-work-topology:acquire_flix
+  //experiments/atlas-work-topology:control_signature_check
+  //experiments/atlas-work-topology:control_signatures_flix
+  //experiments/atlas-work-topology:control_topology_check
+  //experiments/atlas-work-topology:control_topology_flix
+  //experiments/atlas-work-topology:round_check
+  //experiments/atlas-work-topology:round_topology_flix
+  //test:kernel_identity_law_sources
+direct_dependent_targets:
+  //experiments/atlas-parallelism:acquire
+  //experiments/atlas-parallelism:parallelism
+  //experiments/atlas-parallelism:parallelism_provenance_test
+  //experiments/atlas-swe-explore:aggregate
+  //experiments/atlas-swe-explore:report
+  //experiments/atlas-swe-explore:signature
+  //experiments/atlas-swe-explore:summary
+  //experiments/atlas-work-topology:acquire_bin
+  //experiments/atlas-work-topology:control_signature_test
+  //experiments/atlas-work-topology:control_signatures_bin
+  //experiments/atlas-work-topology:control_topology_bin
+  //experiments/atlas-work-topology:control_topology_test
+  //experiments/atlas-work-topology:round_test
+  //experiments/atlas-work-topology:round_topology_bin
+  //test/Applications:localization_sandwich_check
+  //test/Engine:atlas_grammar_check
+  //test/Engine:atlas_signature_table_check
+  //test/Kernel:identity_check
+  //test/World:repository_table_check
+test_invalidation_targets:
+  //experiments/atlas-parallelism:parallelism_provenance_test
+  //experiments/atlas-work-topology:control_reproducibility_test
+  //experiments/atlas-work-topology:control_signature_artifacts_test
+  //experiments/atlas-work-topology:control_signature_test
+  //experiments/atlas-work-topology:control_topology_artifacts_test
+  //experiments/atlas-work-topology:control_topology_test
+  //experiments/atlas-work-topology:round1_artifacts_test
+  //experiments/atlas-work-topology:round_test
+  //test/Applications:localization_sandwich_test
+  //test/Engine:atlas_grammar_test
+  //test/Engine:atlas_signature_table_test
+  //test/Kernel:identity_test
+  //test/World:repository_table_test
+== src/ScientificTable.flix
+declaring_actions: 15
+direct_dependents: 19
+test_invalidation: 13
+declaring_targets:
+  //experiments/atlas-parallelism:acquire_flix
+  //experiments/atlas-parallelism:parallelism_flix
+  //experiments/atlas-parallelism:parallelism_provenance_check
+  //experiments/atlas-swe-explore:aggregate_flix
+  //experiments/atlas-swe-explore:report_flix
+  //experiments/atlas-swe-explore:signature_flix
+  //experiments/atlas-swe-explore:summary_flix
+  //experiments/atlas-work-topology:acquire_flix
+  //experiments/atlas-work-topology:control_signature_check
+  //experiments/atlas-work-topology:control_signatures_flix
+  //experiments/atlas-work-topology:control_topology_check
+  //experiments/atlas-work-topology:control_topology_flix
+  //experiments/atlas-work-topology:round_check
+  //experiments/atlas-work-topology:round_topology_flix
+  //test:kernel_table_law_sources
+direct_dependent_targets:
+  //experiments/atlas-parallelism:acquire
+  //experiments/atlas-parallelism:parallelism
+  //experiments/atlas-parallelism:parallelism_provenance_test
+  //experiments/atlas-swe-explore:aggregate
+  //experiments/atlas-swe-explore:report
+  //experiments/atlas-swe-explore:signature
+  //experiments/atlas-swe-explore:summary
+  //experiments/atlas-work-topology:acquire_bin
+  //experiments/atlas-work-topology:control_signature_test
+  //experiments/atlas-work-topology:control_signatures_bin
+  //experiments/atlas-work-topology:control_topology_bin
+  //experiments/atlas-work-topology:control_topology_test
+  //experiments/atlas-work-topology:round_test
+  //experiments/atlas-work-topology:round_topology_bin
+  //test/Applications:localization_sandwich_check
+  //test/Applications:population_table_check
+  //test/Engine:atlas_signature_table_check
+  //test/Kernel:scientific_table_check
+  //test/World:repository_table_check
+test_invalidation_targets:
+  //experiments/atlas-parallelism:parallelism_provenance_test
+  //experiments/atlas-work-topology:control_reproducibility_test
+  //experiments/atlas-work-topology:control_signature_artifacts_test
+  //experiments/atlas-work-topology:control_signature_test
+  //experiments/atlas-work-topology:control_topology_artifacts_test
+  //experiments/atlas-work-topology:control_topology_test
+  //experiments/atlas-work-topology:round1_artifacts_test
+  //experiments/atlas-work-topology:round_test
+  //test/Applications:localization_sandwich_test
+  //test/Applications:population_table_test
+  //test/Engine:atlas_signature_table_test
+  //test/Kernel:scientific_table_test
+  //test/World:repository_table_test
+== src/ScientificTable/Columns.flix
+declaring_actions: 15
+direct_dependents: 19
+test_invalidation: 13
+declaring_targets:
+  //experiments/atlas-parallelism:acquire_flix
+  //experiments/atlas-parallelism:parallelism_flix
+  //experiments/atlas-parallelism:parallelism_provenance_check
+  //experiments/atlas-swe-explore:aggregate_flix
+  //experiments/atlas-swe-explore:report_flix
+  //experiments/atlas-swe-explore:signature_flix
+  //experiments/atlas-swe-explore:summary_flix
+  //experiments/atlas-work-topology:acquire_flix
+  //experiments/atlas-work-topology:control_signature_check
+  //experiments/atlas-work-topology:control_signatures_flix
+  //experiments/atlas-work-topology:control_topology_check
+  //experiments/atlas-work-topology:control_topology_flix
+  //experiments/atlas-work-topology:round_check
+  //experiments/atlas-work-topology:round_topology_flix
+  //test:kernel_table_law_sources
+direct_dependent_targets:
+  //experiments/atlas-parallelism:acquire
+  //experiments/atlas-parallelism:parallelism
+  //experiments/atlas-parallelism:parallelism_provenance_test
+  //experiments/atlas-swe-explore:aggregate
+  //experiments/atlas-swe-explore:report
+  //experiments/atlas-swe-explore:signature
+  //experiments/atlas-swe-explore:summary
+  //experiments/atlas-work-topology:acquire_bin
+  //experiments/atlas-work-topology:control_signature_test
+  //experiments/atlas-work-topology:control_signatures_bin
+  //experiments/atlas-work-topology:control_topology_bin
+  //experiments/atlas-work-topology:control_topology_test
+  //experiments/atlas-work-topology:round_test
+  //experiments/atlas-work-topology:round_topology_bin
+  //test/Applications:localization_sandwich_check
+  //test/Applications:population_table_check
+  //test/Engine:atlas_signature_table_check
+  //test/Kernel:scientific_table_check
+  //test/World:repository_table_check
+test_invalidation_targets:
+  //experiments/atlas-parallelism:parallelism_provenance_test
+  //experiments/atlas-work-topology:control_reproducibility_test
+  //experiments/atlas-work-topology:control_signature_artifacts_test
+  //experiments/atlas-work-topology:control_signature_test
+  //experiments/atlas-work-topology:control_topology_artifacts_test
+  //experiments/atlas-work-topology:control_topology_test
+  //experiments/atlas-work-topology:round1_artifacts_test
+  //experiments/atlas-work-topology:round_test
+  //test/Applications:localization_sandwich_test
+  //test/Applications:population_table_test
+  //test/Engine:atlas_signature_table_test
+  //test/Kernel:scientific_table_test
+  //test/World:repository_table_test
+== src/grit/BUILD.bazel
+declaring_actions: 0
+direct_dependents: 0
+test_invalidation: 0
+declaring_targets:
+direct_dependent_targets:
+test_invalidation_targets:
+== src/native/grit/AttuneGrit.java
+declaring_actions: 1
+direct_dependents: 4
+test_invalidation: 3
+declaring_targets:
+  //src/native/grit:attune_grit
+direct_dependent_targets:
+  //experiments/atlas-parallelism:acquire_flix
+  //experiments/atlas-work-topology:acquire_flix
+  //src/native/grit:attune_grit_test
+  //test/World:grit_acquire_check
+test_invalidation_targets:
+  //experiments/atlas-work-topology:control_reproducibility_test
+  //src/native/grit:attune_grit_test
+  //test/World:grit_acquire_test
+== src/native/grit/AttuneGritNative.java
+declaring_actions: 1
+direct_dependents: 4
+test_invalidation: 3
+declaring_targets:
+  //src/native/grit:attune_grit
+direct_dependent_targets:
+  //experiments/atlas-parallelism:acquire_flix
+  //experiments/atlas-work-topology:acquire_flix
+  //src/native/grit:attune_grit_test
+  //test/World:grit_acquire_check
+test_invalidation_targets:
+  //experiments/atlas-work-topology:control_reproducibility_test
+  //src/native/grit:attune_grit_test
+  //test/World:grit_acquire_test
+== src/native/grit/AttuneGritTest.java
+declaring_actions: 1
+direct_dependents: 1
+test_invalidation: 1
+declaring_targets:
+  //src/native/grit:attune_grit_test
+direct_dependent_targets:
+  //test/World:world_tests
+test_invalidation_targets:
+  //src/native/grit:attune_grit_test
+== src/native/grit/BUILD.bazel
+declaring_actions: 0
+direct_dependents: 0
+test_invalidation: 0
+declaring_targets:
+direct_dependent_targets:
+test_invalidation_targets:
+== src/native/identity/AttuneIdentity.java
+declaring_actions: 1
+direct_dependents: 20
+test_invalidation: 14
+declaring_targets:
+  //src/native/identity:attune_identity
+direct_dependent_targets:
+  //experiments/atlas-parallelism:acquire_flix
+  //experiments/atlas-parallelism:parallelism_flix
+  //experiments/atlas-parallelism:parallelism_provenance_check
+  //experiments/atlas-swe-explore:aggregate_flix
+  //experiments/atlas-swe-explore:report_flix
+  //experiments/atlas-swe-explore:signature_flix
+  //experiments/atlas-swe-explore:summary_flix
+  //experiments/atlas-work-topology:acquire_flix
+  //experiments/atlas-work-topology:control_signature_check
+  //experiments/atlas-work-topology:control_signatures_flix
+  //experiments/atlas-work-topology:control_topology_check
+  //experiments/atlas-work-topology:control_topology_flix
+  //experiments/atlas-work-topology:round_check
+  //experiments/atlas-work-topology:round_topology_flix
+  //src/native/identity:attune_identity_test
+  //test/Applications:localization_sandwich_check
+  //test/Engine:atlas_grammar_check
+  //test/Engine:atlas_signature_table_check
+  //test/Kernel:identity_check
+  //test/World:repository_table_check
+test_invalidation_targets:
+  //experiments/atlas-parallelism:parallelism_provenance_test
+  //experiments/atlas-work-topology:control_reproducibility_test
+  //experiments/atlas-work-topology:control_signature_artifacts_test
+  //experiments/atlas-work-topology:control_signature_test
+  //experiments/atlas-work-topology:control_topology_artifacts_test
+  //experiments/atlas-work-topology:control_topology_test
+  //experiments/atlas-work-topology:round1_artifacts_test
+  //experiments/atlas-work-topology:round_test
+  //src/native/identity:attune_identity_test
+  //test/Applications:localization_sandwich_test
+  //test/Engine:atlas_grammar_test
+  //test/Engine:atlas_signature_table_test
+  //test/Kernel:identity_test
+  //test/World:repository_table_test
+== src/native/identity/AttuneIdentityTest.java
+declaring_actions: 1
+direct_dependents: 1
+test_invalidation: 1
+declaring_targets:
+  //src/native/identity:attune_identity_test
+direct_dependent_targets:
+  //test/Kernel:kernel_tests
+test_invalidation_targets:
+  //src/native/identity:attune_identity_test
+== src/native/identity/BUILD.bazel
+declaring_actions: 0
+direct_dependents: 0
+test_invalidation: 0
+declaring_targets:
+direct_dependent_targets:
+test_invalidation_targets:
+== src/native/inference/AttuneDecision.java
+declaring_actions: 1
+direct_dependents: 2
+test_invalidation: 2
+declaring_targets:
+  //src/native/inference:attune_inference
+direct_dependent_targets:
+  //src/native/inference:attune_inference_test
+  //test/Applications:inference_boundary_check
+test_invalidation_targets:
+  //src/native/inference:attune_inference_test
+  //test/Applications:inference_boundary_test
+== src/native/inference/AttuneEmbed.java
+declaring_actions: 1
+direct_dependents: 2
+test_invalidation: 2
+declaring_targets:
+  //src/native/inference:attune_inference
+direct_dependent_targets:
+  //src/native/inference:attune_inference_test
+  //test/Applications:inference_boundary_check
+test_invalidation_targets:
+  //src/native/inference:attune_inference_test
+  //test/Applications:inference_boundary_test
+== src/native/inference/AttuneInferenceTest.java
+declaring_actions: 1
+direct_dependents: 1
+test_invalidation: 1
+declaring_targets:
+  //src/native/inference:attune_inference_test
+direct_dependent_targets:
+  //test/Applications:applications_tests
+test_invalidation_targets:
+  //src/native/inference:attune_inference_test
+== src/native/inference/BUILD.bazel
+declaring_actions: 0
+direct_dependents: 0
+test_invalidation: 0
+declaring_targets:
+direct_dependent_targets:
+test_invalidation_targets:
+== src/native/inference/OpenRouter.java
+declaring_actions: 1
+direct_dependents: 2
+test_invalidation: 2
+declaring_targets:
+  //src/native/inference:attune_inference
+direct_dependent_targets:
+  //src/native/inference:attune_inference_test
+  //test/Applications:inference_boundary_check
+test_invalidation_targets:
+  //src/native/inference:attune_inference_test
+  //test/Applications:inference_boundary_test
+== src/native/parquet/AttuneParquet.java
+declaring_actions: 1
+direct_dependents: 20
+test_invalidation: 14
+declaring_targets:
+  //src/native/parquet:attune_parquet
+direct_dependent_targets:
+  //experiments/atlas-parallelism:acquire_flix
+  //experiments/atlas-parallelism:parallelism_flix
+  //experiments/atlas-parallelism:parallelism_provenance_check
+  //experiments/atlas-swe-explore:aggregate_flix
+  //experiments/atlas-swe-explore:report_flix
+  //experiments/atlas-swe-explore:signature_flix
+  //experiments/atlas-swe-explore:summary_flix
+  //experiments/atlas-work-topology:acquire_flix
+  //experiments/atlas-work-topology:control_signature_check
+  //experiments/atlas-work-topology:control_signatures_flix
+  //experiments/atlas-work-topology:control_topology_check
+  //experiments/atlas-work-topology:control_topology_flix
+  //experiments/atlas-work-topology:round_check
+  //experiments/atlas-work-topology:round_topology_flix
+  //src/native/parquet:attune_parquet_test
+  //test/Applications:localization_sandwich_check
+  //test/Applications:population_table_check
+  //test/Engine:atlas_signature_table_check
+  //test/Kernel:scientific_table_check
+  //test/World:repository_table_check
+test_invalidation_targets:
+  //experiments/atlas-parallelism:parallelism_provenance_test
+  //experiments/atlas-work-topology:control_reproducibility_test
+  //experiments/atlas-work-topology:control_signature_artifacts_test
+  //experiments/atlas-work-topology:control_signature_test
+  //experiments/atlas-work-topology:control_topology_artifacts_test
+  //experiments/atlas-work-topology:control_topology_test
+  //experiments/atlas-work-topology:round1_artifacts_test
+  //experiments/atlas-work-topology:round_test
+  //src/native/parquet:attune_parquet_test
+  //test/Applications:localization_sandwich_test
+  //test/Applications:population_table_test
+  //test/Engine:atlas_signature_table_test
+  //test/Kernel:scientific_table_test
+  //test/World:repository_table_test
+== src/native/parquet/AttuneParquetTest.java
+declaring_actions: 1
+direct_dependents: 1
+test_invalidation: 1
+declaring_targets:
+  //src/native/parquet:attune_parquet_test
+direct_dependent_targets:
+  //test/Kernel:kernel_tests
+test_invalidation_targets:
+  //src/native/parquet:attune_parquet_test
+== src/native/parquet/BUILD.bazel
+declaring_actions: 0
+direct_dependents: 0
+test_invalidation: 0
+declaring_targets:
+direct_dependent_targets:
+test_invalidation_targets:
+== test/Applications/BUILD.bazel
+declaring_actions: 0
+direct_dependents: 0
+test_invalidation: 0
+declaring_targets:
+direct_dependent_targets:
+test_invalidation_targets:
+== test/Applications/InferenceBoundaryTest.flix
+declaring_actions: 1
+direct_dependents: 1
+test_invalidation: 1
+declaring_targets:
+  //test/Applications:inference_boundary_check
+direct_dependent_targets:
+  //test/Applications:inference_boundary_test
+test_invalidation_targets:
+  //test/Applications:inference_boundary_test
+== test/Applications/LocalizationTest.flix
+declaring_actions: 1
+direct_dependents: 1
+test_invalidation: 1
+declaring_targets:
+  //test/Applications:localization_sandwich_check
+direct_dependent_targets:
+  //test/Applications:localization_sandwich_test
+test_invalidation_targets:
+  //test/Applications:localization_sandwich_test
+== test/Applications/PopulationTableTest.flix
+declaring_actions: 1
+direct_dependents: 1
+test_invalidation: 1
+declaring_targets:
+  //test/Applications:population_table_check
+direct_dependent_targets:
+  //test/Applications:population_table_test
+test_invalidation_targets:
+  //test/Applications:population_table_test
+== test/BUILD.bazel
+declaring_actions: 0
+direct_dependents: 0
+test_invalidation: 0
+declaring_targets:
+direct_dependent_targets:
+test_invalidation_targets:
+== test/Engine/AtlasSignatureTableTest.flix
+declaring_actions: 1
+direct_dependents: 1
+test_invalidation: 1
+declaring_targets:
+  //test/Engine:atlas_signature_table_check
+direct_dependent_targets:
+  //test/Engine:atlas_signature_table_test
+test_invalidation_targets:
+  //test/Engine:atlas_signature_table_test
+== test/Engine/AtlasTest.flix
+declaring_actions: 1
+direct_dependents: 1
+test_invalidation: 1
+declaring_targets:
+  //test/Engine:atlas_grammar_check
+direct_dependent_targets:
+  //test/Engine:atlas_grammar_test
+test_invalidation_targets:
+  //test/Engine:atlas_grammar_test
+== test/Engine/BUILD.bazel
+declaring_actions: 0
+direct_dependents: 0
+test_invalidation: 0
+declaring_targets:
+direct_dependent_targets:
+test_invalidation_targets:
+== test/Engine/ParityTest.flix
+declaring_actions: 1
+direct_dependents: 1
+test_invalidation: 1
+declaring_targets:
+  //test/Engine:core_parity_check
+direct_dependent_targets:
+  //test/Engine:core_parity_test
+test_invalidation_targets:
+  //test/Engine:core_parity_test
+== test/Kernel/BUILD.bazel
+declaring_actions: 0
+direct_dependents: 0
+test_invalidation: 0
+declaring_targets:
+direct_dependent_targets:
+test_invalidation_targets:
+== test/Kernel/IdentityTest.flix
+declaring_actions: 1
+direct_dependents: 1
+test_invalidation: 1
+declaring_targets:
+  //test/Kernel:identity_check
+direct_dependent_targets:
+  //test/Kernel:identity_test
+test_invalidation_targets:
+  //test/Kernel:identity_test
+== test/Kernel/ScientificTableTest.flix
+declaring_actions: 1
+direct_dependents: 1
+test_invalidation: 1
+declaring_targets:
+  //test/Kernel:scientific_table_check
+direct_dependent_targets:
+  //test/Kernel:scientific_table_test
+test_invalidation_targets:
+  //test/Kernel:scientific_table_test
+== test/Repository.flix
+declaring_actions: 16
+direct_dependents: 22
+test_invalidation: 16
+declaring_targets:
+  //experiments/atlas-parallelism:acquire_flix
+  //experiments/atlas-parallelism:parallelism_flix
+  //experiments/atlas-parallelism:parallelism_provenance_check
+  //experiments/atlas-swe-explore:aggregate_flix
+  //experiments/atlas-swe-explore:report_flix
+  //experiments/atlas-swe-explore:signature_flix
+  //experiments/atlas-swe-explore:summary_flix
+  //experiments/atlas-work-topology:acquire_flix
+  //experiments/atlas-work-topology:control_signature_check
+  //experiments/atlas-work-topology:control_signatures_flix
+  //experiments/atlas-work-topology:control_topology_check
+  //experiments/atlas-work-topology:control_topology_flix
+  //experiments/atlas-work-topology:round_check
+  //experiments/atlas-work-topology:round_topology_flix
+  //test/Engine:core_parity_check
+  //test:world_admission_law_sources
+direct_dependent_targets:
+  //experiments/atlas-parallelism:acquire
+  //experiments/atlas-parallelism:parallelism
+  //experiments/atlas-parallelism:parallelism_provenance_test
+  //experiments/atlas-swe-explore:aggregate
+  //experiments/atlas-swe-explore:report
+  //experiments/atlas-swe-explore:signature
+  //experiments/atlas-swe-explore:summary
+  //experiments/atlas-work-topology:acquire_bin
+  //experiments/atlas-work-topology:control_signature_test
+  //experiments/atlas-work-topology:control_signatures_bin
+  //experiments/atlas-work-topology:control_topology_bin
+  //experiments/atlas-work-topology:control_topology_test
+  //experiments/atlas-work-topology:round_test
+  //experiments/atlas-work-topology:round_topology_bin
+  //test/Applications:localization_sandwich_check
+  //test/Engine:atlas_grammar_check
+  //test/Engine:atlas_signature_table_check
+  //test/Engine:core_parity_test
+  //test/World:grit_acquire_check
+  //test/World:grit_acquisition_check
+  //test/World:repository_admission_check
+  //test/World:repository_table_check
+test_invalidation_targets:
+  //experiments/atlas-parallelism:parallelism_provenance_test
+  //experiments/atlas-work-topology:control_reproducibility_test
+  //experiments/atlas-work-topology:control_signature_artifacts_test
+  //experiments/atlas-work-topology:control_signature_test
+  //experiments/atlas-work-topology:control_topology_artifacts_test
+  //experiments/atlas-work-topology:control_topology_test
+  //experiments/atlas-work-topology:round1_artifacts_test
+  //experiments/atlas-work-topology:round_test
+  //test/Applications:localization_sandwich_test
+  //test/Engine:atlas_grammar_test
+  //test/Engine:atlas_signature_table_test
+  //test/Engine:core_parity_test
+  //test/World:grit_acquire_test
+  //test/World:grit_acquisition_test
+  //test/World:repository_admission_test
+  //test/World:repository_table_test
+== test/TestWorlds.flix
+declaring_actions: 2
+direct_dependents: 2
+test_invalidation: 2
+declaring_targets:
+  //test/Applications:localization_sandwich_check
+  //test/Engine:atlas_grammar_check
+direct_dependent_targets:
+  //test/Applications:localization_sandwich_test
+  //test/Engine:atlas_grammar_test
+test_invalidation_targets:
+  //test/Applications:localization_sandwich_test
+  //test/Engine:atlas_grammar_test
+== test/World/BUILD.bazel
+declaring_actions: 0
+direct_dependents: 0
+test_invalidation: 0
+declaring_targets:
+direct_dependent_targets:
+test_invalidation_targets:
+== test/World/GritAcquisitionTest.flix
+declaring_actions: 1
+direct_dependents: 1
+test_invalidation: 1
+declaring_targets:
+  //test/World:grit_acquisition_check
+direct_dependent_targets:
+  //test/World:grit_acquisition_test
+test_invalidation_targets:
+  //test/World:grit_acquisition_test
+== test/World/RepositoryAdmissionTest.flix
+declaring_actions: 1
+direct_dependents: 1
+test_invalidation: 1
+declaring_targets:
+  //test/World:repository_admission_check
+direct_dependent_targets:
+  //test/World:repository_admission_test
+test_invalidation_targets:
+  //test/World:repository_admission_test
+== test/World/RepositoryTableTest.flix
+declaring_actions: 1
+direct_dependents: 1
+test_invalidation: 1
+declaring_targets:
+  //test/World:repository_table_check
+direct_dependent_targets:
+  //test/World:repository_table_test
+test_invalidation_targets:
+  //test/World:repository_table_test

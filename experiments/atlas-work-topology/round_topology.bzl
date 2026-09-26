@@ -81,18 +81,40 @@ def attune_round_check(name = "round_check"):
         check = ":" + name,
     )
 
-def attune_round_artifacts_test(name = "round1_artifacts_test"):
+def attune_round_artifacts_test(name = "round1_artifacts_test", role = "round1"):
     """Re-derives the round identity map, topology and oracle from the committed
     evidence and compares them with the committed artifacts; a mismatch is a
-    non-zero exit."""
+    non-zero exit. `role` selects the `<role>_files` filegroup and the round
+    directory the script re-derives."""
     native.sh_test(
         name = name,
         size = "medium",
         srcs = ["round_artifacts_test.sh"],
+        args = [role],
         data = [
             ":round_topology_bin",
             ":control_files",
-            ":round1_files",
+            ":" + role + "_files",
+            "@bazel_tools//tools/bash/runfiles",
+        ],
+    )
+
+def attune_round_reproducibility_test(name = "round2_reproducibility_test", role = "round2"):
+    """Re-derives the round documents (`attune.command=measure`) and compares
+    them with the committed artifacts byte-for-byte. Used for a revision whose
+    recorded oracle verdict set legitimately carries a documented deviation
+    (round 2's `src/BUILD.bazel` comment, reverted in round 3), so the committed
+    evidence is reproducible without re-tuning the §10 verdicts; the deviation
+    stays visible in the committed oracle document and the round report."""
+    native.sh_test(
+        name = name,
+        size = "medium",
+        srcs = ["round_reproducibility_test.sh"],
+        args = [role],
+        data = [
+            ":round_topology_bin",
+            ":control_files",
+            ":" + role + "_files",
             "@bazel_tools//tools/bash/runfiles",
         ],
     )

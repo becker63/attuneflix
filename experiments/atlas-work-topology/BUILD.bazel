@@ -1,5 +1,5 @@
 load(":control_signatures.bzl", "attune_control_signature_artifacts_test", "attune_control_signature_check", "attune_control_signatures")
-load(":round_topology.bzl", "attune_round_artifacts_test", "attune_round_check", "attune_round_topology")
+load(":round_topology.bzl", "attune_round_artifacts_test", "attune_round_check", "attune_round_reproducibility_test", "attune_round_topology")
 load(":topology.bzl", "attune_control_topology", "attune_control_topology_artifacts_test", "attune_control_topology_check")
 load(":work_topology.bzl", "attune_control_acquisition", "attune_control_reproducibility_test")
 
@@ -53,6 +53,44 @@ filegroup(
     ],
 )
 
+# Rounds 2 and 3 candidate measurements (PREREGISTRATION.md §9, §10;
+# VAL-HC23-003, VAL-HC23-004). Same instrument and artifacts as round 1, at the
+# round-2 revision 10f3a21 (narrow cell crossings) and the round-3 revision
+# 73b8709 (shared build/law-surface stabilization). `round2/` additionally
+# records the round-2 revision's declared `src/BUILD.bazel` comment in its
+# oracle verdicts (O4 false); see `rounds/round23.md`.
+filegroup(
+    name = "round2_files",
+    srcs = [
+        "round2/round2.fanout.txt",
+        "round2/round2.fanout_delta.tsv",
+        "round2/round2.files.txt",
+        "round2/round2.identity_map.json",
+        "round2/round2.oracle.json",
+        "round2/round2.revision.txt",
+        "round2/round2.sources.txt",
+        "round2/round2.targets.txt",
+        "round2/round2.tests.txt",
+        "round2/round2.topology.json",
+    ],
+)
+
+filegroup(
+    name = "round3_files",
+    srcs = [
+        "round3/round3.fanout.txt",
+        "round3/round3.fanout_delta.tsv",
+        "round3/round3.files.txt",
+        "round3/round3.identity_map.json",
+        "round3/round3.oracle.json",
+        "round3/round3.revision.txt",
+        "round3/round3.sources.txt",
+        "round3/round3.targets.txt",
+        "round3/round3.tests.txt",
+        "round3/round3.topology.json",
+    ],
+)
+
 # `bazel run //experiments/atlas-work-topology:acquire` materializes the control
 # revision in an isolated /tmp worktree and freezes the typed evidence.
 attune_control_acquisition()
@@ -103,6 +141,18 @@ attune_round_check()
 # the committed evidence and compares them with the committed artifacts.
 attune_round_artifacts_test()
 
+# `bazel test //experiments/atlas-work-topology:round3_artifacts_test`
+# the same full `attune.command=verify` guard for the round-3 revision (its
+# verdict set passes: `src/BUILD.bazel` is restored byte-identically).
+attune_round_artifacts_test(name = "round3_artifacts_test", role = "round3")
+
+# `bazel test //experiments/atlas-work-topology:round2_reproducibility_test`
+# re-derives the round-2 documents and compares them byte-for-byte. The full
+# verdict set is not asserted for round 2 because its revision's `src/BUILD.bazel`
+# comment trips the implemented (over-broad) production-drift proxy; the
+# recorded `O4 = false` nevertheless stays pinned by the byte-equality diff.
+attune_round_reproducibility_test(name = "round2_reproducibility_test", role = "round2")
+
 # Cell D — Research law surface: one aggregation point for the research cell's
 # replay, signature-provenance, and topology-provenance laws. The frozen
 # historical instrument's provenance law is aggregated here unchanged.
@@ -115,6 +165,8 @@ test_suite(
         ":control_topology_artifacts_test",
         ":control_topology_test",
         ":round1_artifacts_test",
+        ":round2_reproducibility_test",
+        ":round3_artifacts_test",
         ":round_test",
         "//experiments/atlas-parallelism:parallelism_provenance_test",
     ],
