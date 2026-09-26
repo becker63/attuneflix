@@ -1,3 +1,8 @@
+// Stage 2 world-admission laws (VAL-STAGE-002): the typed `Stage.World` boundary
+// and the admission rule it drives. The world is a function of the raw fact
+// manifest alone — dense ordinal IDs, resolved references, indexed calls.
+use Kernel.Contract.{FactKind, RawFact, RawFactManifest}
+
 def admissionFact(kind: String, path: String, start: Int32, end: Int32,
                   value: String): Repository.Grit.Fact = {
     kind = kind,
@@ -42,6 +47,54 @@ def indexedCallAdmissionPreservesOwnerAndTargetRules(): Unit \ Assert = {
                 (symbol(0), symbol(3))
             }, world#calls);
             Assert.assertEq(expected = 2, world#unresolvedCalls)
+        }
+    }
+}
+
+def rawFact(kind: FactKind, path: String, start: Int32, end: Int32,
+            value: String): RawFact = {
+    kind      = kind,
+    path      = path,
+    startByte = start,
+    endByte   = end,
+    value     = value
+}
+
+/// The Stage 2 boundary: a `RawFactManifest` in, a dense-ordinal `AdmittedWorld`
+/// out, with the same resolved references and parent locations as the rule.
+@Test
+def stageWorldAdmitsDenseIdsResolvedReferencesAndParentLocations(): Unit \ Assert = {
+    let manifest: RawFactManifest = {
+        repository = "demo",
+        revision   = "rev-1",
+        files      = Vector#{
+            {path = "b.ts", content = ""},
+            {path = "a.ts", content = ""}
+        },
+        facts      = Vector#{
+            rawFact(FactKind.Defines, "a.ts", 0, 10, "helper"),
+            rawFact(FactKind.Defines, "b.ts", 0, 20, "run"),
+            rawFact(FactKind.Imports, "b.ts", 0, 5, "\"./a\""),
+            rawFact(FactKind.Calls, "b.ts", 10, 15, "helper")
+        }
+    };
+    match Stage.World.admit(manifest) {
+        case Err(error) => Assert.fail(ToString.toString(error))
+        case Ok(world) => {
+            let file = Kernel.Contract.FileId.FileId;
+            let symbol = Kernel.Contract.SymbolId.SymbolId;
+            let location = Kernel.Contract.LocationId.LocationId;
+            Assert.assertEq(expected = Vector#{"b.ts", "a.ts"}, world#files);
+            Assert.assertEq(expected = Vector#{"helper", "run"},
+                Vector.map(entry -> entry#name, world#symbols));
+            Assert.assertEq(expected = Set#{(file(0), file(1))}, world#imports);
+            Assert.assertEq(expected = Set#{(symbol(1), symbol(0))}, world#calls);
+            Assert.assertEq(expected = Set#{
+                (location(0), location(2)),
+                (location(1), location(2))
+            }, world#parents);
+            Assert.assertEq(expected = 0, world#unresolvedImports);
+            Assert.assertEq(expected = 0, world#unresolvedCalls)
         }
     }
 }

@@ -107,6 +107,31 @@ filegroup(
     ],
 )
 
+# Stage 1 — the typed acquisition stage. It reads the kernel contract and effect
+# declarations, the pure Grit vocabulary, and nothing native: the capability is
+# supplied by a handler, so the stage compiles with no `java_deps`.
+filegroup(
+    name = "stage_acquire_law_sources",
+    srcs = [
+        ":kernel_effect_law_sources",
+        "//src:Repository.flix",
+        "//src:Repository/Grit.flix",
+        "//src:Stage.flix",
+        "//src:Stage/Acquire.flix",
+    ],
+)
+
+# Stage 2 — the pure world-admission stage. It adds the stage modules to the
+# full admission surface; no effect or native seam appears.
+filegroup(
+    name = "stage_world_law_sources",
+    srcs = [
+        ":world_admission_law_sources",
+        "//src:Stage.flix",
+        "//src:Stage/World.flix",
+    ],
+)
+
 # Engine — the physical evaluator, the relation algebra, and the Atlas family.
 filegroup(
     name = "engine_physical_law_sources",

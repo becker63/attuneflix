@@ -146,6 +146,14 @@ projection) was removed with the Grit boundary shrink: no Flix code parses
 native envelopes. `World.Admission.admit` consumes `Repository.Grit.Fact` records
 directly, and the retained frozen worlds are the facts source.
 
+The typed stage pipeline layers over that boundary. Stage 1 (`Stage.Acquire`)
+turns a `SourceManifest` into a `RawFactManifest` by running each file's three
+relation programs through `eff Grit`; Stage 2 (`Stage.World.admit`) is the pure
+`RawFactManifest -> AdmittedWorld` projection that partitions the raw facts by
+relation and drives the same admission rule. Neither stage imports the native
+seam: `Kernel.Handler` supplies the engine in production and an in-memory
+fixture supplies it in replay, so the stages stay pure and keyless.
+
 `World.Admission.admit` then follows the frozen Python rules for the initial
 TypeScript/JavaScript world: sorted dense identities, repository-relative
 imports only, innermost lexical call ownership, local-then-global unambiguous

@@ -17,7 +17,7 @@ flix_check(
     name = "repository_admission_check",
     srcs = [
         "RepositoryAdmissionTest.flix",
-        "//test:world_admission_law_sources",
+        "//test:stage_world_law_sources",
     ],
     command = "test",
     threads = 2,
@@ -43,11 +43,34 @@ checked_test(
     check = ":grit_acquisition_check",
 )
 
+# Stage 1 acquisition (VAL-STAGE-001): the typed `Stage.Acquire` stage is
+# exercised by an in-memory `eff Grit` handler, so the law runs keyless and
+# carries no native dependency.
 flix_check(
     name = "grit_acquire_check",
     srcs = [
+        "AcquireTest.flix",
+        "//test:stage_acquire_law_sources",
+    ],
+    command = "test",
+    threads = 2,
+)
+
+checked_test(
+    name = "grit_acquire_test",
+    check = ":grit_acquire_check",
+)
+
+# The low-level native Grit dispatch seam (`Repository.Acquire.evaluate`) is
+# retained for the frozen acquisition instrument and needs the native engine, so
+# it stays a `check`-only native target; the typed stage above it is what carries
+# the behaviour.
+flix_check(
+    name = "acquire_seam_check",
+    srcs = [
+        "//src:Repository.flix",
+        "//src:Repository/Grit.flix",
         "//src:Repository/Acquire.flix",
-        "//test:world_admission_law_sources",
     ],
     command = "check",
     java_deps = ["//src/native/grit:attune_grit"],
@@ -55,8 +78,8 @@ flix_check(
 )
 
 checked_test(
-    name = "grit_acquire_test",
-    check = ":grit_acquire_check",
+    name = "acquire_seam_test",
+    check = ":acquire_seam_check",
 )
 
 flix_check(
@@ -118,6 +141,7 @@ checked_test(
 test_suite(
     name = "world_tests",
     tests = [
+        ":acquire_seam_test",
         ":grit_acquire_test",
         ":grit_acquisition_test",
         ":handler_production_test",
