@@ -132,6 +132,66 @@ filegroup(
     ],
 )
 
+# Stage 3A — Prior scoring. Pure over the declared `eff Embedding`, so the stage
+# compiles with no `java_deps` and the provider stays a handler concern.
+filegroup(
+    name = "stage_prior_law_sources",
+    srcs = [
+        ":kernel_effect_law_sources",
+        "//src:Stage.flix",
+        "//src:Stage/Prior.flix",
+    ],
+)
+
+# Stage 3B — Atlas exploration. It composes the Engine's Atlas family and
+# physical evaluator with the pure kernel contract and the `Repository` anchor
+# the physical evaluator declares against.
+filegroup(
+    name = "stage_atlas_law_sources",
+    srcs = [
+        ":engine_atlas_law_sources",
+        ":engine_physical_law_sources",
+        ":engine_radii_law_sources",
+        ":kernel_contract_law_sources",
+        "//src:Repository.flix",
+        "//src:Stage.flix",
+        "//src:Stage/Atlas.flix",
+    ],
+)
+
+# Stage 4/5 — candidate assembly (pure) and judge selection (pure over
+# `eff JudgeModel`, provided by a handler).
+filegroup(
+    name = "stage_candidate_judge_law_sources",
+    srcs = [
+        ":stage_prior_law_sources",
+        "//src:Stage/CandidateSet.flix",
+        "//src:Stage/Judge.flix",
+    ],
+)
+
+# Stage 6 — context projection, pure over the kernel contract.
+filegroup(
+    name = "stage_projection_law_sources",
+    srcs = [
+        ":kernel_contract_law_sources",
+        "//src:Stage.flix",
+        "//src:Stage/Projection.flix",
+    ],
+)
+
+# The composed Stage 3-6 pipeline (`Stage.Pipeline`): Prior, Atlas,
+# CandidateSet, Judge, and Projection in one typed call.
+filegroup(
+    name = "stage_pipeline_law_sources",
+    srcs = [
+        ":stage_atlas_law_sources",
+        ":stage_candidate_judge_law_sources",
+        "//src:Stage/Pipeline.flix",
+        "//src:Stage/Projection.flix",
+    ],
+)
+
 # Engine — the physical evaluator, the relation algebra, and the Atlas family.
 filegroup(
     name = "engine_physical_law_sources",

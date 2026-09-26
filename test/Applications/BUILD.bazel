@@ -16,6 +16,7 @@ flix_check(
     name = "localization_sandwich_check",
     srcs = [
         "LocalizationTest.flix",
+        "StageCandidateJudgeTest.flix",
         "//src:Localization.flix",
         "//src:Localization/IssueTable.flix",
         "//src:Localization/PredictionTable.flix",
@@ -26,6 +27,7 @@ flix_check(
         "//test:engine_radii_law_sources",
         "//test:kernel_identity_law_sources",
         "//test:kernel_table_law_sources",
+        "//test:stage_candidate_judge_law_sources",
         "//test:world_admission_law_sources",
         "//test:TestWorlds.flix",
     ],
@@ -62,7 +64,12 @@ checked_test(
 
 flix_check(
     name = "inference_boundary_check",
-    srcs = ["InferenceBoundaryTest.flix"],
+    srcs = [
+        "InferenceBoundaryTest.flix",
+        "StageProjectionTest.flix",
+        "//test:stage_projection_law_sources",
+        "//test:TestWorlds.flix",
+    ],
     command = "test",
     java_deps = ["//src/native/inference:attune_inference"],
     threads = 2,
@@ -73,12 +80,31 @@ checked_test(
     check = ":inference_boundary_check",
 )
 
+# Stage 3-6 end-to-end pipeline: Prior, Atlas, CandidateSet, Judge, and
+# Projection composed in one keyless call (both capabilities are handler-supplied).
+flix_check(
+    name = "stage_pipeline_check",
+    srcs = [
+        "StagePipelineTest.flix",
+        "//test:stage_pipeline_law_sources",
+        "//test:TestWorlds.flix",
+    ],
+    command = "test",
+    threads = 2,
+)
+
+checked_test(
+    name = "stage_pipeline_test",
+    check = ":stage_pipeline_check",
+)
+
 test_suite(
     name = "applications_tests",
     tests = [
         ":inference_boundary_test",
         ":localization_sandwich_test",
         ":population_table_test",
+        ":stage_pipeline_test",
         "//src/native/inference:attune_inference_test",
     ],
 )

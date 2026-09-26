@@ -37,10 +37,13 @@ flix_check(
     name = "atlas_grammar_check",
     srcs = [
         "AtlasTest.flix",
+        "StageAtlasPriorTest.flix",
         "//test:engine_atlas_law_sources",
         "//test:engine_physical_law_sources",
         "//test:engine_radii_law_sources",
         "//test:kernel_identity_law_sources",
+        "//test:stage_atlas_law_sources",
+        "//test:stage_prior_law_sources",
         "//test:world_admission_law_sources",
         "//test:TestWorlds.flix",
         "//src:Kernel/DigestHandler.flix",
