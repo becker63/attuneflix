@@ -1,8 +1,11 @@
 /**
- * Entry point. Bootstraps the GraphSession (self-hosted DuckDB + the default
- * bundled world) outside React, publishes the initial diagnostics, then renders
- * the app. If bootstrapping fails the shell renders a readable error and the
- * diagnostics hook keeps it; no blank page.
+ * Entry point. Installs the diagnostics hook, creates the SessionController
+ * (which bootstraps the self-hosted DuckDB, loads the manifest and the default
+ * world, and owns every later dataset switch), and renders the app. The
+ * controller publishes the diagnostics; this module adopts each new session's
+ * graph into the Jotai store, which prunes any pinned selection id the new graph
+ * does not contain. If the first load fails the shell renders a readable error
+ * and the diagnostics hook keeps it; no blank page.
  */
 import { Provider, createStore } from "jotai";
 import { StrictMode } from "react";
@@ -13,79 +16,40 @@ import { createRoot } from "react-dom/client";
 import "./styles.css";
 
 import { App } from "./App.tsx";
-import { adoptGraphAtom } from "./atoms.ts";
-import { createLocalDuckDB } from "./duckdb.ts";
-import { installDiagnostics, publish } from "./diagnostics.ts";
-import { GraphSession, LINKS_TABLE, POINTS_TABLE } from "./session.ts";
-import { chooseDefaultWorld, fetchManifest, loadWorld } from "./world.ts";
+import { adoptGraphAtom, sessionRevisionAtom, topologyRevisionAtom } from "./atoms.ts";
+import { SessionController } from "./controller.ts";
+import { installDiagnostics } from "./diagnostics.ts";
+import type { GraphSession } from "./session.ts";
 
-function render(session: GraphSession | null, error: string | null): void {
+function mount(controller: SessionController): void {
   const container = document.getElementById("root");
   if (container === null) throw new Error("missing #root");
   const store = createStore();
-  // The loaded graph is the reactive identity the derived atoms read; adopting it
-  // also drops any pinned selection ids the graph does not contain.
-  if (session !== null) store.set(adoptGraphAtom, session.graph);
+  let adopted: GraphSession | null = null;
+  controller.subscribe(() => {
+    const { session } = controller.getSnapshot();
+    if (session === null || session === adopted) return;
+    adopted = session;
+    // The loaded graph is the reactive identity the derived atoms read; adopting
+    // it also drops any pinned selection ids the graph does not contain.
+    store.set(adoptGraphAtom, session.graph);
+    store.set(sessionRevisionAtom, session.sessionRevision);
+    store.set(topologyRevisionAtom, session.topologyRevision);
+  });
   createRoot(container).render(
     <StrictMode>
       <Provider store={store}>
-        <App error={error} session={session} />
+        <App controller={controller} />
       </Provider>
     </StrictMode>,
   );
 }
 
-async function boot(): Promise<GraphSession> {
-  const start = performance.now();
-  const db = await createLocalDuckDB();
-  const afterDuckDb = performance.now();
-  const manifest = await fetchManifest();
-  const entry = chooseDefaultWorld(manifest);
-  const loaded = await loadWorld(entry);
-  const afterProjection = performance.now();
-  await db.connection.insertArrowTable(loaded.tables.points, { name: POINTS_TABLE });
-  await db.connection.insertArrowTable(loaded.tables.links, { name: LINKS_TABLE });
-  const afterInsert = performance.now();
-  const session = new GraphSession({ duckdb: db, entry, graph: loaded.graph });
-  publish({
-    snapshotId: loaded.graph.provenance.snapshotId,
-    dataset: {
-      repository: entry.repository,
-      baseRevision: entry.baseRevision,
-      synthetic: false,
-    },
-    sessionRevision: session.sessionRevision,
-    topologyRevision: session.topologyRevision,
-    counts: {
-      points: entry.counts.points,
-      links: entry.counts.links,
-      files: entry.counts.files,
-      symbols: entry.counts.symbols,
-      directories: entry.counts.directories,
-      defines: entry.counts.defines,
-      imports: entry.counts.imports,
-      calls: entry.counts.calls,
-      parent: entry.counts.parent,
-    },
-    perf: {
-      duckDbMs: Math.round(afterDuckDb - start),
-      projectionMs: Math.round(afterProjection - afterDuckDb),
-      insertMs: Math.round(afterInsert - afterProjection),
-    },
-  });
-  return session;
-}
-
 async function run(): Promise<void> {
   installDiagnostics();
-  try {
-    const session = await boot();
-    render(session, null);
-  } catch (cause) {
-    const message = cause instanceof Error ? cause.message : String(cause);
-    publish({ ready: false, error: message });
-    render(null, message);
-  }
+  const controller = new SessionController();
+  mount(controller);
+  await controller.start();
 }
 
 void run();

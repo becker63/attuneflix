@@ -4,36 +4,6 @@ import { expect, test } from "@playwright/test";
 
 import { isSameOrigin } from "../src/origin.ts";
 
-/** The subset of the diagnostics hook this spec reads (field list in the app README). */
-interface AtlasLiveHook {
-  ready: boolean;
-  snapshotId: string | null;
-  counts: {
-    points: number;
-    links: number;
-    files: number;
-    symbols: number;
-    directories: number;
-    defines: number;
-    imports: number;
-    calls: number;
-    parent: number;
-  } | null;
-  hovered: string | null;
-  hoveredIndex: number | null;
-  highlighted: { points: string[]; links: number[] };
-  camera: { zoom: number | null };
-  buildRevision: string;
-  screenPositionOf(index: number): [number, number] | null;
-  pointWithIncidentLinks(): number | null;
-}
-
-declare global {
-  interface Window {
-    __atlasLive?: AtlasLiveHook;
-  }
-}
-
 interface WorldEntry {
   snapshotId: string;
   repository: string;

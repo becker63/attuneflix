@@ -33,17 +33,26 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function isWorldManifest(value: unknown): value is WorldManifest {
-  return isRecord(value) && value.version === 1 && Array.isArray(value.worlds);
+  return (
+    isRecord(value) &&
+    value.version === 1 &&
+    Array.isArray(value.worlds) &&
+    (value.synthetic === null || isRecord(value.synthetic))
+  );
 }
 
-export async function fetchManifest(url = "manifest.json"): Promise<WorldManifest> {
-  const response = await fetch(url, { cache: "no-cache" });
+export async function fetchManifest(url = "manifest.json", signal?: AbortSignal): Promise<WorldManifest> {
+  const response = await fetch(url, { cache: "no-cache", signal });
   if (!response.ok) throw new Error(`manifest.json: HTTP ${response.status}`);
   const value: unknown = await response.json();
   if (!isWorldManifest(value)) throw new Error("manifest.json has an unexpected shape");
   return value;
 }
 
+/**
+ * The default world: the smallest snapshot of `preactjs/preact`, a real census
+ * world. The synthetic fixture is never eligible.
+ */
 export function chooseDefaultWorld(manifest: WorldManifest): WorldManifestEntry {
   const candidates = manifest.worlds.filter((world) => world.repository === DEFAULT_REPOSITORY);
   if (candidates.length === 0) {
@@ -52,27 +61,30 @@ export function chooseDefaultWorld(manifest: WorldManifest): WorldManifestEntry 
   return candidates.reduce((best, world) => (world.counts.points < best.counts.points ? world : best));
 }
 
-async function fetchBytes(url: string): Promise<ArrayBuffer> {
-  const response = await fetch(url);
+async function fetchBytes(url: string, signal: AbortSignal | undefined): Promise<ArrayBuffer> {
+  const response = await fetch(url, { signal });
   if (!response.ok) throw new Error(`${url}: HTTP ${response.status}`);
   return toArrayBuffer(new Uint8Array(await response.arrayBuffer()));
 }
 
-async function fetchWorldFiles(entry: WorldManifestEntry): Promise<WorldFiles> {
+async function fetchWorldFiles(
+  entry: WorldManifestEntry,
+  signal: AbortSignal | undefined,
+): Promise<WorldFiles> {
   const { assets } = entry;
   const [metadata, entities, relations, locations] = await Promise.all([
-    fetchBytes(assets.metadata),
-    fetchBytes(assets.entities),
-    fetchBytes(assets.relations),
-    assets.locations === undefined ? Promise.resolve(undefined) : fetchBytes(assets.locations),
+    fetchBytes(assets.metadata, signal),
+    fetchBytes(assets.entities, signal),
+    fetchBytes(assets.relations, signal),
+    assets.locations === undefined ? Promise.resolve(undefined) : fetchBytes(assets.locations, signal),
   ]);
   return locations === undefined
     ? { metadata, entities, relations }
     : { metadata, entities, relations, locations };
 }
 
-export async function loadWorld(entry: WorldManifestEntry): Promise<LoadedWorld> {
-  const files = await fetchWorldFiles(entry);
+export async function loadWorld(entry: WorldManifestEntry, signal?: AbortSignal): Promise<LoadedWorld> {
+  const files = await fetchWorldFiles(entry, signal);
   const decoded = await decodeWorldFiles(files);
   const graph = projectTables(decoded, entry.sha256);
   const xy = computeLayout(graph);

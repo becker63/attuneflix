@@ -9,6 +9,10 @@ import {
   fixtureTables,
 } from "./fixture.ts";
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
 describe("manifest entries (VAL-PROJ-010)", () => {
   it("derives the content-addressed digest from the snapshot id", () => {
     expect(snapshotDigest(FIXTURE_SNAPSHOT_ID)).toBe(
@@ -44,7 +48,24 @@ describe("manifest entries (VAL-PROJ-010)", () => {
         locations: "data/f17tu2e0000000000000000000000000000000000000000000000000000000/locations.parquet",
       },
       sha256: FIXTURE_HASHES_WITH_LOCATIONS,
+      synthetic: false,
     });
+  });
+
+  it("marks a synthetic fixture entry synthetic and keeps it out of the worlds list", () => {
+    const graph = projectTables(fixtureTables(false), FIXTURE_HASHES);
+    const entry = manifestEntry(graph, true);
+    expect(entry.synthetic).toBe(true);
+    const world = { ...entry, synthetic: false, snapshotId: "repository-snapshot-v1:aaaa" };
+    const parsed: unknown = JSON.parse(serializeManifest([world], entry));
+    expect(isRecord(parsed)).toBe(true);
+    if (!isRecord(parsed)) return;
+    expect(parsed.version).toBe(1);
+    const worlds = parsed.worlds;
+    if (Array.isArray(worlds)) expect(worlds).toHaveLength(1);
+    const synthetic = parsed.synthetic;
+    expect(isRecord(synthetic)).toBe(true);
+    if (isRecord(synthetic)) expect(synthetic.synthetic).toBe(true);
   });
 
   it("omits the locations asset when no locations table was supplied", () => {

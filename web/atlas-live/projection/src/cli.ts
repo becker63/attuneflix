@@ -21,12 +21,14 @@ interface CliOptions {
   readonly worlds: string;
   readonly out: string;
   readonly locations: string | null;
+  readonly synthetic: string | null;
 }
 
 function parseArgs(argv: readonly string[]): CliOptions {
   let worlds: string | null = null;
   let out: string | null = null;
   let locations: string | null = null;
+  let synthetic: string | null = null;
   for (let i = 0; i < argv.length; i++) {
     const flag = argv[i];
     const value = argv[i + 1];
@@ -46,15 +48,18 @@ function parseArgs(argv: readonly string[]): CliOptions {
       case "--locations":
         locations = value;
         break;
+      case "--synthetic":
+        synthetic = value;
+        break;
       default:
         throw new Error(`unknown argument ${flag}`);
     }
     i += 1;
   }
   if (worlds === null || out === null) {
-    throw new Error("usage: cli --worlds <dir> --out <dir> [--locations <dir>]");
+    throw new Error("usage: cli --worlds <dir> --out <dir> [--locations <dir>] [--synthetic <dir>]");
   }
-  return { worlds, out, locations };
+  return { worlds, out, locations, synthetic };
 }
 
 async function readBytes(file: string): Promise<ArrayBuffer> {
@@ -73,20 +78,19 @@ async function exists(file: string): Promise<boolean> {
   }
 }
 
-async function projectOne(
-  worldsDir: string,
-  locationsDir: string | null,
+async function projectDir(
+  dir: string,
   outDir: string,
   digest: string,
+  locationsFile: string | null,
+  synthetic: boolean,
 ): Promise<WorldManifestEntry> {
-  const dir = path.join(worldsDir, digest);
   const metadata = await readBytes(path.join(dir, "metadata.parquet"));
   const entities = await readBytes(path.join(dir, "entities.parquet"));
   const relations = await readBytes(path.join(dir, "relations.parquet"));
   let locations: ArrayBuffer | undefined;
-  if (locationsDir !== null) {
-    const file = path.join(locationsDir, digest, "locations.parquet");
-    if (await exists(file)) locations = await readBytes(file);
+  if (locationsFile !== null && (await exists(locationsFile))) {
+    locations = await readBytes(locationsFile);
   }
   const files: WorldFiles =
     locations === undefined
@@ -94,7 +98,7 @@ async function projectOne(
       : { metadata, entities, relations, locations };
 
   const graph = await projectWorld(files);
-  const entry = manifestEntry(graph);
+  const entry = manifestEntry(graph, synthetic);
   if (entry.snapshotDigest !== digest) {
     throw new ProjectionError({
       kind: "snapshot-mismatch",
@@ -114,6 +118,30 @@ async function projectOne(
     await writeFile(path.join(assetDir, "locations.parquet"), new Uint8Array(locations));
   }
   return entry;
+}
+
+async function projectOne(
+  worldsDir: string,
+  locationsDir: string | null,
+  outDir: string,
+  digest: string,
+): Promise<WorldManifestEntry> {
+  const locationsFile = locationsDir === null ? null : path.join(locationsDir, digest, "locations.parquet");
+  return projectDir(path.join(worldsDir, digest), outDir, digest, locationsFile, false);
+}
+
+async function projectSynthetic(syntheticDir: string, outDir: string): Promise<WorldManifestEntry | null> {
+  const digests = (await readdir(syntheticDir, { withFileTypes: true }))
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name);
+  if (digests.length === 0) return null;
+  if (digests.length > 1) {
+    throw new Error(`synthetic fixture dir must hold exactly one world, found ${digests.length}`);
+  }
+  const digest = digests[0];
+  if (digest === undefined) return null;
+  const dir = path.join(syntheticDir, digest);
+  return projectDir(dir, outDir, digest, path.join(dir, "locations.parquet"), true);
 }
 
 async function main(argv: readonly string[]): Promise<number> {
@@ -138,9 +166,20 @@ async function main(argv: readonly string[]): Promise<number> {
       throw error;
     }
   }
+  let synthetic: WorldManifestEntry | null = null;
+  if (options.synthetic !== null) {
+    synthetic = await projectSynthetic(options.synthetic, options.out);
+    if (synthetic === null) {
+      console.error(`synthetic dir ${options.synthetic} holds no world`);
+      return 1;
+    }
+    console.log(
+      `projected synthetic ${synthetic.snapshotDigest} points=${synthetic.counts.points} links=${synthetic.counts.links}`,
+    );
+  }
   await mkdir(options.out, { recursive: true });
-  await writeFile(path.join(options.out, "manifest.json"), serializeManifest(entries));
-  console.log(`manifest.json: ${entries.length} worlds`);
+  await writeFile(path.join(options.out, "manifest.json"), serializeManifest(entries, synthetic));
+  console.log(`manifest.json: ${entries.length} worlds, synthetic=${synthetic !== null}`);
   return 0;
 }
 

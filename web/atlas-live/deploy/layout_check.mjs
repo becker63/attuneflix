@@ -6,8 +6,9 @@
  * filesystem + SPA route list, and `static/` as the only other top-level entry)
  * and the payload the viewer needs (index.html, the manifest, every world's
  * Parquet, the JS bundle, the linked stylesheet, and the self-hosted DuckDB eh
- * wasm and worker). Later features add the synthetic fixture, census and trace
- * data to `:static`; the checks here cover what the data targets ship today.
+ * wasm and worker). The synthetic 10k/50k stress fixture ships as its own
+ * manifest entry (`manifest.synthetic`, outside `worlds[]`, dir count 78 + 1);
+ * later features add census and trace data to `:static`.
  *
  * The stylesheet check is deliberately two-sided (VAL-STYLE-001): the built
  * index.html must link at least one same-origin stylesheet that exists in the
@@ -157,10 +158,33 @@ function checkStaticPayload() {
   for (const world of worlds) {
     const digest = isRecord(world) ? world.snapshotDigest : undefined;
     check(typeof digest === "string", "every manifest world must carry a snapshotDigest");
+    check(
+      isRecord(world) && world.synthetic !== true,
+      `${String(digest)} is a census world and must not be labelled synthetic`,
+    );
     for (const name of ["metadata", "entities", "relations"]) {
       requireFile(path.join(staticDir, "data", digest, `${name}.parquet`), `${digest} ${name}`);
     }
+    const locations = isRecord(world) && isRecord(world.assets) ? world.assets.locations : undefined;
+    if (typeof locations === "string") {
+      requireFile(path.join(staticDir, locations), `${digest} locations`);
+    }
   }
+
+  // The synthetic stress fixture ships as its own manifest entry, outside worlds[].
+  const synthetic = isRecord(manifest) ? manifest.synthetic : undefined;
+  check(isRecord(synthetic), "manifest.json must carry a synthetic stress fixture entry");
+  check(synthetic.synthetic === true, "the synthetic fixture must be labelled synthetic");
+  check(synthetic.repository === "synthetic", "the synthetic fixture must use the 'synthetic' repository");
+  const syntheticDigest = synthetic.snapshotDigest;
+  check(typeof syntheticDigest === "string", "the synthetic fixture must carry a snapshotDigest");
+  for (const name of ["metadata", "entities", "relations", "locations"]) {
+    requireFile(path.join(staticDir, "data", syntheticDigest, `${name}.parquet`), `synthetic ${name}`);
+  }
+  check(
+    synthetic.counts && synthetic.counts.points === 10000 && synthetic.counts.links === 50000,
+    "the synthetic fixture must be the 10,000-point / 50,000-link stress world",
+  );
 
   const assetsDir = path.join(staticDir, "assets");
   check(fs.existsSync(assetsDir), "static/assets is missing");
@@ -171,11 +195,18 @@ function checkStaticPayload() {
 
   const files = listFiles(staticDir);
   const worldDirs = fs.readdirSync(path.join(staticDir, "data"), { withFileTypes: true });
+  check(
+    worldDirs.length === EXPECTED_WORLDS + 1,
+    `static/data must hold ${EXPECTED_WORLDS} worlds plus the synthetic fixture, found ${worldDirs.length}`,
+  );
   console.log(
     `layout_check: config.json v3 with the filesystem + SPA routes, ` +
       `${worlds.length} worlds, ${files.length} static files, ${treeSize(staticDir)} bytes`,
   );
-  console.log(`layout_check: static/data holds ${worldDirs.length} snapshot directories`);
+  console.log(
+    `layout_check: static/data holds ${worldDirs.length} snapshot directories ` +
+      `(${EXPECTED_WORLDS} worlds + 1 synthetic stress fixture)`,
+  );
 }
 
 function run() {

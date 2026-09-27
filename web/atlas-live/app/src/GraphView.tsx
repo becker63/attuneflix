@@ -87,12 +87,17 @@ export function GraphView({ session }: { session: GraphSession }) {
   const relationMask = useAtomValue(relationMaskAtom);
 
   // The renderer's stable callbacks delegate here; the dependency list is only
-  // the setters (all stable) and the session.
+  // the setters (all stable) and the session. Disposing the session removes
+  // these handlers even before React unmounts the component.
   useEffect(() => {
     const rebuilt = (): void => {
+      // Fit the camera to the freshly loaded dataset, so a switch never keeps the
+      // previous world's zoom and pan.
+      const instance = mountedCosmograph();
+      instance?.fitView(0);
       setReady(true);
       reapplyEmphasis();
-      publish({ ready: true, camera: { zoom: mountedCosmograph()?.getZoomLevel() ?? null } });
+      publish({ ready: true, camera: { zoom: instance?.getZoomLevel() ?? null } });
     };
     const zoom = (): void => {
       publish({ camera: { zoom: mountedCosmograph()?.getZoomLevel() ?? null } });
@@ -113,8 +118,15 @@ export function GraphView({ session }: { session: GraphSession }) {
     setDiagnosticsSource({
       screenPositionOf: (index) => screenPositionOf(mountedCosmograph(), index),
       pointWithIncidentLinks: () => session.firstPointWithLinks(RELATION_ORDER),
+      pointIdOf: (index) => session.pointId(index),
+      pointCount: () => session.pointCount,
+    });
+    const unsubscribe = session.onDispose(() => {
+      setGraphHandlers(null);
+      setDiagnosticsSource(null);
     });
     return () => {
+      unsubscribe();
       setGraphHandlers(null);
       setDiagnosticsSource(null);
       clearMountedCosmograph();
@@ -181,9 +193,9 @@ export function GraphView({ session }: { session: GraphSession }) {
       pointGreyoutOpacity={0.08}
       linkGreyoutOpacity={0.02}
       linkColorBy="relation"
-      linkColorByFn={linkColorFn(relationMask)}
+      linkColorByFn={linkColorFn(relationMask, session.renderLinks)}
       linkWidthBy="relation"
-      linkWidthByFn={linkWidthFn(relationMask)}
+      linkWidthByFn={linkWidthFn(relationMask, session.renderLinks)}
       onMount={onGraphMount}
       onPointMouseOver={onPointMouseOver}
       onPointMouseOut={onPointMouseOut}

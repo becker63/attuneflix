@@ -64,11 +64,32 @@ js_binary(
     entry_point = "src/cli.ts",
 )
 
+# The synthetic 10k-node / 50k-edge stress fixture, generated deterministically in
+# the projection input format (metadata/entities/relations/locations Parquet).
+js_binary(
+    name = "synthetic_cli",
+    data = [":srcs"],
+    entry_point = "src/synthetic_cli.ts",
+)
+
+js_run_binary(
+    name = "synthetic_world",
+    args = [
+        "--out",
+        "synthetic",
+    ],
+    chdir = package_name(),
+    out_dirs = ["synthetic"],
+    tool = ":synthetic_cli",
+    visibility = ["//visibility:public"],
+)
+
 js_run_binary(
     name = "data",
     srcs = [
         ":worlds",
         ":locations",
+        ":synthetic_world",
     ],
     args = [
         "--worlds",
@@ -77,6 +98,8 @@ js_run_binary(
         "data",
         "--locations",
         "locations",
+        "--synthetic",
+        "synthetic",
     ],
     chdir = package_name(),
     out_dirs = ["data"],

@@ -47,11 +47,18 @@ export interface WorldManifestEntry {
   readonly counts: WorldCounts;
   readonly assets: WorldAssets;
   readonly sha256: WorldHashes;
+  /** True only for the synthetic stress fixture; false for every real world. */
+  readonly synthetic: boolean;
 }
 
 export interface WorldManifest {
   readonly version: typeof MANIFEST_VERSION;
   readonly worlds: readonly WorldManifestEntry[];
+  /**
+   * The synthetic stress fixture, kept out of `worlds` so it is never counted
+   * among the 78 census worlds, or null when no fixture was generated.
+   */
+  readonly synthetic: WorldManifestEntry | null;
 }
 
 /** The content-addressed data path component of a snapshot id. */
@@ -66,7 +73,7 @@ export function snapshotDigest(snapshotId: string): string {
   return snapshotId.slice(SNAPSHOT_ID_PREFIX.length);
 }
 
-export function manifestEntry(graph: ViewerGraph): WorldManifestEntry {
+export function manifestEntry(graph: ViewerGraph, synthetic = false): WorldManifestEntry {
   const { provenance } = graph;
   const digest = snapshotDigest(provenance.snapshotId);
   const assets: { metadata: string; entities: string; relations: string; locations?: string } = {
@@ -103,13 +110,17 @@ export function manifestEntry(graph: ViewerGraph): WorldManifestEntry {
     },
     assets,
     sha256,
+    synthetic,
   };
 }
 
-export function serializeManifest(entries: readonly WorldManifestEntry[]): string {
+export function serializeManifest(
+  entries: readonly WorldManifestEntry[],
+  synthetic: WorldManifestEntry | null = null,
+): string {
   const worlds = entries.toSorted((a, b) =>
     a.snapshotId < b.snapshotId ? -1 : a.snapshotId > b.snapshotId ? 1 : 0,
   );
-  const manifest: WorldManifest = { version: MANIFEST_VERSION, worlds };
+  const manifest: WorldManifest = { version: MANIFEST_VERSION, worlds, synthetic };
   return JSON.stringify(manifest, null, 2) + "\n";
 }

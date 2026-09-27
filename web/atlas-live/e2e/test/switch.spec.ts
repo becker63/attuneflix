@@ -1,0 +1,344 @@
+/**
+ * Dataset switching (VAL-DATA-001..003, VAL-GRAPH-005..008, VAL-INTERACT-006).
+ *
+ * Drives the real Base UI picker against the built static tree under SwiftShader:
+ * the picker lists the 78 census worlds plus the separately labelled synthetic
+ * fixture; switching disposes the previous session (session revision advances,
+ * exactly one live session, its DuckDB tables swapped), fits the camera to the
+ * new dataset, and clears a pinned selection whose entity the new dataset lacks.
+ */
+import { expect, test, type Page } from "@playwright/test";
+
+interface WorldCounts {
+  points: number;
+  links: number;
+  files: number;
+  symbols: number;
+  directories: number;
+  defines: number;
+  imports: number;
+  calls: number;
+  parent: number;
+}
+
+interface WorldEntry {
+  snapshotId: string;
+  repository: string;
+  baseRevision: string;
+  counts: WorldCounts;
+  assets: { metadata: string; entities: string; relations: string; locations?: string };
+  synthetic?: boolean;
+}
+
+interface Manifest {
+  worlds: WorldEntry[];
+  synthetic: WorldEntry | null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isWorldEntry(value: unknown): value is WorldEntry {
+  return (
+    isRecord(value) &&
+    typeof value.snapshotId === "string" &&
+    typeof value.repository === "string" &&
+    typeof value.baseRevision === "string" &&
+    isRecord(value.counts) &&
+    isRecord(value.assets)
+  );
+}
+
+async function readManifest(page: Page): Promise<Manifest> {
+  const response = await page.request.get("/manifest.json");
+  expect(response.ok()).toBe(true);
+  const value: unknown = await response.json();
+  if (!isRecord(value) || !Array.isArray(value.worlds)) throw new Error("bad manifest shape");
+  const worlds = value.worlds.filter(isWorldEntry);
+  const synthetic = isWorldEntry(value.synthetic) ? value.synthetic : null;
+  return { worlds, synthetic };
+}
+
+async function waitReady(page: Page, snapshotId: string, revision: number): Promise<void> {
+  await page.waitForFunction(
+    ({ id, rev }) => {
+      const hook = window.__atlasLive;
+      return hook?.ready === true && hook.snapshotId === id && hook.sessionRevision >= rev;
+    },
+    { id: snapshotId, rev: revision },
+    { timeout: 90_000 },
+  );
+}
+
+async function openPicker(page: Page): Promise<void> {
+  await page.getByTestId("dataset-picker").click();
+  await expect(page.getByRole("listbox")).toBeVisible();
+}
+
+async function selectDataset(page: Page, snapshotId: string): Promise<void> {
+  await openPicker(page);
+  await page.locator(`[data-snapshot-id="${snapshotId}"]`).click();
+}
+
+test("picker lists the 78 worlds plus the separately labelled synthetic fixture", async ({ page }) => {
+  const consoleErrors: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "error") consoleErrors.push(message.text());
+  });
+
+  await page.goto("/");
+  await page.waitForFunction(() => window.__atlasLive?.ready === true, null, { timeout: 90_000 });
+
+  const manifest = await readManifest(page);
+  expect(manifest.worlds).toHaveLength(78);
+  expect(manifest.synthetic?.synthetic).toBe(true);
+
+  await openPicker(page);
+  const options = page.locator("[data-snapshot-id]");
+  await expect(options).toHaveCount(79);
+
+  const listed = await options.evaluateAll((elements) =>
+    elements.map((element) => ({
+      id: element.getAttribute("data-snapshot-id"),
+      kind: element.getAttribute("data-dataset"),
+      text: element.textContent ?? "",
+    })),
+  );
+  const worldIds = manifest.worlds.map((world) => world.snapshotId).toSorted();
+  const listedWorldIds = listed
+    .filter((option) => option.kind === "world")
+    .map((option) => option.id ?? "")
+    .toSorted();
+  expect(listedWorldIds).toEqual(worldIds);
+
+  const syntheticOption = listed.find((option) => option.kind === "synthetic");
+  expect(syntheticOption?.id).toBe(manifest.synthetic?.snapshotId);
+  expect(syntheticOption?.text).toContain("synthetic");
+  // A real world's option names its repository and short revision.
+  const worldOption = listed.find((option) => option.id === worldIds[0]);
+  expect(worldOption?.text.length ?? 0).toBeGreaterThan(0);
+
+  expect(consoleErrors).toEqual([]);
+});
+
+test("switching disposes the old session, fits the camera and prunes the selection", async ({ page }) => {
+  const consoleErrors: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "error") consoleErrors.push(message.text());
+  });
+
+  await page.goto("/");
+  await page.waitForFunction(() => window.__atlasLive?.ready === true, null, { timeout: 90_000 });
+
+  const manifest = await readManifest(page);
+  const worldA = await page.evaluate(() => ({
+    snapshotId: window.__atlasLive?.snapshotId ?? null,
+    revision: window.__atlasLive?.sessionRevision ?? 0,
+  }));
+  expect(worldA.snapshotId).not.toBeNull();
+  const entryA = manifest.worlds.find((world) => world.snapshotId === worldA.snapshotId);
+  expect(entryA).toBeTruthy();
+
+  // World B: a real world with fewer symbols than A, so A's highest symbol ids
+  // do not exist in B (VAL-INTERACT-006).
+  const entryB = manifest.worlds
+    .filter((world) => world.snapshotId !== entryA?.snapshotId && world.counts.symbols > 0)
+    .reduce((best, world) => (world.counts.symbols < best.counts.symbols ? world : best));
+  expect(entryB.snapshotId).not.toBe(entryA?.snapshotId);
+  const absentSymbolId = `symbol:${entryB.counts.symbols + 25}`;
+  expect(entryA?.counts.symbols ?? 0).toBeGreaterThan(entryB.counts.symbols + 25);
+
+  // Find that symbol's renderer index in A and pin it with a real click.
+  const target = await page.evaluate((wanted) => {
+    const hook = window.__atlasLive;
+    if (hook === undefined) return null;
+    const count = hook.pointCount();
+    for (let index = 0; index < count; index++) {
+      if (hook.pointIdOf(index) === wanted) {
+        return { index, position: hook.screenPositionOf(index) };
+      }
+    }
+    return null;
+  }, absentSymbolId);
+  expect(target?.position, `a screen position for ${absentSymbolId}`).toBeTruthy();
+  const [px, py] = target?.position ?? [0, 0];
+  await page.mouse.move(px, py);
+  await page.mouse.click(px, py);
+  await expect
+    .poll(async () => page.evaluate(() => window.__atlasLive?.selected ?? []), { timeout: 10_000 })
+    .toEqual([absentSymbolId]);
+
+  // Push A's camera far from a fit, so "B keeps A's viewport" is detectable.
+  await page.mouse.move(512, 350);
+  for (let i = 0; i < 8; i++) await page.mouse.wheel(0, 240);
+  await page.waitForTimeout(400);
+  const zoomA = await page.evaluate(() => window.__atlasLive?.camera.zoom ?? null);
+  expect(zoomA).not.toBeNull();
+
+  await selectDataset(page, entryB.snapshotId);
+  await waitReady(page, entryB.snapshotId, worldA.revision + 1);
+  await page.waitForTimeout(800);
+
+  const after = await page.evaluate(() => {
+    const hook = window.__atlasLive;
+    return {
+      snapshotId: hook?.snapshotId ?? null,
+      revision: hook?.sessionRevision ?? 0,
+      liveSessions: hook?.liveSessions ?? 0,
+      duckdbTables: hook?.duckdbTables ?? [],
+      counts: hook?.counts ?? null,
+      dataset: hook?.dataset ?? null,
+      selected: hook?.selected ?? [],
+      camera: hook?.camera ?? { zoom: null },
+      hovered: hook?.hovered ?? null,
+    };
+  });
+
+  // B is loaded and A is fully gone.
+  expect(after.snapshotId).toBe(entryB.snapshotId);
+  expect(after.revision).toBe(worldA.revision + 1);
+  expect(after.counts?.points).toBe(entryB.counts.points);
+  expect(after.counts?.links).toBe(entryB.counts.links);
+  expect(after.dataset?.repository).toBe(entryB.repository);
+
+  // Exactly one live session; A's DuckDB tables are dropped.
+  expect(after.liveSessions).toBe(1);
+  expect(after.duckdbTables).toHaveLength(2);
+  expect(after.duckdbTables.every((name) => name.endsWith(`_${worldA.revision + 1}`))).toBe(true);
+
+  // The pinned symbol from A does not exist in B: the selection is cleared.
+  expect(after.selected).toEqual([]);
+  await expect(page.getByTestId("selection")).toHaveCount(0);
+
+  // The camera fits B, rather than keeping A's zoom.
+  expect(after.camera.zoom).not.toBeNull();
+  expect(Math.abs((after.camera.zoom ?? 0) - (zoomA ?? 0))).toBeGreaterThan(1e-6);
+
+  const png = await page.screenshot();
+  const painted = await page.evaluate(async (base64) => {
+    const image = new Image();
+    image.src = `data:image/png;base64,${base64}`;
+    await image.decode();
+    const canvas = document.createElement("canvas");
+    canvas.width = image.width;
+    canvas.height = image.height;
+    const context = canvas.getContext("2d");
+    if (context === null) throw new Error("no 2d context");
+    context.drawImage(image, 0, 0);
+    const data = context.getImageData(0, 0, canvas.width, canvas.height).data;
+    let count = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      const delta =
+        Math.abs((data[i] ?? 0) - 11) + Math.abs((data[i + 1] ?? 0) - 13) + Math.abs((data[i + 2] ?? 0) - 18);
+      if (delta > 24) count++;
+    }
+    return count;
+  }, png.toString("base64"));
+  expect(painted, "the switched graph paints non-blank").toBeGreaterThan(1000);
+
+  expect(consoleErrors).toEqual([]);
+});
+
+test("the synthetic stress fixture loads, is labelled synthetic and stays interactive", async ({ page }) => {
+  const consoleErrors: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "error") consoleErrors.push(message.text());
+  });
+
+  await page.goto("/");
+  await page.waitForFunction(() => window.__atlasLive?.ready === true, null, { timeout: 90_000 });
+  const manifest = await readManifest(page);
+  const synthetic = manifest.synthetic;
+  expect(synthetic, "manifest.json carries a synthetic fixture").not.toBeNull();
+  if (synthetic === null) return;
+
+  await selectDataset(page, synthetic.snapshotId);
+  await waitReady(page, synthetic.snapshotId, 2);
+  await page.waitForTimeout(500);
+
+  const info = await page.evaluate(() => {
+    const hook = window.__atlasLive;
+    return {
+      snapshotId: hook?.snapshotId ?? null,
+      dataset: hook?.dataset ?? null,
+      counts: hook?.counts ?? null,
+      renderLinks: hook?.renderLinks ?? null,
+      liveSessions: hook?.liveSessions ?? 0,
+    };
+  });
+  expect(info.dataset?.synthetic).toBe(true);
+  expect(info.dataset?.repository).toBe("synthetic");
+  expect(info.counts?.points).toBe(10_000);
+  expect(info.counts?.links).toBe(50_000);
+  expect(info.renderLinks).toBe(false);
+  expect(info.liveSessions).toBe(1);
+
+  // The identity area labels it synthetic; the header marks the hidden links.
+  await expect(page.getByTestId("identity")).toContainText("synthetic");
+  await expect(page.getByTestId("links-hidden")).toBeVisible();
+
+  // The fixture is interactive: a hover updates the hook within the 2 s budget.
+  const target = await page.evaluate(() => {
+    const hook = window.__atlasLive;
+    const index = hook?.pointWithIncidentLinks() ?? null;
+    if (index === null || hook === undefined) return null;
+    return { index, position: hook.screenPositionOf(index) };
+  });
+  expect(target?.position, "a synthetic point's screen position").toBeTruthy();
+  const [sx, sy] = target?.position ?? [0, 0];
+  await page.mouse.move(sx, sy);
+  const started = Date.now();
+  await expect
+    .poll(async () => page.evaluate(() => window.__atlasLive?.hovered ?? null), { timeout: 2000 })
+    .not.toBeNull();
+  expect(Date.now() - started).toBeLessThan(2000);
+
+  expect(consoleErrors).toEqual([]);
+});
+
+test("a failed switch shows an explicit loading then error state and keeps the previous dataset", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.waitForFunction(() => window.__atlasLive?.ready === true, null, { timeout: 90_000 });
+  const manifest = await readManifest(page);
+  const before = await page.evaluate(() => ({
+    snapshotId: window.__atlasLive?.snapshotId ?? null,
+    revision: window.__atlasLive?.sessionRevision ?? 0,
+  }));
+  const entryB = manifest.worlds.find(
+    (world) => world.snapshotId !== before.snapshotId && world.counts.symbols > 0,
+  );
+  expect(entryB).toBeTruthy();
+  if (entryB === undefined) return;
+
+  // Block one of B's assets so the switch cannot complete; hold it open long
+  // enough that the loading state is observable.
+  await page.route(`**${entryB.assets.entities}`, async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await route.abort();
+  });
+
+  await openPicker(page);
+  await page.locator(`[data-snapshot-id="${entryB.snapshotId}"]`).click();
+
+  await expect(page.getByTestId("loading")).toBeVisible({ timeout: 5_000 });
+  await expect(page.getByTestId("loading")).toContainText(entryB.repository);
+  await expect(page.getByTestId("switch-error")).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId("switch-error")).toContainText(entryB.repository);
+
+  const after = await page.evaluate(() => ({
+    ready: window.__atlasLive?.ready ?? false,
+    loading: window.__atlasLive?.loading ?? false,
+    error: window.__atlasLive?.error ?? null,
+    snapshotId: window.__atlasLive?.snapshotId ?? null,
+    liveSessions: window.__atlasLive?.liveSessions ?? 0,
+  }));
+  // No spinner left running; the previous dataset is still usable.
+  expect(after.loading).toBe(false);
+  expect(after.ready).toBe(true);
+  expect(after.snapshotId).toBe(before.snapshotId);
+  expect(after.error).toContain(entryB.repository);
+  expect(after.liveSessions).toBe(1);
+});

@@ -48,14 +48,25 @@ export interface DiagnosticsSource {
   screenPositionOf(index: number): [number, number] | null;
   /** A point index with at least one incident link, or null if none. */
   pointWithIncidentLinks(): number | null;
+  /** The identity (`domain:localId`) of the point at this renderer index, or null. */
+  pointIdOf(index: number): string | null;
+  /** The current number of points in the loaded graph. */
+  pointCount(): number;
 }
 
 interface DiagnosticsState {
   ready: boolean;
+  loading: boolean;
   snapshotId: string | null;
   dataset: AtlasDataset | null;
   sessionRevision: number;
   topologyRevision: number;
+  /** Number of live GraphSessions; exactly one once a dataset is loaded. */
+  liveSessions: number;
+  /** The DuckDB tables the current live session owns (never a disposed one's). */
+  duckdbTables: readonly string[];
+  /** Whether the renderer draws the current dataset's links (see LINK_RENDER_BUDGET). */
+  renderLinks: boolean;
   overlay: AtlasOverlay;
   counts: AtlasCounts | null;
   hovered: string | null;
@@ -77,10 +88,14 @@ const BUILD_REVISION = typeof __ATLAS_BUILD_REVISION__ === "string" ? __ATLAS_BU
 
 const state: DiagnosticsState = {
   ready: false,
+  loading: false,
   snapshotId: null,
   dataset: null,
   sessionRevision: 0,
   topologyRevision: 0,
+  liveSessions: 0,
+  duckdbTables: [],
+  renderLinks: true,
   overlay: { name: "structure", revision: 1 },
   counts: null,
   hovered: null,
@@ -112,6 +127,9 @@ export function installDiagnostics(): void {
     get ready(): boolean {
       return state.ready;
     },
+    get loading(): boolean {
+      return state.loading;
+    },
     get snapshotId(): string | null {
       return state.snapshotId;
     },
@@ -123,6 +141,15 @@ export function installDiagnostics(): void {
     },
     get topologyRevision(): number {
       return state.topologyRevision;
+    },
+    get liveSessions(): number {
+      return state.liveSessions;
+    },
+    get duckdbTables(): readonly string[] {
+      return state.duckdbTables;
+    },
+    get renderLinks(): boolean {
+      return state.renderLinks;
     },
     get overlay(): AtlasOverlay {
       return state.overlay;
@@ -168,6 +195,12 @@ export function installDiagnostics(): void {
     },
     pointWithIncidentLinks(): number | null {
       return source?.pointWithIncidentLinks() ?? null;
+    },
+    pointIdOf(index: number): string | null {
+      return source?.pointIdOf(index) ?? null;
+    },
+    pointCount(): number {
+      return source?.pointCount() ?? 0;
     },
   };
   Object.defineProperty(globalThis, "__atlasLive", {
