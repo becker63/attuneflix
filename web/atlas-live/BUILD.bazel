@@ -12,7 +12,10 @@ package(default_visibility = ["//web/atlas-live:__subpackages__"])
 # their npm deps from this node_modules tree.
 npm_link_all_packages(name = "node_modules")
 
-exports_files(["package.json", "serve.mjs"])
+exports_files([
+    "package.json",
+    "serve.mjs",
+])
 
 # The static server, shared by `:preview` and the Playwright e2e run. It must be
 # a js_library so the e2e package can depend on it (rules_js copies source files
@@ -48,17 +51,23 @@ ROOT_CONFIGS = [
 
 oxlint_bin.oxlint_test(
     name = "oxlint_test",
+    size = "small",
     args = [
         "--type-aware",
         "--deny-warnings",
     ] + TS_PACKAGES,
     chdir = package_name(),
     data = ROOT_CONFIGS + PACKAGE_FILES + [":node_modules"],
-    size = "small",
     # oxlint looks for node_modules/.bin/tsgolint, which rules_js does not create.
-    env = {
-        "OXLINT_TSGOLINT_PATH": "node_modules/.aspect_rules_js/@oxlint-tsgolint+linux-x64@7.0.2003/node_modules/@oxlint-tsgolint/linux-x64/tsgolint",
-    },
+    # rules_js links only the tsgolint platform package matching the exec CPU.
+    env = select({
+        "@platforms//cpu:aarch64": {
+            "OXLINT_TSGOLINT_PATH": "node_modules/.aspect_rules_js/@oxlint-tsgolint+linux-arm64@7.0.2003/node_modules/@oxlint-tsgolint/linux-arm64/tsgolint",
+        },
+        "//conditions:default": {
+            "OXLINT_TSGOLINT_PATH": "node_modules/.aspect_rules_js/@oxlint-tsgolint+linux-x64@7.0.2003/node_modules/@oxlint-tsgolint/linux-x64/tsgolint",
+        },
+    }),
 )
 
 FORMATTED_ROOT_FILES = ROOT_CONFIGS + [
@@ -74,13 +83,19 @@ FORMATTED_DEPLOY_FILES = [
 
 oxfmt_bin.oxfmt_test(
     name = "oxfmt_test",
-    args = ["--check"] + FORMATTED_ROOT_FILES + ["deploy"] + FORMATTED_DEPLOY_FILES + TS_PACKAGES,
+    size = "small",
+    # An explicit --config: in the local sandbox the inputs are symlinks and
+    # oxfmt's config discovery misses .oxfmtrc.json, falling back to defaults.
+    args = [
+        "--check",
+        "--config",
+        ".oxfmtrc.json",
+    ] + FORMATTED_ROOT_FILES + ["deploy"] + FORMATTED_DEPLOY_FILES + TS_PACKAGES,
     chdir = package_name(),
     data = FORMATTED_ROOT_FILES + FORMATTED_DEPLOY_FILES + PACKAGE_FILES + [
         ":deploy_srcs",
         ":node_modules/oxfmt",
     ],
-    size = "small",
 )
 
 # Writes formatting into the source tree; see README.md ("Formatting").
@@ -131,8 +146,8 @@ copy_to_directory(
 js_binary(
     name = "preview",
     data = [
-        ":static",
         "serve.mjs",
+        ":static",
     ],
     entry_point = "serve.mjs",
 )
@@ -155,8 +170,8 @@ vercel_bin.vercel_binary(
 copy_to_directory(
     name = "vercel_output",
     srcs = [
-        ":static",
         "vercel/config.json",
+        ":static",
     ],
     out = "vercel_output",
     # `:static` keeps its `static/` segment; the config file drops its `vercel/`.
@@ -177,18 +192,19 @@ js_library(
 # Pins the Build Output API v3 shape of :vercel_output (VAL-DEPLOY-001).
 js_test(
     name = "layout_test",
+    size = "small",
     data = [
         ":deploy_srcs",
         ":vercel_output",
     ],
     entry_point = "deploy/layout_check.mjs",
-    size = "small",
 )
 
 # Count-only credential scan of the shipped output and the sources the bundle is
 # built from (VAL-PRIV-001).
 js_test(
     name = "secret_scan_test",
+    size = "small",
     data = [
         ":deploy_srcs",
         ":vercel_output",
@@ -197,7 +213,6 @@ js_test(
         "//web/atlas-live/protocol:scan_files",
     ],
     entry_point = "deploy/secret_scan.mjs",
-    size = "small",
 )
 
 # `bazel run --config=buildbuddy-rbe --script_path=/tmp/atlas-live-deploy.sh

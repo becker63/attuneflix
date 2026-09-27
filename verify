@@ -6,4 +6,20 @@ cd "$root"
 
 # Bazel is the one verification graph. Nix supplies the intentionally small
 # developer shell and secret-safe credential helper, not project construction.
-exec nix develop --command bazel test //... --config=buildbuddy-rbe "$@"
+#
+# Two sequential invocations: the law suite under BuildBuddy RBE without //web/...,
+# then the web suite locally. Web actions cannot run remotely from an aarch64 host
+# (its target-config node runfiles and npm bindings do not execute on the x86_64
+# executors).
+#
+# The subtraction goes through a pattern file: the nix `bazel` wrapper appends its
+# flags after the user's arguments, so they would land after a `--` separator.
+patterns=$(mktemp)
+trap 'rm -f "$patterns"' EXIT
+printf '%s\n' '//...' '-//web/...' > "$patterns"
+
+nix develop --command bazel test --target_pattern_file="$patterns" --config=buildbuddy-rbe "$@"
+
+browsers_path="${PLAYWRIGHT_BROWSERS_PATH:-$HOME/.cache/ms-playwright}"
+nix develop --command bazel test //web/... \
+  "--//web/atlas-live/e2e:browsers_path=$browsers_path" "$@"

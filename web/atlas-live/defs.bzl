@@ -4,6 +4,17 @@ load("@aspect_rules_js//js:defs.bzl", "js_library")
 load("@aspect_rules_ts//ts:defs.bzl", "ts_config", "ts_project")
 load("@npm//web/atlas-live:vitest/package_json.bzl", vitest_bin = "bin")
 
+# js launchers (`#!/usr/bin/env bash`, then `mktemp` and friends) get no PATH from
+# rules_js actions: empty on RBE, and on NixOS coreutils live only under
+# /run/current-system/sw/bin (no /usr/bin/mktemp).
+LAUNCHER_PATH = "/usr/local/bin:/usr/bin:/bin:/run/current-system/sw/bin"
+
+# For remote executors only: local spawns ignore exec_properties.
+LAUNCHER_EXEC_PROPERTIES = {"env-overrides": "PATH=" + LAUNCHER_PATH}
+
+# The same PATH as an action/test environment, which local spawns do honour.
+LAUNCHER_ENV = {"PATH": LAUNCHER_PATH}
+
 def _nm(pkg):
     return "//web/atlas-live:node_modules/" + pkg
 
@@ -67,7 +78,7 @@ def atlas_ts_package(
         emit_declaration_only = declarations,
         # rules_ts actions use the default shell env, which is empty on RBE; the
         # launcher's `#!/usr/bin/env bash` then cannot find bash.
-        exec_properties = {"env-overrides": "PATH=/usr/local/bin:/usr/bin:/bin"},
+        exec_properties = LAUNCHER_EXEC_PROPERTIES,
         no_emit = not declarations,
         tsconfig = ":tsconfig",
         deps = npm_labels + package_types,

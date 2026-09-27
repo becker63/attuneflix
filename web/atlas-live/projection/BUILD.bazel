@@ -1,8 +1,8 @@
 load("@aspect_rules_js//js:defs.bzl", "js_binary", "js_library", "js_run_binary", "js_test")
 load("@bazel_lib//lib:copy_to_directory.bzl", "copy_to_directory")
-load("//experiments/atlas-swe-explore/census:census.bzl", "ATLAS_WORLDS")
 load("//experiments/atlas-location-export:locations.bzl", "location_exports")
-load("//web/atlas-live:defs.bzl", "atlas_ts_package")
+load("//experiments/atlas-swe-explore/census:census.bzl", "ATLAS_WORLDS")
+load("//web/atlas-live:defs.bzl", "LAUNCHER_ENV", "atlas_ts_package")
 
 # React-free: runs under Node in Bazel and in the browser (enforced by .oxlintrc.json).
 atlas_ts_package(
@@ -79,6 +79,7 @@ js_run_binary(
         "synthetic",
     ],
     chdir = package_name(),
+    env = LAUNCHER_ENV,
     out_dirs = ["synthetic"],
     tool = ":synthetic_cli",
     visibility = ["//visibility:public"],
@@ -96,8 +97,12 @@ js_binary(
 
 js_run_binary(
     name = "import_fixtures",
-    args = ["--out", "import_fixtures"],
+    args = [
+        "--out",
+        "import_fixtures",
+    ],
     chdir = package_name(),
+    env = LAUNCHER_ENV,
     out_dirs = ["import_fixtures"],
     tool = ":import_fixtures_cli",
     visibility = ["//visibility:public"],
@@ -105,21 +110,21 @@ js_run_binary(
 
 js_test(
     name = "import_fixtures_test",
+    size = "small",
     chdir = package_name(),
     data = [
         ":import_fixtures",
         ":srcs",
     ],
     entry_point = "test/import_fixtures_check.ts",
-    size = "small",
 )
 
 js_run_binary(
     name = "data",
     srcs = [
-        ":worlds",
         ":locations",
         ":synthetic_world",
+        ":worlds",
     ],
     args = [
         "--worlds",
@@ -132,6 +137,7 @@ js_run_binary(
         "synthetic",
     ],
     chdir = package_name(),
+    env = LAUNCHER_ENV,
     out_dirs = ["data"],
     tool = ":project_cli",
     visibility = ["//visibility:public"],
@@ -141,6 +147,7 @@ js_run_binary(
 # shipped world, and the sha256 of every shipped file (VAL-PROJ-010).
 js_test(
     name = "data_test",
+    size = "small",
     chdir = package_name(),
     data = [
         ":data",
@@ -148,7 +155,6 @@ js_test(
         ":srcs",
     ],
     entry_point = "test/data_check.ts",
-    size = "small",
 )
 
 # The checked-in sources (no npm deps); scanned by //web/atlas-live:secret_scan_test.

@@ -1,7 +1,9 @@
 load("@npm//web/atlas-live:@playwright/test/package_json.bzl", playwright_bin = "bin")
 load("//web/atlas-live:defs.bzl", "atlas_ts_package")
+load(":browsers_path.bzl", "browsers_path")
 
-# Playwright specs and helpers (typechecked; browsers come from the RBE container image).
+# Playwright specs and helpers (typechecked; browsers come from the RBE container image
+# or, locally, from --//web/atlas-live/e2e:browsers_path).
 atlas_ts_package(
     npm_deps = [
         "@axe-core/playwright",
@@ -11,11 +13,22 @@ atlas_ts_package(
     unit_test = False,
 )
 
+# Where Playwright finds its browsers. The default is the directory of the remote
+# Playwright container image; a local run points it at a local install, e.g.
+# --//web/atlas-live/e2e:browsers_path=$HOME/.cache/ms-playwright.
+browsers_path(
+    name = "browsers_path",
+    build_setting_default = "/ms-playwright",
+)
+
 # Serves //web/atlas-live:static locally inside the action and drives the real
-# WebGL canvas. The browser and its system libraries come from the remote
-# Playwright container image, so this test only runs under --config=buildbuddy-rbe.
+# WebGL canvas. Under --config=buildbuddy-rbe the browser and its system libraries
+# come from the remote Playwright container image; a local run uses the browsers
+# at :browsers_path and, on NixOS, the nix-ld libraries of the dev shell.
 playwright_bin.playwright_test(
     name = "e2e_test",
+    size = "large",
+    timeout = "long",
     args = [
         "test",
         "--config",
@@ -31,12 +44,15 @@ playwright_bin.playwright_test(
         "//web/atlas-live:static",
     ],
     env = {
-        "PLAYWRIGHT_BROWSERS_PATH": "/ms-playwright",
+        "PLAYWRIGHT_BROWSERS_PATH": "$(PLAYWRIGHT_BROWSERS_PATH)",
     },
+    env_inherit = [
+        "NIX_LD",
+        "NIX_LD_LIBRARY_PATH",
+    ],
     exec_properties = {
         # The "test." prefix scopes the image to the test action (not its copy actions).
         "test.container-image": "docker://mcr.microsoft.com/playwright:v1.63.0-noble",
     },
-    size = "large",
-    timeout = "long",
+    toolchains = [":browsers_path"],
 )

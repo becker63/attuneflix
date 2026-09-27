@@ -35,13 +35,39 @@ emitted `.d.ts` files, and its Vitest test gets the sources at runtime.
 
 ## Tests
 
+On an x86_64 host the web suite can run under RBE, where the e2e test gets its browsers
+from the Playwright container image:
+
 ```sh
 source /etc/profile.d/nix.sh
 nix develop --command bazel test //web/atlas-live/... --config=buildbuddy-rbe
 ```
 
-`//web/atlas-live:tests` collects every check and is part of the root `//:tests` suite, so
-`./verify` runs it:
+On an aarch64 host it runs locally only (the target-config node runfiles and npm bindings
+cannot execute on BuildBuddy's x86_64 executors). Point the e2e test at a local Playwright
+browser install with the `//web/atlas-live/e2e:browsers_path` string flag (default
+`/ms-playwright`, the container image's directory):
+
+```sh
+nix develop --command bazel test //web/atlas-live/... \
+  --//web/atlas-live/e2e:browsers_path=$HOME/.cache/ms-playwright
+```
+
+The flag exists because `PLAYWRIGHT_BROWSERS_PATH` is part of the test's `env`, which the
+launcher always exports, so `--test_env` cannot override it. On NixOS the prebuilt
+Chromium resolves its OS libraries through nix-ld: the dev shell prepends them to
+`NIX_LD_LIBRARY_PATH` (`playwrightLibraries` in `flake.nix`), the `bazel` wrapper forwards
+`NIX_LD` and `NIX_LD_LIBRARY_PATH`, and `e2e_test` inherits both.
+
+Local actions and tests of the js launchers (`#!/usr/bin/env bash`, then `mktemp`) get
+their `PATH` from `LAUNCHER_ENV` in `defs.bzl`, which includes `/run/current-system/sw/bin`
+for NixOS. The Vite build (`app:dist`) runs unsandboxed locally: Rolldown resolves
+`index.html` through the sandbox's symlinks to the real execroot and rejects the resulting
+asset name.
+
+`//web/atlas-live:tests` collects every check and is part of the root `//:tests` suite.
+`./verify` runs the law suite under RBE without `//web/...`, then `//web/...` locally
+with `browsers_path` set to `$PLAYWRIGHT_BROWSERS_PATH` or `~/.cache/ms-playwright`:
 
 | Target                                  | Check                                                                       |
 | --------------------------------------- | --------------------------------------------------------------------------- |
@@ -105,6 +131,11 @@ top of the categories include:
   `preserve-manual-memoization`, `incompatible-library`, `unsupported-syntax`, and others;
 - `import/no-cycle`, `jsx-a11y/*`, `stylex/valid-styles`, `stylex/valid-shorthands`,
   `stylex/no-unused`.
+
+Type-aware linting runs through `tsgolint` (`oxlint-tsgolint`), a native binary in a
+per-platform npm package. rules_js links only the package for the host CPU, so
+`:oxlint_test` selects `OXLINT_TSGOLINT_PATH` on `@platforms//cpu`: `linux-arm64` on
+aarch64, `linux-x64` otherwise. Both run the full type-aware rule set.
 
 One rule is off: `react/react-in-jsx-scope`. It only applies to the classic JSX runtime,
 and this project uses the automatic runtime (`"jsx": "react-jsx"`), which never needs

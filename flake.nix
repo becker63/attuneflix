@@ -55,6 +55,33 @@
               printf '{"headers":{"x-buildbuddy-api-key":["%s"]}}\n' "$key"
             '';
 
+          # Shared libraries Playwright's prebuilt Chromium (~/.cache/ms-playwright)
+          # expects from the OS, for hosts that run it through nix-ld. Only the
+          # local web e2e test uses them (it inherits NIX_LD_LIBRARY_PATH).
+          playwrightLibraries = [
+            pkgs.alsa-lib
+            pkgs.at-spi2-core
+            pkgs.cairo
+            pkgs.cups.lib
+            pkgs.dbus.lib
+            pkgs.expat
+            pkgs.glib
+            pkgs.libdrm
+            pkgs.libgbm
+            pkgs.libx11
+            pkgs.libxcb
+            pkgs.libxcomposite
+            pkgs.libxdamage
+            pkgs.libxext
+            pkgs.libxfixes
+            pkgs.libxkbcommon
+            pkgs.libxrandr
+            pkgs.nspr
+            pkgs.nss
+            pkgs.pango
+            pkgs.systemdLibs
+          ];
+
           # Bazel receives a small allowlisted client environment rather than
           # the caller's desktop, Nix shell, SSH agent, or provider secrets.
           bazel = pkgs.writeShellScriptBin "bazel" ''
@@ -74,12 +101,24 @@
             if [ -n "''${BUILDBUDDY_API_KEY:-}" ]; then
               buildbuddy_key_environment=BUILDBUDDY_API_KEY="''${BUILDBUDDY_API_KEY}"
             fi
+            # nix-ld settings, for the tests that inherit them (the local web
+            # e2e test). Nix store paths contain no separators either.
+            nix_ld_environment=
+            if [ -n "''${NIX_LD:-}" ]; then
+              nix_ld_environment=NIX_LD="''${NIX_LD}"
+            fi
+            nix_ld_library_environment=
+            if [ -n "''${NIX_LD_LIBRARY_PATH:-}" ]; then
+              nix_ld_library_environment=NIX_LD_LIBRARY_PATH="''${NIX_LD_LIBRARY_PATH}"
+            fi
             exec ${pkgs.coreutils}/bin/env -i \
               HOME="$HOME" \
               USER="''${USER:-unknown}" \
               ATTUNE_WORKSPACE="$workspace" \
               $repin_environment \
               $buildbuddy_key_environment \
+              $nix_ld_environment \
+              $nix_ld_library_environment \
               BAZELISK_SKIP_WRAPPER=true \
               USE_BAZEL_VERSION=8.6.0 \
               PATH=${pkgs.lib.makeBinPath [
@@ -144,6 +183,9 @@
               pkgs.jujutsu
               pkgs.util-linux
             ];
+            shellHook = ''
+              export NIX_LD_LIBRARY_PATH=${pkgs.lib.makeLibraryPath playwrightLibraries}''${NIX_LD_LIBRARY_PATH:+:$NIX_LD_LIBRARY_PATH}
+            '';
           };
           inherit credentialHelperCheck;
         };

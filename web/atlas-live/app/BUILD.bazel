@@ -1,6 +1,6 @@
 load("@aspect_rules_js//js:defs.bzl", "js_library")
 load("@npm//web/atlas-live:vite/package_json.bzl", vite_bin = "bin")
-load("//web/atlas-live:defs.bzl", "atlas_ts_package")
+load("//web/atlas-live:defs.bzl", "LAUNCHER_ENV", "atlas_ts_package")
 
 # Runtime + typecheck npm deps of the app.
 NPM_DEPS = [
@@ -41,7 +41,11 @@ atlas_ts_package(
 # and protocol sources it imports through relative paths.
 js_library(
     name = "app_srcs",
-    srcs = glob(["src/**/*.ts", "src/**/*.tsx", "src/**/*.css"]) + [
+    srcs = glob([
+        "src/**/*.ts",
+        "src/**/*.tsx",
+        "src/**/*.css",
+    ]) + [
         "index.html",
         "vite.config.mjs",
     ],
@@ -60,7 +64,12 @@ vite_bin.vite(
         "native",
     ],
     chdir = package_name(),
+    env = LAUNCHER_ENV,
     out_dirs = ["dist"],
+    # Rolldown resolves index.html through the local sandbox's symlinks to the
+    # real execroot, then rejects the resulting out-of-root asset name. Remote
+    # executors materialize real files, so this only changes local spawns.
+    tags = ["no-sandbox"],
     visibility = ["//web/atlas-live:__subpackages__"],
 )
 
@@ -69,7 +78,11 @@ vite_bin.vite(
 # planted credential fails the scan even where the bundler would drop the file.
 js_library(
     name = "scan_files",
-    srcs = glob(["src/**/*.ts", "src/**/*.tsx", "src/**/*.css"]) + [
+    srcs = glob([
+        "src/**/*.ts",
+        "src/**/*.tsx",
+        "src/**/*.css",
+    ]) + [
         "index.html",
         "vite.config.mjs",
     ],
