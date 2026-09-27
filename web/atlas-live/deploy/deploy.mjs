@@ -98,10 +98,12 @@ function runVercel(cli, temp, projectId, token) {
     "--yes",
     "--non-interactive",
   ];
+  // HOME sits *inside* the temp directory (never equal to it: the CLI refuses to
+  // deploy when `--cwd` is the home directory) so the CLI cannot write outside it.
   const env = {
     ...process.env,
     CI: "1",
-    HOME: temp,
+    HOME: path.join(temp, "home"),
     NO_COLOR: "1",
     VERCEL_ORG_ID: TEAM_ID,
     VERCEL_PROJECT_ID: projectId,
@@ -118,6 +120,12 @@ function runVercel(cli, temp, projectId, token) {
     stderr: result.stderr ?? "",
     error: result.error,
   };
+}
+
+/** The last lines of the CLI output, for a failure that happens after the deploy. */
+function cliTail(run) {
+  const text = redact(`${run.stdout}\n${run.stderr}`).trim();
+  return text.split("\n").slice(-15).join("\n");
 }
 
 async function main() {
@@ -175,7 +183,13 @@ async function main() {
       throw new Error(`vercel deploy exited ${run.status}:\n${detail}`);
     }
 
-    const target = await productionTarget({ token, teamId: TEAM_ID, projectId: project.id });
+    let target;
+    try {
+      target = await productionTarget({ token, teamId: TEAM_ID, projectId: project.id });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`${message}; the CLI reported:\n${cliTail(run)}`);
+    }
     const productionUrl = target.alias ?? target.deployment.url;
     console.log(`production URL: ${productionUrl}`);
     console.log(`deployment id: ${target.deployment.id}`);
