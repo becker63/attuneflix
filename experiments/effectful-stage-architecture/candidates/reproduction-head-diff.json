@@ -1,0 +1,56 @@
+{
+  "protocol": "attuneflix-effectful-stage-reproduction-diff-v1",
+  "recorded_at_utc": "2026-09-27T03:58:34Z",
+  "working_commit": "d8d9b037180b6814bdf94b4cfee5de407b8888ce",
+  "subject": {
+    "fresh_record": "candidates/reproduction-head.json",
+    "reference_record": "candidates/candidate-d.json"
+  },
+  "verdict": "reproduced",
+  "permitted_differing_paths": [
+    "recorded_at_utc",
+    "working_commit",
+    "channels.build.analyzed_targets"
+  ],
+  "differing_leaf_path_count": 3,
+  "differing_leaf_paths": [
+    {
+      "path": "recorded_at_utc",
+      "fresh_head": "2026-09-27T03:58:34Z",
+      "candidate_d": "2026-09-26T23:36:40Z"
+    },
+    {
+      "path": "working_commit",
+      "fresh_head": "d8d9b037180b6814bdf94b4cfee5de407b8888ce",
+      "candidate_d": "37ceaa5a495084642dd4b6dfd874a179b0bea491"
+    },
+    {
+      "path": "channels.build.analyzed_targets",
+      "fresh_head": 576,
+      "candidate_d": 575
+    }
+  ],
+  "only_in_fresh": [],
+  "only_in_recorded": [],
+  "unpermitted_differences": [],
+  "structural_gate": {
+    "description": "delete the permitted fields from both records, then require byte-identical JSON",
+    "command": "jq -S \"del(.recorded_at_utc,.working_commit,.channels.build.analyzed_targets)\" <record> | diff -u <reference> <fresh>",
+    "result": "pass",
+    "normalized_fresh_sha256": "848361d2c91cdf48821fc3a025cc1ecc6ec17f8123ac3af8600a6774463e272b",
+    "normalized_reference_sha256": "848361d2c91cdf48821fc3a025cc1ecc6ec17f8123ac3af8600a6774463e272b"
+  },
+  "inputs": {
+    "fresh_record_sha256": "1e004725b427810c2c7e3093123388633300589104875471dcf7657f9b4d2134",
+    "reference_record_sha256": "4401ed3093d3b68b80b0908e379bd84aeeadb6d2d03b5afa6c051691a3ab982c"
+  },
+  "method": {
+    "instrument": "experiments/effectful-stage-architecture/scripts/measure_baseline_metrics.sh",
+    "commands": {
+      "fresh_head_run": "nix develop --command bash experiments/effectful-stage-architecture/scripts/measure_baseline_metrics.sh experiments/effectful-stage-architecture/candidates/reproduction-head.json",
+      "leaf_diff": "jq -n --slurpfile a candidates/reproduction-head.json --slurpfile b candidates/candidate-d.json 'def flat: [paths(scalars) as $p | {k: ($p|map(tostring)|join(\".\")), v: getpath($p)}]; ($a[0]|flat) as $x | ($b[0]|flat) as $y | [ $x[] as $e | ($y[] | select(.k == $e.k)) as $f | select($e.v != $f.v) | {path: $e.k, fresh: $e.v, recorded: $f.v} ]'",
+      "structural_gate": "jq -S 'del(.recorded_at_utc,.working_commit,.channels.build.analyzed_targets)' candidates/reproduction-head.json > /tmp/a.norm.json && jq -S 'del(.recorded_at_utc,.working_commit,.channels.build.analyzed_targets)' candidates/candidate-d.json > /tmp/b.norm.json && diff -u /tmp/b.norm.json /tmp/a.norm.json"
+    },
+    "note": "analyzed_targets is the bazel query //... target census (a label count, not a metric); it rises 575 -> 576 because the M4 fix d8d9b037 added the //src/world:acquire filegroup. No metric channel reads it."
+  }
+}

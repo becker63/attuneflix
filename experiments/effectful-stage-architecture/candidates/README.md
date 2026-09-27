@@ -236,3 +236,152 @@ nix develop --command bazel query \
   **Outcome C** (inconclusive / trade-off) on the frozen measurements, and the
   generation is recorded with its measured deltas rather than smoothed into a
   success.
+
+## Preserved artifacts — the frozen failure record (M5)
+
+Everything above is a **preserved experimental artifact**, not a working file.
+The failed generations are the finding (mission.md §1, user ruling 2026-09-27),
+so these records are read-only evidence: they are never regenerated, retuned,
+smoothed, or optimized away, and no later generation overwrites them. Each
+metric record is bound to a revision that resolves to an ancestor of the
+current tip.
+
+### Revision bindings
+
+| artifact | `working_commit` (measured tree) | ancestor of HEAD | status |
+|---|---|---|---|
+| `../CONTROL.md` | control specimen `09e27244af9340aa616116a93ea02472e7521ba5` | yes | frozen control specimen record (VAL-CTRL-001) |
+| `../baseline-metrics.json` | `d766448b9c6108443f262e51d528630ebb6f3c48` | yes | frozen **control baseline** (`control_commit` = `09e27244af9340aa616116a93ea02472e7521ba5`) |
+| `candidate-a.json` | `3efee12b2fb83b62727c9a09fd98c79bf3c5643c` | yes | **preserved negative result** — preregistered Outcome C |
+| `candidate-b.json` | `38deb855119efe1f8d8c65602d1b65d4883ee01a` | yes | **preserved negative result** — preregistered Outcome C |
+| `candidate-c.json` | `97568f6e269a10c9d92004441860a06371c1212e` | yes | **preserved negative result** — preregistered Outcome C |
+| `candidate-d.json` | `37ceaa5a495084642dd4b6dfd874a179b0bea491` | yes | **preserved negative result** — preregistered Outcome C |
+| `reproduction-head.json` | `d8d9b037180b6814bdf94b4cfee5de407b8888ce` | — (HEAD when measured) | reproducibility evidence for `candidate-d.json` |
+| `reproduction-head-diff.json` | `d8d9b037180b6814bdf94b4cfee5de407b8888ce` | — (HEAD when measured) | machine-readable diff of the fresh run vs `candidate-d.json` |
+
+All five metric records carry the identical `control_commit`
+`09e27244af9340aa616116a93ea02472e7521ba5`, so they are five readings of one
+frozen control specimen. The control record is the **baseline**, not a failure;
+Candidates A, B, C and D are the four preserved negative results. Nothing here
+is a candidate that "did not count": per PREREGISTRATION.md §7 a generation that
+passes O1–O9 yet does not improve (or worsens) a primary quantity is recorded
+with its measured deltas as a negative result, and it is retained.
+
+The frozen control evidence of the *earlier* work-topology experiment
+(`experiments/atlas-work-topology/control/`, whose `control.revision.txt` names
+`eca979f5`) is a separate, also byte-untouched artifact set; it is not the
+control of this experiment and is never re-measured by the instrument here.
+
+### Why "preregistered Outcome C"
+
+PREREGISTRATION.md §9.4 preregisters the minimum serious-success criteria —
+`mutable_cross_stage_edges` reduced by at least 50% (30 → ≤ 15) and
+`cross_stage_test_invalidation` ≤ 18 — and §12 defines the outcome branches
+(A strong success / B serious success / C inconclusive or trade-off). Candidate
+D measures **78** mutable cross-stage edges and **253** cross-stage
+invalidations against the control's 30 and 59, so the minimum criteria are not
+met and the generation is classified **Outcome C**. The supplementary §16
+`_dagref` keying (60 edges / 173 invalidations) is negative in the same
+direction, so the classification does not depend on the keying. The failed
+candidates are never discarded and the preregistered targets are never
+reinterpreted after seeing the numbers; they are carried forward unmet to the
+hill-climb milestones (VAL-HILL-003).
+
+### Revision-binding and byte-integrity check (run at HEAD `d8d9b03`)
+
+```bash
+# 1. every record's revision resolves and is an ancestor of the tip
+git rev-parse --verify 09e27244af9340aa616116a93ea02472e7521ba5^{commit}
+for r in d766448b9c6108443f262e51d528630ebb6f3c48 \
+         3efee12b2fb83b62727c9a09fd98c79bf3c5643c \
+         38deb855119efe1f8d8c65602d1b65d4883ee01a \
+         97568f6e269a10c9d92004441860a06371c1212e \
+         37ceaa5a495084642dd4b6dfd874a179b0bea491; do
+    git merge-base --is-ancestor "$r" HEAD && echo "$r ancestor of HEAD"
+done
+
+# 2. frozen evidence is byte-untouched: the working-tree blob hash equals the
+#    committed blob hash for every frozen file
+for f in $(git ls-files .attune experiments/atlas-work-topology/control \
+                     experiments/effectful-stage-architecture/baseline-metrics.json \
+                     'experiments/effectful-stage-architecture/candidates/candidate-*.json'); do
+    [ "$(git hash-object "$f")" = "$(git rev-parse "HEAD:$f")" ] \
+        && echo "MATCH $f" || echo "DIFF $f"
+done
+
+# 3. no uncommitted or untracked change anywhere
+git status --porcelain        # empty
+```
+
+Result at HEAD `d8d9b037180b6814bdf94b4cfee5de407b8888ce`: every measured
+revision is an ancestor of HEAD; all **312** `.attune/**` files, all **13**
+`experiments/atlas-work-topology/control/*` files, `baseline-metrics.json` and
+`candidate-{a,b,c,d}.json` **hash MATCH** their committed blobs (zero
+`DIFF`); and the working tree is clean.
+
+### Reproducibility of `candidate-d.json` at HEAD
+
+`reproduction-head.json` is a fresh run of the instrument of record **at HEAD**,
+written to a **new** path — the committed records are never overwritten:
+
+```bash
+source /etc/profile.d/nix.sh
+nix develop --command bash \
+  experiments/effectful-stage-architecture/scripts/measure_baseline_metrics.sh \
+  experiments/effectful-stage-architecture/candidates/reproduction-head.json
+```
+
+Every differing leaf path between the fresh record and the committed one:
+
+```bash
+jq -n --slurpfile a candidates/reproduction-head.json \
+      --slurpfile b candidates/candidate-d.json '
+  def flat: [paths(scalars) as $p | {k: ($p|map(tostring)|join(".")), v: getpath($p)}];
+  ($a[0]|flat) as $x | ($b[0]|flat) as $y |
+  [ $x[] as $e | ($y[] | select(.k == $e.k)) as $f | select($e.v != $f.v)
+    | {path: $e.k, fresh_head: $e.v, candidate_d: $f.v} ]'
+```
+
+Reproduction gate: after deleting the three permitted metadata fields the two
+records must be **byte-identical**:
+
+```bash
+jq -S 'del(.recorded_at_utc,.working_commit,.channels.build.analyzed_targets)' \
+   candidates/reproduction-head.json > /tmp/a.norm.json
+jq -S 'del(.recorded_at_utc,.working_commit,.channels.build.analyzed_targets)' \
+   candidates/candidate-d.json      > /tmp/b.norm.json
+diff -u /tmp/b.norm.json /tmp/a.norm.json      # empty == gate passed
+```
+
+Result (fresh run `2026-09-27T03:58:34Z` at `d8d9b03`): the whole-record diff
+contains exactly **three** differing leaf paths, all permitted —
+
+| path | fresh HEAD | `candidate-d.json` |
+|---|---|---|
+| `recorded_at_utc` | `2026-09-27T03:58:34Z` | `2026-09-26T23:36:40Z` |
+| `working_commit` | `d8d9b037180b6814bdf94b4cfee5de407b8888ce` | `37ceaa5a495084642dd4b6dfd874a179b0bea491` |
+| `channels.build.analyzed_targets` | `576` | `575` |
+
+and the normalised records are byte-identical (`diff` empty). `analyzed_targets`
+is the `bazel query //...` target census, not a metric; it rises by one because
+the M4 fix `d8d9b037` added the `//src/world:acquire` filegroup, and no metric
+channel reads it. Every metric channel reproduces exactly:
+
+| channel | field | recorded | fresh HEAD |
+|---|---|---|---|
+| BASIS | `admitted_files` | 162 | 162 |
+| BASIS | `production_flix_files` / `production_flix_loc` | 50 / 4231 | 50 / 4231 |
+| BASIS | `total_reference_edges` / `production_reference_edges` | 396 / 125 | 396 / 125 |
+| BASIS | `k_way_cut` (k = 2…8) | 259 @ k8 = 0.654040 | identical |
+| BASIS | `mutable_cross_stage_edges` / `_dagref` | 78 / 60 | 78 / 60 |
+| BASIS | `shared_writable_hotspots` / `max_hotspot_pressure` | 22 / 7 | 22 / 7 |
+| KERNEL | `kernel_files` / `kernel_loc` / `kernel_fanin` | 5 / 445 / 106 | 5 / 445 / 106 |
+| KERNEL | `kernel_loc_fraction` / `kernel_fanin_share` | 0.105176 / 0.267677 | identical |
+| BUILD | `cross_stage_test_invalidation` / `_dagref` / all-tests | 253 / 173 / 664 | 253 / 173 / 664 |
+| BUILD | `test_targets` | 44 | 44 |
+| WORK | `T_one` / `T_inf` / `critical_path_fraction` | 4 / 2 / 0.500000 | 4 / 2 / 0.500000 |
+| WORK | task `file_count`s and `conflict_graph` | 3/3/7/7, 2 edges | identical |
+
+So the regression is **reproducible**: it is a property of the tree at Candidate
+D, not an artifact of the measurement environment. The machine-readable form of
+this comparison is `reproduction-head-diff.json`.

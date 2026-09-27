@@ -47,6 +47,23 @@ filegroup(
     ],
 )
 
+# Milestone 5 — reproducibility evidence for the preserved Candidate D record.
+#
+# `reproduction-head.json` is a fresh run of the instrument of record at HEAD
+# (`d8d9b037`) written to a new path; `reproduction-head-diff.json` is its
+# machine-readable diff against `candidates/candidate-d.json`. The whole-record
+# diff contains exactly three differing leaf paths — `recorded_at_utc`,
+# `working_commit`, `channels.build.analyzed_targets` — and the records are
+# byte-identical after deleting those (VAL-PROV-002). No committed record is
+# overwritten by this evidence.
+filegroup(
+    name = "reproduction_evidence",
+    srcs = [
+        "candidates/reproduction-head.json",
+        "candidates/reproduction-head-diff.json",
+    ],
+)
+
 sh_binary(
     name = "measure_baseline",
     srcs = ["scripts/measure_baseline_metrics.sh"],
