@@ -8,6 +8,7 @@
  * helpers for the browser tests; they compute from the renderer and the
  * projected graph and change nothing.
  */
+import { RELATION_ORDER, type Relation } from "../../projection/src/relation.ts";
 import type { OverlayName } from "./vocabulary.ts";
 
 export interface AtlasCounts {
@@ -60,6 +61,10 @@ interface DiagnosticsState {
   hovered: string | null;
   hoveredIndex: number | null;
   highlighted: AtlasHighlight;
+  selected: readonly string[];
+  relationFilter: readonly Relation[];
+  filterRevision: number;
+  depth: number;
   camera: AtlasCamera;
   perf: Record<string, number>;
   buildRevision: string;
@@ -81,6 +86,10 @@ const state: DiagnosticsState = {
   hovered: null,
   hoveredIndex: null,
   highlighted: { points: [], links: [] },
+  selected: [],
+  relationFilter: [...RELATION_ORDER],
+  filterRevision: 0,
+  depth: 1,
   camera: { zoom: null },
   perf: {},
   buildRevision: BUILD_REVISION,
@@ -129,6 +138,18 @@ export function installDiagnostics(): void {
     },
     get highlighted(): AtlasHighlight {
       return state.highlighted;
+    },
+    get selected(): readonly string[] {
+      return state.selected;
+    },
+    get relationFilter(): readonly Relation[] {
+      return state.relationFilter;
+    },
+    get filterRevision(): number {
+      return state.filterRevision;
+    },
+    get depth(): number {
+      return state.depth;
     },
     get camera(): AtlasCamera {
       return state.camera;

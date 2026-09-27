@@ -6,10 +6,12 @@
 import * as stylex from "@stylexjs/stylex";
 
 import { Details } from "./Details.tsx";
+import { DepthControl } from "./DepthControl.tsx";
 import { GraphView } from "./GraphView.tsx";
 import { Header } from "./Header.tsx";
 import { Legend } from "./Legend.tsx";
 import { OverlayControl } from "./OverlayControl.tsx";
+import { RelationFilter } from "./RelationFilter.tsx";
 import type { GraphSession } from "./session.ts";
 
 const styles = stylex.create({
@@ -70,6 +72,8 @@ export function App({ session, error }: { session: GraphSession | null; error?: 
         </div>
         <aside {...stylex.props(styles.sidebar)}>
           <OverlayControl />
+          <RelationFilter />
+          <DepthControl />
           <Details session={session} />
           <Legend />
         </aside>

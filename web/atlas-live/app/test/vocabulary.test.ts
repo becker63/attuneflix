@@ -47,6 +47,22 @@ describe("visual vocabulary", () => {
     expect(keys).not.toContain("calls");
   });
 
+  it("marks disabled relations in the legend without a second glyph table", () => {
+    const entries = legendEntries("structure", ["defines", "parent"], {
+      includeDisabledRelations: true,
+    });
+    const relations = entries.filter((entry) => entry.kind === "relation");
+    expect(relations.map((entry) => entry.key)).toEqual([...RELATION_ORDER]);
+    for (const relation of RELATION_ORDER) {
+      const entry = relations.find((candidate) => candidate.key === relation);
+      // The glyph (and colour) come from relationStyle, the single owner.
+      expect(entry?.glyph).toBe(relationStyle(relation).glyph);
+      expect(entry?.color).toBe(relationStyle(relation).color);
+      expect(entry?.disabled).toBe(relation === "imports" || relation === "calls");
+    }
+    expect(entries.filter((entry) => entry.kind === "category")).toHaveLength(3);
+  });
+
   it("falls back to a neutral colour for an unknown relation value", () => {
     expect(relationColor("not-a-relation")).toBe("#6b7280");
   });

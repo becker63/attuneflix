@@ -1,13 +1,15 @@
 /**
- * Hover neighbourhood over the projected CSR adjacency. All relations are
- * enabled in this slice, so the highlight is the hovered point, its incident
- * links, and the points at the other end of those links (depth 1).
+ * Neighbourhoods over the projected CSR adjacency. Only the relation adjacency
+ * of the *enabled* relations is ever read, so a disabled relation cannot
+ * contribute a point or a link to any highlight, and the depth control expands
+ * the highlight by BFS hops over those same adjacency rows.
  *
- * The highlight is computed from the projection's typed adjacency, not from the
- * renderer, so the diagnosed sets never disagree with the world data.
+ * The highlights are computed from the projection's typed adjacency, not from
+ * the renderer, so the diagnosed sets never disagree with the world data.
  */
 import type { ViewerGraph } from "../../projection/src/graph.ts";
 import { RELATION_ORDER, type Relation } from "../../projection/src/relation.ts";
+import { clampDepth } from "./selection.ts";
 
 export interface Highlight {
   /** Renderer indices, ascending, always including the hovered point. */
@@ -17,6 +19,20 @@ export interface Highlight {
 }
 
 export const EMPTY_HIGHLIGHT: Highlight = { points: [], links: [] };
+
+/** Pointwise union of two highlights, in ascending order. */
+export function mergeHighlights(a: Highlight, b: Highlight): Highlight {
+  if (b.points.length === 0 && b.links.length === 0) return a;
+  if (a.points.length === 0 && a.links.length === 0) return b;
+  return {
+    points: unionSorted(a.points, b.points),
+    links: unionSorted(a.links, b.links),
+  };
+}
+
+function unionSorted(a: readonly number[], b: readonly number[]): number[] {
+  return [...new Set([...a, ...b])].toSorted((x, y) => x - y);
+}
 
 export interface DirectionalCounts {
   readonly in: number;
@@ -54,34 +70,98 @@ export function degree(graph: ViewerGraph, index: number, enabled: readonly Rela
 }
 
 /**
- * Depth-1 neighbourhood of `index` over `enabled` relations: the point itself,
- * every neighbour at the other end of an incident link, and the incident links.
- * Self-loops are counted once.
+ * Neighbourhood of `index` over `enabled` relations, expanded by `depth` BFS
+ * hops: the points reachable within `depth` hops, and the links traversed while
+ * collecting them. Depth 1 is exactly the direct neighbourhood.
  */
-export function neighbourhood(graph: ViewerGraph, index: number, enabled: readonly Relation[]): Highlight {
-  const points = new Set<number>([index]);
-  const links = new Set<number>();
-  for (const relation of enabled) {
-    const adjacency = graph.adjacency[relation];
-    collect(adjacency.out, index, points, links);
-    collect(adjacency.in, index, points, links);
-  }
-  return { points: [...points].toSorted((a, b) => a - b), links: [...links].toSorted((a, b) => a - b) };
+export function neighbourhoodAtDepth(
+  graph: ViewerGraph,
+  index: number,
+  enabled: readonly Relation[],
+  depth: number,
+): Highlight {
+  return multiSourceHighlight(graph, [index], enabled, depth);
 }
 
-function collect(
-  csr: { readonly offsets: Uint32Array; readonly points: Uint32Array; readonly links: Uint32Array },
-  index: number,
-  points: Set<number>,
-  links: Set<number>,
-): void {
-  const start = csr.offsets[index]!;
+/** Depth-1 neighbourhood of `index` over `enabled` relations. */
+export function neighbourhood(graph: ViewerGraph, index: number, enabled: readonly Relation[]): Highlight {
+  return multiSourceHighlight(graph, [index], enabled, 1);
+}
+
+/**
+ * Union of the `depth`-hop neighbourhoods of every source index, over the
+ * enabled relations. Sources are always included, even when they have no links
+ * under the filter, so a selected isolated point stays in its own highlight.
+ */
+export function multiSourceHighlight(
+  graph: ViewerGraph,
+  sources: readonly number[],
+  enabled: readonly Relation[],
+  depth: number,
+): Highlight {
+  const points = new Set<number>();
+  let frontier: number[] = [];
+  for (const source of sources) {
+    if (points.has(source)) continue;
+    points.add(source);
+    frontier.push(source);
+  }
+  const links = new Set<number>();
+  const hops = clampDepth(depth);
+  for (let hop = 0; hop < hops && frontier.length > 0; hop++) {
+    const next: number[] = [];
+    for (const point of frontier) {
+      for (const relation of enabled) {
+        const adjacency = graph.adjacency[relation];
+        expand(adjacency.out, point, points, links, next);
+        expand(adjacency.in, point, points, links, next);
+      }
+    }
+    frontier = next;
+  }
+  return {
+    points: [...points].toSorted((a, b) => a - b),
+    links: [...links].toSorted((a, b) => a - b),
+  };
+}
+
+/** Incident link indices of every point in `sources`, under the enabled relations. */
+export function incidentLinks(
+  graph: ViewerGraph,
+  sources: readonly number[],
+  enabled: readonly Relation[],
+): number[] {
+  const links = new Set<number>();
+  for (const source of sources) {
+    for (const relation of enabled) {
+      const adjacency = graph.adjacency[relation];
+      collectLinks(adjacency.out, source, links);
+      collectLinks(adjacency.in, source, links);
+    }
+  }
+  return [...links].toSorted((a, b) => a - b);
+}
+
+interface Csr {
+  readonly offsets: Uint32Array;
+  readonly points: Uint32Array;
+  readonly links: Uint32Array;
+}
+
+function collectLinks(csr: Csr, index: number, links: Set<number>): void {
   const end = csr.offsets[index + 1]!;
-  for (let slot = start; slot < end; slot++) {
+  for (let slot = csr.offsets[index]!; slot < end; slot++) links.add(csr.links[slot]!);
+}
+
+/** Adds a CSR row's neighbours and links, pushing newly reached points onto `next`. */
+function expand(csr: Csr, index: number, points: Set<number>, links: Set<number>, next: number[]): void {
+  const end = csr.offsets[index + 1]!;
+  for (let slot = csr.offsets[index]!; slot < end; slot++) {
     const neighbour = csr.points[slot]!;
-    const link = csr.links[slot]!;
+    links.add(csr.links[slot]!);
+    if (points.has(neighbour)) continue;
     points.add(neighbour);
-    links.add(link);
+    next.push(neighbour);
   }
 }
 

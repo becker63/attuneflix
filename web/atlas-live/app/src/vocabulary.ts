@@ -90,6 +90,16 @@ export interface LegendEntry {
   readonly color: string;
   readonly glyph: string;
   readonly pattern: "solid" | "dashed" | "dotted";
+  /** True for a relation the filter has disabled (rendered as off, not removed). */
+  readonly disabled?: boolean;
+}
+
+export interface LegendOptions {
+  /**
+   * When true, every relation appears, with the disabled ones flagged, so the
+   * legend reflects the filter state instead of hiding it.
+   */
+  readonly includeDisabledRelations?: boolean;
 }
 
 /**
@@ -97,7 +107,11 @@ export interface LegendEntry {
  * categories and the relation entries are read from this module's styles, so the
  * legend cannot disagree with what is rendered.
  */
-export function legendEntries(overlay: OverlayName, enabledRelations: readonly Relation[]): LegendEntry[] {
+export function legendEntries(
+  overlay: OverlayName,
+  enabledRelations: readonly Relation[],
+  options?: LegendOptions,
+): LegendEntry[] {
   const categories = DOMAIN_ORDER_FOR_LEGEND.map((domain): LegendEntry => {
     const style = DOMAIN_STYLES[domain];
     return {
@@ -109,9 +123,10 @@ export function legendEntries(overlay: OverlayName, enabledRelations: readonly R
       pattern: style.pattern,
     };
   });
-  const relations = RELATION_ORDER.filter((relation) => enabledRelations.includes(relation)).map(
+  const relations = (options?.includeDisabledRelations === true ? RELATION_ORDER : enabledRelations).map(
     (relation): LegendEntry => {
       const style = RELATION_STYLES[relation];
+      const disabled = !enabledRelations.includes(relation);
       return {
         kind: "relation",
         key: relation,
@@ -119,6 +134,7 @@ export function legendEntries(overlay: OverlayName, enabledRelations: readonly R
         color: style.color,
         glyph: style.glyph,
         pattern: style.dash,
+        disabled,
       };
     },
   );

@@ -2,31 +2,52 @@
  * The one persistent Cosmograph instance. It is fed by the session's Arrow tables
  * through our own DuckDB connection (table names, precomputed index columns), so
  * the renderer never resolves ids itself and never re-ingests data for an
- * overlay. Hover uses the selection channel (greyout); selection-on-click is
- * disabled and driven by the app once selection ships.
+ * overlay or a relation filter.
+ *
+ * Emphasis uses the renderer's selection/greyout channel with the sets computed
+ * from the projected adjacency: hover, the pinned selection (re-applied whenever
+ * the pointer leaves a point), and the active filter and depth all come from
+ * Jotai atoms, so clicking a point pins it independently of hover.
  */
 import { Cosmograph } from "@cosmograph/react";
 import * as stylex from "@stylexjs/stylex";
-import { useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect } from "react";
 
 import { RELATION_ORDER } from "../../projection/src/relation.ts";
-import { highlightedAtom, hoveredIndexAtom, readyAtom } from "./atoms.ts";
+import {
+  clearSelectionAtom,
+  emphasisAtom,
+  filterRevisionAtom,
+  hoveredIndexAtom,
+  neighbourhoodDepthAtom,
+  readyAtom,
+  relationMaskAtom,
+  selectOnlyAtom,
+  selectedAtom,
+  toggleSelectedAtom,
+  visibleRelationSetAtom,
+} from "./atoms.ts";
 import { publish, setDiagnosticsSource } from "./diagnostics.ts";
+import { reapplyEmphasis, setEmphasis } from "./emphasis.ts";
 import {
   clearMountedCosmograph,
   mountedCosmograph,
+  onBackgroundClick,
   onGraphMount,
   onGraphRebuilt,
+  onPointClick,
   onPointMouseOut,
   onPointMouseOver,
   onZoom,
   setGraphHandlers,
   type MountedCosmograph,
 } from "./graphHandlers.ts";
-import { EMPTY_HIGHLIGHT, highlightIds } from "./neighbourhood.ts";
+import { linkColorFn, linkWidthFn } from "./linkAccessors.ts";
+import { highlightIds } from "./neighbourhood.ts";
+import { sortedSelection } from "./selection.ts";
 import type { GraphSession } from "./session.ts";
-import { pointColorMap, relationColor } from "./vocabulary.ts";
+import { pointColorMap } from "./vocabulary.ts";
 
 const styles = stylex.create({
   root: {
@@ -52,35 +73,43 @@ function screenPositionOf(instance: MountedCosmograph | undefined, index: number
 
 export function GraphView({ session }: { session: GraphSession }) {
   const setHoveredIndex = useSetAtom(hoveredIndexAtom);
-  const setHighlighted = useSetAtom(highlightedAtom);
   const setReady = useSetAtom(readyAtom);
+  const setSelectedOnly = useSetAtom(selectOnlyAtom);
+  const setToggleSelected = useSetAtom(toggleSelectedAtom);
+  const clearSelection = useSetAtom(clearSelectionAtom);
 
+  const hovered = useAtomValue(hoveredIndexAtom);
+  const emphasis = useAtomValue(emphasisAtom);
+  const selected = useAtomValue(selectedAtom);
+  const visibleRelations = useAtomValue(visibleRelationSetAtom);
+  const depth = useAtomValue(neighbourhoodDepthAtom);
+  const filterRevision = useAtomValue(filterRevisionAtom);
+  const relationMask = useAtomValue(relationMaskAtom);
+
+  // The renderer's stable callbacks delegate here; the dependency list is only
+  // the setters (all stable) and the session.
   useEffect(() => {
-    const enter = (index: number): void => {
-      const highlight = session.highlight(index, RELATION_ORDER);
-      setHoveredIndex(index);
-      setHighlighted(highlight);
-      publish({
-        hovered: session.pointId(index),
-        hoveredIndex: index,
-        highlighted: { points: highlightIds(session.graph, highlight), links: highlight.links },
-      });
-      mountedCosmograph()?.selectPoint(index, false, true);
-    };
-    const leave = (): void => {
-      setHoveredIndex(null);
-      setHighlighted(EMPTY_HIGHLIGHT);
-      publish({ hovered: null, hoveredIndex: null, highlighted: { points: [], links: [] } });
-      mountedCosmograph()?.unselectAllPoints();
-    };
     const rebuilt = (): void => {
       setReady(true);
+      reapplyEmphasis();
       publish({ ready: true, camera: { zoom: mountedCosmograph()?.getZoomLevel() ?? null } });
     };
     const zoom = (): void => {
       publish({ camera: { zoom: mountedCosmograph()?.getZoomLevel() ?? null } });
     };
-    setGraphHandlers({ enter, leave, rebuilt, zoom });
+    setGraphHandlers({
+      enter: (index) => setHoveredIndex(index),
+      leave: () => setHoveredIndex(null),
+      click: (index, additive) => {
+        const id = session.pointId(index);
+        if (id === null) return;
+        if (additive) setToggleSelected(id);
+        else setSelectedOnly(id);
+      },
+      background: () => clearSelection(),
+      rebuilt,
+      zoom,
+    });
     setDiagnosticsSource({
       screenPositionOf: (index) => screenPositionOf(mountedCosmograph(), index),
       pointWithIncidentLinks: () => session.firstPointWithLinks(RELATION_ORDER),
@@ -90,7 +119,34 @@ export function GraphView({ session }: { session: GraphSession }) {
       setDiagnosticsSource(null);
       clearMountedCosmograph();
     };
-  }, [session, setHoveredIndex, setHighlighted, setReady]);
+  }, [session, setHoveredIndex, setReady, setSelectedOnly, setToggleSelected, clearSelection]);
+
+  // The documented clear action on the keyboard (the canvas is not focusable).
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === "Escape") clearSelection();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [clearSelection]);
+
+  useEffect(() => {
+    setEmphasis(emphasis);
+  }, [emphasis]);
+
+  useEffect(() => {
+    publish({
+      hovered: hovered === null ? null : session.pointId(hovered),
+      hoveredIndex: hovered,
+      highlighted: { points: highlightIds(session.graph, emphasis), links: [...emphasis.links] },
+      selected: sortedSelection(selected),
+      relationFilter: [...visibleRelations],
+      depth,
+      filterRevision,
+    });
+  }, [session, hovered, emphasis, selected, visibleRelations, depth, filterRevision]);
 
   return (
     <Cosmograph
@@ -125,10 +181,14 @@ export function GraphView({ session }: { session: GraphSession }) {
       pointGreyoutOpacity={0.08}
       linkGreyoutOpacity={0.02}
       linkColorBy="relation"
-      linkColorByFn={relationColor}
+      linkColorByFn={linkColorFn(relationMask)}
+      linkWidthBy="relation"
+      linkWidthByFn={linkWidthFn(relationMask)}
       onMount={onGraphMount}
       onPointMouseOver={onPointMouseOver}
       onPointMouseOut={onPointMouseOut}
+      onPointClick={onPointClick}
+      onBackgroundClick={onBackgroundClick}
       onGraphRebuilt={onGraphRebuilt}
       onZoom={onZoom}
     />

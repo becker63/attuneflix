@@ -15,6 +15,8 @@ export type MountedCosmograph = NonNullable<CosmographRef>;
 export interface GraphHandlers {
   enter(index: number): void;
   leave(): void;
+  click(index: number, additive: boolean): void;
+  background(): void;
   rebuilt(stats: { readonly pointsCount: number; readonly linksCount: number }): void;
   zoom(): void;
 }
@@ -41,6 +43,20 @@ export function onPointMouseOver(index: number): void {
 
 export function onPointMouseOut(): void {
   handlers?.leave();
+}
+
+/**
+ * A click pins a selection. Shift, Ctrl or Meta is the documented modifier that
+ * adds/removes instead of replacing; the renderer's own selection-on-click is
+ * disabled, so this handler is the only writer of the selection.
+ */
+export function onPointClick(index: number, _pointPosition: readonly number[], event: MouseEvent): void {
+  handlers?.click(index, event.shiftKey || event.ctrlKey || event.metaKey);
+}
+
+/** An empty-canvas click clears the pinned selection. */
+export function onBackgroundClick(): void {
+  handlers?.background();
 }
 
 export function onGraphRebuilt(stats: { readonly pointsCount: number; readonly linksCount: number }): void {

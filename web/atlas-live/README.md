@@ -166,24 +166,48 @@ never contains secrets and never mutates app state; every field is a live getter
 reader always sees the current value. It is installed by `app/src/main.tsx` before the
 session boots and populated through `app/src/diagnostics.ts`.
 
-| Field                      | Meaning                                                                                                                                                                  |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `ready`                    | `true` once the renderer has rebuilt the graph for the current session.                                                                                                  |
-| `snapshotId`               | The projected world's content-addressed snapshot id (matches `manifest.json`).                                                                                           |
-| `dataset`                  | `{ repository, baseRevision, synthetic }` of the loaded world, or `null`.                                                                                                |
-| `sessionRevision`          | Monotonic counter, bumped whenever a new graph replaces the current one.                                                                                                 |
-| `topologyRevision`         | Monotonic counter for the projected topology (points/links) of the current session.                                                                                      |
-| `overlay`                  | `{ name, revision }` of the active node-colour overlay (`"structure"` in this slice).                                                                                    |
-| `counts`                   | `{ points, links, files, symbols, directories, defines, imports, calls, parent }`, or `null` before load.                                                                |
-| `hovered`                  | The hovered point's identity (`domain:localId`, e.g. `file:2`), or `null`.                                                                                               |
-| `hoveredIndex`             | The hovered point's row index, or `null`.                                                                                                                                |
-| `highlighted`              | `{ points: string[], links: number[] }`: identities of the hovered node and its neighbours, and the indices of incident links.                                           |
-| `camera`                   | `{ zoom }` of the renderer, updated on zoom (null until the first fit).                                                                                                  |
-| `perf`                     | Build timings in milliseconds (`duckDbMs`, `projectionMs`, `insertMs`, …).                                                                                               |
-| `buildRevision`            | The baked build revision (`__ATLAS_BUILD_REVISION__`): the deployed commit on a deployed bundle, the placeholder `__ATLAS_LIVE_BUILD_REVISION__` on a plain Bazel build. |
-| `error`                    | A boot error message, or `null`.                                                                                                                                         |
-| `screenPositionOf(index)`  | Viewport `[x, y]` of a point's centre, or `null` if it cannot be computed. Used to aim the real mouse.                                                                   |
-| `pointWithIncidentLinks()` | A point index with at least one incident link, or `null` if none. Used to pick a hover target deterministically.                                                         |
+| Field                      | Meaning                                                                                                                                                                                                 |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ready`                    | `true` once the renderer has rebuilt the graph for the current session.                                                                                                                                 |
+| `snapshotId`               | The projected world's content-addressed snapshot id (matches `manifest.json`).                                                                                                                          |
+| `dataset`                  | `{ repository, baseRevision, synthetic }` of the loaded world, or `null`.                                                                                                                               |
+| `sessionRevision`          | Monotonic counter, bumped whenever a new graph replaces the current one.                                                                                                                                |
+| `topologyRevision`         | Monotonic counter for the projected topology (points/links) of the current session.                                                                                                                     |
+| `overlay`                  | `{ name, revision }` of the active node-colour overlay (`"structure"` in this slice).                                                                                                                   |
+| `counts`                   | `{ points, links, files, symbols, directories, defines, imports, calls, parent }`, or `null` before load.                                                                                               |
+| `hovered`                  | The hovered point's identity (`domain:localId`, e.g. `file:2`), or `null`.                                                                                                                              |
+| `hoveredIndex`             | The hovered point's row index, or `null`.                                                                                                                                                               |
+| `highlighted`              | `{ points: string[], links: number[] }`: the set the renderer presently emphasises — the hovered point's neighbourhood unioned with the pinned selection's, under the active relation filter and depth. |
+| `camera`                   | `{ zoom }` of the renderer, updated on zoom (null until the first fit).                                                                                                                                 |
+| `selected`                 | The pinned selection's identities (`domain:localId`), ascending; empty when nothing is pinned.                                                                                                          |
+| `relationFilter`           | The enabled relation names, in canonical order (e.g. `["defines","imports","calls","parent"]`).                                                                                                         |
+| `filterRevision`           | Monotonic counter bumped on every relation-filter change; never on an overlay or topology change.                                                                                                       |
+| `depth`                    | The active neighbourhood depth (1..3).                                                                                                                                                                  |
+| `perf`                     | Build timings in milliseconds (`duckDbMs`, `projectionMs`, `insertMs`, …).                                                                                                                              |
+| `buildRevision`            | The baked build revision (`__ATLAS_BUILD_REVISION__`): the deployed commit on a deployed bundle, the placeholder `__ATLAS_LIVE_BUILD_REVISION__` on a plain Bazel build.                                |
+| `error`                    | A boot error message, or `null`.                                                                                                                                                                        |
+| `screenPositionOf(index)`  | Viewport `[x, y]` of a point's centre, or `null` if it cannot be computed. Used to aim the real mouse.                                                                                                  |
+| `pointWithIncidentLinks()` | A point index with at least one incident link, or `null` if none. Used to pick a hover target deterministically.                                                                                        |
+
+## Selection, filters and depth
+
+The pinned selection, the relation filter and the depth live in Jotai atoms
+(`app/src/atoms.ts`); the semantics are pure functions in `app/src/selection.ts`
+and `app/src/neighbourhood.ts`.
+
+- **Selection.** A plain click pins exactly that entity; shift-, ctrl- or
+  meta-click adds or removes it. Clicking empty canvas or pressing `Escape`
+  clears the selection. Hovering never changes the selection: hover and the
+  pinned set share the renderer's greyout channel, so hover emphasis is the
+  hovered neighbourhood unioned with the pinned one, and hovering off returns to
+  the pinned set. The details panel shows the pinned entity while one exists.
+- **Relation filter.** One toggle per relation. Disabling a relation draws its
+  links fully transparent and zero-width (never removes them) and removes it from
+  the derived neighbourhood; `counts` and `topologyRevision` never change, and no
+  graph re-ingest happens. The legend lists every relation and marks a disabled
+  one off in text and with `aria-disabled`.
+- **Depth.** A depth control (1..3, shown as text) expands the hover and
+  selection neighbourhoods by BFS hops over the enabled relations only.
 
 ## Preview
 

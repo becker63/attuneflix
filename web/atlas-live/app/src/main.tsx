@@ -13,6 +13,7 @@ import { createRoot } from "react-dom/client";
 import "./styles.css";
 
 import { App } from "./App.tsx";
+import { adoptGraphAtom } from "./atoms.ts";
 import { createLocalDuckDB } from "./duckdb.ts";
 import { installDiagnostics, publish } from "./diagnostics.ts";
 import { GraphSession, LINKS_TABLE, POINTS_TABLE } from "./session.ts";
@@ -22,6 +23,9 @@ function render(session: GraphSession | null, error: string | null): void {
   const container = document.getElementById("root");
   if (container === null) throw new Error("missing #root");
   const store = createStore();
+  // The loaded graph is the reactive identity the derived atoms read; adopting it
+  // also drops any pinned selection ids the graph does not contain.
+  if (session !== null) store.set(adoptGraphAtom, session.graph);
   createRoot(container).render(
     <StrictMode>
       <Provider store={store}>
