@@ -1,0 +1,32 @@
+/*
+ * The app's one linked stylesheet. Component-level styling is StyleX
+ * (app/src/*.tsx); this file only carries the globals StyleX cannot express
+ * (root sizing, box-sizing, colour scheme).
+ *
+ * It exists so the entry module imports a real CSS asset: Vite then emits one
+ * CSS file and links it from index.html, and `@stylexjs/unplugin`
+ * (`vite.config.mjs`) appends the compiled StyleX rules to that same asset
+ * during `generateBundle`. Without a CSS import the plugin's fallback writes
+ * `assets/stylex.css` that nothing links, so every StyleX class is inert.
+ */
+:root {
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: #0b0d12;
+}

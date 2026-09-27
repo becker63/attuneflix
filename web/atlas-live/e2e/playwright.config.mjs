@@ -12,7 +12,9 @@ export default defineConfig({
   outputDir: `${outputs}/test-results`,
   webServer: {
     // Same server as `:preview`; ../static is the Bazel-built bundle + data tree.
-    command: `"${process.execPath}" ../serve.mjs --root ../static --port 4173`,
+    // `--no-snapshot`: nothing refreshes this tree during the test, so serve it
+    // in place instead of copying ~71 MB.
+    command: `"${process.execPath}" ../serve.mjs --root ../static --port 4173 --no-snapshot`,
     url: "http://127.0.0.1:4173/",
     reuseExistingServer: false,
     timeout: 30_000,

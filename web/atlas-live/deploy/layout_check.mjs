@@ -5,9 +5,16 @@
  * It pins the two things Vercel reads (`config.json` version 3 with the exact
  * filesystem + SPA route list, and `static/` as the only other top-level entry)
  * and the payload the viewer needs (index.html, the manifest, every world's
- * Parquet, the JS bundle, the stylesheet, and the self-hosted DuckDB eh wasm and
- * worker). Later features add the synthetic fixture, census and trace data to
- * `:static`; the checks here cover what the data targets ship today.
+ * Parquet, the JS bundle, the linked stylesheet, and the self-hosted DuckDB eh
+ * wasm and worker). Later features add the synthetic fixture, census and trace
+ * data to `:static`; the checks here cover what the data targets ship today.
+ *
+ * The stylesheet check is deliberately two-sided (VAL-STYLE-001): the built
+ * index.html must link at least one same-origin stylesheet that exists in the
+ * output, that stylesheet must carry the compiled StyleX rules, and every
+ * stylesheet the output ships must be linked. A file that is emitted but never
+ * linked (the old `assets/stylex.css` fallback) is unstyled UI, and an assertion
+ * that only checks the file exists misses it.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -24,6 +31,9 @@ const EXPECTED_ROUTES = [{ handle: "filesystem" }, { src: "/(.*)", dest: "/index
 
 /** The 78 frozen census worlds (ATLAS_WORLDS in experiments/atlas-swe-explore/census/census.bzl). */
 const EXPECTED_WORLDS = 78;
+
+/** A compiled StyleX class selector: `.x` + base36 hash, e.g. `.x1tamke2`. */
+const STYLEX_CLASS_RE = /\.x[0-9a-z]{3,}\s*[,{]/;
 
 function check(condition, message) {
   if (!condition) throw new Error(`layout_check: ${message}`);
@@ -78,6 +88,60 @@ function checkConfig() {
   }
 }
 
+/** The `rel="stylesheet"` link hrefs declared in the built index.html, in order. */
+function linkedStylesheetHrefs(html) {
+  const hrefs = [];
+  for (const match of html.matchAll(/<link\b[^>]*>/gi)) {
+    const tag = match[0];
+    const rel = /\brel\s*=\s*["']([^"']*)["']/i.exec(tag);
+    if (rel === null) continue;
+    if (!rel[1].toLowerCase().split(/\s+/).includes("stylesheet")) continue;
+    const href = /\bhref\s*=\s*["']([^"']+)["']/i.exec(tag);
+    if (href !== null) hrefs.push(href[1]);
+  }
+  return hrefs;
+}
+
+/**
+ * The linked-stylesheet contract (VAL-STYLE-001): at least one same-origin
+ * stylesheet is linked and present, the linked CSS carries the compiled StyleX
+ * rules, and no stylesheet ships unlinked.
+ */
+function checkStylesheets(staticDir) {
+  const html = fs.readFileSync(path.join(staticDir, "index.html"), "utf8");
+  const hrefs = linkedStylesheetHrefs(html);
+  check(
+    hrefs.length >= 1,
+    "index.html must link at least one stylesheet (a StyleX build with no link renders unstyled)",
+  );
+  for (const href of hrefs) {
+    check(
+      href.startsWith("/") && !href.startsWith("//"),
+      `stylesheet ${href} must be same-origin (an absolute /… path served from the deployment)`,
+    );
+  }
+
+  let linkedCss = 0;
+  let stylexRules = 0;
+  for (const href of hrefs) {
+    if (!href.endsWith(".css")) continue;
+    linkedCss += 1;
+    const file = path.join(staticDir, href);
+    requireFile(file, `linked stylesheet ${href}`);
+    if (STYLEX_CLASS_RE.test(fs.readFileSync(file, "utf8"))) stylexRules += 1;
+  }
+  check(linkedCss >= 1, "index.html must link a .css stylesheet");
+  check(stylexRules >= 1, "the linked stylesheet carries no compiled StyleX rules");
+
+  const shipped = listFiles(staticDir).filter((file) => file.endsWith(".css"));
+  check(shipped.length >= 1, "the output must ship at least one stylesheet");
+  const linked = new Set(hrefs);
+  for (const file of shipped) {
+    const href = `/${path.relative(staticDir, file)}`;
+    check(linked.has(href), `the output ships ${href} but index.html does not link it`);
+  }
+}
+
 function checkStaticPayload() {
   const staticDir = path.join(ROOT, "static");
   requireFile(path.join(staticDir, "index.html"), "index.html");
@@ -101,9 +165,9 @@ function checkStaticPayload() {
   const assetsDir = path.join(staticDir, "assets");
   check(fs.existsSync(assetsDir), "static/assets is missing");
   namedAsset(assetsDir, /^index-.*\.js$/, "main JS bundle");
-  namedAsset(assetsDir, /\.css$/, "stylesheet");
   namedAsset(assetsDir, /^duckdb-eh-.*\.wasm$/, "self-hosted DuckDB eh wasm");
   namedAsset(assetsDir, /^duckdb-browser-eh\.worker-.*\.js$/, "DuckDB eh worker");
+  checkStylesheets(staticDir);
 
   const files = listFiles(staticDir);
   const worldDirs = fs.readdirSync(path.join(staticDir, "data"), { withFileTypes: true });

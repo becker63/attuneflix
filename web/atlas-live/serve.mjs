@@ -7,17 +7,25 @@
  * The default root is the `static/` tree next to this script (the runfiles
  * layout); pass `--root <dir>` to override it relative to the current directory.
  *
- * Usage: node serve.mjs [--root <dir>] [--port <n>]
+ * By default the server copies the root into a fresh temp directory and serves
+ * THAT snapshot. Bazel deletes and re-creates the `copy_to_directory` output
+ * under the runfiles tree whenever a `bazel build` refreshes it, which empties
+ * the running server's `static/` and kills it with ENOENT mid-session; serving a
+ * copy makes a running preview immune to that. Pass `--no-snapshot` to serve the
+ * given root in place (used where nothing refreshes it).
+ *
+ * Usage: node serve.mjs [--root <dir>] [--port <n>] [--no-snapshot]
  */
 import fs from "node:fs";
 import http from "node:http";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 
 function parseArgs(argv) {
-  const options = { root: path.join(scriptDir, "static"), port: 4173 };
+  const options = { root: path.join(scriptDir, "static"), port: 4173, snapshot: true };
   for (let i = 0; i < argv.length; i++) {
     const flag = argv[i];
     const value = argv[i + 1];
@@ -27,9 +35,18 @@ function parseArgs(argv) {
     } else if (flag === "--port" && value !== undefined) {
       options.port = Number(value);
       i += 1;
+    } else if (flag === "--no-snapshot") {
+      options.snapshot = false;
     }
   }
   return options;
+}
+
+/** Copy `root` (following the runfiles symlink) into a fresh temp directory. */
+function snapshotRoot(root) {
+  const copy = fs.mkdtempSync(path.join(os.tmpdir(), "atlas-live-preview-"));
+  fs.cpSync(fs.realpathSync(root), copy, { recursive: true, dereference: true });
+  return copy;
 }
 
 const TYPES = {
@@ -47,8 +64,21 @@ const TYPES = {
   ".woff2": "font/woff2",
 };
 
-const { root, port } = parseArgs(process.argv.slice(2));
-const absoluteRoot = path.resolve(root);
+const { root, port, snapshot } = parseArgs(process.argv.slice(2));
+const snapshotDir = snapshot ? snapshotRoot(root) : null;
+const absoluteRoot = snapshotDir ?? path.resolve(root);
+const cleanup = () => {
+  if (snapshotDir !== null) {
+    try {
+      fs.rmSync(snapshotDir, { recursive: true, force: true });
+    } catch {
+      // The temp copy is best-effort cleanup; a leftover directory is harmless.
+    }
+  }
+};
+process.once("exit", cleanup);
+process.once("SIGINT", () => process.exit(0));
+process.once("SIGTERM", () => process.exit(0));
 http
   .createServer((request, response) => {
     const url = new URL(request.url ?? "/", "http://127.0.0.1");
@@ -66,5 +96,6 @@ http
     fs.createReadStream(file).pipe(response);
   })
   .listen(port, "127.0.0.1", () => {
-    console.log(`serving ${absoluteRoot} on http://127.0.0.1:${port}/`);
+    const source = snapshotDir === null ? "" : ` (snapshot of ${path.resolve(root)})`;
+    console.log(`serving ${absoluteRoot}${source} on http://127.0.0.1:${port}/`);
   });

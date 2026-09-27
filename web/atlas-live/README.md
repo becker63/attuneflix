@@ -198,9 +198,32 @@ nix develop --command bazel run --config=buildbuddy-rbe \
 ```
 
 The static server (`serve.mjs`) defaults its root to the sibling `static/` directory, so
-the run script needs no arguments. `//web/atlas-live/e2e:e2e_test` reuses the same server
-inside the Playwright noble container (`test.container-image`), runs Chromium against
-SwiftShader software WebGL, and drives a real mouse over a real point.
+the run script needs no arguments. By default it copies that tree into a fresh temp
+directory and serves the copy: Bazel deletes and re-creates the `copy_to_directory` output
+under the runfiles tree on every `bazel build`, which would otherwise empty a running
+preview's `static/` and kill it with ENOENT mid-session. Pass `--no-snapshot` to serve the
+given root in place (the e2e test does, since nothing refreshes its tree during the run).
+`//web/atlas-live/e2e:e2e_test` reuses the same server inside the Playwright noble
+container (`test.container-image`), runs Chromium against SwiftShader software WebGL, and
+drives a real mouse over a real point.
+
+## Styling and the linked stylesheet
+
+Component styling is StyleX (`@stylexjs/stylex`, compiled by `@stylexjs/unplugin`). The
+entry module (`app/src/main.tsx`) imports one side-effect CSS file,
+`app/src/styles.css`, which carries only the globals StyleX cannot express. That import is
+load-bearing: because the entry has a real CSS asset, Vite emits it as one file, links it
+from `index.html`, and `@stylexjs/unplugin` appends the compiled StyleX rules to that same
+asset during `generateBundle`. Without a CSS import the plugin falls back to writing
+`assets/stylex.css` that nothing links, so every StyleX class is inert.
+
+`//web/atlas-live:layout_test` (`deploy/layout_check.mjs`) enforces the contract
+(VAL-STYLE-001): `index.html` must link at least one same-origin stylesheet that exists in
+the output, that stylesheet must contain compiled StyleX class selectors, and every
+stylesheet in the output must be linked. `//web/atlas-live/e2e:e2e_test` additionally
+asserts in the browser that a stylesheet is linked, exposes parsed rules, is requested with
+a `200 text/css` response, and that app-owned elements have computed styles only the
+stylesheet supplies.
 
 ## Build output and deploy
 

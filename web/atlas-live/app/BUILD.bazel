@@ -41,7 +41,7 @@ atlas_ts_package(
 # and protocol sources it imports through relative paths.
 js_library(
     name = "app_srcs",
-    srcs = glob(["src/**/*.ts", "src/**/*.tsx"]) + [
+    srcs = glob(["src/**/*.ts", "src/**/*.tsx", "src/**/*.css"]) + [
         "index.html",
         "vite.config.mjs",
     ],
@@ -69,7 +69,7 @@ vite_bin.vite(
 # planted credential fails the scan even where the bundler would drop the file.
 js_library(
     name = "scan_files",
-    srcs = glob(["src/**/*.ts", "src/**/*.tsx"]) + [
+    srcs = glob(["src/**/*.ts", "src/**/*.tsx", "src/**/*.css"]) + [
         "index.html",
         "vite.config.mjs",
     ],

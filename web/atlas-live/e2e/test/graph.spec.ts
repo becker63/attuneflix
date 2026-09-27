@@ -54,11 +54,21 @@ test("default world renders non-blank, responds to hover, stays same-origin", as
   const consoleErrors: string[] = [];
   const pageErrors: string[] = [];
   const requests: string[] = [];
+  const stylesheetResponses: { url: string; status: number; contentType: string }[] = [];
   page.on("console", (message) => {
     if (message.type() === "error") consoleErrors.push(message.text());
   });
   page.on("pageerror", (error) => pageErrors.push(String(error)));
   page.on("request", (request) => requests.push(request.url()));
+  page.on("response", (response) => {
+    const url = response.url();
+    if (!url.endsWith(".css")) return;
+    stylesheetResponses.push({
+      url,
+      status: response.status(),
+      contentType: response.headers()["content-type"] ?? "",
+    });
+  });
 
   await page.goto("/");
   await page.waitForFunction(() => window.__atlasLive?.ready === true, null, { timeout: 90_000 });
@@ -73,6 +83,55 @@ test("default world renders non-blank, responds to hover, stays same-origin", as
     };
   });
   expect(hook.snapshotId).not.toBeNull();
+
+  // The built page must load and apply its stylesheet. A StyleX build with no
+  // linked stylesheet renders every class inert (the milestone-A defect); the
+  // computed styles below are ones only the stylesheet can supply.
+  const styles = await page.evaluate(() => {
+    const links: { href: string | null; resolved: string; rules: number }[] = [];
+    for (const element of document.querySelectorAll('link[rel="stylesheet"]')) {
+      if (!(element instanceof HTMLLinkElement)) continue;
+      let rules = -1;
+      try {
+        rules = element.sheet === null ? -1 : element.sheet.cssRules.length;
+      } catch {
+        rules = -1;
+      }
+      links.push({ href: element.getAttribute("href"), resolved: element.href, rules });
+    }
+    const header = document.querySelector("header");
+    const main = document.querySelector("main");
+    const graph = document.querySelector('[data-testid="graph"]');
+    const aside = document.querySelector("aside");
+    return {
+      links,
+      sameOrigin: links.filter((link) => link.resolved.startsWith(location.origin)).length,
+      headerDisplay: header === null ? null : getComputedStyle(header).getPropertyValue("display"),
+      headerPaddingTop: header === null ? null : getComputedStyle(header).getPropertyValue("padding-top"),
+      mainDisplay: main === null ? null : getComputedStyle(main).getPropertyValue("display"),
+      graphPosition: graph === null ? null : getComputedStyle(graph).getPropertyValue("position"),
+      asideWidth: aside === null ? null : getComputedStyle(aside).getPropertyValue("width"),
+    };
+  });
+  expect(styles.links.length, "the page links at least one stylesheet").toBeGreaterThanOrEqual(1);
+  expect(styles.sameOrigin, "at least one linked stylesheet is same-origin").toBeGreaterThanOrEqual(1);
+  expect(styles.sameOrigin, "every linked stylesheet is same-origin").toBe(styles.links.length);
+  expect(
+    Math.max(...styles.links.map((link) => link.rules)),
+    "a linked stylesheet exposes parsed rules",
+  ).toBeGreaterThan(0);
+  // Unstyled defaults are `display: block` and `padding-top: 0px`; these come
+  // from the stylesheet's StyleX classes.
+  expect(styles.headerDisplay, "the header is flex, not the unstyled block").toBe("flex");
+  expect(styles.headerPaddingTop, "the header padding comes from the stylesheet").toBe("10px");
+  expect(styles.mainDisplay, "main is the flex column the stylesheet sets").toBe("flex");
+  expect(styles.graphPosition, "the graph region is positioned by the stylesheet").toBe("relative");
+  expect(styles.asideWidth, "the sidebar has the stylesheet width").toBe("280px");
+  expect(stylesheetResponses, "at least one stylesheet request was made").not.toEqual([]);
+  for (const response of stylesheetResponses) {
+    expect(response.status, `stylesheet ${response.url} responds 200`).toBe(200);
+    expect(response.contentType, `stylesheet ${response.url} is text/css`).toContain("text/css");
+  }
 
   const manifestResponse = await page.request.get("/manifest.json");
   expect(manifestResponse.ok()).toBe(true);

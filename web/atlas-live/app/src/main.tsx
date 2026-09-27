@@ -8,6 +8,10 @@ import { Provider, createStore } from "jotai";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
+// Side-effect CSS import: the linked stylesheet. @stylexjs/unplugin appends the
+// compiled StyleX rules to this asset (see app/src/styles.css).
+import "./styles.css";
+
 import { App } from "./App.tsx";
 import { createLocalDuckDB } from "./duckdb.ts";
 import { installDiagnostics, publish } from "./diagnostics.ts";
