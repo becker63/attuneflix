@@ -25,11 +25,15 @@ filegroup(
     ],
 )
 
-# Milestone 2/3 — Candidate A/B/C measurements (PREREGISTRATION.md §7, §8, §10).
+# Milestone 2/3/4 — Candidate A/B/C/D measurements (PREREGISTRATION.md §7, §8,
+# §10, §16).
 #
 # Each record is the identical instrument's reading of a candidate *revision*
 # (measured from a worktree detached at that revision, so the record's
-# `working_commit` names exactly the measured tree). `candidates/README.md`
+# `working_commit` names exactly the measured tree). Every record carries the
+# frozen metric of record *and* the §16 supplementary `*_dagref` reading, so
+# the `_dagref` rows in `candidates/README.md` are backed by machine-readable
+# fields for every generation, not only Candidate D. `candidates/README.md`
 # states the provenance recipe, the revision set and the measured deltas
 # against `baseline-metrics.json`, including the negative ones (§7 non-rule).
 filegroup(
@@ -39,6 +43,7 @@ filegroup(
         "candidates/candidate-a.json",
         "candidates/candidate-b.json",
         "candidates/candidate-c.json",
+        "candidates/candidate-d.json",
     ],
 )
 

@@ -1,6 +1,6 @@
 {
   "protocol": "attuneflix-effectful-stage-baseline-v1",
-  "recorded_at_utc": "2026-09-26T22:33:04Z",
+  "recorded_at_utc": "2026-09-27T02:12:17Z",
   "control_commit": "09e27244af9340aa616116a93ea02472e7521ba5",
   "working_commit": "97568f6e269a10c9d92004441860a06371c1212e",
   "partitions": {
@@ -48,6 +48,8 @@
       },
       "mutable_cross_stage_edges": 78,
       "mutable_cross_stage_fraction": 0.624000,
+      "mutable_cross_stage_edges_dagref": 60,
+      "mutable_cross_stage_fraction_dagref": 0.480000,
       "shared_writable_hotspots": 22,
       "max_hotspot_pressure": 7,
       "shared_stage_hotspots": 9,
@@ -65,7 +67,8 @@
       "analyzed_targets": 526,
       "test_targets": 38,
       "cross_stage_test_invalidation": 275,
-      "cross_stage_test_invalidation_all_tests": 686
+      "cross_stage_test_invalidation_all_tests": 686,
+      "cross_stage_test_invalidation_dagref": 239
     },
     "work": {
       "tasks": {
