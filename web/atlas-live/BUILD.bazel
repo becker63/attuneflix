@@ -102,6 +102,7 @@ test_suite(
         "//web/atlas-live/e2e:e2e_test",
         "//web/atlas-live/e2e:typecheck_test",
         "//web/atlas-live/projection:data_test",
+        "//web/atlas-live/projection:import_fixtures_test",
         "//web/atlas-live/projection:typecheck_test",
         "//web/atlas-live/projection:unit_test",
         "//web/atlas-live/protocol:typecheck_test",

@@ -84,6 +84,36 @@ js_run_binary(
     visibility = ["//visibility:public"],
 )
 
+# Seven small local-import fixture folders under `import_fixtures/` (see
+# projection/src/import_fixtures.ts), in the canonical world Parquet format so
+# the browser imports them through the identical projection path. Validators copy
+# a folder to /tmp and upload it; `import_fixtures_test` pins each outcome.
+js_binary(
+    name = "import_fixtures_cli",
+    data = [":srcs"],
+    entry_point = "src/import_fixtures.ts",
+)
+
+js_run_binary(
+    name = "import_fixtures",
+    args = ["--out", "import_fixtures"],
+    chdir = package_name(),
+    out_dirs = ["import_fixtures"],
+    tool = ":import_fixtures_cli",
+    visibility = ["//visibility:public"],
+)
+
+js_test(
+    name = "import_fixtures_test",
+    chdir = package_name(),
+    data = [
+        ":import_fixtures",
+        ":srcs",
+    ],
+    entry_point = "test/import_fixtures_check.ts",
+    size = "small",
+)
+
 js_run_binary(
     name = "data",
     srcs = [

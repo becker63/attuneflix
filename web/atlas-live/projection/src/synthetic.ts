@@ -13,9 +13,9 @@
  * 50,000 links. All arithmetic is index-based and pure, so the bytes are stable
  * across runs.
  */
-import type { EntityRow, LocationRow, MetadataRow, RelationRow, WorldTables } from "./tables.ts";
-import { writeParquet, type ParquetColumn } from "./parquet.ts";
 import { SNAPSHOT_ID_PREFIX } from "./manifest.ts";
+import type { EntityRow, LocationRow, MetadataRow, RelationRow, WorldTables } from "./tables.ts";
+import { worldParquetFiles, type WorldParquetFiles } from "./world_parquet.ts";
 
 /** sha256("atlas-live-synthetic-stress-v1"); a fixed content address. */
 export const SYNTHETIC_DIGEST = "59ad7394fb5fe1fe4f387c50ad3dc7644c589c4bcba773ea17fe8f8c65c09b6b";
@@ -192,119 +192,7 @@ export function syntheticWorld(config: SyntheticConfig = SYNTHETIC_STRESS): Worl
   return { metadata, entities, relations, locations };
 }
 
-function columnsFor<T>(
-  rows: readonly T[],
-  select: (row: T) => ReadonlyArray<number | string | null>,
-  spec: ReadonlyArray<{ name: string; kind: "int32" | "string"; nullable?: boolean }>,
-): ParquetColumn[] {
-  const columns: ParquetColumn[] = [];
-  for (let column = 0; column < spec.length; column++) {
-    const entry = spec[column];
-    if (entry === undefined) throw new Error(`missing column spec ${column}`);
-    const values = rows.map((row) => {
-      const cells = select(row);
-      const value = cells[column];
-      return value === undefined ? null : value;
-    });
-    columns.push({
-      name: entry.name,
-      kind: entry.kind,
-      nullable: entry.nullable,
-      values,
-    });
-  }
-  return columns;
-}
-
 /** The four Parquet files of the synthetic world, in the canonical schemas. */
-export function syntheticParquetFiles(config: SyntheticConfig = SYNTHETIC_STRESS): {
-  metadata: Uint8Array;
-  entities: Uint8Array;
-  relations: Uint8Array;
-  locations: Uint8Array;
-} {
-  const tables = syntheticWorld(config);
-  const metadata = writeParquet(
-    columnsFor(
-      [tables.metadata],
-      (row) => [
-        row.repository,
-        row.baseRevision,
-        row.sourceTreeIdentity,
-        row.factIdentity,
-        row.snapshotId,
-        row.fileCount,
-        row.symbolCount,
-        row.definesCount,
-        row.importsCount,
-        row.callsCount,
-        row.parentCount,
-        row.unresolvedImports,
-        row.unresolvedCalls,
-      ],
-      [
-        { name: "repository", kind: "string" },
-        { name: "base_revision", kind: "string" },
-        { name: "source_tree_identity", kind: "string" },
-        { name: "fact_identity", kind: "string" },
-        { name: "snapshot_id", kind: "string" },
-        { name: "file_count", kind: "int32" },
-        { name: "symbol_count", kind: "int32" },
-        { name: "defines_count", kind: "int32" },
-        { name: "imports_count", kind: "int32" },
-        { name: "calls_count", kind: "int32" },
-        { name: "parent_count", kind: "int32" },
-        { name: "unresolved_imports", kind: "int32" },
-        { name: "unresolved_calls", kind: "int32" },
-      ],
-    ),
-  );
-  const entities = writeParquet(
-    columnsFor(
-      tables.entities,
-      (row) => [
-        row.snapshotId,
-        row.domain,
-        row.entityId,
-        row.ordinal,
-        row.path,
-        row.name,
-        row.startByte,
-        row.endByte,
-      ],
-      [
-        { name: "snapshot_id", kind: "string" },
-        { name: "domain", kind: "string" },
-        { name: "entity_id", kind: "int32" },
-        { name: "ordinal", kind: "int32" },
-        { name: "path", kind: "string" },
-        { name: "name", kind: "string", nullable: true },
-        { name: "start_byte", kind: "int32", nullable: true },
-        { name: "end_byte", kind: "int32", nullable: true },
-      ],
-    ),
-  );
-  const relations = writeParquet(
-    columnsFor(
-      tables.relations,
-      (row) => [row.snapshotId, row.relation, row.sourceDomain, row.sourceId, row.targetDomain, row.targetId],
-      [
-        { name: "snapshot_id", kind: "string" },
-        { name: "relation", kind: "string" },
-        { name: "source_domain", kind: "string" },
-        { name: "source_id", kind: "int32" },
-        { name: "target_domain", kind: "string" },
-        { name: "target_id", kind: "int32" },
-      ],
-    ),
-  );
-  const locations = writeParquet(
-    columnsFor(tables.locations ?? [], (row) => [row.snapshotId, row.locationId, row.path, row.kind], [
-      { name: "snapshot_id", kind: "string" },
-      { name: "location_id", kind: "int32" },
-      { name: "path", kind: "string" },
-      { name: "kind", kind: "string" },
-    ]),
-  );
-  return { metadata, entities, relations, locations };
+export function syntheticParquetFiles(config: SyntheticConfig = SYNTHETIC_STRESS): WorldParquetFiles {
+  return worldParquetFiles(syntheticWorld(config));
 }
