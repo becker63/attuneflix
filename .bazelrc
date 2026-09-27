@@ -37,3 +37,12 @@ build:buildbuddy-rbe --remote_executor=grpcs://remote.buildbuddy.io
 build:buildbuddy-rbe --extra_execution_platforms=@buildbuddy_toolchain//:platform_linux_x86_64
 build:buildbuddy-rbe --jobs=80
 test:buildbuddy-rbe --test_env=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+# From an aarch64 host the target platform is aarch64: its test runfiles and the
+# host-arch jextract archive only execute on BuildBuddy's arm64 runners. The flag
+# overrides (does not extend) the x86_64 platform above.
+build:buildbuddy-rbe-arm64 --config=buildbuddy-rbe
+build:buildbuddy-rbe-arm64 --extra_execution_platforms=@buildbuddy_toolchain//:platform_linux_arm64
+# `local = True` law tests (control_reproducibility_test) run on this NixOS host,
+# whose coreutils and git live only under /run/current-system/sw/bin; the extra
+# entry is inert on the Ubuntu executors.
+test:buildbuddy-rbe-arm64 --test_env=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/run/current-system/sw/bin

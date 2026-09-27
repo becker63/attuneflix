@@ -67,7 +67,20 @@ asset name.
 
 `//web/atlas-live:tests` collects every check and is part of the root `//:tests` suite.
 `./verify` runs the law suite under RBE without `//web/...`, then `//web/...` locally
-with `browsers_path` set to `$PLAYWRIGHT_BROWSERS_PATH` or `~/.cache/ms-playwright`:
+with `browsers_path` set to `$PLAYWRIGHT_BROWSERS_PATH` or `~/.cache/ms-playwright`.
+
+On an aarch64 host the law-suite half uses `--config=buildbuddy-rbe-arm64` instead of
+`--config=buildbuddy-rbe`. That config replaces the x86_64 execution platform with
+`@buildbuddy_toolchain//:platform_linux_arm64`, so the aarch64 test runfiles and the
+host-arch jextract archive run on BuildBuddy's arm64 runners. It also appends
+`/run/current-system/sw/bin` to the test `PATH` for the `local = True` law tests on
+NixOS. The same config runs a narrow law target from such a host:
+
+```sh
+nix develop --command bazel test //test/World:* --config=buildbuddy-rbe-arm64
+```
+
+The `//web/...` targets are checked by these tests:
 
 | Target                                  | Check                                                                       |
 | --------------------------------------- | --------------------------------------------------------------------------- |

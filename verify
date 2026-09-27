@@ -18,7 +18,12 @@ patterns=$(mktemp)
 trap 'rm -f "$patterns"' EXIT
 printf '%s\n' '//...' '-//web/...' > "$patterns"
 
-nix develop --command bazel test --target_pattern_file="$patterns" --config=buildbuddy-rbe "$@"
+rbe_config=buildbuddy-rbe
+if [ "$(uname -m)" = aarch64 ]; then
+  rbe_config=buildbuddy-rbe-arm64
+fi
+
+nix develop --command bazel test --target_pattern_file="$patterns" "--config=$rbe_config" "$@"
 
 browsers_path="${PLAYWRIGHT_BROWSERS_PATH:-$HOME/.cache/ms-playwright}"
 nix develop --command bazel test //web/... \
