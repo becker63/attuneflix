@@ -142,6 +142,22 @@ satisfy `points = files + symbols + directories` with
 `//web/atlas-live/projection:data_test` re-checks the manifest against `ATLAS_WORLDS`,
 the shipped metadata tables, and the file hashes.
 
+### Synthetic stress fixture
+
+`//web/atlas-live/projection:synthetic_world` writes a deterministic 10,000-point /
+50,000-link world in the same projection input format (the canonical
+`metadata`/`entities`/`relations`/`locations` Parquet schemas), and `:data` projects it
+through the identical `projectWorld` path. It is emitted by `projection/src/synthetic.ts`
+(pure index arithmetic, so the bytes are stable across runs) with a hand-rolled minimal
+Parquet writer (`projection/src/parquet.ts`; PLAIN, UNCOMPRESSED, one row group) because
+the pinned dependencies have no writer.
+
+The fixture is **not** a repository and is never counted among the 78: it lives in its own
+`manifest.json` field (`manifest.synthetic`, with `synthetic: true` and `repository:
+"synthetic"`), separate from `manifest.worlds`. `data_check.ts` and
+`deploy/layout_check.mjs` assert that separation (`worlds.length === 78`, the fixture is
+labelled synthetic, and `static/data` holds 78 + 1 directories).
+
 ## Telemetry
 
 `aspect_tools_telemetry`, pulled in by `rules_js` and `rules_ts`, is disabled in the root
@@ -159,6 +175,43 @@ runtime by `chooseDefaultWorld`: it fetches `manifest.json`, keeps the worlds wh
 2683 links) — a real census world, small enough that the whole graph is legible on one
 screen and the browser session stays fast. No synthetic data is used.
 
+## Snapshot picker and dataset switching
+
+`app/src/DatasetPicker.tsx` is a Base UI `Select` listing exactly the 78 census worlds
+(repository + short base revision + counts) and, separately labelled and last, the
+synthetic stress fixture. The model is `app/src/datasets.ts`; each option's value is the
+manifest `snapshotId`. Nothing is prefetched: a world's Parquet is fetched only when it is
+chosen.
+
+`app/src/controller.ts` (`SessionController`) owns the lifecycle outside React, and React
+reads it through `useSyncExternalStore`:
+
+- one self-hosted DuckDB for the whole page;
+- **loading** a dataset aborts the superseded load's `AbortController`, inserts the new
+  world's Arrow tables under revision-suffixed names (`atlas_live_points_<n>` /
+  `atlas_live_links_<n>`, so the previous session's tables survive until the swap), then
+  disposes the previous `GraphSession` (its `AbortController` fired, its listeners
+  removed, its DuckDB tables dropped) and advances the session revision;
+- the renderer remounts on the new session, so `fitView` frames the new dataset and the
+  camera never keeps the previous world's zoom and pan;
+- `main.tsx` adopts each new graph into the Jotai store, which prunes any pinned selection
+  id the new dataset does not contain (`pruneSelection`);
+- a failed load keeps the previous dataset mounted and usable and shows a readable error
+  naming the dataset, with no spinner left running. The explicit loading state is a visible
+  `<output data-testid="loading">`; the error is a visible `role="alert"` banner.
+
+### SwiftShader link rendering
+
+Under software WebGL (SwiftShader) a single redraw with tens of thousands of drawn links is
+a multi-second main-thread long task (measured 3.6-8.7 s at 50k links; 0.4-1.0 s at
+2k-5k). Datasets over `LINK_RENDER_BUDGET` (10,000 links, `app/src/datasets.ts`) therefore
+keep every point, link and adjacency loaded and queryable but draw each link fully
+transparent and zero-width (`app/src/linkAccessors.ts`). The header marks this with a
+"links hidden" badge, and the choice is reported as `window.__atlasLive.renderLinks`. All
+78 worlds keep their links except the very largest (for example protonmail
+`a57d483946f4` / `bde468c0e909`). Hover and selection still work: emphasis goes through the
+renderer's greyout channel, and the diagnostics hook reports `hovered`/`highlighted`.
+
 ## `window.__atlasLive`
 
 `window.__atlasLive` is the read-only diagnostics hook for Playwright and agent-browser. It
@@ -169,25 +222,31 @@ session boots and populated through `app/src/diagnostics.ts`.
 | Field                      | Meaning                                                                                                                                                                                                 |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `ready`                    | `true` once the renderer has rebuilt the graph for the current session.                                                                                                                                 |
+| `loading`                  | `true` while a dataset (or the initial world) is loading; `false` otherwise.                                                                                                                            |
 | `snapshotId`               | The projected world's content-addressed snapshot id (matches `manifest.json`).                                                                                                                          |
 | `dataset`                  | `{ repository, baseRevision, synthetic }` of the loaded world, or `null`.                                                                                                                               |
 | `sessionRevision`          | Monotonic counter, bumped whenever a new graph replaces the current one.                                                                                                                                |
 | `topologyRevision`         | Monotonic counter for the projected topology (points/links) of the current session.                                                                                                                     |
+| `liveSessions`             | The number of live `GraphSession`s; exactly `1` once a dataset is loaded, and `0` before the first load.                                                                                                |
+| `duckdbTables`             | The `atlas_live_*` DuckDB tables the current live session owns, sorted; a switched-away session's tables are dropped and never listed.                                                                  |
+| `renderLinks`              | Whether the renderer draws the current dataset's links (see "SwiftShader link rendering"): `false` above the 10,000-link budget.                                                                        |
 | `overlay`                  | `{ name, revision }` of the active node-colour overlay (`"structure"` in this slice).                                                                                                                   |
 | `counts`                   | `{ points, links, files, symbols, directories, defines, imports, calls, parent }`, or `null` before load.                                                                                               |
 | `hovered`                  | The hovered point's identity (`domain:localId`, e.g. `file:2`), or `null`.                                                                                                                              |
 | `hoveredIndex`             | The hovered point's row index, or `null`.                                                                                                                                                               |
 | `highlighted`              | `{ points: string[], links: number[] }`: the set the renderer presently emphasises — the hovered point's neighbourhood unioned with the pinned selection's, under the active relation filter and depth. |
-| `camera`                   | `{ zoom }` of the renderer, updated on zoom (null until the first fit).                                                                                                                                 |
+| `camera`                   | `{ zoom }` of the renderer, updated on zoom and refit on a dataset switch (null until the first fit).                                                                                                   |
 | `selected`                 | The pinned selection's identities (`domain:localId`), ascending; empty when nothing is pinned.                                                                                                          |
 | `relationFilter`           | The enabled relation names, in canonical order (e.g. `["defines","imports","calls","parent"]`).                                                                                                         |
 | `filterRevision`           | Monotonic counter bumped on every relation-filter change; never on an overlay or topology change.                                                                                                       |
 | `depth`                    | The active neighbourhood depth (1..3).                                                                                                                                                                  |
-| `perf`                     | Build timings in milliseconds (`duckDbMs`, `projectionMs`, `insertMs`, …).                                                                                                                              |
+| `perf`                     | Build timings in milliseconds (`duckDbMs`, `manifestMs`, `loadMs`, `insertMs`, …).                                                                                                                      |
 | `buildRevision`            | The baked build revision (`__ATLAS_BUILD_REVISION__`): the deployed commit on a deployed bundle, the placeholder `__ATLAS_LIVE_BUILD_REVISION__` on a plain Bazel build.                                |
-| `error`                    | A boot error message, or `null`.                                                                                                                                                                        |
+| `error`                    | The current error message (a failed load names the dataset), or `null`.                                                                                                                                 |
 | `screenPositionOf(index)`  | Viewport `[x, y]` of a point's centre, or `null` if it cannot be computed. Used to aim the real mouse.                                                                                                  |
 | `pointWithIncidentLinks()` | A point index with at least one incident link, or `null` if none. Used to pick a hover target deterministically.                                                                                        |
+| `pointIdOf(index)`         | The identity (`domain:localId`) of the point at a renderer index, or `null`.                                                                                                                            |
+| `pointCount()`             | The number of points in the loaded graph (`0` before load).                                                                                                                                             |
 
 ## Selection, filters and depth
 
