@@ -47,6 +47,7 @@ nix develop --command bazel test //web/atlas-live/... --config=buildbuddy-rbe
 | `//web/atlas-live:oxfmt_test`           | `oxfmt --check` over all packages and root configs      |
 | `//web/atlas-live/<pkg>:typecheck_test` | TypeScript 7 no-emit (or declaration-only) typecheck    |
 | `//web/atlas-live/<pkg>:unit_test`      | `vitest run` (projection, protocol, app)                |
+| `//web/atlas-live/projection:data_test` | Validates `projection:data` against `ATLAS_WORLDS`      |
 
 ## Formatting
 
@@ -115,6 +116,27 @@ satisfied.
 
 Suppress a rule only on one line, name the rule, and give the reason:
 `// oxlint-disable-next-line typescript/no-unsafe-assignment -- <reason>`.
+
+## Projected world data
+
+`//web/atlas-live/projection:data` projects all 78 census worlds (the `ATLAS_WORLDS`
+list from `experiments/atlas-swe-explore/census/census.bzl`) into a content-addressed
+tree:
+
+```sh
+nix develop --command bazel build //web/atlas-live/projection:data --config=buildbuddy-rbe
+```
+
+A Node CLI (`projection/src/cli.ts`, run through `js_run_binary`) stages each world's
+Parquet via `copy_to_directory` from `//.attune/repository-world-v1/<digest>:world`,
+projects it with `projectWorld`, and writes `data/<digest>/{metadata,entities,relations}.parquet`
+(plus `locations.parquet` when a locations table is available) and a top-level
+`manifest.json`. The manifest lists every world sorted by snapshot id with
+`{snapshotId, snapshotDigest, repository, baseRevision, counts, assets, sha256}`; counts
+satisfy `points = files + symbols + directories` with
+`directories = parent - files + 1`, and `links = defines + imports + calls + parent`.
+`//web/atlas-live/projection:data_test` re-checks the manifest against `ATLAS_WORLDS`,
+the shipped metadata tables, and the file hashes.
 
 ## Telemetry
 

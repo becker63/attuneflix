@@ -1,3 +1,6 @@
+load("@aspect_rules_js//js:defs.bzl", "js_binary", "js_run_binary", "js_test")
+load("@bazel_lib//lib:copy_to_directory.bzl", "copy_to_directory")
+load("//experiments/atlas-swe-explore/census:census.bzl", "ATLAS_WORLDS")
 load("//web/atlas-live:defs.bzl", "atlas_ts_package")
 
 # React-free: runs under Node in Bazel and in the browser (enforced by .oxlintrc.json).
@@ -5,7 +8,72 @@ atlas_ts_package(
     declarations = True,
     npm_deps = [
         "@types/node",
+        "apache-arrow",
         "hyparquet",
         "vitest",
     ],
+    test_data = [":axios_world"],
+    test_env = {"WORLD_ROOT": "axios_world"},
+)
+
+# The smallest real world (axios/axios), for the round-trip unit tests.
+copy_to_directory(
+    name = "axios_world",
+    srcs = ["//.attune/repository-world-v1/1e44a1c45ec4a91bb7774dc6d37a2846a5f56262b6fa7ae5722bcbcc15ba10c7:world"],
+    root_paths = [".attune/repository-world-v1"],
+)
+
+# All 78 frozen worlds, staged as <digest>/{metadata,entities,relations}.parquet.
+copy_to_directory(
+    name = "worlds",
+    srcs = ATLAS_WORLDS,
+    root_paths = [".attune/repository-world-v1"],
+)
+
+# The 78 expected snapshot digests, one per line, derived from ATLAS_WORLDS.
+genrule(
+    name = "expected_worlds",
+    outs = ["expected_worlds.txt"],
+    cmd = "printf '%s\\n' " + " ".join(sorted([
+        label.split("/")[-1].split(":")[0]
+        for label in ATLAS_WORLDS
+    ])) + " > $@",
+)
+
+# Node CLI: projects and validates every staged world, copies the Parquet inputs
+# into data/<digest>/, and writes manifest.json. Node 24 strips the TypeScript
+# types natively, so the same sources run here, in Vitest, and in the browser.
+js_binary(
+    name = "project_cli",
+    data = [":srcs"],
+    entry_point = "src/cli.ts",
+)
+
+js_run_binary(
+    name = "data",
+    srcs = [":worlds"],
+    args = [
+        "--worlds",
+        "worlds",
+        "--out",
+        "data",
+    ],
+    chdir = package_name(),
+    out_dirs = ["data"],
+    tool = ":project_cli",
+    visibility = ["//visibility:public"],
+)
+
+# Validates manifest.json against ATLAS_WORLDS, the metadata Parquet of every
+# shipped world, and the sha256 of every shipped file (VAL-PROJ-010).
+js_test(
+    name = "data_test",
+    chdir = package_name(),
+    data = [
+        ":data",
+        ":expected_worlds",
+        ":srcs",
+    ],
+    entry_point = "test/data_check.ts",
+    size = "small",
 )
