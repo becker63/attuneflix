@@ -74,8 +74,8 @@ cross-stage invalidation count.
 | analyzed / test targets | 492 / 30 | 495 / 31 | 510 / 35 | 526 / 38 | **575 / 44** |
 | `cross_stage_test_invalidation` (primary) | 59 | 60 | 151 | **275** | **253** (−8.0%) |
 | `cross_stage_test_invalidation_all_tests` | 260 | 261 | 409 | 686 | 664 (−3.2%) |
-| `mutable_cross_stage_edges` (`_dagref`, §16) | 30 | 31 | 41 | 78 | **60** |
-| `cross_stage_test_invalidation` (`_dagref`, §16) | 59 | 60 | 151 | 275 | **173** |
+| `mutable_cross_stage_edges` (`_dagref`, §16) | 30 | 30 | 39 | 60 | **60** |
+| `cross_stage_test_invalidation` (`_dagref`, §16) | 59 | 59 | 148 | 239 | **173** |
 | task conflict graph edges | 4 | 4 | 3 | 2 | 2 |
 | `T1` / `T∞` / `critical_path_fraction` | 4 / 3 / 0.7500 | 4 / 3 / 0.7500 | 4 / 2 / 0.5000 | 4 / 2 / 0.5000 | 4 / 2 / 0.5000 |
 

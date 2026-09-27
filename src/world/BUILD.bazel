@@ -4,8 +4,9 @@
 # admitted-world vocabulary (`World`), the deterministic admission and call
 # indexing (`World.Admission`, `World.CallIndex`), the per-language reference
 # rules (`World.Language.*`), the readable Datalog meaning the evaluator
-# interprets (`Repository.Structure`), and the two table-facing seams
-# (`Repository.Reference`, `Repository.Table`).
+# interprets (`Repository.Structure`), the two table-facing seams
+# (`Repository.Reference`, `Repository.Table`), and the low-level native Grit
+# dispatch seam (`Repository.Acquire`).
 #
 # `Repository.flix` is the empty `mod Repository {}` parent anchor kept for the
 # Datalog meaning; the admission logic itself lives in the World modules.
@@ -24,6 +25,20 @@ filegroup(
     srcs = [
         ":anchor",
         "//src:Repository/Grit.flix",
+    ],
+)
+
+# The low-level native Grit dispatch seam (`Repository.Acquire.evaluate`): the
+# one repository entry point that reaches the native engine directly, retained
+# for the frozen acquisition instrument and the typed Stage 1 node
+# (`//src/stage/acquire`) that drives the same engine through `eff Grit`.
+# `Repository/Acquire.flix` was left with no stage owner when the monolithic
+# `//src:flix_sources` catalog was retired, so it was counted by no LOC slice.
+filegroup(
+    name = "acquire",
+    srcs = [
+        ":grit",
+        "//src:Repository/Acquire.flix",
     ],
 )
 
@@ -58,6 +73,7 @@ filegroup(
 filegroup(
     name = "flix_sources",
     srcs = [
+        ":acquire",
         ":admission",
         "//src:Repository/Reference.flix",
         "//src:Repository/Table.flix",

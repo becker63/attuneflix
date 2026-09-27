@@ -14,7 +14,8 @@ filegroup(
 )
 
 # The World cell's slice of the Flix LOC law (VAL-METRIC-002): the admitted-world
-# implementation, the typed Acquire/World stage nodes, and this cell's laws.
+# implementation, the native acquisition seam, the typed Acquire/World stage
+# nodes, and this cell's laws.
 flix_loc_law(
     name = "flix_loc_law_test",
     srcs = [
@@ -77,14 +78,12 @@ checked_test(
 # The low-level native Grit dispatch seam (`Repository.Acquire.evaluate`) is
 # retained for the frozen acquisition instrument and needs the native engine, so
 # it stays a `check`-only native target; the typed stage above it is what carries
-# the behaviour.
+# the behaviour. It reads the seam through its owning stage package
+# (`//src/world:acquire`), not the raw `//src` file labels, so the source is
+# declared by exactly one stage package.
 flix_check(
     name = "acquire_seam_check",
-    srcs = [
-        "//src:Repository.flix",
-        "//src:Repository/Grit.flix",
-        "//src:Repository/Acquire.flix",
-    ],
+    srcs = ["//src/world:acquire"],
     command = "check",
     java_deps = ["//src/native/grit:attune_grit"],
     threads = 2,
