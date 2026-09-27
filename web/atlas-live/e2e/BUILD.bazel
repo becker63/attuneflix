@@ -1,3 +1,4 @@
+load("@npm//web/atlas-live:@playwright/test/package_json.bzl", playwright_bin = "bin")
 load("//web/atlas-live:defs.bzl", "atlas_ts_package")
 
 # Playwright specs and helpers (typechecked; browsers come from the RBE container image).
@@ -8,4 +9,34 @@ atlas_ts_package(
         "@types/node",
     ],
     unit_test = False,
+)
+
+# Serves //web/atlas-live:static locally inside the action and drives the real
+# WebGL canvas. The browser and its system libraries come from the remote
+# Playwright container image, so this test only runs under --config=buildbuddy-rbe.
+playwright_bin.playwright_test(
+    name = "e2e_test",
+    args = [
+        "test",
+        "--config",
+        "playwright.config.mjs",
+    ],
+    chdir = package_name(),
+    data = [
+        "playwright.config.mjs",
+        ":srcs",
+        ":test_srcs",
+        "//web/atlas-live:node_modules/@playwright/test",
+        "//web/atlas-live:serve_mjs",
+        "//web/atlas-live:static",
+    ],
+    env = {
+        "PLAYWRIGHT_BROWSERS_PATH": "/ms-playwright",
+    },
+    exec_properties = {
+        # The "test." prefix scopes the image to the test action (not its copy actions).
+        "test.container-image": "docker://mcr.microsoft.com/playwright:v1.63.0-noble",
+    },
+    size = "large",
+    timeout = "long",
 )

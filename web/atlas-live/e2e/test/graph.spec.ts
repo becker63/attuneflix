@@ -1,0 +1,169 @@
+import fs from "node:fs";
+import path from "node:path";
+import { expect, test } from "@playwright/test";
+
+import { isSameOrigin } from "../src/origin.ts";
+
+/** The subset of the diagnostics hook this spec reads (field list in the app README). */
+interface AtlasLiveHook {
+  ready: boolean;
+  snapshotId: string | null;
+  counts: {
+    points: number;
+    links: number;
+    files: number;
+    symbols: number;
+    directories: number;
+    defines: number;
+    imports: number;
+    calls: number;
+    parent: number;
+  } | null;
+  hovered: string | null;
+  hoveredIndex: number | null;
+  highlighted: { points: string[]; links: number[] };
+  camera: { zoom: number | null };
+  buildRevision: string;
+  screenPositionOf(index: number): [number, number] | null;
+  pointWithIncidentLinks(): number | null;
+}
+
+declare global {
+  interface Window {
+    __atlasLive?: AtlasLiveHook;
+  }
+}
+
+interface WorldEntry {
+  snapshotId: string;
+  repository: string;
+  counts: { points: number; links: number };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isWorldsResponse(value: unknown): value is { worlds: WorldEntry[] } {
+  return isRecord(value) && Array.isArray(value.worlds);
+}
+
+const BACKGROUND = { r: 11, g: 13, b: 18 };
+
+test("default world renders non-blank, responds to hover, stays same-origin", async ({ page, browser }) => {
+  const consoleErrors: string[] = [];
+  const pageErrors: string[] = [];
+  const requests: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "error") consoleErrors.push(message.text());
+  });
+  page.on("pageerror", (error) => pageErrors.push(String(error)));
+  page.on("request", (request) => requests.push(request.url()));
+
+  await page.goto("/");
+  await page.waitForFunction(() => window.__atlasLive?.ready === true, null, { timeout: 90_000 });
+  await page.waitForTimeout(1000);
+
+  const hook = await page.evaluate(() => {
+    const live = window.__atlasLive;
+    return {
+      snapshotId: live?.snapshotId ?? null,
+      counts: live?.counts ?? null,
+      buildRevision: live?.buildRevision ?? null,
+    };
+  });
+  expect(hook.snapshotId).not.toBeNull();
+
+  const manifestResponse = await page.request.get("/manifest.json");
+  expect(manifestResponse.ok()).toBe(true);
+  const manifestValue: unknown = await manifestResponse.json();
+  if (!isWorldsResponse(manifestValue)) throw new Error("manifest.json has an unexpected shape");
+  const manifest = manifestValue;
+  const entry = manifest.worlds.find((world) => world.snapshotId === hook.snapshotId);
+  expect(entry, `manifest entry for ${hook.snapshotId}`).toBeTruthy();
+  expect(hook.counts?.points).toBe(entry?.counts.points);
+  expect(hook.counts?.links).toBe(entry?.counts.links);
+
+  const gl = await page.evaluate(() => {
+    for (const canvas of document.querySelectorAll("canvas")) {
+      const context = canvas.getContext("webgl2");
+      if (context === null) continue;
+      const info = context.getExtension("WEBGL_debug_renderer_info");
+      const rect = canvas.getBoundingClientRect();
+      return {
+        canvases: document.querySelectorAll("canvas").length,
+        renderer: info === null ? null : String(context.getParameter(info.UNMASKED_RENDERER_WEBGL)),
+        rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+      };
+    }
+    return { canvases: document.querySelectorAll("canvas").length, renderer: null, rect: null };
+  });
+  expect(gl.rect, "a WebGL2 canvas is present").not.toBeNull();
+  const rect = gl.rect;
+
+  const outputs = process.env.TEST_UNDECLARED_OUTPUTS_DIR;
+  const png = await page.screenshot({ clip: rect ?? undefined });
+  if (outputs !== undefined) fs.writeFileSync(path.join(outputs, "load.png"), png);
+
+  const pixels = await page.evaluate(
+    async ({ base64, background }) => {
+      const image = new Image();
+      image.src = `data:image/png;base64,${base64}`;
+      await image.decode();
+      const canvas = document.createElement("canvas");
+      canvas.width = image.width;
+      canvas.height = image.height;
+      const context = canvas.getContext("2d");
+      if (context === null) throw new Error("no 2d context");
+      context.drawImage(image, 0, 0);
+      const data = context.getImageData(0, 0, canvas.width, canvas.height).data;
+      const colours = new Set<string>();
+      let painted = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i] ?? 0;
+        const g = data[i + 1] ?? 0;
+        const b = data[i + 2] ?? 0;
+        colours.add(`${r},${g},${b}`);
+        const delta = Math.abs(r - background.r) + Math.abs(g - background.g) + Math.abs(b - background.b);
+        if (delta > 24) painted++;
+      }
+      return { painted, total: data.length / 4, colours: colours.size };
+    },
+    { base64: png.toString("base64"), background: BACKGROUND },
+  );
+
+  expect(pixels.painted / pixels.total, "more than 1% of pixels painted").toBeGreaterThan(0.01);
+  expect(pixels.colours, "more than 50 distinct colours").toBeGreaterThan(50);
+
+  const target = await page.evaluate(() => {
+    const live = window.__atlasLive;
+    const index = live?.pointWithIncidentLinks() ?? null;
+    if (index === null || live === undefined) return null;
+    return { index, position: live.screenPositionOf(index) };
+  });
+  expect(target?.position, "a point's screen position").toBeTruthy();
+  const position = target?.position;
+  await page.mouse.move(position?.[0] ?? 0, position?.[1] ?? 0);
+  await expect
+    .poll(async () => page.evaluate(() => window.__atlasLive?.hovered ?? null), { timeout: 10_000 })
+    .not.toBeNull();
+
+  const highlighted = await page.evaluate(() => window.__atlasLive?.highlighted ?? null);
+  expect(highlighted?.points.length ?? 0).toBeGreaterThan(1);
+  expect(highlighted?.links.length ?? 0).toBeGreaterThan(0);
+
+  const hoverPng = await page.screenshot();
+  if (outputs !== undefined) fs.writeFileSync(path.join(outputs, "hover.png"), hoverPng);
+
+  // Move off the graph (into the header) to clear the hover.
+  await page.mouse.move(4, 4);
+  await expect
+    .poll(async () => page.evaluate(() => window.__atlasLive?.hovered ?? null), { timeout: 10_000 })
+    .toBeNull();
+
+  const external = requests.filter((url) => !isSameOrigin(url));
+  expect(external, "every request is same-origin").toEqual([]);
+  expect(consoleErrors, "no console errors").toEqual([]);
+  expect(pageErrors, "no page errors").toEqual([]);
+  expect(browser.version()).not.toBe("");
+});

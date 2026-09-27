@@ -9,6 +9,7 @@
   "options": { "typeAware": true },
   "ignorePatterns": ["**/node_modules/**", "**/dist/**"],
   "rules": {
+    "no-underscore-dangle": ["error", { "allow": ["__atlasLive", "__ATLAS_BUILD_REVISION__"] }],
     "import/no-cycle": "error",
     "import/no-self-import": "error",
     "import/no-duplicates": "error",

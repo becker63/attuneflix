@@ -62,4 +62,31 @@ describe("Arrow table builder", () => {
     expect(links.getChild("sourceDomain")?.get(6)).toBe("symbol");
     expect(links.getChild("sourceId")?.get(6)).toBe(1);
   });
+
+  it("carries namespaced source/target ids for the renderer validator", () => {
+    const source = links.getChild("source");
+    const target = links.getChild("target");
+    for (let i = 0; i < graph.linkCount; i++) {
+      const sourceIndex = graph.linkSourceIndices[i] ?? -1;
+      const targetIndex = graph.linkTargetIndices[i] ?? -1;
+      expect(source?.get(i)).toBe(graph.pointIds[sourceIndex]);
+      expect(target?.get(i)).toBe(graph.pointIds[targetIndex]);
+    }
+  });
+
+  it("adds x/y point columns only when a layout is supplied", () => {
+    expect(points.getChild("x")).toBeNull();
+    const layout = new Float32Array(graph.pointCount * 2);
+    for (let i = 0; i < graph.pointCount; i++) {
+      layout[i * 2] = i + 0.5;
+      layout[i * 2 + 1] = -i - 0.25;
+    }
+    const withLayout = buildViewerArrow(graph, { xy: layout });
+    const x = withLayout.points.getChild("x");
+    const y = withLayout.points.getChild("y");
+    for (let i = 0; i < graph.pointCount; i++) {
+      expect(x?.get(i)).toBeCloseTo(i + 0.5);
+      expect(y?.get(i)).toBeCloseTo(-i - 0.25);
+    }
+  });
 });

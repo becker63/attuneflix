@@ -1,4 +1,6 @@
+load("@aspect_rules_js//js:defs.bzl", "js_binary", "js_library")
 load("@aspect_rules_ts//ts:defs.bzl", "ts_config")
+load("@bazel_lib//lib:copy_to_directory.bzl", "copy_to_directory")
 load("@npm//:defs.bzl", "npm_link_all_packages")
 load("@npm//web/atlas-live:oxfmt/package_json.bzl", oxfmt_bin = "bin")
 load("@npm//web/atlas-live:oxlint/package_json.bzl", oxlint_bin = "bin")
@@ -9,7 +11,16 @@ package(default_visibility = ["//web/atlas-live:__subpackages__"])
 # their npm deps from this node_modules tree.
 npm_link_all_packages(name = "node_modules")
 
-exports_files(["package.json"])
+exports_files(["package.json", "serve.mjs"])
+
+# The static server, shared by `:preview` and the Playwright e2e run. It must be
+# a js_library so the e2e package can depend on it (rules_js copies source files
+# only from their own package).
+js_library(
+    name = "serve_mjs",
+    srcs = ["serve.mjs"],
+    visibility = ["//visibility:public"],
+)
 
 ts_config(
     name = "tsconfig_base",
@@ -76,6 +87,7 @@ test_suite(
         ":oxlint_test",
         "//web/atlas-live/app:typecheck_test",
         "//web/atlas-live/app:unit_test",
+        "//web/atlas-live/e2e:e2e_test",
         "//web/atlas-live/e2e:typecheck_test",
         "//web/atlas-live/projection:data_test",
         "//web/atlas-live/projection:typecheck_test",
@@ -84,4 +96,30 @@ test_suite(
         "//web/atlas-live/protocol:unit_test",
     ],
     visibility = ["//visibility:public"],
+)
+
+# The built bundle (app dist) plus the content-addressed world data and
+# manifest.json, as one static root. `:vercel_output` wraps this later; `:preview`
+# and the e2e test serve it directly.
+copy_to_directory(
+    name = "static",
+    srcs = [
+        "//web/atlas-live/app:dist",
+        "//web/atlas-live/projection:data",
+    ],
+    root_paths = [
+        "web/atlas-live/app/dist",
+        "web/atlas-live/projection/data",
+    ],
+)
+
+# `bazel run --script_path=/tmp/atlas-live-preview.sh //web/atlas-live:preview`
+# then `/tmp/atlas-live-preview.sh --port 4173`. Serves the built static output.
+js_binary(
+    name = "preview",
+    data = [
+        ":static",
+        "serve.mjs",
+    ],
+    entry_point = "serve.mjs",
 )

@@ -144,11 +144,56 @@ the shipped metadata tables, and the file hashes.
 `.bazelrc` with `--repo_env=ASPECT_TOOLS_TELEMETRY=-all`. An empty value does not disable
 it.
 
+## Default world
+
+The app loads one default world from the bundled `projection:data` tree. The choice is
+fixed in `app/src/world.ts` (`DEFAULT_REPOSITORY = "preactjs/preact"`) and resolved at
+runtime by `chooseDefaultWorld`: it fetches `manifest.json`, keeps the worlds whose
+`repository` matches, and picks the one with the fewest `points` (ties broken by
+`snapshotId`). Among the preact worlds the smallest is
+`repository-snapshot-v1:6e2bef41bf19…` (`preactjs/preact@b17a9323`, 1875 points /
+2683 links) — a real census world, small enough that the whole graph is legible on one
+screen and the browser session stays fast. No synthetic data is used.
+
 ## `window.__atlasLive`
 
 `window.__atlasLive` is the read-only diagnostics hook for Playwright and agent-browser. It
-never contains secrets. Fields are documented here as they are added:
+never contains secrets and never mutates app state; every field is a live getter, so a
+reader always sees the current value. It is installed by `app/src/main.tsx` before the
+session boots and populated through `app/src/diagnostics.ts`.
 
-| Field      | Meaning |
-| ---------- | ------- |
-| (none yet) |         |
+| Field                      | Meaning                                                                                                                        |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `ready`                    | `true` once the renderer has rebuilt the graph for the current session.                                                        |
+| `snapshotId`               | The projected world's content-addressed snapshot id (matches `manifest.json`).                                                 |
+| `dataset`                  | `{ repository, baseRevision, synthetic }` of the loaded world, or `null`.                                                      |
+| `sessionRevision`          | Monotonic counter, bumped whenever a new graph replaces the current one.                                                       |
+| `topologyRevision`         | Monotonic counter for the projected topology (points/links) of the current session.                                            |
+| `overlay`                  | `{ name, revision }` of the active node-colour overlay (`"structure"` in this slice).                                          |
+| `counts`                   | `{ points, links, files, symbols, directories, defines, imports, calls, parent }`, or `null` before load.                      |
+| `hovered`                  | The hovered point's identity (`domain:localId`, e.g. `file:2`), or `null`.                                                     |
+| `hoveredIndex`             | The hovered point's row index, or `null`.                                                                                      |
+| `highlighted`              | `{ points: string[], links: number[] }`: identities of the hovered node and its neighbours, and the indices of incident links. |
+| `camera`                   | `{ zoom }` of the renderer, updated on zoom (null until the first fit).                                                        |
+| `perf`                     | Build timings in milliseconds (`duckDbMs`, `projectionMs`, `insertMs`, …).                                                     |
+| `buildRevision`            | The baked build revision (`__ATLAS_BUILD_REVISION__`), `"dev"` outside a tagged build.                                         |
+| `error`                    | A boot error message, or `null`.                                                                                               |
+| `screenPositionOf(index)`  | Viewport `[x, y]` of a point's centre, or `null` if it cannot be computed. Used to aim the real mouse.                         |
+| `pointWithIncidentLinks()` | A point index with at least one incident link, or `null` if none. Used to pick a hover target deterministically.               |
+
+## Preview
+
+`//web/atlas-live:preview` serves the built static tree (`//web/atlas-live:static`) on
+`127.0.0.1:4173`:
+
+```sh
+source /etc/profile.d/nix.sh
+nix develop --command bazel run --config=buildbuddy-rbe \
+  --script_path=/tmp/atlas-live-preview.sh //web/atlas-live:preview
+/tmp/atlas-live-preview.sh --port 4173
+```
+
+The static server (`serve.mjs`) defaults its root to the sibling `static/` directory, so
+the run script needs no arguments. `//web/atlas-live/e2e:e2e_test` reuses the same server
+inside the Playwright noble container (`test.container-image`), runs Chromium against
+SwiftShader software WebGL, and drives a real mouse over a real point.

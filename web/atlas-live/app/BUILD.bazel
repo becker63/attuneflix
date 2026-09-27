@@ -1,17 +1,65 @@
+load("@aspect_rules_js//js:defs.bzl", "js_library")
+load("@npm//web/atlas-live:vite/package_json.bzl", vite_bin = "bin")
 load("//web/atlas-live:defs.bzl", "atlas_ts_package")
 
+# Runtime + typecheck npm deps of the app.
+NPM_DEPS = [
+    "@base-ui/react",
+    "@cosmograph/react",
+    "@duckdb/duckdb-wasm",
+    "@stylexjs/stylex",
+    "@types/react",
+    "@types/react-dom",
+    "apache-arrow",
+    "hyparquet",
+    "jotai",
+    "react",
+    "react-dom",
+    "vite",
+    "vitest",
+]
+
+# Extra packages only the Vite build needs (transpile, React Compiler, StyleX).
+VITE_DEPS = [
+    "@babel/core",
+    "@rolldown/plugin-babel",
+    "@stylexjs/unplugin",
+    "@vitejs/plugin-react",
+    "babel-plugin-react-compiler",
+    "unplugin",
+]
+
 atlas_ts_package(
-    npm_deps = [
-        "@stylexjs/stylex",
-        "@types/react",
-        "@types/react-dom",
-        "react",
-        "react-dom",
-        "vite",
-        "vitest",
-    ],
+    npm_deps = NPM_DEPS,
     packages = [
         "projection",
         "protocol",
     ],
+)
+
+# Everything the bundler reads: the app sources and entry, plus the projection
+# and protocol sources it imports through relative paths.
+js_library(
+    name = "app_srcs",
+    srcs = glob(["src/**/*.ts", "src/**/*.tsx"]) + [
+        "index.html",
+        "vite.config.mjs",
+    ],
+    deps = ["//web/atlas-live:node_modules/%s" % dep for dep in NPM_DEPS + VITE_DEPS] + [
+        "//web/atlas-live/projection:srcs",
+        "//web/atlas-live/protocol:srcs",
+    ],
+)
+
+vite_bin.vite(
+    name = "dist",
+    srcs = [":app_srcs"],
+    args = [
+        "build",
+        "--configLoader",
+        "native",
+    ],
+    chdir = package_name(),
+    out_dirs = ["dist"],
+    visibility = ["//web/atlas-live:__subpackages__"],
 )
