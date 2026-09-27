@@ -16,6 +16,8 @@ exports_files([
     "Radii/Evaluate.flix",
     "Radii/Synthesize.flix",
     "Repository.flix",
+    "Repository/Location.flix",
+    "Repository/Location/Table.flix",
     "Repository/Acquire.flix",
     "Repository/Physical.flix",
     "Repository/Reference.flix",
@@ -25,3 +27,14 @@ exports_files([
     "ScientificTable.flix",
     "ScientificTable/Columns.flix",
 ])
+
+# Every tracked `src/` Flix source, for the root LOC law (VAL-LOC-007). `**`
+# skips subpackages, which carry no Flix sources.
+filegroup(
+    name = "flix_sources",
+    srcs = glob([
+        "*.flix",
+        "**/*.flix",
+    ]),
+    visibility = ["//:__pkg__"],
+)

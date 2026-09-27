@@ -7,6 +7,13 @@ load("//test/build:flix.bzl", "checked_test", "flix_check")
 
 package(default_visibility = ["//visibility:public"])
 
+# Cell C's own Flix law sources, for the root LOC law (VAL-LOC-007).
+filegroup(
+    name = "flix_sources",
+    srcs = glob(["*.flix"]),
+    visibility = ["//:__pkg__"],
+)
+
 flix_check(
     name = "localization_sandwich_check",
     srcs = [

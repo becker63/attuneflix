@@ -5,6 +5,40 @@ java_binary(
     runtime_deps = ["@flix_compiler//jar"],
 )
 
+# The Flix LOC law (VAL-LOC-007): the combined code-line total of every tracked
+# `src/` and `test/` Flix source stays strictly below 4,800 and no single file
+# exceeds 400 code lines. Fails if `src/Repository.flix` grows past its
+# refactor baseline. Covered by `bazel test //...` and by `./verify`.
+genrule(
+    name = "flix_loc_files",
+    srcs = [
+        "//src:flix_sources",
+        "//test:flix_law_sources",
+        "//test/Applications:flix_sources",
+        "//test/Engine:flix_sources",
+        "//test/Kernel:flix_sources",
+        "//test/World:flix_sources",
+    ],
+    outs = ["flix_loc_files.txt"],
+    cmd = "for f in $(SRCS); do echo \"$$f\"; done > $@",
+)
+
+sh_test(
+    name = "flix_loc_law_test",
+    size = "small",
+    srcs = ["flix_loc_law.sh"],
+    data = [
+        ":flix_loc_files",
+        "//src:flix_sources",
+        "//test:flix_law_sources",
+        "//test/Applications:flix_sources",
+        "//test/Engine:flix_sources",
+        "//test/Kernel:flix_sources",
+        "//test/World:flix_sources",
+        "@bazel_tools//tools/bash/runfiles",
+    ],
+)
+
 # Aggregation only: every law is owned by its cell's suite (`//test/World`,
 # `//test/Engine`, `//test/Applications`, `//test/Kernel`) or by the Research
 # cell (`//experiments/atlas-work-topology`). This target adds no ownership of

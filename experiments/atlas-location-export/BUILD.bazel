@@ -1,0 +1,40 @@
+load("//test/build:flix.bzl", "flix_fatjar")
+
+package(default_visibility = ["//visibility:public"])
+
+# The location exporter. It reuses ordinary Repository admission and the single
+# directory-prefix owner (`Repository.Location`), writes one typed
+# `locations.parquet` per world, and declares no other tool or grammar.
+flix_fatjar(
+    name = "locations_flix",
+    srcs = [
+        "Main.flix",
+        "//src:Experiment.flix",
+        "//src:Repository.flix",
+        "//src:Repository/Grit.flix",
+        "//src:Repository/Location.flix",
+        "//src:Repository/Location/Table.flix",
+        "//src:Repository/Structure.flix",
+        "//src:Repository/Table.flix",
+        "//src:ScientificIdentity.flix",
+        "//src:ScientificTable.flix",
+        "//src:ScientificTable/Columns.flix",
+    ],
+    java_deps = [
+        "//src/native/identity:attune_identity",
+        "//src/native/parquet:attune_parquet",
+    ],
+    threads = 2,
+)
+
+java_binary(
+    name = "locations_tool",
+    jvm_flags = [
+        "--add-opens=java.base/java.nio=ALL-UNNAMED",
+        "--enable-native-access=ALL-UNNAMED",
+        "-Xss8m",
+    ],
+    main_class = "Main",
+    runtime_deps = [":locations_flix"],
+    visibility = ["//visibility:public"],
+)

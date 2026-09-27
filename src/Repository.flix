@@ -64,7 +64,7 @@ mod Repository {
             defines = defines,
             imports = imported#edges,
             calls = called#edges,
-            parents = parentEdges(paths),
+            parents = Repository.Location.parentEdges(paths),
             unresolvedImports = imported#rejected,
             unresolvedCalls = called#rejected
         }
@@ -144,7 +144,7 @@ mod Repository {
                 if (not String.startsWith(prefix = ".", specifier))
                     None
                 else {
-                    let base = normalizePath(joinPath(directory(fact#path), specifier));
+                    let base = normalizePath(joinPath(Repository.Location.directory(fact#path), specifier));
                     Vector.findMap(candidate -> Map.get(candidate, files), importCandidates(base))
                 }
             }
@@ -344,48 +344,6 @@ mod Repository {
     def simpleName(callee: String): String = match String.indexOfRight(substr = ".", callee) {
         case None => callee
         case Some(index) => String.sliceRight(start = index + 1, callee)
-    }
-
-    def parentEdges(paths: Vector[String]): Repository.Structure.Parents = {
-        let directories = Vector.foldLeft(
-            (known, path) -> Set.union(known, directoryPrefixes(directory(path))),
-            Set.singleton(""),
-            paths
-        ) |> Set.toVector |> Vector.sort;
-        let offset = Vector.length(paths);
-        let identities = Vector.mapWithIndex(
-            (index, path) -> (path, Repository.Structure.LocationId.LocationId(offset + index)),
-            directories
-        ) |> Vector.toMap;
-        let fileParents = Vector.mapWithIndex((index, path) ->
-            (Repository.Structure.LocationId.LocationId(index), Option.getWithDefault(
-                Repository.Structure.LocationId.LocationId(0),
-                Map.get(directory(path), identities)
-            )), paths);
-        let directoryParents = Vector.filterMap(path ->
-            if (path == "") None
-            else forM (
-                child <- Map.get(path, identities);
-                parent <- Map.get(directory(path), identities)
-            ) yield (child, parent),
-            directories);
-        Vector.append(fileParents, directoryParents) |> Vector.toSet
-    }
-
-    def directoryPrefixes(path: String): Set[String] =
-        prefixes(String.splitOn(substr = "/", path), "", Set.singleton(""))
-
-    def prefixes(parts: List[String], current: String, result: Set[String]): Set[String] = match parts {
-        case Nil => result
-        case "" :: rest => prefixes(rest, current, result)
-        case part :: rest =>
-            let next = if (current == "") part else current + "/" + part;
-            prefixes(rest, next, Set.insert(next, result))
-    }
-
-    def directory(path: String): String = match String.indexOfRight(substr = "/", path) {
-        case None => ""
-        case Some(index) => String.sliceLeft(end = index, path)
     }
 
     def joinPath(left: String, right: String): String =

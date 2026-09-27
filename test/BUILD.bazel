@@ -55,6 +55,16 @@ exports_files([
     "TestWorlds.flix",
 ])
 
+# The two horizontal-surface Flix sources, for the root LOC law (VAL-LOC-007).
+filegroup(
+    name = "flix_law_sources",
+    srcs = [
+        "Repository.flix",
+        "TestWorlds.flix",
+    ],
+    visibility = ["//:__pkg__"],
+)
+
 # World — the reduced relational surface (`Repository/Structure.flix` compiles
 # against a declared parent module) and the full admission surface.
 filegroup(
@@ -76,6 +86,7 @@ filegroup(
         ":world_structure_law_sources",
         "//src:Repository.flix",
         "//src:Repository/Grit.flix",
+        "//src:Repository/Location.flix",
     ],
 )
 

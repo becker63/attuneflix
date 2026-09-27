@@ -12,6 +12,14 @@ AttuneWorldInfo = provider(
     },
 )
 
+AttuneLocationInfo = provider(
+    doc = "One typed locations table for one admitted repository world.",
+    fields = {
+        "locations": "locations Parquet (location_id -> path, kind)",
+        "snapshot_id": "complete semantic snapshot identity",
+    },
+)
+
 AttuneSignatureInfo = provider(
     doc = "One exact Atlas signature shard for one admitted snapshot.",
     fields = {
@@ -152,6 +160,45 @@ attune_world_fixture = rule(
         "source_tree_identity": attr.string(mandatory = True),
         "fact_identity": attr.string(mandatory = True),
         "snapshot_id": attr.string(mandatory = True),
+        "tool": attr.label(executable = True, cfg = "exec", mandatory = True),
+    },
+)
+
+def _atlas_location_labels_impl(ctx):
+    world = ctx.attr.world[AttuneWorldInfo]
+    digest = world.snapshot_id.rpartition(":")[2]
+    locations = ctx.actions.declare_file(digest + "/locations.parquet")
+    args = ctx.actions.args()
+    for name, value in [
+        ("attune.command", "locations"),
+        ("attune.repository", world.repository),
+        ("attune.base_revision", world.base_revision),
+        ("attune.source_tree_identity", world.source_tree_identity),
+        ("attune.fact_identity", world.fact_identity),
+        ("attune.snapshot_id", world.snapshot_id),
+        ("attune.world_metadata", world.metadata.path),
+        ("attune.world_entities", world.entities.path),
+        ("attune.world_relations", world.relations.path),
+        ("attune.output_locations", locations.path),
+    ]:
+        args.add(_jvm_property(name, value))
+    ctx.actions.run(
+        executable = ctx.executable.tool,
+        arguments = [args],
+        inputs = [world.metadata, world.entities, world.relations],
+        outputs = [locations],
+        mnemonic = "LocationLabels",
+        progress_message = "Deriving location labels %{label}",
+    )
+    return [
+        DefaultInfo(files = depset([locations])),
+        AttuneLocationInfo(locations = locations, snapshot_id = world.snapshot_id),
+    ]
+
+attune_location_labels = rule(
+    implementation = _atlas_location_labels_impl,
+    attrs = {
+        "world": attr.label(providers = [AttuneWorldInfo], mandatory = True),
         "tool": attr.label(executable = True, cfg = "exec", mandatory = True),
     },
 )

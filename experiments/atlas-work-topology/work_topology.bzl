@@ -33,6 +33,7 @@ def attune_control_acquisition(name = "acquire"):
             "//experiments/atlas-parallelism:AcquisitionFacts.flix",
             "//src:Experiment.flix",
             "//src:Repository.flix",
+            "//src:Repository/Location.flix",
             "//src:Repository/Acquire.flix",
             "//src:Repository/Grit.flix",
             "//src:Repository/Structure.flix",

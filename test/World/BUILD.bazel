@@ -4,9 +4,16 @@
 # cells' laws (the `mod Repository {}` parent anchor and the `TestWorlds` a/b
 # world) live on the horizontal law surface (`//test`), not here, so no other
 # cell's law package reads into this one (Round 2).
-load("//test/build:flix.bzl", "checked_test", "flix_check")
+load("//test/build:flix.bzl", "checked_test", "flix_check", "flix_fatjar")
 
 package(default_visibility = ["//visibility:public"])
+
+# Cell A's own Flix law sources, for the root LOC law (VAL-LOC-007).
+filegroup(
+    name = "flix_sources",
+    srcs = glob(["*.flix"]),
+    visibility = ["//:__pkg__"],
+)
 
 flix_check(
     name = "repository_admission_check",
@@ -76,11 +83,73 @@ checked_test(
     check = ":repository_table_check",
 )
 
+# The locations table law (VAL-LOC-005): the declared schema and an exact
+# write/read round-trip through the typed Parquet seam. It runs in the World law
+# binary, which carries the Arrow JVM flags a `flix test` action does not.
+flix_fatjar(
+    name = "location_law_flix",
+    srcs = [
+        "LocationLaw.flix",
+        "LocationTableLaw.flix",
+        "//src:Experiment.flix",
+        "//src:Repository.flix",
+        "//src:Repository/Grit.flix",
+        "//src:Repository/Location.flix",
+        "//src:Repository/Location/Table.flix",
+        "//src:Repository/Structure.flix",
+        "//src:Repository/Table.flix",
+        "//src:ScientificIdentity.flix",
+        "//src:ScientificTable.flix",
+        "//src:ScientificTable/Columns.flix",
+    ],
+    java_deps = [
+        "//src/native/identity:attune_identity",
+        "//src/native/parquet:attune_parquet",
+    ],
+    threads = 2,
+)
+
+java_binary(
+    name = "location_law",
+    jvm_flags = [
+        "--add-opens=java.base/java.nio=ALL-UNNAMED",
+        "--enable-native-access=ALL-UNNAMED",
+        "-Xss8m",
+    ],
+    main_class = "Main",
+    runtime_deps = [":location_law_flix"],
+)
+
+sh_test(
+    name = "location_table_test",
+    size = "small",
+    srcs = ["location_table_test.sh"],
+    data = [
+        ":location_law",
+        "@bazel_tools//tools/bash/runfiles",
+    ],
+)
+
+sh_test(
+    name = "location_parity_test",
+    size = "large",
+    srcs = ["location_parity_test.sh"],
+    data = [
+        ":location_law",
+        "//web/atlas-live/projection:expected_worlds",
+        "//web/atlas-live/projection:locations",
+        "//web/atlas-live/projection:worlds",
+        "@bazel_tools//tools/bash/runfiles",
+    ],
+)
+
 test_suite(
     name = "world_tests",
     tests = [
         ":grit_acquire_test",
         ":grit_acquisition_test",
+        ":location_parity_test",
+        ":location_table_test",
         ":repository_admission_test",
         ":repository_table_test",
         "//src/native/grit:attune_grit_rust_test",

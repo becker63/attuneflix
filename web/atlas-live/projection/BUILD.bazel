@@ -1,6 +1,7 @@
 load("@aspect_rules_js//js:defs.bzl", "js_binary", "js_library", "js_run_binary", "js_test")
 load("@bazel_lib//lib:copy_to_directory.bzl", "copy_to_directory")
 load("//experiments/atlas-swe-explore/census:census.bzl", "ATLAS_WORLDS")
+load("//experiments/atlas-location-export:locations.bzl", "location_exports")
 load("//web/atlas-live:defs.bzl", "atlas_ts_package")
 
 # React-free: runs under Node in Bazel and in the browser (enforced by .oxlintrc.json).
@@ -28,6 +29,19 @@ copy_to_directory(
     name = "worlds",
     srcs = ATLAS_WORLDS,
     root_paths = [".attune/repository-world-v1"],
+    visibility = ["//visibility:public"],
+)
+
+# One Flix-derived locations.parquet per frozen world, staged as
+# <digest>/locations.parquet. The declaration order is ATLAS_WORLDS order; the
+# exporter is the single owner of directory-prefix derivation.
+_LOCATION_EXPORTS = location_exports(tool = "//experiments/atlas-location-export:locations_tool")
+
+copy_to_directory(
+    name = "locations",
+    srcs = _LOCATION_EXPORTS,
+    root_paths = ["web/atlas-live/projection"],
+    visibility = ["//visibility:public"],
 )
 
 # The 78 expected snapshot digests, one per line, derived from ATLAS_WORLDS.
@@ -38,6 +52,7 @@ genrule(
         label.split("/")[-1].split(":")[0]
         for label in ATLAS_WORLDS
     ])) + " > $@",
+    visibility = ["//visibility:public"],
 )
 
 # Node CLI: projects and validates every staged world, copies the Parquet inputs
@@ -51,12 +66,17 @@ js_binary(
 
 js_run_binary(
     name = "data",
-    srcs = [":worlds"],
+    srcs = [
+        ":worlds",
+        ":locations",
+    ],
     args = [
         "--worlds",
         "worlds",
         "--out",
         "data",
+        "--locations",
+        "locations",
     ],
     chdir = package_name(),
     out_dirs = ["data"],
