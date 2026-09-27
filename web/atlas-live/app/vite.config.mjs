@@ -3,9 +3,13 @@ import stylex from "@stylexjs/unplugin";
 import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
-// The viewer build revision is stamped at build time. It defaults to "dev" so a
-// plain local build never invents a commit id.
-const buildRevision = process.env.ATLAS_LIVE_BUILD_REVISION ?? "dev";
+// The viewer build revision is baked into the bundle. The Bazel build never
+// knows a commit id: it bakes the placeholder `__ATLAS_LIVE_BUILD_REVISION__`,
+// and //web/atlas-live:deploy replaces that placeholder in the temp copy it
+// uploads (web/atlas-live/deploy/revision.mjs). No Bazel action depends on the
+// revision, so a new commit never invalidates a cached build. Setting
+// ATLAS_LIVE_BUILD_REVISION bakes a revision directly (and skips stamping).
+const buildRevision = process.env.ATLAS_LIVE_BUILD_REVISION ?? "__ATLAS_LIVE_BUILD_REVISION__";
 
 export default defineConfig({
   // rules_js node_modules is a read-only output tree; keep Vite's cache out of it.

@@ -21,6 +21,8 @@ Oxlint, Oxfmt and Vitest. No action uses a host `node`, `npm`, `npx` or `pnpm`, 
 | `protocol/`                                             | React-free TypeScript: viewer events, sources, and the reducer.                     |
 | `app/`                                                  | React 19 application.                                                               |
 | `e2e/`                                                  | Playwright specs and helpers.                                                       |
+| `deploy/`                                               | `//web/atlas-live:deploy` (copy, stamp, link, publish) and its Bazel tests.         |
+| `vercel/config.json`                                    | The Build Output API v3 routes `:vercel_output` ships.                              |
 
 `projection/` and `protocol/` must not import `react`, `react-dom`, `jotai`, `@base-ui/*`,
 `@stylexjs/*`, `@cosmograph/*`, `@duckdb/*`, or anything under `app/` or `e2e/`. Oxlint
@@ -41,13 +43,15 @@ nix develop --command bazel test //web/atlas-live/... --config=buildbuddy-rbe
 `//web/atlas-live:tests` collects every check and is part of the root `//:tests` suite, so
 `./verify` runs it:
 
-| Target                                  | Check                                                   |
-| --------------------------------------- | ------------------------------------------------------- |
-| `//web/atlas-live:oxlint_test`          | `oxlint --type-aware --deny-warnings` over all packages |
-| `//web/atlas-live:oxfmt_test`           | `oxfmt --check` over all packages and root configs      |
-| `//web/atlas-live/<pkg>:typecheck_test` | TypeScript 7 no-emit (or declaration-only) typecheck    |
-| `//web/atlas-live/<pkg>:unit_test`      | `vitest run` (projection, protocol, app)                |
-| `//web/atlas-live/projection:data_test` | Validates `projection:data` against `ATLAS_WORLDS`      |
+| Target                                  | Check                                                                       |
+| --------------------------------------- | --------------------------------------------------------------------------- |
+| `//web/atlas-live:oxlint_test`          | `oxlint --type-aware --deny-warnings` over all packages                     |
+| `//web/atlas-live:oxfmt_test`           | `oxfmt --check` over all packages, the deploy scripts, and the root configs |
+| `//web/atlas-live:layout_test`          | Build Output API v3 shape of `:vercel_output`                               |
+| `//web/atlas-live:secret_scan_test`     | Credential scan of `:vercel_output` and the bundle sources                  |
+| `//web/atlas-live/<pkg>:typecheck_test` | TypeScript 7 no-emit (or declaration-only) typecheck                        |
+| `//web/atlas-live/<pkg>:unit_test`      | `vitest run` (projection, protocol, app)                                    |
+| `//web/atlas-live/projection:data_test` | Validates `projection:data` against `ATLAS_WORLDS`                          |
 
 ## Formatting
 
@@ -162,24 +166,24 @@ never contains secrets and never mutates app state; every field is a live getter
 reader always sees the current value. It is installed by `app/src/main.tsx` before the
 session boots and populated through `app/src/diagnostics.ts`.
 
-| Field                      | Meaning                                                                                                                        |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `ready`                    | `true` once the renderer has rebuilt the graph for the current session.                                                        |
-| `snapshotId`               | The projected world's content-addressed snapshot id (matches `manifest.json`).                                                 |
-| `dataset`                  | `{ repository, baseRevision, synthetic }` of the loaded world, or `null`.                                                      |
-| `sessionRevision`          | Monotonic counter, bumped whenever a new graph replaces the current one.                                                       |
-| `topologyRevision`         | Monotonic counter for the projected topology (points/links) of the current session.                                            |
-| `overlay`                  | `{ name, revision }` of the active node-colour overlay (`"structure"` in this slice).                                          |
-| `counts`                   | `{ points, links, files, symbols, directories, defines, imports, calls, parent }`, or `null` before load.                      |
-| `hovered`                  | The hovered point's identity (`domain:localId`, e.g. `file:2`), or `null`.                                                     |
-| `hoveredIndex`             | The hovered point's row index, or `null`.                                                                                      |
-| `highlighted`              | `{ points: string[], links: number[] }`: identities of the hovered node and its neighbours, and the indices of incident links. |
-| `camera`                   | `{ zoom }` of the renderer, updated on zoom (null until the first fit).                                                        |
-| `perf`                     | Build timings in milliseconds (`duckDbMs`, `projectionMs`, `insertMs`, …).                                                     |
-| `buildRevision`            | The baked build revision (`__ATLAS_BUILD_REVISION__`), `"dev"` outside a tagged build.                                         |
-| `error`                    | A boot error message, or `null`.                                                                                               |
-| `screenPositionOf(index)`  | Viewport `[x, y]` of a point's centre, or `null` if it cannot be computed. Used to aim the real mouse.                         |
-| `pointWithIncidentLinks()` | A point index with at least one incident link, or `null` if none. Used to pick a hover target deterministically.               |
+| Field                      | Meaning                                                                                                                                                                  |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `ready`                    | `true` once the renderer has rebuilt the graph for the current session.                                                                                                  |
+| `snapshotId`               | The projected world's content-addressed snapshot id (matches `manifest.json`).                                                                                           |
+| `dataset`                  | `{ repository, baseRevision, synthetic }` of the loaded world, or `null`.                                                                                                |
+| `sessionRevision`          | Monotonic counter, bumped whenever a new graph replaces the current one.                                                                                                 |
+| `topologyRevision`         | Monotonic counter for the projected topology (points/links) of the current session.                                                                                      |
+| `overlay`                  | `{ name, revision }` of the active node-colour overlay (`"structure"` in this slice).                                                                                    |
+| `counts`                   | `{ points, links, files, symbols, directories, defines, imports, calls, parent }`, or `null` before load.                                                                |
+| `hovered`                  | The hovered point's identity (`domain:localId`, e.g. `file:2`), or `null`.                                                                                               |
+| `hoveredIndex`             | The hovered point's row index, or `null`.                                                                                                                                |
+| `highlighted`              | `{ points: string[], links: number[] }`: identities of the hovered node and its neighbours, and the indices of incident links.                                           |
+| `camera`                   | `{ zoom }` of the renderer, updated on zoom (null until the first fit).                                                                                                  |
+| `perf`                     | Build timings in milliseconds (`duckDbMs`, `projectionMs`, `insertMs`, …).                                                                                               |
+| `buildRevision`            | The baked build revision (`__ATLAS_BUILD_REVISION__`): the deployed commit on a deployed bundle, the placeholder `__ATLAS_LIVE_BUILD_REVISION__` on a plain Bazel build. |
+| `error`                    | A boot error message, or `null`.                                                                                                                                         |
+| `screenPositionOf(index)`  | Viewport `[x, y]` of a point's centre, or `null` if it cannot be computed. Used to aim the real mouse.                                                                   |
+| `pointWithIncidentLinks()` | A point index with at least one incident link, or `null` if none. Used to pick a hover target deterministically.                                                         |
 
 ## Preview
 
@@ -197,3 +201,47 @@ The static server (`serve.mjs`) defaults its root to the sibling `static/` direc
 the run script needs no arguments. `//web/atlas-live/e2e:e2e_test` reuses the same server
 inside the Playwright noble container (`test.container-image`), runs Chromium against
 SwiftShader software WebGL, and drives a real mouse over a real point.
+
+## Build output and deploy
+
+`//web/atlas-live:vercel_output` wraps `//web/atlas-live:static` in the
+[Build Output API](https://vercel.com/docs/build-output-api/v3) v3 layout: `config.json`
+at the root (`version: 3`, then `{ "handle": "filesystem" }` and the SPA fallback
+`{ "src": "/(.*)", "dest": "/index.html" }`, from `vercel/config.json`) and everything the
+static tree ships under `static/`. There is no `functions/` directory: the app is static,
+and Vercel never builds from source.
+
+`//web/atlas-live:deploy` publishes that tree to Vercel project `atlas-live` in team
+`becker63s-projects` and prints the production URL:
+
+```sh
+source /etc/profile.d/nix.sh
+nix develop --command bazel run --config=buildbuddy-rbe \
+  --script_path=/tmp/atlas-live-deploy.sh //web/atlas-live:deploy
+/tmp/atlas-live-deploy.sh            # VERCEL_TOKEN must be in the environment
+```
+
+The target reads `VERCEL_TOKEN` from the environment only: never `--token`, never printed,
+and every line it prints is redacted. It copies the Bazel tree into a temp directory, links
+the project through a temp `.vercel/project.json`, and runs the Bazel-provided Vercel CLI
+60.1.3 with `deploy --prebuilt --prod`. `HOME` is redirected into that temp directory, and
+the directory is removed before the command returns, so the deploy writes nothing outside
+it.
+
+**Build revision.** The bundle is built with the literal `__ATLAS_LIVE_BUILD_REVISION__`
+as its build revision (`app/vite.config.mjs`), so no Bazel action depends on a commit id
+and a new commit never invalidates a cached build. `:deploy` replaces that placeholder, in
+the temp copy, with the revision it resolves: `--build-revision <commit>`, else
+`ATLAS_LIVE_BUILD_REVISION`, else `jj log -r @-` through the Nix dev shell. A deployed
+bundle therefore reports the deployed commit from `window.__atlasLive.buildRevision`, while
+a plain Bazel build reports the placeholder. `--dry-run` copies, stamps and links the
+project without publishing a deployment.
+
+**Secret scan.** `//web/atlas-live:secret_scan_test` scans the whole `:vercel_output` tree
+plus the checked-in sources the bundle is built from (`app/index.html`,
+`app/vite.config.mjs`, `app/src`, `projection/src`, `protocol/src`) for GitHub, Vercel,
+BuildBuddy, Factory and OpenRouter credential shapes, and for those variable names bound to
+a value. It reports file names, pattern names and counts only, never a matched value, and it
+is part of `//web/atlas-live:tests`. To see it bite, plant a fake token (`ghp_` plus 36
+alphanumeric characters) in `app/index.html` or any scanned source, rebuild, and expect the
+test to fail.

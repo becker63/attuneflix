@@ -1,9 +1,10 @@
-load("@aspect_rules_js//js:defs.bzl", "js_binary", "js_library")
+load("@aspect_rules_js//js:defs.bzl", "js_binary", "js_library", "js_test")
 load("@aspect_rules_ts//ts:defs.bzl", "ts_config")
 load("@bazel_lib//lib:copy_to_directory.bzl", "copy_to_directory")
 load("@npm//:defs.bzl", "npm_link_all_packages")
 load("@npm//web/atlas-live:oxfmt/package_json.bzl", oxfmt_bin = "bin")
 load("@npm//web/atlas-live:oxlint/package_json.bzl", oxlint_bin = "bin")
+load("@npm//web/atlas-live:vercel/package_json.bzl", vercel_bin = "bin")
 
 package(default_visibility = ["//web/atlas-live:__subpackages__"])
 
@@ -65,11 +66,20 @@ FORMATTED_ROOT_FILES = ROOT_CONFIGS + [
     "pnpm-workspace.yaml",
 ]
 
+# The Vercel deploy scripts and the Build Output API config are formatted too, so
+# the format check covers everything `:deploy` ships.
+FORMATTED_DEPLOY_FILES = [
+    "vercel/config.json",
+]
+
 oxfmt_bin.oxfmt_test(
     name = "oxfmt_test",
-    args = ["--check"] + FORMATTED_ROOT_FILES + TS_PACKAGES,
+    args = ["--check"] + FORMATTED_ROOT_FILES + ["deploy"] + FORMATTED_DEPLOY_FILES + TS_PACKAGES,
     chdir = package_name(),
-    data = FORMATTED_ROOT_FILES + PACKAGE_FILES + [":node_modules/oxfmt"],
+    data = FORMATTED_ROOT_FILES + FORMATTED_DEPLOY_FILES + PACKAGE_FILES + [
+        ":deploy_srcs",
+        ":node_modules/oxfmt",
+    ],
     size = "small",
 )
 
@@ -83,8 +93,10 @@ oxfmt_bin.oxfmt_binary(
 test_suite(
     name = "tests",
     tests = [
+        ":layout_test",
         ":oxfmt_test",
         ":oxlint_test",
+        ":secret_scan_test",
         "//web/atlas-live/app:typecheck_test",
         "//web/atlas-live/app:unit_test",
         "//web/atlas-live/e2e:e2e_test",
@@ -122,4 +134,82 @@ js_binary(
         "serve.mjs",
     ],
     entry_point = "serve.mjs",
+)
+
+# ---------------------------------------------------------------------------
+# Vercel: the prebuilt Build Output API v3 tree and the credentialed publisher.
+# ---------------------------------------------------------------------------
+
+# The Vercel CLI 60.1.3 from the Bazel npm tree. `:deploy` execs this launcher;
+# it is never resolved from a host node_modules or a host `vercel`.
+vercel_bin.vercel_binary(
+    name = "vercel_cli",
+    tags = ["manual"],
+)
+
+# `.vercel/output`: `config.json` at the root (version 3, filesystem handle then
+# the SPA fallback, see vercel/config.json) and everything `:static` ships under
+# `static/`. The data targets that later features add (the synthetic fixture,
+# census and trace data) belong in `:static`, so they land here automatically.
+copy_to_directory(
+    name = "vercel_output",
+    srcs = [
+        ":static",
+        "vercel/config.json",
+    ],
+    out = "vercel_output",
+    # `:static` keeps its `static/` segment; the config file drops its `vercel/`.
+    root_paths = [
+        "web/atlas-live",
+        "web/atlas-live/vercel",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+# The deploy scripts (`:deploy` and its tests): plain Node ESM, no bundling.
+js_library(
+    name = "deploy_srcs",
+    srcs = glob(["deploy/*.mjs"]),
+    visibility = ["//web/atlas-live:__subpackages__"],
+)
+
+# Pins the Build Output API v3 shape of :vercel_output (VAL-DEPLOY-001).
+js_test(
+    name = "layout_test",
+    data = [
+        ":deploy_srcs",
+        ":vercel_output",
+    ],
+    entry_point = "deploy/layout_check.mjs",
+    size = "small",
+)
+
+# Count-only credential scan of the shipped output and the sources the bundle is
+# built from (VAL-PRIV-001).
+js_test(
+    name = "secret_scan_test",
+    data = [
+        ":deploy_srcs",
+        ":vercel_output",
+        "//web/atlas-live/app:scan_files",
+        "//web/atlas-live/projection:scan_files",
+        "//web/atlas-live/protocol:scan_files",
+    ],
+    entry_point = "deploy/secret_scan.mjs",
+    size = "small",
+)
+
+# `bazel run --config=buildbuddy-rbe --script_path=/tmp/atlas-live-deploy.sh
+# //web/atlas-live:deploy` then `/tmp/atlas-live-deploy.sh [--build-revision <c>]`.
+# Publishes :vercel_output to Vercel with VERCEL_TOKEN from the environment and
+# prints the production URL and deployment id. Never builds on Vercel.
+js_binary(
+    name = "deploy",
+    data = [
+        ":deploy_srcs",
+        ":vercel_cli",
+        ":vercel_output",
+    ],
+    entry_point = "deploy/deploy.mjs",
+    tags = ["manual"],
 )

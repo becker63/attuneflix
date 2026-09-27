@@ -1,3 +1,4 @@
+load("@aspect_rules_js//js:defs.bzl", "js_library")
 load("//web/atlas-live:defs.bzl", "atlas_ts_package")
 
 # React-free: runs under Node in Bazel and in the browser (enforced by .oxlintrc.json).
@@ -7,4 +8,11 @@ atlas_ts_package(
         "@types/node",
         "vitest",
     ],
+)
+
+# The checked-in sources (no npm deps); scanned by //web/atlas-live:secret_scan_test.
+js_library(
+    name = "scan_files",
+    srcs = glob(["src/**/*.ts"]),
+    visibility = ["//web/atlas-live:__pkg__"],
 )

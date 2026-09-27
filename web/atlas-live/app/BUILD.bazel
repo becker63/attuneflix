@@ -63,3 +63,15 @@ vite_bin.vite(
     out_dirs = ["dist"],
     visibility = ["//web/atlas-live:__subpackages__"],
 )
+
+# The checked-in files the bundle is built from, without their npm deps, so
+# //web/atlas-live:secret_scan_test can scan them next to :vercel_output: a
+# planted credential fails the scan even where the bundler would drop the file.
+js_library(
+    name = "scan_files",
+    srcs = glob(["src/**/*.ts", "src/**/*.tsx"]) + [
+        "index.html",
+        "vite.config.mjs",
+    ],
+    visibility = ["//web/atlas-live:__pkg__"],
+)
