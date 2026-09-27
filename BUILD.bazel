@@ -17,5 +17,6 @@ test_suite(
         "//test/Kernel:kernel_tests",
         "//test/World:world_tests",
         "//experiments/atlas-work-topology:research_tests",
+        "//web/atlas-live:tests",
     ],
 )

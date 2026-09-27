@@ -1,0 +1,17 @@
+load("//web/atlas-live:defs.bzl", "atlas_ts_package")
+
+atlas_ts_package(
+    npm_deps = [
+        "@stylexjs/stylex",
+        "@types/react",
+        "@types/react-dom",
+        "react",
+        "react-dom",
+        "vite",
+        "vitest",
+    ],
+    packages = [
+        "projection",
+        "protocol",
+    ],
+)

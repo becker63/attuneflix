@@ -18,6 +18,10 @@ test --test_output=errors
 # named `bazel build` targets.
 test --build_tests_only
 
+# aspect_tools_telemetry (pulled in by rules_js/rules_ts) reports usage unless
+# disabled; an empty value does NOT disable it, "-all" does.
+common --repo_env=ASPECT_TOOLS_TELEMETRY=-all
+
 # Authentication is supplied by the local credential helper from ignored .env.
 build:buildbuddy --bes_results_url=https://app.buildbuddy.io/invocation/
 build:buildbuddy --bes_backend=grpcs://remote.buildbuddy.io

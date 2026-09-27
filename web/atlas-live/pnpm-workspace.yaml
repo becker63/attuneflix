@@ -1,0 +1,8 @@
+packages:
+  - "."
+hoist: false
+supportedArchitectures:
+  os: [linux]
+  cpu: [x64]
+  libc: [glibc]
+onlyBuiltDependencies: []

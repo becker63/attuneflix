@@ -1,0 +1,11 @@
+load("//web/atlas-live:defs.bzl", "atlas_ts_package")
+
+# React-free: runs under Node in Bazel and in the browser (enforced by .oxlintrc.json).
+atlas_ts_package(
+    declarations = True,
+    npm_deps = [
+        "@types/node",
+        "hyparquet",
+        "vitest",
+    ],
+)

@@ -1,0 +1,11 @@
+load("//web/atlas-live:defs.bzl", "atlas_ts_package")
+
+# Playwright specs and helpers (typechecked; browsers come from the RBE container image).
+atlas_ts_package(
+    npm_deps = [
+        "@axe-core/playwright",
+        "@playwright/test",
+        "@types/node",
+    ],
+    unit_test = False,
+)

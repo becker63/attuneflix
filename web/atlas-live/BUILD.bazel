@@ -1,0 +1,86 @@
+load("@aspect_rules_ts//ts:defs.bzl", "ts_config")
+load("@npm//:defs.bzl", "npm_link_all_packages")
+load("@npm//web/atlas-live:oxfmt/package_json.bzl", oxfmt_bin = "bin")
+load("@npm//web/atlas-live:oxlint/package_json.bzl", oxlint_bin = "bin")
+
+package(default_visibility = ["//web/atlas-live:__subpackages__"])
+
+# One pnpm workspace root; the TS packages below are Bazel packages that resolve
+# their npm deps from this node_modules tree.
+npm_link_all_packages(name = "node_modules")
+
+exports_files(["package.json"])
+
+ts_config(
+    name = "tsconfig_base",
+    src = "tsconfig.base.json",
+)
+
+TS_PACKAGES = [
+    "projection",
+    "protocol",
+    "app",
+    "e2e",
+]
+
+# Each TS package exposes its checked sources (bin copies owned by that package)
+# plus its tsconfig and tool configs as `:lint_files`.
+PACKAGE_FILES = ["//web/atlas-live/%s:lint_files" % p for p in TS_PACKAGES]
+
+ROOT_CONFIGS = [
+    ".oxfmtrc.json",
+    ".oxlintrc.json",
+    "package.json",
+    "tsconfig.base.json",
+]
+
+oxlint_bin.oxlint_test(
+    name = "oxlint_test",
+    args = [
+        "--type-aware",
+        "--deny-warnings",
+    ] + TS_PACKAGES,
+    chdir = package_name(),
+    data = ROOT_CONFIGS + PACKAGE_FILES + [":node_modules"],
+    size = "small",
+    # oxlint looks for node_modules/.bin/tsgolint, which rules_js does not create.
+    env = {
+        "OXLINT_TSGOLINT_PATH": "node_modules/.aspect_rules_js/@oxlint-tsgolint+linux-x64@7.0.2003/node_modules/@oxlint-tsgolint/linux-x64/tsgolint",
+    },
+)
+
+FORMATTED_ROOT_FILES = ROOT_CONFIGS + [
+    "README.md",
+    "pnpm-workspace.yaml",
+]
+
+oxfmt_bin.oxfmt_test(
+    name = "oxfmt_test",
+    args = ["--check"] + FORMATTED_ROOT_FILES + TS_PACKAGES,
+    chdir = package_name(),
+    data = FORMATTED_ROOT_FILES + PACKAGE_FILES + [":node_modules/oxfmt"],
+    size = "small",
+)
+
+# Writes formatting into the source tree; see README.md ("Formatting").
+oxfmt_bin.oxfmt_binary(
+    name = "format",
+    data = [":node_modules/oxfmt"],
+    tags = ["manual"],
+)
+
+test_suite(
+    name = "tests",
+    tests = [
+        ":oxfmt_test",
+        ":oxlint_test",
+        "//web/atlas-live/app:typecheck_test",
+        "//web/atlas-live/app:unit_test",
+        "//web/atlas-live/e2e:typecheck_test",
+        "//web/atlas-live/projection:typecheck_test",
+        "//web/atlas-live/projection:unit_test",
+        "//web/atlas-live/protocol:typecheck_test",
+        "//web/atlas-live/protocol:unit_test",
+    ],
+    visibility = ["//visibility:public"],
+)

@@ -27,6 +27,9 @@
 /vendor/tree-sitter-gritql/BUILD.bazel
 /vendor/web-tree-sitter/BUILD.bazel
 
+# npm trees are Bazel outputs (rules_js); none belongs in the source tree.
+node_modules/
+
 # Rust/Zed build output
 /src/native/grit/target/
 /zed/target/
