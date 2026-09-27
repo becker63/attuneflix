@@ -78,3 +78,40 @@ sh_binary(
     name = "measure_candidates",
     srcs = ["scripts/measure_candidates.sh"],
 )
+
+# Milestone 5 — invalidation provenance & fan-out (VAL-PROV-003 / VAL-PROV-004).
+#
+# `provenance_analysis` is the ranked attribution of the 59 -> 253 (and
+# 59 -> 173 `_dagref`) cross_stage_test_invalidation increase to concrete
+# source files, with the per-node fan-out distribution, the top-1/3/5/10
+# cumulative shares and the explicit broad-vs-hub verdict. The machine-readable
+# record carries a `method.commands` section naming every command behind every
+# number; the markdown renders the same tables.
+#
+# `extract_invalidation_provenance` is the deterministic per-file extractor
+# behind both artifacts. It reproduces the instrument-of-record BUILD channel
+# exactly (fidelity gate: 253/664/173 at Candidate D, 59/260/59 at control),
+# and its `analyze`, `crosscheck` and `basis` modes join/rank, re-derive the
+# quantity from the reverse `deps` direction, and emit the BASIS static graph.
+# It never re-runs or modifies the instrument of record.
+#
+# `merge_provenance_artifact.jq` joins the extract/analyze/crosscheck/basis
+# outputs into `candidates/provenance-analysis.json`; `render_provenance_analysis`
+# renders the markdown tables from that JSON, so no number is typed by hand.
+filegroup(
+    name = "provenance_analysis",
+    srcs = [
+        "PROVENANCE_AND_CAUSAL_ANALYSIS.md",
+        "candidates/provenance-analysis.json",
+    ],
+)
+
+sh_binary(
+    name = "extract_invalidation_provenance",
+    srcs = ["scripts/extract_invalidation_provenance.sh"],
+)
+
+sh_binary(
+    name = "render_provenance_analysis",
+    srcs = ["scripts/render_provenance_analysis.sh"],
+)
