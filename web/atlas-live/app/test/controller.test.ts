@@ -3,8 +3,9 @@ import { describe, expect, it, vi } from "vitest";
 
 import { buildViewerArrow } from "../../projection/src/arrow.ts";
 import { SessionController, type SessionDeps } from "../src/controller.ts";
+import { installDiagnostics } from "../src/diagnostics.ts";
 import type { LocalDuckDB } from "../src/duckdb.ts";
-import { computeLayout } from "../src/layout.ts";
+import { structuralLayout } from "../src/structure.ts";
 import type { LoadedWorld, WorldManifest, WorldManifestEntry } from "../src/world.ts";
 import { fixtureGraph } from "./graphFixture.ts";
 
@@ -71,8 +72,25 @@ function entry(suffix: string, repository: string, points: number): WorldManifes
 
 function loaded(manifestEntry: WorldManifestEntry): LoadedWorld {
   const graph = fixtureGraph();
-  const xy = computeLayout(graph);
-  return { entry: manifestEntry, graph, tables: buildViewerArrow(graph, { xy }), xy };
+  const layout = structuralLayout(graph);
+  return {
+    entry: manifestEntry,
+    graph,
+    tables: buildViewerArrow(graph, { xy: layout.xy }),
+    layout,
+    layoutMs: 0,
+  };
+}
+
+/** A field of the installed `window.__atlasLive` hook. */
+function read(field: string): unknown {
+  const hook: unknown = Reflect.get(globalThis, "__atlasLive");
+  if (typeof hook !== "object" || hook === null) throw new Error("no diagnostics hook");
+  return Reflect.get(hook, field);
+}
+
+function keys(value: unknown): string[] {
+  return typeof value === "object" && value !== null ? Object.keys(value).toSorted() : [];
 }
 
 interface Harness {
@@ -164,6 +182,21 @@ describe("SessionController lifecycle", () => {
     expect(snapshot.liveSessions).toBe(1);
     expect(snapshot.error).toContain("acme/two");
     expect(snapshot.error).toContain("HTTP 500");
+  });
+
+  it("publishes the layout identity and revision, and merges perf timings across loads", async () => {
+    installDiagnostics();
+    const worlds = [entry("a", "acme/one", 3), entry("b", "acme/two", 4)];
+    const h = harness(worlds, null);
+    await h.controller.start();
+    const identity = structuralLayout(fixtureGraph()).identity;
+    expect(read("layoutIdentity")).toBe(identity);
+    expect(read("layoutRevision")).toBe(1);
+    expect(keys(read("perf"))).toEqual(["duckDbMs", "insertMs", "layoutMs", "loadMs", "manifestMs"]);
+    await h.controller.select(worlds[1]?.snapshotId ?? "");
+    expect(read("layoutRevision")).toBe(2);
+    expect(read("layoutIdentity")).toBe(identity);
+    expect(keys(read("perf"))).toContain("duckDbMs");
   });
 
   it("includes the synthetic fixture as a selectable option and loads it", async () => {

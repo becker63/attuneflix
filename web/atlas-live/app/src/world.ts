@@ -1,15 +1,15 @@
 /**
  * Loading the bundled default world in the browser. The same projection package
  * that Bazel runs under Node runs here: fetch the content-addressed Parquet
- * assets, decode with hyparquet, project into a ViewerGraph, lay it out, and build
- * the Arrow tables the renderer consumes. Nothing is inferred; provenance comes
- * from the shipped manifest entry.
+ * assets, decode with hyparquet, project into a ViewerGraph, compute its
+ * structural layout, and build the Arrow tables the renderer consumes. Nothing is
+ * inferred; provenance comes from the shipped manifest entry.
  */
 import { buildViewerArrow, type ViewerArrowTables } from "../../projection/src/arrow.ts";
 import { projectTables, type ViewerGraph } from "../../projection/src/graph.ts";
 import type { WorldManifest, WorldManifestEntry } from "../../projection/src/manifest.ts";
 import { decodeWorldFiles, toArrayBuffer, type WorldFiles } from "../../projection/src/tables.ts";
-import { computeLayout } from "./layout.ts";
+import { structuralLayout, type StructuralLayout } from "./structure.ts";
 
 export type { WorldManifest, WorldManifestEntry };
 
@@ -24,8 +24,10 @@ export interface LoadedWorld {
   readonly entry: WorldManifestEntry;
   readonly graph: ViewerGraph;
   readonly tables: ViewerArrowTables;
-  /** Interleaved [x0, y0, x1, y1, ...] positions, in renderer index order. */
-  readonly xy: Float32Array;
+  /** The world's structural layout (every point's coordinates, computed once). */
+  readonly layout: StructuralLayout;
+  /** Milliseconds spent computing the structural layout. */
+  readonly layoutMs: number;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -87,7 +89,9 @@ export async function loadWorld(entry: WorldManifestEntry, signal?: AbortSignal)
   const files = await fetchWorldFiles(entry, signal);
   const decoded = await decodeWorldFiles(files);
   const graph = projectTables(decoded, entry.sha256);
-  const xy = computeLayout(graph);
-  const tables = buildViewerArrow(graph, { xy });
-  return { entry, graph, tables, xy };
+  const beforeLayout = performance.now();
+  const layout = structuralLayout(graph);
+  const layoutMs = Math.round(performance.now() - beforeLayout);
+  const tables = buildViewerArrow(graph, { xy: layout.xy });
+  return { entry, graph, tables, layout, layoutMs };
 }

@@ -78,6 +78,10 @@ interface DiagnosticsState {
   depth: number;
   camera: AtlasCamera;
   perf: Record<string, number>;
+  /** Content hash of the current world's structural layout, or null before load. */
+  layoutIdentity: string | null;
+  /** Advances only when a new world's geometry is adopted; no view change touches it. */
+  layoutRevision: number;
   buildRevision: string;
   error: string | null;
 }
@@ -107,6 +111,8 @@ const state: DiagnosticsState = {
   depth: 1,
   camera: { zoom: null },
   perf: {},
+  layoutIdentity: null,
+  layoutRevision: 0,
   buildRevision: BUILD_REVISION,
   error: null,
 };
@@ -116,6 +122,11 @@ let source: DiagnosticsSource | null = null;
 /** Merges a patch into the diagnostics state. Internal; the hook stays read-only. */
 export function publish(patch: Partial<DiagnosticsState>): void {
   Object.assign(state, patch);
+}
+
+/** Merges timings into `perf`, so earlier fields (e.g. `duckDbMs`) survive later loads. */
+export function publishPerf(timings: Readonly<Record<string, number>>): void {
+  state.perf = { ...state.perf, ...timings };
 }
 
 export function setDiagnosticsSource(next: DiagnosticsSource | null): void {
@@ -183,6 +194,12 @@ export function installDiagnostics(): void {
     },
     get perf(): Record<string, number> {
       return state.perf;
+    },
+    get layoutIdentity(): string | null {
+      return state.layoutIdentity;
+    },
+    get layoutRevision(): number {
+      return state.layoutRevision;
     },
     get buildRevision(): string {
       return state.buildRevision;

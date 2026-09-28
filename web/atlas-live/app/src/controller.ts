@@ -19,7 +19,7 @@
  * the dataset; a failed first load reports the empty state.
  */
 import { datasetLabel, datasetOptions, type DatasetOption } from "./datasets.ts";
-import { publish } from "./diagnostics.ts";
+import { publish, publishPerf } from "./diagnostics.ts";
 import { createLocalDuckDB, type LocalDuckDB } from "./duckdb.ts";
 import { GraphSession, LINKS_TABLE, POINTS_TABLE } from "./session.ts";
 import {
@@ -104,7 +104,7 @@ export class SessionController {
       const manifest = await this.#deps.fetchManifest(new AbortController().signal);
       const manifestMs = Math.round(performance.now() - beforeManifest);
       this.#publish({ manifest, options: datasetOptions(manifest) });
-      publish({ perf: { duckDbMs, manifestMs } });
+      publishPerf({ duckDbMs, manifestMs });
       await this.#load(this.#deps.chooseDefaultWorld(manifest));
     } catch (cause) {
       const error = `Could not load the world list: ${messageOf(cause)}`;
@@ -159,6 +159,7 @@ export class SessionController {
         duckdb,
         entry: loaded.entry,
         graph: loaded.graph,
+        layout: loaded.layout,
         pointsTable,
         linksTable,
         sessionRevision: revision,
@@ -204,9 +205,11 @@ export class SessionController {
           calls: counts.calls,
           parent: counts.parent,
         },
-        perf: { loadMs, insertMs },
+        layoutIdentity: loaded.layout.identity,
+        layoutRevision: revision,
         error: null,
       });
+      publishPerf({ loadMs, insertMs, layoutMs: loaded.layoutMs });
     } catch (cause) {
       if (abort.signal.aborted) return;
       const error = `Could not load ${option === undefined ? entry.repository : datasetLabel(option)}: ${messageOf(cause)}`;

@@ -35,6 +35,12 @@ atlas_ts_package(
         "projection",
         "protocol",
     ],
+    # Real and fixture worlds for the structural-layout properties
+    # (test/structure.test.ts reads them relative to this package).
+    test_data = [
+        "//web/atlas-live/projection:import_fixtures",
+        "//web/atlas-live/projection:layout_worlds",
+    ],
 )
 
 # Everything the bundler reads: the app sources and entry, plus the projection

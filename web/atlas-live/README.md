@@ -284,13 +284,35 @@ session boots and populated through `app/src/diagnostics.ts`.
 | `relationFilter`           | The enabled relation names, in canonical order (e.g. `["defines","imports","calls","parent"]`).                                                                                                         |
 | `filterRevision`           | Monotonic counter bumped on every relation-filter change; never on an overlay or topology change.                                                                                                       |
 | `depth`                    | The active neighbourhood depth (1..3).                                                                                                                                                                  |
-| `perf`                     | Build timings in milliseconds (`duckDbMs`, `manifestMs`, `loadMs`, `insertMs`, …).                                                                                                                      |
+| `perf`                     | Build timings in milliseconds (`duckDbMs`, `manifestMs`, `loadMs`, `layoutMs`, `insertMs`, …), merged across loads.                                                                                     |
+| `layoutIdentity`           | Content hash (`structure-v1:…`) of the current world's structural layout, or `null` before load; identical for identical worlds.                                                                        |
+| `layoutRevision`           | Advances only when a new world's geometry is adopted (a dataset load); no filter, overlay, depth or selection change touches it.                                                                        |
 | `buildRevision`            | The baked build revision (`__ATLAS_BUILD_REVISION__`): the deployed commit on a deployed bundle, the placeholder `__ATLAS_LIVE_BUILD_REVISION__` on a plain Bazel build.                                |
 | `error`                    | The current error message (a failed load names the dataset), or `null`.                                                                                                                                 |
 | `screenPositionOf(index)`  | Viewport `[x, y]` of a point's centre, or `null` if it cannot be computed. Used to aim the real mouse.                                                                                                  |
 | `pointWithIncidentLinks()` | A point index with at least one incident link, or `null` if none. Used to pick a hover target deterministically.                                                                                        |
 | `pointIdOf(index)`         | The identity (`domain:localId`) of the point at a renderer index, or `null`.                                                                                                                            |
 | `pointCount()`             | The number of points in the loaded graph (`0` before load).                                                                                                                                             |
+
+## Structural layout
+
+Every point's coordinate comes from `app/src/structure.ts`, a pure function of the exact
+`ViewerGraph` memoized per world (computed once in `app/src/world.ts`). Hierarchy
+determines position; relations and view state do not, so no filter, overlay, depth or
+selection change can move a point.
+
+- **Decomposition.** The directory tree is the `parent` edges between directory
+  locations; a file belongs to the directory matching its path prefix (else the root,
+  and every file of a world without a locations table sits under the root in evidence
+  order); a symbol belongs to the file whose `defines` edge reaches it. No directory is
+  invented.
+- **Coordinates.** Nested shelf packing, built bottom-up: each file gets one 10 x 10
+  cell, a directory's own files form a near-square block, and that block and the child
+  regions are packed 4 units apart. Each directory owns one contiguous rectangle holding
+  exactly its subtree; sibling rectangles are disjoint. Symbols get slots on a sub-grid
+  inside their file's cell; a directory's anchor is its rectangle's centre.
+- **Identity.** `layoutIdentity` hashes the algorithm version and the decomposition, so
+  identical worlds give identical identities and bit-identical coordinates.
 
 ## Selection, filters and depth
 

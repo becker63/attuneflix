@@ -36,7 +36,11 @@ export interface AtlasLiveHook {
   hoveredIndex: number | null;
   highlighted: AtlasHighlight;
   selected: readonly string[];
+  filterRevision: number;
   camera: { zoom: number | null };
+  perf: Record<string, number>;
+  layoutIdentity: string | null;
+  layoutRevision: number;
   buildRevision: string;
   error: string | null;
   screenPositionOf(index: number): [number, number] | null;

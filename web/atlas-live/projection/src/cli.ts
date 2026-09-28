@@ -8,14 +8,14 @@
  *            --out <dir>
  *            [--locations <dir of <digest>/locations.parquet>]
  */
-import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
+import { mkdir, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 
 import { ProjectionError } from "./errors.ts";
 import { manifestEntry, serializeManifest, type WorldManifestEntry } from "./manifest.ts";
 import { projectWorld } from "./project.ts";
-import type { WorldFiles } from "./tables.ts";
+import { readWorldDir } from "./world_dir.ts";
 
 interface CliOptions {
   readonly worlds: string;
@@ -62,22 +62,6 @@ function parseArgs(argv: readonly string[]): CliOptions {
   return { worlds, out, locations, synthetic };
 }
 
-async function readBytes(file: string): Promise<ArrayBuffer> {
-  const buffer = await readFile(file);
-  const copy = new Uint8Array(buffer.byteLength);
-  copy.set(buffer);
-  return copy.buffer;
-}
-
-async function exists(file: string): Promise<boolean> {
-  try {
-    await stat(file);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 async function projectDir(
   dir: string,
   outDir: string,
@@ -85,17 +69,8 @@ async function projectDir(
   locationsFile: string | null,
   synthetic: boolean,
 ): Promise<WorldManifestEntry> {
-  const metadata = await readBytes(path.join(dir, "metadata.parquet"));
-  const entities = await readBytes(path.join(dir, "entities.parquet"));
-  const relations = await readBytes(path.join(dir, "relations.parquet"));
-  let locations: ArrayBuffer | undefined;
-  if (locationsFile !== null && (await exists(locationsFile))) {
-    locations = await readBytes(locationsFile);
-  }
-  const files: WorldFiles =
-    locations === undefined
-      ? { metadata, entities, relations }
-      : { metadata, entities, relations, locations };
+  const files = await readWorldDir(dir, locationsFile);
+  const { metadata, entities, relations, locations } = files;
 
   const graph = await projectWorld(files);
   const entry = manifestEntry(graph, synthetic);

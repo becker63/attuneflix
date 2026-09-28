@@ -1,8 +1,9 @@
 /**
  * GraphSession: everything the viewer needs about one loaded world, held outside
  * React. It owns the ViewerGraph (stable indices, typed endpoints, CSR
- * adjacency), the provenance from the manifest, and the DuckDB tables that feed
- * the renderer. React state holds only identities and revision counters.
+ * adjacency), its structural layout, the provenance from the manifest, and the
+ * DuckDB tables that feed the renderer. React state holds only identities and
+ * revision counters.
  */
 import type { Domain } from "../../projection/src/domain.ts";
 import { DOMAIN_ORDER } from "../../projection/src/domain.ts";
@@ -17,6 +18,7 @@ import {
   type Highlight,
   type IncidentCounts,
 } from "./neighbourhood.ts";
+import type { StructuralLayout } from "./structure.ts";
 import type { WorldManifestEntry } from "./world.ts";
 
 export const POINTS_TABLE = "atlas_live_points";
@@ -26,6 +28,8 @@ export interface GraphSessionOptions {
   readonly duckdb: LocalDuckDB;
   readonly entry: WorldManifestEntry;
   readonly graph: ViewerGraph;
+  /** The graph's structural layout; the points table's x/y columns come from it. */
+  readonly layout: StructuralLayout;
   readonly pointsTable?: string;
   readonly linksTable?: string;
   /** Monotonic across dataset switches; 1 for the first session. */
@@ -42,6 +46,8 @@ export class GraphSession {
   readonly duckdb: LocalDuckDB;
   readonly entry: WorldManifestEntry;
   readonly graph: ViewerGraph;
+  /** Fixed for the session's lifetime: no view change recomputes it. */
+  readonly layout: StructuralLayout;
   readonly pointsTable: string;
   readonly linksTable: string;
   /** Increments when a new session replaces this one; stable for a loaded world. */
@@ -57,6 +63,7 @@ export class GraphSession {
     this.duckdb = options.duckdb;
     this.entry = options.entry;
     this.graph = options.graph;
+    this.layout = options.layout;
     this.pointsTable = options.pointsTable ?? POINTS_TABLE;
     this.linksTable = options.linksTable ?? LINKS_TABLE;
     this.sessionRevision = options.sessionRevision ?? 1;

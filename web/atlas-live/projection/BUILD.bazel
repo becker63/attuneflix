@@ -44,6 +44,24 @@ copy_to_directory(
     visibility = ["//visibility:public"],
 )
 
+# The real worlds the app's structural-layout unit tests read (preactjs/preact,
+# the default world, and babel/babel, the largest snapshot), each staged with its
+# locations table as <digest>/{metadata,entities,relations,locations}.parquet.
+_LAYOUT_WORLDS = [
+    "//.attune/repository-world-v1/6e2bef41bf19f638be084df8cb82127e4832d4abbafa8ca20ebd5db9be3ac8a9:world",
+    "//.attune/repository-world-v1/002a462e6f58440bbf60071f1e945b38bb304fe46a38ca6fdfd578248693cf01:world",
+]
+
+copy_to_directory(
+    name = "layout_worlds",
+    srcs = _LAYOUT_WORLDS + [_LOCATION_EXPORTS[ATLAS_WORLDS.index(world)] for world in _LAYOUT_WORLDS],
+    root_paths = [
+        ".attune/repository-world-v1",
+        package_name(),
+    ],
+    visibility = ["//web/atlas-live:__subpackages__"],
+)
+
 # The 78 expected snapshot digests, one per line, derived from ATLAS_WORLDS.
 genrule(
     name = "expected_worlds",
