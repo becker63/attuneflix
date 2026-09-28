@@ -33,13 +33,20 @@ Flix owns:
 - Atlas and Localization;
 - experiment and evaluation semantics.
 
-The seam uses only JDK `HttpClient` and Jackson. Embedding requests retain the
-frozen 64-text batch boundary, input and vector order, retry count, and token
-usage projection. Decision requests return the provider body unchanged. Java
-does not interpret either result beyond the provider wire envelope; Flix
-admits it or rejects it.
+The transport is the pinned LangChain4j 1.18.1 OpenAI-compatible client.
+`OpenRouter` is the one shared transport: the only reader of the key, retry on
+408, 429, and 5xx, and redacted failure descriptions. `AttuneEmbed` and
+`AttuneDecision` keep their frozen forms: embedding requests retain the frozen
+64-text batch boundary, input and vector order, retry count, and token usage
+projection, and decision requests return the provider body unchanged.
+`AttuneOpenRouter` hands the SDK's own types to Flix: a live `OpenAiClient`,
+or a replay client that serves one recorded provider body through the same SDK
+decoder with no key and no network, and `embed`, which returns the parsed
+response beside the raw provider body (`executeRaw`). Java does not interpret
+either result beyond the provider wire envelope; Flix admits it or rejects it.
 
-LangChain4j was removed after exact keyless replay had sealed every retained
-observation. Changing this HTTP implementation does not invalidate a
-semantically identical retained observation, and it does not authorize a new
-provider call.
+The transport was previously plain JDK `HttpClient` and was returned to
+LangChain4j by user steering (2026-09-28) for the Atlas Families acquisition
+zone. Changing the HTTP implementation does not invalidate a semantically
+identical retained observation, and it does not authorize a new provider call
+outside that zone.
