@@ -83,6 +83,26 @@ scientific identities from path/refactor changes. Replay stays keyless;
 Atlas stays issue-, inference-, and gold-independent; exact replay and
 parity laws are never weakened.
 
+Acquisition-zone carve-out (user ruling, 2026-09-28). The user authorized
+fresh OpenRouter acquisition (Jev decisions and embeddings) and new derived
+evidence for the Atlas Families experiment only, and only within
+`experiments/atlas-families/` (the acquisition zone). Inside the zone that
+experiment may invoke OpenRouter through the in-tree inference client
+(`src/native/inference`) and create and regenerate its own new, versioned,
+content-addressed evidence spaces under `.attune/` (`jev-families-raw-v1`,
+`families-embeddings-v1`, `atlas-families-v1`, and its family edge/export
+tables); this is also the only exception to the Typed Parquet rule, and it
+covers only those new spaces. The acquisition is issue-blind (no issue text
+and no evaluator gold in any payload, state, or prompt), cost-bounded per
+pass, recorded raw and typed with a cost ledger, and replays keyless.
+Outside the zone every prohibition above binds unchanged. Inside the zone
+every prohibition above still binds except the experiment's own fresh
+acquisition: existing `.attune/` spaces and retained provider evidence stay
+read-only, evaluator gold is never read, and the frozen localization
+population, iteration 013, the two Three.js censors, Atlas's six directed
+atoms, depth seven, Datalog meaning, and the official evaluator meaning stay
+untouched. The experiment's charter is `experiments/atlas-families/REPORT.md`.
+
 ## Typed Parquet rule
 
 Scientific data lives in content-addressed, typed Parquet under `.attune/`.

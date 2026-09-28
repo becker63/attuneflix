@@ -1,0 +1,124 @@
+load("//test/build:flix.bzl", "checked_test", "flix_check", "flix_fatjar")
+load(":families.bzl", "families_inventories")
+
+package(default_visibility = ["//visibility:public"])
+
+# The experiment's own production sources, in one declaration so the tool and
+# the law check compile the same closure. `src/` mirrors the repository `src/`
+# layout (Flix binds a module name to its file path), so promoting a module is
+# a move, not a rewrite.
+filegroup(
+    name = "families_sources",
+    srcs = [
+        "src/Families.flix",
+        "src/Families/Inventory.flix",
+        "src/Families/Inventory/Table.flix",
+        "src/Families/Report.flix",
+    ],
+)
+
+# The families experiment tool (Atlas Families; charter in REPORT.md). It reuses
+# ordinary Repository admission and the typed world tables, and declares no
+# atom, depth, or repository rule of its own.
+flix_fatjar(
+    name = "families_flix",
+    srcs = [
+        "Main.flix",
+        ":families_sources",
+        "//src:Experiment.flix",
+        "//src:Repository.flix",
+        "//src:Repository/Grit.flix",
+        "//src:Repository/Location.flix",
+        "//src:Repository/Structure.flix",
+        "//src:Repository/Table.flix",
+        "//src:ScientificIdentity.flix",
+        "//src:ScientificTable.flix",
+        "//src:ScientificTable/Columns.flix",
+    ],
+    java_deps = [
+        "//src/native/identity:attune_identity",
+        "//src/native/parquet:attune_parquet",
+    ],
+    threads = 2,
+)
+
+java_binary(
+    name = "families_tool",
+    jvm_flags = [
+        "--add-opens=java.base/java.nio=ALL-UNNAMED",
+        "--enable-native-access=ALL-UNNAMED",
+        "-Xss8m",
+    ],
+    main_class = "Main",
+    visibility = ["//visibility:public"],
+    runtime_deps = [":families_flix"],
+)
+
+# One typed inventory per representative frozen world, and the Markdown
+# projection `report_test` pins REPORT.md against.
+families_inventories(
+    name = "inventory_report",
+    tool = ":families_tool",
+)
+
+flix_check(
+    name = "families_check",
+    srcs = [
+        "FamiliesTest.flix",
+        ":families_sources",
+        "//src:Repository/Table.flix",
+        "//test:TestWorlds.flix",
+        "//test:kernel_identity_law_sources",
+        "//test:kernel_table_law_sources",
+        "//test:world_admission_law_sources",
+    ],
+    command = "test",
+    java_deps = [
+        "//src/native/identity:attune_identity",
+        "//src/native/parquet:attune_parquet",
+    ],
+    threads = 2,
+)
+
+checked_test(
+    name = "families_test",
+    check = ":families_check",
+)
+
+# The charter law: the repo AGENTS.md carries the dated, scoped acquisition-zone
+# carve-out beside the unchanged no-reacquisition paragraph, and REPORT.md
+# carries the charter sections.
+sh_test(
+    name = "charter_test",
+    size = "small",
+    srcs = ["charter_test.sh"],
+    data = [
+        "REPORT.md",
+        "//:AGENTS.md",
+        "@bazel_tools//tools/bash/runfiles",
+    ],
+)
+
+# The report law: every inventory number in REPORT.md is the regenerated
+# projection of the typed inventory tables, byte for byte.
+sh_test(
+    name = "report_test",
+    size = "small",
+    srcs = ["report_test.sh"],
+    data = [
+        "REPORT.md",
+        ":inventory_report",
+        "@bazel_tools//tools/bash/runfiles",
+    ],
+)
+
+# Research law surface for the families experiment; aggregated by the root
+# `tests` suite.
+test_suite(
+    name = "families_tests",
+    tests = [
+        ":charter_test",
+        ":families_test",
+        ":report_test",
+    ],
+)

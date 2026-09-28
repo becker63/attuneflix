@@ -1,3 +1,10 @@
+# The families charter law reads the operating manual to pin the dated
+# acquisition-zone carve-out beside the unchanged no-reacquisition rules.
+exports_files(
+    ["AGENTS.md"],
+    visibility = ["//experiments/atlas-families:__pkg__"],
+)
+
 java_binary(
     name = "flix",
     main_class = "ca.uwaterloo.flix.Main",
@@ -41,16 +48,18 @@ sh_test(
 
 # Aggregation only: every law is owned by its cell's suite (`//test/World`,
 # `//test/Engine`, `//test/Applications`, `//test/Kernel`) or by the Research
-# cell (`//experiments/atlas-work-topology`). This target adds no ownership of
-# its own; it exists so one label names the whole law suite.
+# cell (`//experiments/atlas-work-topology`, `//experiments/atlas-families`).
+# This target adds no ownership of its own; it exists so one label names the
+# whole law suite.
 test_suite(
     name = "tests",
     tests = [
+        "//experiments/atlas-families:families_tests",
+        "//experiments/atlas-work-topology:research_tests",
         "//test/Applications:applications_tests",
         "//test/Engine:engine_tests",
         "//test/Kernel:kernel_tests",
         "//test/World:world_tests",
-        "//experiments/atlas-work-topology:research_tests",
         "//web/atlas-live:tests",
     ],
 )
