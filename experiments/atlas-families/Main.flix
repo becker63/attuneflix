@@ -16,23 +16,28 @@ mod FamiliesMain {
         case "replay"    => replay()
         case "acquisition-report" => acquisitionReport()
         case "protocol"  => write(Families.Report.protocol())
+        case "method"    => write(Families.Report.method())
+        case "cluster"   => cluster()
+        case "table-law" => FamiliesClusteringLaw.tables()
+        case "family-law" => FamiliesClusteringLaw.families()
+        case "clustering-report" => write(Families.Report.clustering(FamiliesClusteringLaw.clustered()))
         case command     => bug!("unknown families command: ${command}")
     }
 
-    def subject(): Families.Pass.Subject \ IO = {
+    def subject(): Families.Pass.Subject \ IO = subjectAt("attune")
+
+    /// The admitted world whose identity and tables are the properties under `prefix`.
+    pub def subjectAt(prefix: String): Families.Pass.Subject \ IO = {
+        let property = name -> Experiment.property("${prefix}.${name}");
         let identity: Repository.Table.Identity = {
-            repository = Experiment.property("attune.repository"),
-            baseRevision = Experiment.property("attune.base_revision"),
-            sourceTreeIdentity = Experiment.property("attune.source_tree_identity"),
-            factIdentity = Experiment.property("attune.fact_identity"),
-            snapshotId = Experiment.property("attune.snapshot_id")
+            repository = property("repository"),
+            baseRevision = property("base_revision"),
+            sourceTreeIdentity = property("source_tree_identity"),
+            factIdentity = property("fact_identity"),
+            snapshotId = property("snapshot_id")
         };
         let world = Experiment.require(Repository.Table.read(
-            Experiment.property("attune.world_metadata"),
-            Experiment.property("attune.world_entities"),
-            Experiment.property("attune.world_relations"),
-            identity
-        ));
+            property("world_metadata"), property("world_entities"), property("world_relations"), identity));
         {identity = identity, world = world}
     }
 
@@ -43,9 +48,26 @@ mod FamiliesMain {
         println("ATLAS_FAMILIES_INVENTORY snapshot=${written#snapshotId} callables=${written#callables}")
     }
 
-    def roots(): Families.Pass.Roots \ IO = {
-        embeddings = Experiment.property("attune.embeddings_root"),
-        decisions = Experiment.property("attune.decisions_root")
+    def roots(): Families.Pass.Roots \ IO = rootsAt("attune")
+
+    pub def rootsAt(prefix: String): Families.Pass.Roots \ IO = {
+        embeddings = Experiment.property("${prefix}.embeddings_root"),
+        decisions = Experiment.property("${prefix}.decisions_root")
+    }
+
+    /// The clustering of one world from its recorded evidence alone, written
+    /// as the three `atlas-families-v1` tables; each must round-trip exactly.
+    def cluster(): Unit \ IO = {
+        let value = subject();
+        let evidence = Experiment.require(Families.Recorded.read(value, roots()));
+        let result = Experiment.require(Families.Cluster.cluster(value#identity#snapshotId, value#world, evidence));
+        let output = Experiment.property("attune.output_clustering");
+        Vector.forEach(match (name, file, schema, rows) ->
+            if (ScientificTable.write("${output}/${file}", schema, rows) == rows) ()
+            else bug!("${name} did not round-trip exactly"),
+            Families.Cluster.Table.layout(result));
+        println("ATLAS_FAMILIES_CLUSTER snapshot=${result#snapshotId} families=${Vector.length(result#families)} " +
+            "members=${Vector.length(result#members)} rollups=${Vector.length(result#rollups)}")
     }
 
     /// The pre-acquisition bound for one world; it reaches no provider.

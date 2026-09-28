@@ -122,6 +122,86 @@ pub mod Families.Report {
         })) + "\n"
     }
 
-    def usd(value: Float64): String =
-        BigDecimal.valueOf(value).setScale(6, RoundingMode.HALF_EVEN).toPlainString()
+    /// The clustering method constants: the versioned method and its weights.
+    pub def method(): String = Vector.join("\n", Vector.flatten(Vector#{
+        Vector#{"| constant | value |", "|---|---|",
+            "| method protocol | `${Families.Method.protocol()}` |",
+            "| output space | `${Families.Method.space()}` |",
+            "| families table | `${Families.Cluster.Table.families()#format}` |",
+            "| members table | `${Families.Cluster.Table.members()#format}` |",
+            "| rollups table | `${Families.Cluster.Table.rollups()#format}` |"},
+        Vector.map(match (name, weight) -> "| weight: ${name} | `${decimal(weight, 2)}` |",
+            Families.Method.weightRows(Families.Method.weights()))
+    })) + "\n"
+
+    def usd(value: Float64): String = decimal(value, 6)
+
+    def decimal(value: Float64, scale: Int32): String =
+        BigDecimal.valueOf(value).setScale(scale, RoundingMode.HALF_EVEN).toPlainString()
+
+    /// One clustered world as the report sees it: the recorded clustering,
+    /// the candidate and seed counts, and the single-source ablations (how
+    /// many symbols change family without one source).
+    pub type alias Clustered = {
+        repository     = String,
+        clustering     = Families.Cluster.Clustering,
+        seeds          = Int32,
+        candidates     = Int32,
+        structuralOnly = Int32,
+        semanticOnly   = Int32
+    }
+
+    /// Family counts, affinity sources, rollups, and the largest families.
+    pub def clustering(values: Vector[Clustered]): String = {
+        let counts = Vector.append(Vector#{
+            "| repository | snapshot | seeds | candidates | families | members | largest | singletons | held by 2+ frontiers | seed fallback | named by decision |",
+            "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|"
+        }, Vector.map(value -> {
+            let c = value#clustering;
+            let sizes = Vector.map(family -> family#members, c#families);
+            "| ${value#repository} | `${shortSnapshot(c#snapshotId)}` | ${value#seeds} | ${value#candidates} | " +
+            "${Vector.length(c#families)} | ${Vector.length(c#members)} | ${Vector.foldLeft(Int32.max, 0, sizes)} | " +
+            "${Vector.count(size -> size == 1, sizes)} | ${Vector.count(member -> member#candidates >= 2, c#members)} | " +
+            "${Vector.count(member -> member#candidates == 0, c#members)} | ${Vector.count(family -> family#named, c#families)} |"
+        }, values));
+        let sources = Vector.append(Vector#{
+            "| repository | mean structural | mean semantic | moved without semantic | moved without structure |",
+            "|---|---:|---:|---:|---:|"
+        }, Vector.map(value -> {
+            let members = value#clustering#members;
+            let mean = f -> if (Vector.isEmpty(members)) 0.0
+                else Vector.foldLeft((sum, member) -> sum + f(member), 0.0, members) / Int32.toFloat64(Vector.length(members));
+            "| ${value#repository} | ${decimal(mean(member -> member#structural), 6)} | ${decimal(mean(member -> member#semantic), 6)} | " +
+            "${value#structuralOnly} | ${value#semanticOnly} |"
+        }, values));
+        let rollup = Vector.append(Vector#{
+            "| repository | files | files split across families | directories | directories with one family |",
+            "|---|---:|---:|---:|---:|"
+        }, Vector.map(value -> {
+            let rows = level -> Vector.filter(row -> row#level == level, value#clustering#rollups);
+            let locations = level -> Vector.map(row -> row#locationId, rows(level)) |> Vector.toSet |> Set.size;
+            let whole = level -> Vector.count(row -> row#dominant and row#members == row#locationMembers, rows(level));
+            let files = Families.Rollup.fileLevel();
+            let directories = Families.Rollup.directoryLevel();
+            "| ${value#repository} | ${locations(files)} | ${locations(files) - whole(files)} | " +
+            "${locations(directories)} | ${whole(directories)} |"
+        }, values));
+        let largest = Vector.append(Vector#{
+            "| repository | family | name | kind | members | files | seeds | name provenance |",
+            "|---|---:|---|---|---:|---:|---:|---|"
+        }, Vector.flatMap(value -> value#clustering#families
+            |> Vector.sortBy(family -> (0 - family#members, family#family))
+            |> Vector.take(8)
+            |> Vector.map(family ->
+                "| ${value#repository} | ${family#family} | `${family#name}` | ${family#nameKind} | ${family#members} | " +
+                "${family#files} | ${Vector.length(family#seedFiles)} | " +
+                "${family#nameDecision |> Option.map(id -> "decision `${shortSnapshot(id)}`") |> Option.getWithDefault("single location")} |"),
+            values));
+        Vector.join("\n", Vector.flatten(Vector#{
+            Vector#{"**Families**", ""}, counts,
+            Vector#{"", "**Affinity sources** (per member, weighted; ablations count members whose family changes)", ""}, sources,
+            Vector#{"", "**Rollup**", ""}, rollup,
+            Vector#{"", "**Largest families**", ""}, largest
+        })) + "\n"
+    }
 }

@@ -1,5 +1,12 @@
 load("//test/build:flix.bzl", "checked_test", "flix_check", "flix_fatjar")
-load(":families.bzl", "families_acquisitions", "families_inventories", "families_protocol")
+load(
+    ":families.bzl",
+    "families_acquisitions",
+    "families_clusterings",
+    "families_inventories",
+    "families_method",
+    "families_protocol",
+)
 
 package(default_visibility = ["//visibility:public"])
 
@@ -11,6 +18,10 @@ filegroup(
     name = "families_sources",
     srcs = [
         "src/Families.flix",
+        "src/Families/Affinity.flix",
+        "src/Families/Cluster.flix",
+        "src/Families/Cluster/Law.flix",
+        "src/Families/Cluster/Table.flix",
         "src/Families/Decision.flix",
         "src/Families/Decision/Table.flix",
         "src/Families/Embedding.flix",
@@ -19,12 +30,15 @@ filegroup(
         "src/Families/Inventory.flix",
         "src/Families/Inventory/Table.flix",
         "src/Families/Ledger.flix",
+        "src/Families/Method.flix",
         "src/Families/Navigation.flix",
         "src/Families/Pass.flix",
         "src/Families/Protocol.flix",
         "src/Families/Provider.flix",
+        "src/Families/Recorded.flix",
         "src/Families/Replay.flix",
         "src/Families/Report.flix",
+        "src/Families/Rollup.flix",
         "src/Families/Rows.flix",
         "src/Families/Wire.flix",
     ],
@@ -57,6 +71,7 @@ filegroup(
 flix_fatjar(
     name = "families_flix",
     srcs = [
+        "ClusteringLaw.flix",
         "Main.flix",
         ":families_closure",
         "//src:Experiment.flix",
@@ -102,10 +117,26 @@ ACQUIRED_EVIDENCE = families_acquisitions(
     tool = ":families_tool",
 )
 
+# The clustering method (`atlas-families-v1`): its versioned constants
+# (PROTOCOL.md), the method's tables per acquired world built twice as
+# independent content-addressed actions (`cluster_<key>`, `cluster_<key>_rerun`)
+# over the recorded evidence only, the clustering report, and the table and
+# families laws over both runs.
+families_method(
+    name = "method_constants",
+    tool = ":families_tool",
+)
+
+CLUSTERING_LAWS = families_clusterings(
+    name = "clustering_report",
+    tool = ":families_tool",
+)
+
 flix_check(
     name = "families_check",
     srcs = [
         "AcquisitionTest.flix",
+        "ClusterTest.flix",
         "FamiliesTest.flix",
         ":families_closure",
         "//test:TestWorlds.flix",
@@ -148,7 +179,9 @@ sh_test(
         "PROTOCOL.md",
         "REPORT.md",
         ":acquisition_report",
+        ":clustering_report",
         ":inventory_report",
+        ":method_constants",
         ":protocol_constants",
         "@bazel_tools//tools/bash/runfiles",
     ],
@@ -177,5 +210,5 @@ test_suite(
         ":families_test",
         ":issue_blindness_test",
         ":report_test",
-    ],
+    ] + CLUSTERING_LAWS,
 )

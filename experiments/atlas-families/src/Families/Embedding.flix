@@ -162,7 +162,13 @@ pub mod Families.Embedding {
         if (String.toLowerCase(served) == String.toLowerCase(Families.Protocol.embeddingModel())) Ok(())
         else Err("unexpected embedding model ${served}")
 
-    def vectorDigests(batch: Batch, body: String): Result[String, Vector[String]] \ IO = try {
+    def vectorDigests(batch: Batch, body: String): Result[String, Vector[String]] \ IO =
+        vectors(batch, body) |> Result.map(Vector.map(digest))
+
+    /// The admitted vectors of one batch body, per document in batch order,
+    /// decoded keylessly through the SDK's own decoder and checked for order
+    /// and dimension.
+    pub def vectors(batch: Batch, body: String): Result[String, Vector[Vector[Float32]]] \ IO = try {
         let response = AttuneOpenRouter.embed(AttuneOpenRouter.replay(body),
             Families.Provider.embeddingRequest(batch#request#inputs)).parsedResponse();
         let data = response.data();
@@ -173,14 +179,17 @@ pub mod Families.Embedding {
             let values = embedding.embedding();
             if (embedding.index().intValue() != index) Err("batch ${batch#ordinal} vector ${index} is out of order")
             else if (values.size() != Families.Protocol.dimension()) Err("batch ${batch#ordinal} vector ${index} has ${values.size()} dimensions")
-            else {
-                let buffer = ByteBuffer.allocate(4 * values.size()).order(ByteOrder.LITTLE_ENDIAN);
-                Vector.forEach(coordinate -> { let _ = buffer.putFloat(values.get(coordinate).floatValue()); () },
-                    Vector.range(0, values.size()));
-                Ok(HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(buffer.array())))
-            }
+            else Ok(Vector.map(coordinate -> values.get(coordinate).floatValue(), Vector.range(0, values.size())))
         }, Vector.range(0, expected))
     } catch {
         case error: Exception => Err(AttuneOpenRouter.describe(error))
+    }
+
+    /// The SHA-256 of a vector's little-endian float32 bytes: the digest the
+    /// typed batch table records for it.
+    pub def digest(values: Vector[Float32]): String \ IO = {
+        let buffer = ByteBuffer.allocate(4 * Vector.length(values)).order(ByteOrder.LITTLE_ENDIAN);
+        Vector.forEach(value -> { let _ = buffer.putFloat(value); () }, values);
+        HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(buffer.array()))
     }
 }

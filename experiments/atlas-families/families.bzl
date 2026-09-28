@@ -317,6 +317,13 @@ families_acquisition_report = rule(
     },
 )
 
+def _evidence_labels(world):
+    digest = world.rpartition("/")[2].partition(":")[0]
+    return (
+        "//.attune/%s/%s:evidence" % (EMBEDDING_SPACE, digest),
+        "//.attune/%s/%s:evidence" % (DECISION_SPACE, digest),
+    )
+
 def families_acquisitions(name, tool):
     """Declares `acquire_<key>` launchers, `replay_<key>` proofs, and the report.
 
@@ -337,9 +344,7 @@ def families_acquisitions(name, tool):
             tool = tool,
             world = world,
         )
-        digest = world.rpartition("/")[2].partition(":")[0]
-        decisions = "//.attune/%s/%s:evidence" % (DECISION_SPACE, digest)
-        embeddings = "//.attune/%s/%s:evidence" % (EMBEDDING_SPACE, digest)
+        embeddings, decisions = _evidence_labels(world)
         families_replay(
             name = "replay_" + key,
             decisions = decisions,
@@ -355,3 +360,222 @@ def families_acquisitions(name, tool):
         tool = tool,
     )
     return evidence
+
+# The clustering method's output tables (space `atlas-families-v1`), one
+# directory per built run.
+CLUSTERING_TABLES = ["families", "members", "rollups"]
+
+FamiliesClusteringInfo = provider(
+    doc = "One built clustering run of one acquired world, with everything it was derived from.",
+    fields = {
+        "world": "the AttuneWorldInfo of the clustered world",
+        "embeddings": "the recorded embedding evidence files",
+        "decisions": "the recorded decision evidence files",
+        "tables": "dict: table name -> built Parquet file",
+    },
+)
+
+def _families_clustering_impl(ctx):
+    world = ctx.attr.world[AttuneWorldInfo]
+    embeddings = ctx.files.embeddings
+    decisions = ctx.files.decisions
+    tables = {
+        table: ctx.actions.declare_file("%s/%s.parquet" % (ctx.label.name, table))
+        for table in CLUSTERING_TABLES
+    }
+    args = ctx.actions.args()
+    for name, value in [("attune.command", "cluster")] + _world_properties(world, lambda file: file.path) + [
+        ("attune.embeddings_root", _space_root(embeddings, "documents.parquet")),
+        ("attune.decisions_root", _space_root(decisions, "decisions.parquet")),
+        ("attune.output_clustering", tables["families"].dirname),
+    ]:
+        args.add(_jvm_property(name, value))
+    ctx.actions.run(
+        executable = ctx.executable.tool,
+        arguments = [args],
+        inputs = [world.metadata, world.entities, world.relations] + embeddings + decisions,
+        outputs = tables.values(),
+        mnemonic = "FamiliesCluster",
+        progress_message = "Clustering families from recorded evidence %{label}",
+    )
+    return [
+        DefaultInfo(files = depset(tables.values())),
+        FamiliesClusteringInfo(world = world, embeddings = embeddings, decisions = decisions, tables = tables),
+    ]
+
+families_clustering = rule(
+    implementation = _families_clustering_impl,
+    attrs = {
+        "world": attr.label(providers = [AttuneWorldInfo], mandatory = True),
+        "embeddings": attr.label(allow_files = True, mandatory = True),
+        "decisions": attr.label(allow_files = True, mandatory = True),
+        "tool": attr.label(executable = True, cfg = "exec", mandatory = True),
+    },
+)
+
+def _clustered_properties(index, run, rerun, path):
+    """The `attune.clustered.<index>.*` properties of one world's two runs."""
+    prefix = "attune.clustered.%d" % index
+    root = lambda files, name: path(_space_file(files, name)).rpartition("/")[0]
+    properties = [(prefix + "." + name.partition(".")[2], value) for name, value in _world_properties(run.world, path)]
+    properties += [
+        (prefix + ".embeddings_root", root(run.embeddings, "documents.parquet")),
+        (prefix + ".decisions_root", root(run.decisions, "decisions.parquet")),
+    ]
+    for label, value in [("run", run), ("rerun", rerun)]:
+        properties += [("%s.%s.%s" % (prefix, label, table), path(value.tables[table])) for table in CLUSTERING_TABLES]
+    return properties
+
+def _clustered_inputs(runs):
+    inputs = []
+    for run in runs:
+        world = run.world
+        inputs += [world.metadata, world.entities, world.relations] + run.embeddings + run.decisions + run.tables.values()
+    return inputs
+
+def _clustered_pairs(ctx):
+    runs = [target[FamiliesClusteringInfo] for target in ctx.attr.runs]
+    reruns = [target[FamiliesClusteringInfo] for target in ctx.attr.reruns]
+    if len(runs) != len(reruns):
+        fail("every clustering run needs its rerun")
+    for run, rerun in zip(runs, reruns):
+        if run.world.snapshot_id != rerun.world.snapshot_id:
+            fail("a rerun clusters another world than its run")
+    return runs, reruns
+
+_CLUSTERED_ATTRS = {
+    "runs": attr.label_list(providers = [FamiliesClusteringInfo], mandatory = True),
+    "reruns": attr.label_list(providers = [FamiliesClusteringInfo], mandatory = True),
+    "tool": attr.label(executable = True, cfg = "exec", mandatory = True),
+}
+
+def _families_clustering_report_impl(ctx):
+    runs, reruns = _clustered_pairs(ctx)
+    report = ctx.actions.declare_file(ctx.label.name + ".md")
+    args = ctx.actions.args()
+    properties = [("attune.command", "clustering-report"), ("attune.clustered.count", str(len(runs)))]
+    for index in range(len(runs)):
+        properties += _clustered_properties(index, runs[index], reruns[index], lambda file: file.path)
+    for name, value in properties + [("attune.output_report", report.path)]:
+        args.add(_jvm_property(name, value))
+    ctx.actions.run(
+        executable = ctx.executable.tool,
+        arguments = [args],
+        inputs = _clustered_inputs(runs + reruns),
+        outputs = [report],
+        mnemonic = "FamiliesClusteringReport",
+        progress_message = "Projecting families clustering report %{label}",
+    )
+    return [DefaultInfo(files = depset([report]))]
+
+families_clustering_report = rule(
+    implementation = _families_clustering_report_impl,
+    attrs = _CLUSTERED_ATTRS,
+)
+
+_LAW_TEMPLATE = """#!/usr/bin/env bash
+# A families clustering law over the built `atlas-families-v1` tables; the
+# Flix law command exits non-zero when any law fails.
+set -euo pipefail
+if [ -n "${{TEST_SRCDIR:-}}" ]; then runfiles="$TEST_SRCDIR"
+elif [ -n "${{RUNFILES_DIR:-}}" ]; then runfiles="$RUNFILES_DIR"
+else runfiles="$(cd "$0.runfiles" && pwd)"
+fi
+export JAVA_RUNFILES="$runfiles"
+exec "$runfiles/_main/{tool}" {properties}
+"""
+
+def _families_law_test_impl(ctx):
+    runs, reruns = _clustered_pairs(ctx)
+    properties = [("attune.command", ctx.attr.command), ("attune.clustered.count", str(len(runs)))]
+    for index in range(len(runs)):
+        properties += _clustered_properties(index, runs[index], reruns[index], lambda file: "$runfiles/_main/" + file.short_path)
+    launcher = ctx.actions.declare_file(ctx.label.name + ".sh")
+    ctx.actions.write(
+        output = launcher,
+        content = _LAW_TEMPLATE.format(
+            tool = ctx.executable.tool.short_path,
+            properties = " \\\n  ".join(['"%s"' % _jvm_property(name, value) for name, value in properties]),
+        ),
+        is_executable = True,
+    )
+    runfiles = ctx.runfiles(files = _clustered_inputs(runs + reruns))
+    runfiles = runfiles.merge(ctx.attr.tool[DefaultInfo].default_runfiles)
+    return [DefaultInfo(executable = launcher, runfiles = runfiles)]
+
+families_law_test = rule(
+    implementation = _families_law_test_impl,
+    test = True,
+    attrs = dict(_CLUSTERED_ATTRS, **{
+        "command": attr.string(values = ["table-law", "family-law"], mandatory = True),
+        "tool": attr.label(executable = True, cfg = "target", mandatory = True),
+    }),
+)
+
+def families_clusterings(name, tool):
+    """Declares the clustering of every acquired world, twice, and its laws.
+
+    Per acquired world `<key>`: `cluster_<key>` (the method's tables, a
+    content-addressed action output) and `cluster_<key>_rerun` (the same
+    derivation as an independent action, so the determinism law compares two
+    real runs). Over all of them: the Markdown report `<name>.md`, and the
+    table law `atlas_families_table_test` and families law
+    `atlas_families_law_test`.
+
+    Args:
+      name: the Markdown clustering projection target (`<name>.md`).
+      tool: the families experiment tool.
+
+    Returns:
+      The labels of both law tests.
+    """
+    runs = []
+    reruns = []
+    for key, world in ACQUIRED_WORLDS:
+        embeddings, decisions = _evidence_labels(world)
+        for label, labels in [("cluster_" + key, runs), ("cluster_%s_rerun" % key, reruns)]:
+            families_clustering(
+                name = label,
+                decisions = decisions,
+                embeddings = embeddings,
+                tool = tool,
+                world = world,
+            )
+            labels.append(":" + label)
+    families_clustering_report(
+        name = name,
+        reruns = reruns,
+        runs = runs,
+        tool = tool,
+    )
+    tests = []
+    for test, command in [("atlas_families_table_test", "table-law"), ("atlas_families_law_test", "family-law")]:
+        families_law_test(
+            name = test,
+            size = "small",
+            command = command,
+            reruns = reruns,
+            runs = runs,
+            tool = tool,
+        )
+        tests.append(":" + test)
+    return tests
+
+def _families_method_impl(ctx):
+    report = ctx.actions.declare_file(ctx.label.name + ".md")
+    ctx.actions.run(
+        executable = ctx.executable.tool,
+        arguments = [
+            _jvm_property("attune.command", "method"),
+            _jvm_property("attune.output_report", report.path),
+        ],
+        outputs = [report],
+        mnemonic = "FamiliesMethod",
+        progress_message = "Rendering families method constants %{label}",
+    )
+    return [DefaultInfo(files = depset([report]))]
+
+families_method = rule(
+    implementation = _families_method_impl,
+    attrs = {"tool": attr.label(executable = True, cfg = "exec", mandatory = True)},
+)

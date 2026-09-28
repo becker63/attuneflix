@@ -197,3 +197,72 @@ ATTUNE_WORKSPACE=$PWD OPENROUTER_API_KEY=... /tmp/acquire_preact <retained sourc
 
 The key is taken from the environment of that one command (the git-ignored
 `.env`) and is never printed, logged, or committed.
+
+## Clustering method (`atlas-families-v1`)
+
+The clustering is a pure function of one admitted world and its recorded
+evidence: no provider, key, issue, or gold is reachable from it. It is owned by
+`src/Families/Method.flix` (the versioned constants below, rendered by
+`:method_constants` and pinned by `:report_test`), `src/Families/Cluster.flix`
+(the method), `src/Families/Affinity.flix` (the affinity substrate),
+`src/Families/Rollup.flix` (the location rollup), and
+`src/Families/Cluster/Table.flix` (the three typed tables). Changing any
+constant is a new method version.
+
+<!-- families:method:begin -->
+| constant | value |
+|---|---|
+| method protocol | `atlas-families-v1` |
+| output space | `atlas-families-v1` |
+| families table | `attune-atlas-families-v1` |
+| members table | `attune-atlas-families-members-v1` |
+| rollups table | `attune-atlas-families-rollups-v1` |
+| weight: same file | `0.30` |
+| weight: calls | `0.20` |
+| weight: imports | `0.15` |
+| weight: directory | `0.10` |
+| weight: semantic | `0.25` |
+<!-- families:method:end -->
+
+1. **Candidates (Jev-decided agglomeration).** Every seed's recorded route is
+   replayed through Atlas's own evaluator from the seed file to its exact
+   terminal frontier, which must carry the recorded `state_id`; the recorded
+   preview is never read. A file frontier is read at symbol grain (the
+   callables its files define). Seeds whose frontiers hold the same nonempty
+   members are one candidate; its representative is the least seed.
+2. **Names.** A candidate carries its representative's recorded name, and the
+   name is admitted only as the protocol produces it: a named family's name is
+   the target its recorded `family_name` decision chose on that frontier (the
+   decision identity is kept as `name_decision`), and an unnamed family's name
+   is the frontier's only candidate location.
+3. **Affinity.** A symbol's affinity to a candidate is the weighted sum of five
+   indicators, each averaged over the candidate's other members: sharing a
+   defining file (`Defines`/`DefinedIn`), a call edge in either direction
+   (`Calls`/`Callers`), an import edge between the two files in either
+   direction (`Imports`/`ImportedBy`), sharing a directory (the admitted
+   `parent` prefixes), and the cosine similarity of the two recorded embedding
+   vectors. The vectors are decoded from the retained raw batch bodies and each
+   must carry the SHA-256 digest the typed batch table admitted for it. The
+   first four indicators are the structural source, the fifth the semantic
+   source.
+4. **Assignment.** Each symbol joins, among the candidates whose frontier holds
+   it, the one with the greatest affinity (the least candidate on a tie). A
+   symbol no frontier holds joins the candidate of its own defining file's
+   seed.
+5. **Families.** The candidates that keep at least one member, in candidate
+   order, numbered from 0. A family's identity is
+   `ScientificIdentity.versioned("atlas-families-v1", snapshot + "\n" +
+   "symbol:<id>" per member, ascending)`: it is derived from the exact admitted
+   members, never from a path or a name.
+6. **Rollup.** A file holds the members it defines and a directory holds the
+   members of every file below it (root `""` included). Each (location, family)
+   row counts the family's members there out of the location's members; the
+   dominant family has the most members, the least family on a tie.
+
+The method runs as hermetic Bazel actions (`families_clusterings` in
+`families.bzl`): `cluster_<world>` reads only the frozen world tables and the
+two recorded evidence filegroups and writes `families.parquet`,
+`members.parquet`, and `rollups.parquet`; `cluster_<world>_rerun` is the same
+derivation as an independent action. The tables are content-addressed
+BuildBuddy remote-cache outputs, never git-tracked evidence. Build them with
+`nix develop --command bazel build //experiments/atlas-families:cluster_preact --config=buildbuddy-rbe-arm64`.

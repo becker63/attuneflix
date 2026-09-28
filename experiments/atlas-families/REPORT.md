@@ -169,16 +169,84 @@ and the three decision tables.
 the storage plan for the larger worlds go to the user before any further world
 is acquired.
 
+## Clustering record
+
+The clustering method (`atlas-families-v1`, constants and steps in
+[PROTOCOL.md](PROTOCOL.md#clustering-method-atlas-families-v1)) ran on the
+recorded preact evidence as the hermetic Bazel actions `cluster_preact` and
+`cluster_preact_rerun`, keyless, over the frozen world tables and the two
+recorded evidence filegroups only. The two runs' tables are byte-identical.
+The block below is projected from the built tables by `:clustering_report`.
+Regenerate with
+`nix develop --command bazel build //experiments/atlas-families:clustering_report --config=buildbuddy-rbe-arm64`.
+
+<!-- families:clustering:begin -->
+**Families**
+
+| repository | snapshot | seeds | candidates | families | members | largest | singletons | held by 2+ frontiers | seed fallback | named by decision |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| preactjs/preact | `6e2bef41bf19` | 171 | 161 | 159 | 1623 | 120 | 29 | 133 | 166 | 158 |
+
+**Affinity sources** (per member, weighted; ablations count members whose family changes)
+
+| repository | mean structural | mean semantic | moved without semantic | moved without structure |
+|---|---:|---:|---:|---:|
+| preactjs/preact | 0.371468 | 0.179825 | 0 | 18 |
+
+**Rollup**
+
+| repository | files | files split across families | directories | directories with one family |
+|---|---:|---:|---:|---:|
+| preactjs/preact | 171 | 1 | 41 | 7 |
+
+**Largest families**
+
+| repository | family | name | kind | members | files | seeds | name provenance |
+|---|---:|---|---|---:|---:|---:|---|
+| preactjs/preact | 119 | `test/browser/components.test.js` | file | 120 | 1 | 1 | decision `576d7e1eb3f3` |
+| preactjs/preact | 125 | `test/_util` | directory | 91 | 2 | 2 | decision `e7ccbed3ba92` |
+| preactjs/preact | 139 | `test/browser/lifecycles/shouldComponentUpdate.test.js` | file | 60 | 1 | 1 | decision `1dd41edcf624` |
+| preactjs/preact | 29 | `compat/test/browser/suspense.test.js` | file | 55 | 1 | 1 | decision `316bf125d6bf` |
+| preactjs/preact | 121 | `test/browser/createContext.test.js` | file | 49 | 1 | 1 | decision `4d19da2e900e` |
+| preactjs/preact | 49 | `debug/test/browser/debug.test.js` | file | 46 | 1 | 1 | decision `65bf7a6eec68` |
+| preactjs/preact | 138 | `test/browser/lifecycles/lifecycle.test.js` | file | 43 | 1 | 1 | decision `e615908ba784` |
+| preactjs/preact | 128 | `test/browser/lifecycles/componentDidCatch.test.js` | file | 40 | 1 | 1 | decision `78c0629e86d5` |
+<!-- families:clustering:end -->
+
+Reading the record:
+
+- **Candidates.** The 171 recorded walks reach 161 distinct frontiers, and 159
+  of those keep at least one member once every symbol has chosen. Every symbol
+  of the world is in exactly one family. 133 symbols sit in two or more
+  recorded frontiers and are decided by affinity; 166 sit in none and join
+  their own file's seed family.
+- **Names.** 158 of the 159 families are named by a recorded `family_name`
+  decision; the remaining one is named by its frontier's only candidate
+  location. The largest families above show the decision each name comes from.
+- **Sources.** Both sources contribute to every recorded affinity, but on
+  preact the semantic source is not decisive under the v1 weights: removing it
+  moves no symbol, while removing the structural source moves 18. The weights
+  stay as versioned; whether the semantic source should carry more weight is a
+  question for the larger worlds, not a retune on preact.
+- **Rollup.** Of the 171 files that define callables, one is split across
+  families; 7 of the 41 directories with callables hold a single family.
+- **Performance.** The families law, which re-derives the whole clustering
+  in-process from the recorded evidence and checks every law against both
+  built runs, ran in 5.3 s on the BuildBuddy arm64 runner.
+
 ## Laws
 
 | Target | Law |
 | --- | --- |
-| `:families_test` | The inventory is an exact function of the admitted world; the inventory table has a pinned schema, round-trips exactly, and rejects a foreign protocol, a mistyped column, or a row count other than one; the report projection is deterministic in declared order. The acquisition laws: documents follow the frozen recipe with no query side and are cut at the frozen limit; a span outside the source root is rejected; navigation offers only the frontier domain's atoms; every request is acquired once and then served from evidence; keyless replay refuses a miss and the envelope stops live calls; evidence is content-addressed, never replaced, and a retained exchange for a different request is rejected; every decision payload is issue-blind structure; every typed table round-trips exactly and rejects a foreign world; the ledger sums the provider-reported usage; the replay proof is exact only when every table matches keylessly. |
+| `:families_test` | The inventory is an exact function of the admitted world; the inventory table has a pinned schema, round-trips exactly, and rejects a foreign protocol, a mistyped column, or a row count other than one; the report projection is deterministic in declared order. The acquisition laws: documents follow the frozen recipe with no query side and are cut at the frozen limit; a span outside the source root is rejected; navigation offers only the frontier domain's atoms; every request is acquired once and then served from evidence; keyless replay refuses a miss and the envelope stops live calls; evidence is content-addressed, never replaced, and a retained exchange for a different request is rejected; every decision payload is issue-blind structure; every typed table round-trips exactly and rejects a foreign world; the ledger sums the provider-reported usage; the replay proof is exact only when every table matches keylessly. The clustering laws on a nested three-file world: affinity components are the exact per-pair means of both sources, the weights decide between the sources and a tie keeps the least candidate, recorded routes replay to their exact frontier, unheld symbols fall back to their seed candidate, the rollup is exact at file and directory level, family identity is derived from the exact members only, and the clustering tables round-trip exactly and reject foreign or malformed rows. |
 | `:issue_blindness_test` | The tool's sources name no Localization module, issue field, or gold or population space; every retained decision request is a families state and every retained embedding request is a document batch, and none names an issue or gold field. |
 | `replay_preact` | Keyless replay over the recorded preact spaces regenerates all six tables bit-identically with zero provider calls and no key in the environment (the build fails otherwise). |
+| `:atlas_families_table_test` | Every built `atlas-families-v1` table (families, members, rollups) decodes under its declared schema and encodes back to the stored rows, rewrites and reads back to the same rows, and is refused under a foreign schema. |
+| `:atlas_families_law_test` | Over the recorded preact evidence: the independent rerun is byte-identical and an in-process recomputation equals the recorded tables (determinism); every symbol is a member of exactly one family and every member is its exact admitted symbol (no invention); every member row joins exactly one frozen world entity row on snapshot, domain, id, path, name, and span, and every seed file is a world file row (provenance); every family identity is the content-derived identity of its members; every name is its seed's recorded name, admitted by the recorded naming decision or the only candidate location (naming); the rollup equals its recomputation from the member table and each location sums to its members with one dominant family (rollup); every protocol weight is positive, both sources contribute to the recorded affinities, and the semantic affinity varies (both sources). |
 | `:charter_test` | `AGENTS.md` keeps the no-reacquisition paragraph and the Typed Parquet rule verbatim and carries the dated, scoped carve-out; this report carries the charter sections. |
 | `:report_test` | Every generated block in this report and in `PROTOCOL.md` equals its regenerated Bazel projection. |
 
 The tests are aggregated by `:families_tests`, which the root `//:tests`
-suite includes; `:report_test` depends on `replay_preact`. Run them with
+suite includes; `:report_test` depends on `replay_preact` and on the
+clustering report built from `cluster_preact`. Run them with
 `nix develop --command bazel test //experiments/atlas-families/... --config=buildbuddy-rbe-arm64`.
