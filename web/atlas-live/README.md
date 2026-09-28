@@ -178,7 +178,9 @@ nix develop --command bazel build //web/atlas-live/projection:data --config=buil
 A Node CLI (`projection/src/cli.ts`, run through `js_run_binary`) stages each world's
 Parquet via `copy_to_directory` from `//.attune/repository-world-v1/<digest>:world`,
 projects it with `projectWorld`, and writes `data/<digest>/{metadata,entities,relations}.parquet`
-(plus `locations.parquet` when a locations table is available) and a top-level
+(plus `locations.parquet` when a locations table is available, and
+`families.parquet` + `family_{members,rollups,edges,contributions}.parquet` when the
+Atlas Families experiment has exported that world) and a top-level
 `manifest.json`. The manifest lists every world sorted by snapshot id with
 `{snapshotId, snapshotDigest, repository, baseRevision, counts, assets, sha256}`; counts
 satisfy `points = files + symbols + directories` with

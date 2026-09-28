@@ -35,7 +35,7 @@ mod FamiliesClusteringLaw {
     def layoutOf(world: World): Vector[(String, String, ScientificTable.Schema, Vector[ScientificTable.Row])] =
         Families.Cluster.Table.layout({snapshotId = world#subject#identity#snapshotId, families = Vector.empty(), members = Vector.empty(), rollups = Vector.empty()})
 
-    def report(label: String, results: Vector[(String, Result[String, Unit])]): Unit \ IO = {
+    pub def report(label: String, results: Vector[(String, Result[String, Unit])]): Unit \ IO = {
         Vector.forEach(match (name, result) -> match result {
             case Ok(_) => println("OK   ${label} ${name}")
             case Err(error) => println("FAIL ${label} ${name}: ${error}")
@@ -69,7 +69,7 @@ mod FamiliesClusteringLaw {
         }, worlds())
     }
 
-    def refused(path: String, schema: ScientificTable.Schema): Result[String, Unit] \ IO = try {
+    pub def refused(path: String, schema: ScientificTable.Schema): Result[String, Unit] \ IO = try {
         let _ = ScientificTable.read(path, schema);
         Err("${path} was admitted under ${schema#format}")
     } catch {

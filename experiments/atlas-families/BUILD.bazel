@@ -3,6 +3,7 @@ load(
     ":families.bzl",
     "families_acquisitions",
     "families_clusterings",
+    "families_exports",
     "families_inventories",
     "families_method",
     "families_protocol",
@@ -24,9 +25,13 @@ filegroup(
         "src/Families/Cluster/Table.flix",
         "src/Families/Decision.flix",
         "src/Families/Decision/Table.flix",
+        "src/Families/Edge.flix",
+        "src/Families/Edge/Law.flix",
+        "src/Families/Edge/Table.flix",
         "src/Families/Embedding.flix",
         "src/Families/Embedding/Table.flix",
         "src/Families/Evidence.flix",
+        "src/Families/Export.flix",
         "src/Families/Inventory.flix",
         "src/Families/Inventory/Table.flix",
         "src/Families/Ledger.flix",
@@ -72,6 +77,7 @@ flix_fatjar(
     name = "families_flix",
     srcs = [
         "ClusteringLaw.flix",
+        "EdgeLaw.flix",
         "Main.flix",
         ":families_closure",
         "//src:Experiment.flix",
@@ -132,11 +138,23 @@ CLUSTERING_LAWS = families_clusterings(
     tool = ":families_tool",
 )
 
+# The family edges of every clustered world (`edges_<key>`: family pairs with
+# multiplicity and one contribution row per exact world edge) and its Atlas
+# Live export (`export_<key>`, staged by //web/atlas-live/projection:families
+# into data/<digest>/), with the report, the table and edge laws, and the
+# cross-layer parity law against the web projection staging.
+EXPORT_LAWS = families_exports(
+    name = "export_report",
+    staging = "//web/atlas-live/projection:families",
+    tool = ":families_tool",
+)
+
 flix_check(
     name = "families_check",
     srcs = [
         "AcquisitionTest.flix",
         "ClusterTest.flix",
+        "EdgeTest.flix",
         "FamiliesTest.flix",
         ":families_closure",
         "//test:TestWorlds.flix",
@@ -180,6 +198,7 @@ sh_test(
         "REPORT.md",
         ":acquisition_report",
         ":clustering_report",
+        ":export_report",
         ":inventory_report",
         ":method_constants",
         ":protocol_constants",
@@ -210,5 +229,5 @@ test_suite(
         ":families_test",
         ":issue_blindness_test",
         ":report_test",
-    ] + CLUSTERING_LAWS,
+    ] + CLUSTERING_LAWS + EXPORT_LAWS,
 )

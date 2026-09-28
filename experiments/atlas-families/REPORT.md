@@ -234,6 +234,73 @@ Reading the record:
   in-process from the recorded evidence and checks every law against both
   built runs, ran in 5.3 s on the BuildBuddy arm64 runner.
 
+## Family edge and export record
+
+The family-edge aggregation (`Families.Edge`, tables
+`attune-atlas-family-edges-v1` and `attune-atlas-family-edge-contributions-v1`)
+ran on the clustered preact world as the hermetic Bazel action `edges_preact`
+over the frozen world tables and the built clustering only. Every exact
+`imports` (file grain) and `calls` (symbol grain) edge of the world is exactly
+one contribution row, attributed to the families of its endpoints (members at
+symbol grain, dominant file rollups at file grain); the attributed
+contributions of each relation and family pair aggregate to one family edge
+whose multiplicity is their count. Imports touching a file that defines no
+callable stay unattributed, and no edge is invented for them. The export route
+is the locations precedent extended: `export_preact` writes the `<digest>/`
+tree Atlas Live ships (`families.parquet` plus `family_<table>.parquet` for the
+other four tables), `//web/atlas-live/projection:families` stages it beside
+`:locations`, and `project_cli` copies it into `data/<digest>/` with a manifest
+entry. The block below is projected from the built tables by `:export_report`.
+Regenerate with
+`nix develop --command bazel build //experiments/atlas-families:export_report --config=buildbuddy-rbe-arm64`.
+
+<!-- families:edges:begin -->
+**Family edges**
+
+| repository | snapshot | relation | grain | exact edges | attributed | unattributed | family edges | intra-family edges | intra-family multiplicity | cross-family multiplicity |
+|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|
+| preactjs/preact | `6e2bef41bf19` | imports | file | 205 | 169 | 36 | 159 | 6 | 9 | 160 |
+| preactjs/preact | `6e2bef41bf19` | calls | symbol | 604 | 604 | 0 | 181 | 50 | 220 | 384 |
+
+**Heaviest cross-family edges**
+
+| repository | relation | source family | target family | multiplicity | first contributing exact edge |
+|---|---|---|---|---:|---|
+| preactjs/preact | calls | 25 `compat/test/browser/portals.test.js` | 10 `compat/src/portals.js` | 18 | `compat/test/browser/portals.test.js#Foo` -> `compat/src/portals.js#createPortal` |
+| preactjs/preact | calls | 86 `hooks/test/browser/combinations.test.js` | 84 `hooks/src/index.js` | 18 | `hooks/test/browser/combinations.test.js#Parent` -> `hooks/src/index.js#useState` |
+| preactjs/preact | calls | 111 `test-utils/test/shared/act.test.js` | 84 `hooks/src/index.js` | 17 | `test-utils/test/shared/act.test.js#StateContainer` -> `hooks/src/index.js#useEffect` |
+| preactjs/preact | calls | 94 `hooks/test/browser/useLayoutEffect.test.js` | 84 `hooks/src/index.js` | 16 | `hooks/test/browser/useLayoutEffect.test.js#Comp` -> `hooks/src/index.js#useLayoutEffect` |
+| preactjs/preact | calls | 18 `test/_util` | 84 `hooks/src/index.js` | 14 | `debug/test/browser/debug.options.test.js#HookApp` -> `hooks/src/index.js#useState` |
+| preactjs/preact | calls | 25 `compat/test/browser/portals.test.js` | 84 `hooks/src/index.js` | 14 | `compat/test/browser/portals.test.js#Foo` -> `hooks/src/index.js#useState` |
+| preactjs/preact | calls | 89 `hooks/test/browser/useContext.test.js` | 84 `hooks/src/index.js` | 14 | `hooks/test/browser/useContext.test.js#Comp` -> `hooks/src/index.js#useContext` |
+| preactjs/preact | calls | 93 `hooks/test/browser/useImperativeHandle.test.js` | 84 `hooks/src/index.js` | 14 | `hooks/test/browser/useImperativeHandle.test.js#Comp` -> `hooks/src/index.js#useRef` |
+
+**Exported files** (`data/<digest>/` in the Atlas Live data tree)
+
+| repository | exported file | rows | sha256 |
+|---|---|---:|---|
+| preactjs/preact | `families.parquet` | 159 | `f748bdadf77e` |
+| preactjs/preact | `family_members.parquet` | 1623 | `5e128df015e2` |
+| preactjs/preact | `family_rollups.parquet` | 686 | `73e7aab0d702` |
+| preactjs/preact | `family_edges.parquet` | 340 | `d79c4910166d` |
+| preactjs/preact | `family_contributions.parquet` | 809 | `d81465f412ec` |
+<!-- families:edges:end -->
+
+Reading the record:
+
+- **Coverage.** All 604 calls attribute fully (every caller and callee is a
+  member). 36 of the 205 imports stay unattributed because one endpoint is one
+  of the 39 preact files that define no callable; the no-invention law carries
+  them as contributions with no family edge.
+- **Shape.** The 340 family edges collapse 809 exact edges: intra-family
+  traffic (229 of 773 attributed) is the majority of call weight, and the
+  heaviest cross-family edges are test families calling the implementation
+  families they exercise — the map-legibility structure the Atlas Live
+  refactor renders.
+- **Route.** The same Starlark macro exports every clustered world; scaling
+  the dataset adds a world's acquisition and extends `ACQUIRED_WORLDS`, nothing
+  else.
+
 ## Laws
 
 | Target | Law |
@@ -243,6 +310,9 @@ Reading the record:
 | `replay_preact` | Keyless replay over the recorded preact spaces regenerates all six tables bit-identically with zero provider calls and no key in the environment (the build fails otherwise). |
 | `:atlas_families_table_test` | Every built `atlas-families-v1` table (families, members, rollups) decodes under its declared schema and encodes back to the stored rows, rewrites and reads back to the same rows, and is refused under a foreign schema. |
 | `:atlas_families_law_test` | Over the recorded preact evidence: the independent rerun is byte-identical and an in-process recomputation equals the recorded tables (determinism); every symbol is a member of exactly one family and every member is its exact admitted symbol (no invention); every member row joins exactly one frozen world entity row on snapshot, domain, id, path, name, and span, and every seed file is a world file row (provenance); every family identity is the content-derived identity of its members; every name is its seed's recorded name, admitted by the recorded naming decision or the only candidate location (naming); the rollup equals its recomputation from the member table and each location sums to its members with one dominant family (rollup); every protocol weight is positive, both sources contribute to the recorded affinities, and the semantic affinity varies (both sources). |
+| `:atlas_family_edges_table_test` | Every built and exported family-edge and clustering table decodes under its declared schema and encodes back to the stored rows, rewrites and reads back to the same rows, and is refused under a foreign schema. |
+| `:atlas_family_edges_law_test` | Over the clustered preact world: a fresh aggregation of the world under its clustering equals the recorded tables (determinism); the contributions of each relation are exactly the world's exact edges, each once and in edge order, and no family pair holds two edges of one relation (no invention); every contribution joins exactly one frozen world relation row (provenance); every endpoint carries the family the clustering gives it, and only a file that defines no callable lacks one (attribution); every multiplicity is the positive count of its contributions, and per relation the multiplicities plus the unattributed contributions sum to the world's exact edge count (multiplicity). |
+| `:families_export_parity_test` | The web projection staging (`//web/atlas-live/projection:families`) holds exactly the exported worlds, each with exactly the exported files; every staged file has the bytes and the typed rows of the Flix-built science table it ships; and the edge laws hold over the staged tables against the frozen world. |
 | `:charter_test` | `AGENTS.md` keeps the no-reacquisition paragraph and the Typed Parquet rule verbatim and carries the dated, scoped carve-out; this report carries the charter sections. |
 | `:report_test` | Every generated block in this report and in `PROTOCOL.md` equals its regenerated Bazel projection. |
 

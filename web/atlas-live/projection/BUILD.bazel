@@ -1,5 +1,6 @@
 load("@aspect_rules_js//js:defs.bzl", "js_binary", "js_library", "js_run_binary", "js_test")
 load("@bazel_lib//lib:copy_to_directory.bzl", "copy_to_directory")
+load("//experiments/atlas-families:families.bzl", "FAMILY_EXPORTS")
 load("//experiments/atlas-location-export:locations.bzl", "location_exports")
 load("//experiments/atlas-swe-explore/census:census.bzl", "ATLAS_WORLDS")
 load("//web/atlas-live:defs.bzl", "LAUNCHER_ENV", "atlas_ts_package")
@@ -41,6 +42,17 @@ copy_to_directory(
     name = "locations",
     srcs = _LOCATION_EXPORTS,
     root_paths = ["web/atlas-live/projection"],
+    visibility = ["//visibility:public"],
+)
+
+# The Flix-derived families export of every world that has families (Atlas
+# Families; preact first), staged as <digest>/{families,family_*}.parquet. The
+# exporter is the single owner of the tables; `//experiments/atlas-families:
+# families_export_parity_test` holds this staging to the Flix-built tables.
+copy_to_directory(
+    name = "families",
+    srcs = FAMILY_EXPORTS,
+    root_paths = ["experiments/atlas-families"],
     visibility = ["//visibility:public"],
 )
 
@@ -140,6 +152,7 @@ js_test(
 js_run_binary(
     name = "data",
     srcs = [
+        ":families",
         ":locations",
         ":synthetic_world",
         ":worlds",
@@ -151,6 +164,8 @@ js_run_binary(
         "data",
         "--locations",
         "locations",
+        "--families",
+        "families",
         "--synthetic",
         "synthetic",
     ],

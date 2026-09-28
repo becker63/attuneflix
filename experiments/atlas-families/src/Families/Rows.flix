@@ -49,6 +49,20 @@ pub mod Families.Rows {
         ScientificIdentity.versioned(schema#format,
             ScientificTable.schemaPayload(schema) + "\n" + ScientificTable.canonicalRows(rows))
 
+    /// The rows of every table of a layout `(table, file, schema, _)`, each
+    /// read from `files` (table name -> path) under its declared schema.
+    pub def readLayout(
+        layout: Vector[(String, String, ScientificTable.Schema, Vector[ScientificTable.Row])],
+        files: Map[String, String]
+    ): Result[String, Map[String, Vector[ScientificTable.Row]]] \ IO =
+        Vector.traverse(match (table, _, schema, _) -> match Map.get(table, files) {
+            case Some(path) => Ok((table, ScientificTable.read(path, schema)))
+            case None => Err("no ${table} table")
+        }, layout) |> Result.map(Vector.toMap)
+
+    pub def rowsOf(tables: Map[String, Vector[ScientificTable.Row]], table: String): Vector[ScientificTable.Row] =
+        Map.getWithDefault(table, Vector.empty(), tables)
+
     /// Writes a new table, or proves an existing one holds exactly these rows.
     /// Retained evidence tables are never replaced.
     pub def retain(path: String, schema: ScientificTable.Schema, rows: Vector[ScientificTable.Row]): Result[String, Unit] \ IO =

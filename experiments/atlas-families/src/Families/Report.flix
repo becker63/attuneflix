@@ -129,7 +129,9 @@ pub mod Families.Report {
             "| output space | `${Families.Method.space()}` |",
             "| families table | `${Families.Cluster.Table.families()#format}` |",
             "| members table | `${Families.Cluster.Table.members()#format}` |",
-            "| rollups table | `${Families.Cluster.Table.rollups()#format}` |"},
+            "| rollups table | `${Families.Cluster.Table.rollups()#format}` |",
+            "| family edges table | `${Families.Edge.Table.edges()#format}` |",
+            "| edge contributions table | `${Families.Edge.Table.contributions()#format}` |"},
         Vector.map(match (name, weight) -> "| weight: ${name} | `${decimal(weight, 2)}` |",
             Families.Method.weightRows(Families.Method.weights()))
     })) + "\n"
@@ -150,6 +152,66 @@ pub mod Families.Report {
         structuralOnly = Int32,
         semanticOnly   = Int32
     }
+
+    /// One exported world as the report sees it: its clustering, its family
+    /// edges, and every exported file with its rows and SHA-256.
+    pub type alias Edged = {
+        repository  = String,
+        world       = Repository.World,
+        clustering  = Families.Cluster.Clustering,
+        aggregation = Families.Edge.Aggregation,
+        files       = Vector[(String, Int32, String)]
+    }
+
+    /// Family edges per relation, the heaviest cross-family edges with their
+    /// first contributing exact edge, and the exported files.
+    pub def edges(values: Vector[Edged]): String = {
+        let counts = Vector.append(Vector#{
+            "| repository | snapshot | relation | grain | exact edges | attributed | unattributed | family edges | intra-family edges | intra-family multiplicity | cross-family multiplicity |",
+            "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|"
+        }, Vector.flatMap(value -> Vector.map(match (relation, grain) -> {
+            let a = value#aggregation;
+            let edges0 = Vector.filter(edge -> edge#relation == relation, a#edges);
+            let contributions = Vector.filter(c -> c#relation == relation, a#contributions);
+            let intra = Vector.filter(edge -> edge#sourceFamily == edge#targetFamily, edges0);
+            let weight = Vector.sumWith(edge -> edge#multiplicity);
+            let attributed = Vector.count(c -> not Option.isEmpty(c#edge), contributions);
+            "| ${value#repository} | `${shortSnapshot(a#snapshotId)}` | ${relation} | ${grain} | ${Vector.length(contributions)} | " +
+            "${attributed} | ${Vector.length(contributions) - attributed} | ${Vector.length(edges0)} | ${Vector.length(intra)} | " +
+            "${weight(intra)} | ${weight(edges0) - weight(intra)} |"
+        }, Families.Edge.relations()), values));
+        let heaviest = Vector.append(Vector#{
+            "| repository | relation | source family | target family | multiplicity | first contributing exact edge |",
+            "|---|---|---|---|---:|---|"
+        }, Vector.flatMap(value -> value#aggregation#edges
+            |> Vector.filter(edge -> edge#sourceFamily != edge#targetFamily)
+            |> Vector.sortBy(edge -> (0 - edge#multiplicity, edge#edge))
+            |> Vector.take(8)
+            |> Vector.map(edge -> {
+                let first = Vector.find(c -> c#edge == Some(edge#edge), value#aggregation#contributions)
+                    |> Option.map(c -> "`${endpoint(value#world, c#relation, c#sourceId)}` -> `${endpoint(value#world, c#relation, c#targetId)}`")
+                    |> Option.getWithDefault("none");
+                "| ${value#repository} | ${edge#relation} | ${familyLabel(value#clustering, edge#sourceFamily)} | " +
+                "${familyLabel(value#clustering, edge#targetFamily)} | ${edge#multiplicity} | ${first} |"
+            }), values));
+        let files = Vector.append(Vector#{"| repository | exported file | rows | sha256 |", "|---|---|---:|---|"},
+            Vector.flatMap(value -> Vector.map(match (file, rows, sha) ->
+                "| ${value#repository} | `${file}` | ${rows} | `${String.takeLeft(12, sha)}` |", value#files), values));
+        Vector.join("\n", Vector.flatten(Vector#{
+            Vector#{"**Family edges**", ""}, counts,
+            Vector#{"", "**Heaviest cross-family edges**", ""}, heaviest,
+            Vector#{"", "**Exported files** (`data/<digest>/` in the Atlas Live data tree)", ""}, files
+        })) + "\n"
+    }
+
+    def familyLabel(clustering: Families.Cluster.Clustering, family: Int32): String =
+        Vector.nth(family, clustering#families)
+            |> Option.map(value -> "${family} `${value#name}`")
+            |> Option.getWithDefault("${family}")
+
+    def endpoint(world: Repository.World, relation: String, id: Int32): String =
+        if (relation == Families.Edge.imports()) Vector.nth(id, world#files) |> Option.getWithDefault("${id}")
+        else Vector.nth(id, world#symbols) |> Option.map(s -> "${s#path}#${s#name}") |> Option.getWithDefault("${id}")
 
     /// Family counts, affinity sources, rollups, and the largest families.
     pub def clustering(values: Vector[Clustered]): String = {

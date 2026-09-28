@@ -169,6 +169,12 @@ function checkStaticPayload() {
     if (typeof locations === "string") {
       requireFile(path.join(staticDir, locations), `${digest} locations`);
     }
+    const families = isRecord(world) && isRecord(world.assets) ? world.assets.families : undefined;
+    if (isRecord(families)) {
+      for (const asset of Object.values(families)) {
+        if (typeof asset === "string") requireFile(path.join(staticDir, asset), `${digest} families`);
+      }
+    }
   }
 
   // The synthetic stress fixture ships as its own manifest entry, outside worlds[].

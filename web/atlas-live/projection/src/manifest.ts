@@ -28,6 +28,7 @@ export interface WorldAssets {
   readonly entities: string;
   readonly relations: string;
   readonly locations?: string;
+  readonly families?: FamiliesTableAssets;
 }
 
 export interface WorldHashes {
@@ -35,7 +36,41 @@ export interface WorldHashes {
   readonly entities: string;
   readonly relations: string;
   readonly locations?: string;
+  readonly families?: FamiliesTableHashes;
 }
+
+/** The typed families tables a world with families ships (the Atlas Families export). */
+export interface FamiliesTableAssets {
+  readonly families: string;
+  readonly members: string;
+  readonly rollups: string;
+  readonly edges: string;
+  readonly contributions: string;
+}
+
+export type FamiliesTableHashes = Record<keyof FamiliesTableAssets, string>;
+
+/**
+ * The exported file name of each families table under `data/<digest>/`. The
+ * Flix exporter (`Families.Export`) owns the names; this is its mirror on the
+ * web side, and the parity law holds the two to the same bytes.
+ */
+export const FAMILY_TABLE_FILES: Record<keyof FamiliesTableAssets, string> = {
+  families: "families.parquet",
+  members: "family_members.parquet",
+  rollups: "family_rollups.parquet",
+  edges: "family_edges.parquet",
+  contributions: "family_contributions.parquet",
+};
+
+/** The families tables in export order. */
+export const FAMILY_TABLE_NAMES = [
+  "families",
+  "members",
+  "rollups",
+  "edges",
+  "contributions",
+] as const satisfies readonly (keyof FamiliesTableAssets)[];
 
 export interface WorldManifestEntry {
   readonly snapshotId: string;
@@ -111,6 +146,27 @@ export function manifestEntry(graph: ViewerGraph, synthetic = false): WorldManif
     assets,
     sha256,
     synthetic,
+  };
+}
+
+/**
+ * Records a world's families export in its manifest entry: the five typed
+ * tables under `data/<digest>/` with their sha256. The bytes are the
+ * Flix-built export; the web side only ships them.
+ */
+export function attachFamilies(entry: WorldManifestEntry, hashes: FamiliesTableHashes): WorldManifestEntry {
+  const digest = entry.snapshotDigest;
+  const families: FamiliesTableAssets = {
+    families: `data/${digest}/${FAMILY_TABLE_FILES.families}`,
+    members: `data/${digest}/${FAMILY_TABLE_FILES.members}`,
+    rollups: `data/${digest}/${FAMILY_TABLE_FILES.rollups}`,
+    edges: `data/${digest}/${FAMILY_TABLE_FILES.edges}`,
+    contributions: `data/${digest}/${FAMILY_TABLE_FILES.contributions}`,
+  };
+  return {
+    ...entry,
+    assets: { ...entry.assets, families },
+    sha256: { ...entry.sha256, families: hashes },
   };
 }
 

@@ -9,10 +9,112 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 
-import { SNAPSHOT_ID_PREFIX, type WorldManifest, type WorldManifestEntry } from "../src/manifest.ts";
+import { parquetMetadata, parquetReadObjects, parquetSchema } from "hyparquet";
+
+import {
+  FAMILY_TABLE_FILES,
+  FAMILY_TABLE_NAMES,
+  SNAPSHOT_ID_PREFIX,
+  type FamiliesTableAssets,
+  type WorldManifest,
+  type WorldManifestEntry,
+} from "../src/manifest.ts";
 import { decodeMetadata, toArrayBuffer } from "../src/tables.ts";
 
 const EXPECTED_WORLD_COUNT = 78;
+
+/**
+ * The declared typed schema (format identity + exact column order) of every
+ * families table; the owners are `Families.Cluster.Table` and
+ * `Families.Edge.Table` in the Flix experiment, and
+ * `//experiments/atlas-families:families_export_parity_test` holds the shipped
+ * bytes to the Flix-built tables.
+ */
+const FAMILY_SCHEMAS: Record<keyof FamiliesTableAssets, { format: string; columns: readonly string[] }> = {
+  families: {
+    format: "attune-atlas-families-v1",
+    columns: [
+      "protocol",
+      "snapshot_id",
+      "family",
+      "family_id",
+      "name",
+      "name_kind",
+      "named",
+      "seed",
+      "name_decision",
+      "seed_files",
+      "route",
+      "state_id",
+      "members",
+      "files",
+    ],
+  },
+  members: {
+    format: "attune-atlas-families-members-v1",
+    columns: [
+      "protocol",
+      "snapshot_id",
+      "family",
+      "family_id",
+      "domain",
+      "entity_id",
+      "path",
+      "name",
+      "start_byte",
+      "end_byte",
+      "candidates",
+      "affinity",
+      "structural_affinity",
+      "semantic_affinity",
+    ],
+  },
+  rollups: {
+    format: "attune-atlas-families-rollups-v1",
+    columns: [
+      "protocol",
+      "snapshot_id",
+      "level",
+      "location_id",
+      "location",
+      "family",
+      "family_id",
+      "members",
+      "location_members",
+      "dominant",
+    ],
+  },
+  edges: {
+    format: "attune-atlas-family-edges-v1",
+    columns: [
+      "protocol",
+      "snapshot_id",
+      "relation",
+      "grain",
+      "edge",
+      "source_family",
+      "source_family_id",
+      "target_family",
+      "target_family_id",
+      "multiplicity",
+    ],
+  },
+  contributions: {
+    format: "attune-atlas-family-edge-contributions-v1",
+    columns: [
+      "protocol",
+      "snapshot_id",
+      "relation",
+      "source_domain",
+      "source_id",
+      "target_domain",
+      "target_id",
+      "source_family",
+      "target_family",
+      "edge",
+    ],
+  },
+};
 
 function fail(message: string): never {
   throw new Error(`data_check: ${message}`);
@@ -67,6 +169,9 @@ async function checkEntry(world: WorldManifestEntry): Promise<void> {
     const sha256 = createHash("sha256").update(bytes).digest("hex");
     if (sha256 !== world.sha256.locations) fail(`${digest}: sha256 mismatch for locations.parquet`);
   }
+  if (world.assets.families !== undefined) {
+    await checkFamilies(treeRoot, world);
+  }
 
   const metadataBytes = await readBytes(path.join(treeRoot, world.assets.metadata));
   const metadata = await decodeMetadata(toArrayBuffer(metadataBytes));
@@ -88,6 +193,51 @@ async function checkEntry(world: WorldManifestEntry): Promise<void> {
   }
   if (counts.links !== counts.defines + counts.imports + counts.calls + counts.parent) {
     fail(`${digest}: links ${counts.links} !== defines + imports + calls + parent`);
+  }
+}
+
+/**
+ * Validates a world's shipped families export: every file's path and sha256
+ * match the manifest, its columns and `protocol`/`snapshot_id` identity
+ * columns match the declared typed schema, and the row counts satisfy the
+ * edge no-invention sums against the world's counts (members = symbols;
+ * contributions = imports + calls).
+ */
+async function checkFamilies(treeRoot: string, world: WorldManifestEntry): Promise<void> {
+  const { snapshotDigest: digest, counts } = world;
+  const assets = world.assets.families;
+  const hashes = world.sha256.families;
+  if (assets === undefined || hashes === undefined) fail(`${digest}: incomplete families manifest entry`);
+  const rowCount = new Map<string, number>();
+  for (const table of FAMILY_TABLE_NAMES) {
+    const file = FAMILY_TABLE_FILES[table];
+    const assetPath = assets[table];
+    if (assetPath !== `data/${digest}/${file}`) fail(`${digest}: bad families asset path ${assetPath}`);
+    const bytes = await readBytes(path.join(treeRoot, assetPath));
+    const sha256 = createHash("sha256").update(bytes).digest("hex");
+    if (sha256 !== hashes[table]) fail(`${digest}: sha256 mismatch for ${file}`);
+    const { format, columns } = FAMILY_SCHEMAS[table];
+    const metadata = parquetMetadata(toArrayBuffer(bytes));
+    const actual = parquetSchema(metadata).children.map((child) => child.element.name);
+    if (actual.length !== columns.length || !columns.every((column, i) => actual[i] === column)) {
+      fail(`${digest}: ${file} has columns ${actual.join(", ")}, expected ${columns.join(", ")}`);
+    }
+    const rows = await parquetReadObjects({ file: toArrayBuffer(bytes), metadata });
+    rowCount.set(table, rows.length);
+    for (const row of rows) {
+      if (row["protocol"] !== format) fail(`${digest}: ${file} carries a foreign protocol`);
+      if (row["snapshot_id"] !== world.snapshotId) fail(`${digest}: ${file} carries another snapshot`);
+    }
+    if (rows.length === 0) fail(`${digest}: ${file} is empty`);
+  }
+  if (rowCount.get("members") !== counts.symbols) {
+    fail(`${digest}: family_members.parquet has ${rowCount.get("members")} rows, expected ${counts.symbols}`);
+  }
+  if (rowCount.get("contributions") !== counts.imports + counts.calls) {
+    fail(
+      `${digest}: family_contributions.parquet has ${rowCount.get("contributions")} rows, ` +
+        `expected imports + calls = ${counts.imports + counts.calls}`,
+    );
   }
 }
 

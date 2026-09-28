@@ -7,20 +7,31 @@
  * Usage: cli --worlds <dir of <digest>/{metadata,entities,relations}.parquet>
  *            --out <dir>
  *            [--locations <dir of <digest>/locations.parquet>]
+ *            [--families <dir of <digest>/{families,family_*}.parquet>]
  */
 import { mkdir, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 
 import { ProjectionError } from "./errors.ts";
-import { manifestEntry, serializeManifest, type WorldManifestEntry } from "./manifest.ts";
+import {
+  attachFamilies,
+  FAMILY_TABLE_FILES,
+  manifestEntry,
+  serializeManifest,
+  type FamiliesTableAssets,
+  type FamiliesTableHashes,
+  type WorldManifestEntry,
+} from "./manifest.ts";
 import { projectWorld } from "./project.ts";
-import { readWorldDir } from "./world_dir.ts";
+import { sha256Hex } from "./sha256.ts";
+import { fileExists, readBytes, readWorldDir } from "./world_dir.ts";
 
 interface CliOptions {
   readonly worlds: string;
   readonly out: string;
   readonly locations: string | null;
+  readonly families: string | null;
   readonly synthetic: string | null;
 }
 
@@ -28,6 +39,7 @@ function parseArgs(argv: readonly string[]): CliOptions {
   let worlds: string | null = null;
   let out: string | null = null;
   let locations: string | null = null;
+  let families: string | null = null;
   let synthetic: string | null = null;
   for (let i = 0; i < argv.length; i++) {
     const flag = argv[i];
@@ -48,6 +60,9 @@ function parseArgs(argv: readonly string[]): CliOptions {
       case "--locations":
         locations = value;
         break;
+      case "--families":
+        families = value;
+        break;
       case "--synthetic":
         synthetic = value;
         break;
@@ -57,9 +72,41 @@ function parseArgs(argv: readonly string[]): CliOptions {
     i += 1;
   }
   if (worlds === null || out === null) {
-    throw new Error("usage: cli --worlds <dir> --out <dir> [--locations <dir>] [--synthetic <dir>]");
+    throw new Error(
+      "usage: cli --worlds <dir> --out <dir> [--locations <dir>] [--families <dir>] [--synthetic <dir>]",
+    );
   }
-  return { worlds, out, locations, synthetic };
+  return { worlds, out, locations, families, synthetic };
+}
+
+/** One staged families table of a world: its file name and bytes. */
+interface FamilyFile {
+  readonly file: string;
+  readonly bytes: ArrayBuffer;
+}
+
+/** The staged families export of one world, keyed by table. */
+type FamilyFiles = Record<keyof FamiliesTableAssets, FamilyFile>;
+
+/**
+ * The staged families export of one world (every file of FAMILY_TABLE_FILES),
+ * or null when the world has none. The export is the Flix-built science; this
+ * CLI only ships its bytes.
+ */
+async function readFamilies(root: string, digest: string): Promise<FamilyFiles | null> {
+  const dir = path.join(root, digest);
+  if (!(await fileExists(dir))) return null;
+  const read = async (table: keyof FamiliesTableAssets): Promise<FamilyFile> => {
+    const file = FAMILY_TABLE_FILES[table];
+    return { file, bytes: await readBytes(path.join(dir, file)) };
+  };
+  return {
+    families: await read("families"),
+    members: await read("members"),
+    rollups: await read("rollups"),
+    edges: await read("edges"),
+    contributions: await read("contributions"),
+  };
 }
 
 async function projectDir(
@@ -67,13 +114,14 @@ async function projectDir(
   outDir: string,
   digest: string,
   locationsFile: string | null,
+  families: FamilyFiles | null,
   synthetic: boolean,
 ): Promise<WorldManifestEntry> {
   const files = await readWorldDir(dir, locationsFile);
   const { metadata, entities, relations, locations } = files;
 
   const graph = await projectWorld(files);
-  const entry = manifestEntry(graph, synthetic);
+  let entry = manifestEntry(graph, synthetic);
   if (entry.snapshotDigest !== digest) {
     throw new ProjectionError({
       kind: "snapshot-mismatch",
@@ -92,17 +140,33 @@ async function projectDir(
   if (locations !== undefined) {
     await writeFile(path.join(assetDir, "locations.parquet"), new Uint8Array(locations));
   }
+  if (families !== null) {
+    const ship = async ({ file, bytes }: FamilyFile): Promise<string> => {
+      await writeFile(path.join(assetDir, file), new Uint8Array(bytes));
+      return sha256Hex(bytes);
+    };
+    const hashes: FamiliesTableHashes = {
+      families: await ship(families.families),
+      members: await ship(families.members),
+      rollups: await ship(families.rollups),
+      edges: await ship(families.edges),
+      contributions: await ship(families.contributions),
+    };
+    entry = attachFamilies(entry, hashes);
+  }
   return entry;
 }
 
 async function projectOne(
   worldsDir: string,
   locationsDir: string | null,
+  familiesDir: string | null,
   outDir: string,
   digest: string,
 ): Promise<WorldManifestEntry> {
   const locationsFile = locationsDir === null ? null : path.join(locationsDir, digest, "locations.parquet");
-  return projectDir(path.join(worldsDir, digest), outDir, digest, locationsFile, false);
+  const families = familiesDir === null ? null : await readFamilies(familiesDir, digest);
+  return projectDir(path.join(worldsDir, digest), outDir, digest, locationsFile, families, false);
 }
 
 async function projectSynthetic(syntheticDir: string, outDir: string): Promise<WorldManifestEntry | null> {
@@ -116,7 +180,7 @@ async function projectSynthetic(syntheticDir: string, outDir: string): Promise<W
   const digest = digests[0];
   if (digest === undefined) return null;
   const dir = path.join(syntheticDir, digest);
-  return projectDir(dir, outDir, digest, path.join(dir, "locations.parquet"), true);
+  return projectDir(dir, outDir, digest, path.join(dir, "locations.parquet"), null, true);
 }
 
 async function main(argv: readonly string[]): Promise<number> {
@@ -128,7 +192,13 @@ async function main(argv: readonly string[]): Promise<number> {
   const entries: WorldManifestEntry[] = [];
   for (const digest of digests) {
     try {
-      const entry = await projectOne(options.worlds, options.locations, options.out, digest);
+      const entry = await projectOne(
+        options.worlds,
+        options.locations,
+        options.families,
+        options.out,
+        digest,
+      );
       entries.push(entry);
       console.log(
         `projected ${digest} ${entry.repository} points=${entry.counts.points} links=${entry.counts.links}`,

@@ -46,6 +46,10 @@ pub mod Families.Cluster.Table {
         }
     }
 
+    /// The layout of an empty clustering: every table's name, file, and schema.
+    pub def schemas(snapshotId: String): Vector[(String, String, ScientificTable.Schema, Vector[ScientificTable.Row])] =
+        layout({snapshotId = snapshotId, families = Vector.empty(), members = Vector.empty(), rollups = Vector.empty()})
+
     pub def familyRow(snapshotId: String, value: Families.Cluster.Family): ScientificTable.Row =
         Map.union(Families.Rows.header(families(), snapshotId), Map#{
             "family" => Value.Int32(value#family),
@@ -89,6 +93,13 @@ pub mod Families.Cluster.Table {
             "location_members" => Value.Int32(value#locationMembers),
             "dominant" => Value.Boolean(value#dominant)
         })
+
+    /// The clustering stored in `files` (table name -> path).
+    pub def read(snapshotId: String, files: Map[String, String]): Result[String, Families.Cluster.Clustering] \ IO = forM (
+        tables <- Families.Rows.readLayout(schemas(snapshotId), files);
+        rows = Families.Rows.rowsOf(tables);
+        clustering <- decode(snapshotId, rows("families"), rows("members"), rows("rollups"))
+    ) yield clustering
 
     /// The typed clustering of one world, from its three tables' rows.
     pub def decode(

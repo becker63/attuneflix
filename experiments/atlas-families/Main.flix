@@ -21,6 +21,12 @@ mod FamiliesMain {
         case "table-law" => FamiliesClusteringLaw.tables()
         case "family-law" => FamiliesClusteringLaw.families()
         case "clustering-report" => write(Families.Report.clustering(FamiliesClusteringLaw.clustered()))
+        case "edges"     => FamiliesEdgeLaw.edges()
+        case "export"    => FamiliesEdgeLaw.export()
+        case "edge-table-law" => FamiliesEdgeLaw.tables()
+        case "edge-law"  => FamiliesEdgeLaw.laws()
+        case "parity"    => FamiliesEdgeLaw.parity()
+        case "export-report" => write(Families.Report.edges(FamiliesEdgeLaw.exportedReport()))
         case command     => bug!("unknown families command: ${command}")
     }
 

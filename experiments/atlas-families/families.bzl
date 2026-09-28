@@ -53,6 +53,11 @@ ACQUIRED_WORLDS = [
     ("preact", REPRESENTATIVE_WORLDS[0][1]),
 ]
 
+# The families export of every acquired world (`export_<key>`, a
+# `<snapshot digest>/` tree of the tables Atlas Live ships), for the web
+# projection to stage beside its locations tables.
+FAMILY_EXPORTS = ["//experiments/atlas-families:export_" + key for key, _ in ACQUIRED_WORLDS]
+
 def _jvm_property(name, value):
     return "--jvm_flag=-D%s=%s" % (name, value)
 
@@ -485,11 +490,11 @@ export JAVA_RUNFILES="$runfiles"
 exec "$runfiles/_main/{tool}" {properties}
 """
 
-def _families_law_test_impl(ctx):
-    runs, reruns = _clustered_pairs(ctx)
-    properties = [("attune.command", ctx.attr.command), ("attune.clustered.count", str(len(runs)))]
-    for index in range(len(runs)):
-        properties += _clustered_properties(index, runs[index], reruns[index], lambda file: "$runfiles/_main/" + file.short_path)
+def _runfile(file):
+    return "$runfiles/_main/" + file.short_path
+
+def _law_launcher(ctx, properties, files):
+    """A test launcher running the families tool with `properties` over `files`."""
     launcher = ctx.actions.declare_file(ctx.label.name + ".sh")
     ctx.actions.write(
         output = launcher,
@@ -499,9 +504,16 @@ def _families_law_test_impl(ctx):
         ),
         is_executable = True,
     )
-    runfiles = ctx.runfiles(files = _clustered_inputs(runs + reruns))
+    runfiles = ctx.runfiles(files = files)
     runfiles = runfiles.merge(ctx.attr.tool[DefaultInfo].default_runfiles)
     return [DefaultInfo(executable = launcher, runfiles = runfiles)]
+
+def _families_law_test_impl(ctx):
+    runs, reruns = _clustered_pairs(ctx)
+    properties = [("attune.command", ctx.attr.command), ("attune.clustered.count", str(len(runs)))]
+    for index in range(len(runs)):
+        properties += _clustered_properties(index, runs[index], reruns[index], _runfile)
+    return _law_launcher(ctx, properties, _clustered_inputs(runs + reruns))
 
 families_law_test = rule(
     implementation = _families_law_test_impl,
@@ -579,3 +591,212 @@ families_method = rule(
     implementation = _families_method_impl,
     attrs = {"tool": attr.label(executable = True, cfg = "exec", mandatory = True)},
 )
+
+# The family-edge tables (space `atlas-families-v1`), one directory per built
+# aggregation.
+EDGE_TABLES = ["edges", "contributions"]
+
+FamiliesEdgesInfo = provider(
+    doc = "One built family-edge aggregation of one clustered world.",
+    fields = {
+        "clustering": "the FamiliesClusteringInfo it aggregates",
+        "tables": "dict: table name -> built Parquet file",
+    },
+)
+
+FamiliesExportInfo = provider(
+    doc = "One world's families export: the tree Atlas Live ships as data/<digest>/.",
+    fields = {
+        "edges": "the FamiliesEdgesInfo it exports",
+        "directory": "the export tree artifact, named by the snapshot digest",
+        "digest": "the snapshot digest",
+    },
+)
+
+def _table_properties(prefix, stage, tables, path):
+    return [("%s.%s.%s" % (prefix, stage, table), path(file)) for table, file in tables.items()]
+
+def _world_inputs(world):
+    return [world.metadata, world.entities, world.relations]
+
+def _families_edges_impl(ctx):
+    clustering = ctx.attr.clustering[FamiliesClusteringInfo]
+    world = clustering.world
+    tables = {
+        table: ctx.actions.declare_file("%s/%s.parquet" % (ctx.label.name, table))
+        for table in EDGE_TABLES
+    }
+    path = lambda file: file.path
+    args = ctx.actions.args()
+    for name, value in [("attune.command", "edges")] + _world_properties(world, path) + _table_properties("attune", "cluster", clustering.tables, path) + [
+        ("attune.output_edges", tables["edges"].dirname),
+    ]:
+        args.add(_jvm_property(name, value))
+    ctx.actions.run(
+        executable = ctx.executable.tool,
+        arguments = [args],
+        inputs = _world_inputs(world) + clustering.tables.values(),
+        outputs = tables.values(),
+        mnemonic = "FamiliesEdges",
+        progress_message = "Aggregating family edges %{label}",
+    )
+    return [
+        DefaultInfo(files = depset(tables.values())),
+        FamiliesEdgesInfo(clustering = clustering, tables = tables),
+    ]
+
+families_edges = rule(
+    implementation = _families_edges_impl,
+    attrs = {
+        "clustering": attr.label(providers = [FamiliesClusteringInfo], mandatory = True),
+        "tool": attr.label(executable = True, cfg = "exec", mandatory = True),
+    },
+)
+
+def _families_export_impl(ctx):
+    edges = ctx.attr.edges[FamiliesEdgesInfo]
+    world = edges.clustering.world
+    digest = _digest(world.snapshot_id)
+    directory = ctx.actions.declare_directory(digest)
+    path = lambda file: file.path
+    args = ctx.actions.args()
+    for name, value in [("attune.command", "export")] + _world_properties(world, path) + _table_properties("attune", "cluster", edges.clustering.tables, path) + _table_properties("attune", "edges", edges.tables, path) + [
+        ("attune.output_export", directory.path),
+    ]:
+        args.add(_jvm_property(name, value))
+    ctx.actions.run(
+        executable = ctx.executable.tool,
+        arguments = [args],
+        inputs = _world_inputs(world) + edges.clustering.tables.values() + edges.tables.values(),
+        outputs = [directory],
+        mnemonic = "FamiliesExport",
+        progress_message = "Exporting families for Atlas Live %{label}",
+    )
+    return [
+        DefaultInfo(files = depset([directory])),
+        FamiliesExportInfo(edges = edges, directory = directory, digest = digest),
+    ]
+
+families_export = rule(
+    implementation = _families_export_impl,
+    attrs = {
+        "edges": attr.label(providers = [FamiliesEdgesInfo], mandatory = True),
+        "tool": attr.label(executable = True, cfg = "exec", mandatory = True),
+    },
+)
+
+def _exported_properties(index, export, path):
+    """The `attune.exported.<index>.*` properties of one exported world."""
+    prefix = "attune.exported.%d" % index
+    edges = export.edges
+    properties = [(prefix + "." + name.partition(".")[2], value) for name, value in _world_properties(edges.clustering.world, path)]
+    properties += _table_properties(prefix, "cluster", edges.clustering.tables, path)
+    properties += _table_properties(prefix, "edges", edges.tables, path)
+    return properties + [(prefix + ".export", path(export.directory)), (prefix + ".digest", export.digest)]
+
+def _exported(ctx, path):
+    exports = [target[FamiliesExportInfo] for target in ctx.attr.exports]
+    properties = [("attune.exported.count", str(len(exports)))]
+    inputs = []
+    for index, export in enumerate(exports):
+        properties += _exported_properties(index, export, path)
+        inputs += _world_inputs(export.edges.clustering.world) + export.edges.clustering.tables.values() + export.edges.tables.values() + [export.directory]
+    return properties, inputs
+
+def _families_export_report_impl(ctx):
+    properties, inputs = _exported(ctx, lambda file: file.path)
+    report = ctx.actions.declare_file(ctx.label.name + ".md")
+    args = ctx.actions.args()
+    for name, value in [("attune.command", "export-report")] + properties + [("attune.output_report", report.path)]:
+        args.add(_jvm_property(name, value))
+    ctx.actions.run(
+        executable = ctx.executable.tool,
+        arguments = [args],
+        inputs = inputs,
+        outputs = [report],
+        mnemonic = "FamiliesExportReport",
+        progress_message = "Projecting families edge and export report %{label}",
+    )
+    return [DefaultInfo(files = depset([report]))]
+
+families_export_report = rule(
+    implementation = _families_export_report_impl,
+    attrs = {
+        "exports": attr.label_list(providers = [FamiliesExportInfo], mandatory = True),
+        "tool": attr.label(executable = True, cfg = "exec", mandatory = True),
+    },
+)
+
+def _families_export_law_test_impl(ctx):
+    properties, inputs = _exported(ctx, _runfile)
+    staging = ctx.files.staging
+    if (ctx.attr.command == "parity") != (len(staging) == 1):
+        fail("the parity law, and only it, reads exactly one staging directory")
+    for directory in staging:
+        properties.append(("attune.staging_root", _runfile(directory)))
+    return _law_launcher(ctx, [("attune.command", ctx.attr.command)] + properties, inputs + staging)
+
+families_export_law_test = rule(
+    implementation = _families_export_law_test_impl,
+    test = True,
+    attrs = {
+        "command": attr.string(values = ["edge-table-law", "edge-law", "parity"], mandatory = True),
+        "exports": attr.label_list(providers = [FamiliesExportInfo], mandatory = True),
+        "staging": attr.label(allow_files = True),
+        "tool": attr.label(executable = True, cfg = "target", mandatory = True),
+    },
+)
+
+def families_exports(name, tool, staging):
+    """Declares the family edges and the Atlas Live export of every clustered world.
+
+    Per acquired world `<key>`: `edges_<key>` (the family-edge tables of
+    `cluster_<key>`, a content-addressed action output) and `export_<key>`
+    (the `<snapshot digest>/` tree Atlas Live ships, see FAMILY_EXPORTS). Over
+    all of them: the Markdown report `<name>.md`, the table law
+    `atlas_family_edges_table_test`, the edge law `atlas_family_edges_law_test`,
+    and the cross-layer parity law `families_export_parity_test` against the
+    web projection's staging of the exports.
+
+    Args:
+      name: the Markdown edge and export projection target (`<name>.md`).
+      tool: the families experiment tool.
+      staging: the web projection's staging directory of FAMILY_EXPORTS.
+
+    Returns:
+      The labels of the three law tests.
+    """
+    exports = []
+    for key, _ in ACQUIRED_WORLDS:
+        families_edges(
+            name = "edges_" + key,
+            clustering = ":cluster_" + key,
+            tool = tool,
+        )
+        families_export(
+            name = "export_" + key,
+            edges = ":edges_" + key,
+            tool = tool,
+        )
+        exports.append(":export_" + key)
+    families_export_report(
+        name = name,
+        exports = exports,
+        tool = tool,
+    )
+    tests = []
+    for test, command in [
+        ("atlas_family_edges_table_test", "edge-table-law"),
+        ("atlas_family_edges_law_test", "edge-law"),
+        ("families_export_parity_test", "parity"),
+    ]:
+        families_export_law_test(
+            name = test,
+            size = "small",
+            command = command,
+            exports = exports,
+            staging = staging if command == "parity" else None,
+            tool = tool,
+        )
+        tests.append(":" + test)
+    return tests

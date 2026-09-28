@@ -61,6 +61,7 @@ pinned() {
 pinned REPORT.md inventory "$(rlocation _main/$pkg/inventory_report.md)"
 pinned REPORT.md acquisition "$(rlocation _main/$pkg/acquisition_report.md)"
 pinned REPORT.md clustering "$(rlocation _main/$pkg/clustering_report.md)"
+pinned REPORT.md edges "$(rlocation _main/$pkg/export_report.md)"
 pinned PROTOCOL.md protocol "$(rlocation _main/$pkg/protocol_constants.md)"
 pinned PROTOCOL.md method "$(rlocation _main/$pkg/method_constants.md)"
 

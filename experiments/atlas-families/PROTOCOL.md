@@ -217,6 +217,8 @@ constant is a new method version.
 | families table | `attune-atlas-families-v1` |
 | members table | `attune-atlas-families-members-v1` |
 | rollups table | `attune-atlas-families-rollups-v1` |
+| family edges table | `attune-atlas-family-edges-v1` |
+| edge contributions table | `attune-atlas-family-edge-contributions-v1` |
 | weight: same file | `0.30` |
 | weight: calls | `0.20` |
 | weight: imports | `0.15` |
@@ -258,6 +260,22 @@ constant is a new method version.
    members of every file below it (root `""` included). Each (location, family)
    row counts the family's members there out of the location's members; the
    dominant family has the most members, the least family on a tie.
+7. **Family edges.** Every exact `imports` (file grain) and `calls` (symbol
+   grain) edge of the world is one contribution, attributed to the families of
+   its endpoints: a symbol's family is its member row, a file's family is its
+   dominant file rollup, and a file that defines no callable has no family, so
+   an import that touches one stays an unattributed contribution. The
+   attributed contributions of each relation and ordered family pair aggregate
+   to one family edge with their count as multiplicity; no other family edge
+   exists. Owned by `src/Families/Edge.flix` (the aggregation) and
+   `src/Families/Edge/Table.flix` (the two typed tables).
+8. **Export.** The Atlas Live export of a world is its three clustering tables
+   and two family-edge tables under the data-tree names (`families.parquet`,
+   `family_<table>.parquet` for the rest), written by `Families.Export`; the
+   exporter refuses edge tables that are not the aggregation of the clustering
+   beside them. The web projection stages the export beside the locations
+   tables and ships it as `data/<digest>/` with a manifest entry; it never
+   derives any of it.
 
 The method runs as hermetic Bazel actions (`families_clusterings` in
 `families.bzl`): `cluster_<world>` reads only the frozen world tables and the
@@ -266,3 +284,12 @@ two recorded evidence filegroups and writes `families.parquet`,
 derivation as an independent action. The tables are content-addressed
 BuildBuddy remote-cache outputs, never git-tracked evidence. Build them with
 `nix develop --command bazel build //experiments/atlas-families:cluster_preact --config=buildbuddy-rbe-arm64`.
+
+The edge and export stages are hermetic Bazel actions in the same pattern
+(`families_exports` in `families.bzl`): `edges_<world>` aggregates the family
+edges from the frozen world tables and `cluster_<world>`, and `export_<world>`
+writes the `<snapshot digest>/` tree Atlas Live ships, staged by
+`//web/atlas-live/projection:families` beside `:locations` and copied into the
+web data tree by `project_cli` with a manifest entry. The
+`families_export_parity_test` law holds the staging to the Flix-built tables,
+byte for byte and row for row.
