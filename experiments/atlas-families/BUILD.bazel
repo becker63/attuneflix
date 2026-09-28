@@ -1,5 +1,5 @@
 load("//test/build:flix.bzl", "checked_test", "flix_check", "flix_fatjar")
-load(":families.bzl", "families_inventories")
+load(":families.bzl", "families_acquisitions", "families_inventories", "families_protocol")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -11,32 +11,59 @@ filegroup(
     name = "families_sources",
     srcs = [
         "src/Families.flix",
+        "src/Families/Decision.flix",
+        "src/Families/Decision/Table.flix",
+        "src/Families/Embedding.flix",
+        "src/Families/Embedding/Table.flix",
+        "src/Families/Evidence.flix",
         "src/Families/Inventory.flix",
         "src/Families/Inventory/Table.flix",
+        "src/Families/Ledger.flix",
+        "src/Families/Navigation.flix",
+        "src/Families/Pass.flix",
+        "src/Families/Protocol.flix",
+        "src/Families/Provider.flix",
+        "src/Families/Replay.flix",
         "src/Families/Report.flix",
+        "src/Families/Rows.flix",
+        "src/Families/Wire.flix",
     ],
 )
 
-# The families experiment tool (Atlas Families; charter in REPORT.md). It reuses
-# ordinary Repository admission and the typed world tables, and declares no
-# atom, depth, or repository rule of its own.
-flix_fatjar(
-    name = "families_flix",
+# Everything the families sources compile against: Repository admission and
+# the typed world tables, Atlas and its physical evaluator, and the typed-table
+# and identity seams. No Localization module, population, or gold is in it.
+filegroup(
+    name = "families_closure",
     srcs = [
-        "Main.flix",
         ":families_sources",
-        "//src:Experiment.flix",
+        "//src:Atlas.flix",
+        "//src:Radii.flix",
         "//src:Repository.flix",
         "//src:Repository/Grit.flix",
         "//src:Repository/Location.flix",
+        "//src:Repository/Physical.flix",
         "//src:Repository/Structure.flix",
         "//src:Repository/Table.flix",
         "//src:ScientificIdentity.flix",
         "//src:ScientificTable.flix",
         "//src:ScientificTable/Columns.flix",
     ],
+)
+
+# The families experiment tool (Atlas Families; charter in REPORT.md). It
+# declares no atom, depth, or repository rule of its own, and it reaches a
+# provider only through the in-tree inference seam, only from `acquire`.
+flix_fatjar(
+    name = "families_flix",
+    srcs = [
+        "Main.flix",
+        ":families_closure",
+        "//src:Experiment.flix",
+    ],
     java_deps = [
         "//src/native/identity:attune_identity",
+        "//src/native/inference:attune_inference",
         "//src/native/parquet:attune_parquet",
     ],
     threads = 2,
@@ -61,20 +88,32 @@ families_inventories(
     tool = ":families_tool",
 )
 
+# The issue-blind acquisition protocol: its pinned constants and exact
+# instructions (PROTOCOL.md), one live launcher per acquired world
+# (`acquire_<key>`, run outside Bazel with the key), one keyless replay proof
+# per acquired world (`replay_<key>`), and the acquisition report over them.
+families_protocol(
+    name = "protocol_constants",
+    tool = ":families_tool",
+)
+
+ACQUIRED_EVIDENCE = families_acquisitions(
+    name = "acquisition_report",
+    tool = ":families_tool",
+)
+
 flix_check(
     name = "families_check",
     srcs = [
+        "AcquisitionTest.flix",
         "FamiliesTest.flix",
-        ":families_sources",
-        "//src:Repository/Table.flix",
+        ":families_closure",
         "//test:TestWorlds.flix",
-        "//test:kernel_identity_law_sources",
-        "//test:kernel_table_law_sources",
-        "//test:world_admission_law_sources",
     ],
     command = "test",
     java_deps = [
         "//src/native/identity:attune_identity",
+        "//src/native/inference:attune_inference",
         "//src/native/parquet:attune_parquet",
     ],
     threads = 2,
@@ -106,10 +145,27 @@ sh_test(
     size = "small",
     srcs = ["report_test.sh"],
     data = [
+        "PROTOCOL.md",
         "REPORT.md",
+        ":acquisition_report",
         ":inventory_report",
+        ":protocol_constants",
         "@bazel_tools//tools/bash/runfiles",
     ],
+)
+
+# The issue-blindness law: the tool's sources name no Localization module,
+# issue, or gold space, and every retained request is a families state or a
+# document batch naming no issue or gold field.
+sh_test(
+    name = "issue_blindness_test",
+    size = "small",
+    srcs = ["issue_blindness_test.sh"],
+    data = [
+        "Main.flix",
+        ":families_sources",
+        "@bazel_tools//tools/bash/runfiles",
+    ] + ACQUIRED_EVIDENCE,
 )
 
 # Research law surface for the families experiment; aggregated by the root
@@ -119,6 +175,7 @@ test_suite(
     tests = [
         ":charter_test",
         ":families_test",
+        ":issue_blindness_test",
         ":report_test",
     ],
 )

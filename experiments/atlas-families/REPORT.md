@@ -30,9 +30,11 @@ pinned byte for byte by `:report_test`.
     admitted source span (the frozen document recipe, with no query side).
     Space `families-embeddings-v1`.
   - Jev decisions: navigation over the six-atom typed tree with a
-    family-formation objective (merge and naming decisions), through the
-    in-tree inference client. Protocol `attune-jev-families-v1`, space
+    family-formation objective (grow-from-seed and naming decisions), through
+    the in-tree inference client. Protocol `attune-jev-families-v1`, space
     `jev-families-raw-v1`.
+  - The exact schema, navigation, prompts, caching, and budget accounting are
+    in [PROTOCOL.md](PROTOCOL.md).
 - **Method.** Structural affinity (same-file co-membership, call and import
   adjacency, directory co-membership) plus embedding similarity forms the
   substrate; recorded Jev decisions drive agglomeration and naming. Families
@@ -113,14 +115,70 @@ embedding pass is therefore 30,356 documents over at most 14,422,447 source
 bytes. protonmail/webclients carries the most source bytes (55% of the total)
 despite having fewer callables than babel/babel.
 
+## Acquisition record
+
+The first pass ran on the smallest planned world, preactjs/preact, through
+`acquire_preact` with the real OpenRouter API (protocol in
+[PROTOCOL.md](PROTOCOL.md)). The pre-acquisition projection for the world was
+0.277180 USD against the 50 USD envelope, so the pass proceeded. A second live
+run over the unchanged payloads resolved every request from the retained
+evidence and made zero provider calls. The block below is projected from the
+recorded ledgers and from `replay_preact`, the keyless replay proof that Bazel
+rebuilds with no key in the environment and no transport. Regenerate with
+`nix develop --command bazel build //experiments/atlas-families:acquisition_report --config=buildbuddy-rbe-arm64`.
+
+<!-- families:acquisition:begin -->
+**Recorded evidence**
+
+| repository | snapshot | documents | batches | seeds | decisions | retained exchanges |
+|---|---|---:|---:|---:|---:|---:|
+| preactjs/preact | `6e2bef41bf19` | 1623 | 26 | 171 | 461 | 487 |
+
+**Cost ledger** (provider-reported usage and cost)
+
+| repository | space | request | requests | cost reported | input tokens | output tokens | cost USD | unit USD | projected USD |
+|---|---|---|---:|---:|---:|---:|---:|---:|---:|
+| preactjs/preact | `families-embeddings-v1` | embedding-batch | 26 | 26 | 101545 | 0 | 0.001015 | 0.000039 | 0.003580 |
+| preactjs/preact | `jev-families-raw-v1` | decision | 461 | 461 | 270037 | 20650 | 0.011342 | 0.000025 | 0.273600 |
+| **total** | | | 487 | | | | 0.012357 | | 0.277180 |
+
+Pass envelope: 50.000000 USD. Measured total: 0.012357 USD.
+
+**Keyless replay proof**
+
+| repository | table | rows | recorded identity | replayed identity | equal |
+|---|---|---:|---|---|---|
+| preactjs/preact | embedding-documents | 1623 | `33bf1cbb185b` | `33bf1cbb185b` | yes |
+| preactjs/preact | embedding-batches | 26 | `28d230bf6150` | `28d230bf6150` | yes |
+| preactjs/preact | embedding-ledger | 1 | `c09221202828` | `c09221202828` | yes |
+| preactjs/preact | decisions | 461 | `4b61034a01a2` | `4b61034a01a2` | yes |
+| preactjs/preact | family-outcomes | 171 | `c8bb36933e9f` | `c8bb36933e9f` | yes |
+| preactjs/preact | decision-ledger | 1 | `be64bcf03dd7` | `be64bcf03dd7` | yes |
+
+- preactjs/preact: 487 of 487 retained exchanges served, 0 provider calls, key absent: yes, exact: yes.
+<!-- families:acquisition:end -->
+
+The recorded spaces are tracked in git (like `repository-world-v1`) so the
+replay law can read them as Bazel inputs:
+`.attune/families-embeddings-v1/6e2bef41…/` holds the 26 raw batch bodies with
+their base64 vectors and the three embedding tables, and
+`.attune/jev-families-raw-v1/6e2bef41…/` holds the 461 raw decision exchanges
+and the three decision tables.
+
+**Review point.** Milestone 1 ends here: the protocol, the measured cost, and
+the storage plan for the larger worlds go to the user before any further world
+is acquired.
+
 ## Laws
 
 | Target | Law |
 | --- | --- |
-| `:families_test` | The inventory is an exact function of the admitted world; the inventory table has a pinned schema, round-trips exactly, and rejects a foreign protocol, a mistyped column, or a row count other than one; the report projection is deterministic in declared order. |
+| `:families_test` | The inventory is an exact function of the admitted world; the inventory table has a pinned schema, round-trips exactly, and rejects a foreign protocol, a mistyped column, or a row count other than one; the report projection is deterministic in declared order. The acquisition laws: documents follow the frozen recipe with no query side and are cut at the frozen limit; a span outside the source root is rejected; navigation offers only the frontier domain's atoms; every request is acquired once and then served from evidence; keyless replay refuses a miss and the envelope stops live calls; evidence is content-addressed, never replaced, and a retained exchange for a different request is rejected; every decision payload is issue-blind structure; every typed table round-trips exactly and rejects a foreign world; the ledger sums the provider-reported usage; the replay proof is exact only when every table matches keylessly. |
+| `:issue_blindness_test` | The tool's sources name no Localization module, issue field, or gold or population space; every retained decision request is a families state and every retained embedding request is a document batch, and none names an issue or gold field. |
+| `replay_preact` | Keyless replay over the recorded preact spaces regenerates all six tables bit-identically with zero provider calls and no key in the environment (the build fails otherwise). |
 | `:charter_test` | `AGENTS.md` keeps the no-reacquisition paragraph and the Typed Parquet rule verbatim and carries the dated, scoped carve-out; this report carries the charter sections. |
-| `:report_test` | Every generated block in this report equals its regenerated Bazel projection. |
+| `:report_test` | Every generated block in this report and in `PROTOCOL.md` equals its regenerated Bazel projection. |
 
-All three are aggregated by `:families_tests`, which the root `//:tests`
-suite includes. Run them with
+The tests are aggregated by `:families_tests`, which the root `//:tests`
+suite includes; `:report_test` depends on `replay_preact`. Run them with
 `nix develop --command bazel test //experiments/atlas-families/... --config=buildbuddy-rbe-arm64`.

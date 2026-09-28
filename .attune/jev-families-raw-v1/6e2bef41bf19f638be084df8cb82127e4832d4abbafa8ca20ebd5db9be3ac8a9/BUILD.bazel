@@ -1,0 +1,12 @@
+# Atlas Families Jev decision evidence for preactjs/preact
+# (repository-snapshot-v1:6e2bef41bf19f638be084df8cb82127e4832d4abbafa8ca20ebd5db9be3ac8a9):
+# retained raw exchanges and their typed projections. Read-only once recorded.
+filegroup(
+    name = "evidence",
+    srcs = glob(["raw/*.json"]) + [
+        "decisions.parquet",
+        "ledger.parquet",
+        "outcomes.parquet",
+    ],
+    visibility = ["//experiments/atlas-families:__pkg__"],
+)

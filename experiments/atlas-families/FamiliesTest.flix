@@ -5,7 +5,7 @@
 mod FamiliesTest {
     use ScientificTable.Value
 
-    def identity(snapshot: String, repository: String): Repository.Table.Identity = {
+    pub def identity(snapshot: String, repository: String): Repository.Table.Identity = {
         repository = repository,
         baseRevision = "base",
         sourceTreeIdentity = "source-tree",
@@ -15,11 +15,11 @@ mod FamiliesTest {
 
     /// index.ts -> src/a.ts -> src/lib/b.ts, one callable per file, three
     /// directories ("", "src", "src/lib") and the admitted parent relation.
-    def file(id: Int32): Repository.Structure.FileId = Repository.Structure.FileId.FileId(id)
+    pub def file(id: Int32): Repository.Structure.FileId = Repository.Structure.FileId.FileId(id)
 
-    def symbol(id: Int32): Repository.Structure.SymbolId = Repository.Structure.SymbolId.SymbolId(id)
+    pub def symbol(id: Int32): Repository.Structure.SymbolId = Repository.Structure.SymbolId.SymbolId(id)
 
-    def nestedWorld(calls: Set[(Int32, Int32)]): Repository.World = {
+    pub def nestedWorld(calls: Set[(Int32, Int32)]): Repository.World = {
         let files = Vector#{"index.ts", "src/a.ts", "src/lib/b.ts"};
         {
             files = files,
@@ -37,7 +37,7 @@ mod FamiliesTest {
         }
     }
 
-    def fullCalls(): Set[(Int32, Int32)] = Set#{(0, 1), (1, 2), (2, 2)}
+    pub def fullCalls(): Set[(Int32, Int32)] = Set#{(0, 1), (1, 2), (2, 2)}
 
     def nestedInventory(): Families.Inventory.Inventory =
         Families.Inventory.of(identity("repository-snapshot-v1:abcdef0123456789", "owner/nested"), nestedWorld(fullCalls()))

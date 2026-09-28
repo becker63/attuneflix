@@ -3,6 +3,13 @@
 !/.attune/BUILD.bazel
 !/.attune/repository-world-v1/
 !/.attune/repository-world-v1/**
+# Atlas Families acquisition evidence (the acquisition-zone carve-out): raw
+# content-addressed exchanges plus typed projections, tracked so the keyless
+# replay laws can read them.
+!/.attune/families-embeddings-v1/
+!/.attune/families-embeddings-v1/**
+!/.attune/jev-families-raw-v1/
+!/.attune/jev-families-raw-v1/**
 /.env
 /.env.*
 !/.env.example
