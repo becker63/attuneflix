@@ -32,7 +32,14 @@ const styles = stylex.create({
     borderRadius: 5, paddingTop: 7, paddingBottom: 7, paddingLeft: 10, paddingRight: 10,
     minHeight: 34, backgroundColor: "rgba(255,255,255,.05)",
     color: "#f5e8ef", fontFamily: "inherit", fontSize: 12, cursor: "pointer" },
+  clearButton: { borderWidth: 0, padding: 0, backgroundColor: "transparent",
+    color: "#d5c4ce", fontFamily: "inherit", fontSize: 11, textDecoration: "underline",
+    cursor: "pointer" },
   active: { borderColor: "#f3b4d3", backgroundColor: "#5b3048" },
+  originHeading: { display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8 },
+  details: { borderTopWidth: 1, borderTopStyle: "solid", borderTopColor: "rgba(255,255,255,.2)",
+    paddingTop: 8 },
+  summary: { cursor: "pointer", color: "#eee3ea", fontWeight: 600 },
   stat: { display: "flex", justifyContent: "space-between", gap: 12,
     fontVariantNumeric: "tabular-nums" },
   strong: { color: "#ffe1ee", fontWeight: 700, textAlign: "right" },
@@ -110,7 +117,7 @@ export function ParallelismPanel({ session }: { session: GraphSession }) {
 
   return <section aria-label="Static structural separation" data-testid="parallelism-panel" {...stylex.props(styles.root)}>
     <h2 {...stylex.props(styles.title)}>Structural separation</h2>
-    <p {...stylex.props(styles.note)}>Hypothetical origins on the current projected graph. Click A, then Shift-click B. No task traffic or write conflicts are measured.</p>
+    <p {...stylex.props(styles.note)}>Click a region, then Shift-click another to compare structural reach.</p>
     <div {...stylex.props(styles.choices)} aria-label="Structural depth">
       {([1, 2, 3] as const).map((value) => <button key={value} type="button"
         aria-pressed={depth === value} onClick={() => setDepth(value)}
@@ -122,38 +129,17 @@ export function ParallelismPanel({ session }: { session: GraphSession }) {
         aria-pressed={threshold === value} onClick={() => setThreshold(value)}
         {...stylex.props(styles.button, threshold === value && styles.active)}>{value.toFixed(2)}</button>)}
     </div>
-    <span {...stylex.props(styles.small)}>Threshold only changes derived region pairs. Depth-7 physical color is independent.</span>
-    <h3 {...stylex.props(styles.subheading)}>Structural convergence graph</h3>
-    <div {...stylex.props(styles.stat)}><span>Visible region candidates</span><strong {...stylex.props(styles.strong)}>{index.candidates.length} / {index.eligibleRegions}</strong></div>
-    <div {...stylex.props(styles.stat)}><span>Pairs at ≥ τ</span><strong {...stylex.props(styles.strong)}>{graph.edges.toLocaleString()}</strong></div>
-    <div {...stylex.props(styles.stat)}><span>Greedy separated set</span><strong {...stylex.props(styles.strong)}>{separated.length}</strong></div>
-    <div {...stylex.props(styles.stat)}><span>Greedy structural waves</span><strong {...stylex.props(styles.strong)}>{waves.length}</strong></div>
-    <span {...stylex.props(styles.small)}>Dashed region outlines meet the selected origin's overlap threshold.</span>
-    <details {...stylex.props(styles.small)}>
-      <summary>Separated region IDs</summary>
-      <ol>{separated.map((id) => <li key={id} {...stylex.props(styles.path)}>{label(session, id)} · <code>{id}</code></li>)}</ol>
-    </details>
-    <details {...stylex.props(styles.small)}>
-      <summary>Greedy wave groups</summary>
-      <ol>{waves.map((members, wave) => <li key={members.join("|")}>
-        Wave {wave + 1} · {members.length} regions
-        <ul>{members.map((id) => <li key={id} {...stylex.props(styles.path)}>{label(session, id)} · <code>{id}</code></li>)}</ul>
-      </li>)}</ol>
-    </details>
-    <h3 {...stylex.props(styles.subheading)}>Structural separation decay</h3>
-    {decayRows.map((row) => <div key={row.depth} {...stylex.props(styles.decay)}>
-      <span>{row.depth}°</span><meter {...stylex.props(styles.bar)} min={0} max={maxDecay} value={row.count ?? 0} />
-      <strong>{row.count}</strong>
-    </div>)}
-    {index.candidates.length < index.eligibleRegions ? <span {...stylex.props(styles.small)}>
-      Aggregate uses the first {index.candidates.length} visible regions by containment depth and stable ID; selected files and remaining regions are still measured individually.
-    </span> : null}
+    <span {...stylex.props(styles.small)}>Depth 1–3 follows visible Imports/Calls. Physical color remains a separate depth-7 measurement.</span>
     {a === null ? <p {...stylex.props(styles.note)}>Select a visible region or file on the graph to inspect reach 1°–3°.</p> : <>
-      <h3 {...stylex.props(styles.subheading, styles.a)}>Origin A · <span {...stylex.props(styles.path)}>{label(session, a)}</span></h3>
-      <button type="button" {...stylex.props(styles.button)} onClick={() => setOrigins({ a: b, b: null })}>Clear A</button>
+      <div {...stylex.props(styles.originHeading)}>
+        <h3 {...stylex.props(styles.subheading, styles.a)}>Origin A · <span {...stylex.props(styles.path)}>{label(session, a)}</span></h3>
+        <button type="button" {...stylex.props(styles.clearButton)} onClick={() => setOrigins({ a: b, b: null })}>Clear A</button>
+      </div>
       {b !== null ? <>
-        <h3 {...stylex.props(styles.subheading, styles.b)}>Origin B · <span {...stylex.props(styles.path)}>{label(session, b)}</span></h3>
-        <button type="button" {...stylex.props(styles.button)} onClick={() => setOrigins({ a, b: null })}>Clear B</button>
+        <div {...stylex.props(styles.originHeading)}>
+          <h3 {...stylex.props(styles.subheading, styles.b)}>Origin B · <span {...stylex.props(styles.path)}>{label(session, b)}</span></h3>
+          <button type="button" {...stylex.props(styles.clearButton)} onClick={() => setOrigins({ a, b: null })}>Clear B</button>
+        </div>
         <div {...stylex.props(styles.stat)}><span>Convergence depth</span>
           <strong {...stylex.props(styles.strong)}>{pair?.convergenceDepth === null ? ">3° · censored" : `${pair?.convergenceDepth}°`}</strong></div>
         <h3 {...stylex.props(styles.subheading, styles.shared)}>Shared structural neighborhood</h3>
@@ -174,15 +160,42 @@ export function ParallelismPanel({ session }: { session: GraphSession }) {
         <div {...stylex.props(styles.stat)}><span>Frontier growth Δ2 / Δ3</span><strong {...stylex.props(styles.strong)}>{aNeighborhood?.growth.join(" / ")}</strong></div>
         <div {...stylex.props(styles.stat)}><span>Convergence degree</span><strong {...stylex.props(styles.strong)}>{graph.neighbors.get(a)?.size ?? "outside aggregate"}</strong></div>
         <div {...stylex.props(styles.stat)}><span>Separated-set member</span><strong {...stylex.props(styles.strong)}>{index.candidates.includes(a) ? (separated.includes(a) ? "yes" : "no") : "outside aggregate"}</strong></div>
-        <h3 {...stylex.props(styles.subheading)}>Nearest converging regions</h3>
-        {nearest.map(({ id, pair: comparison }) => <div key={id} {...stylex.props(styles.stat)}>
-          <span {...stylex.props(styles.path)}>{label(session, id)}</span>
-          <strong {...stylex.props(styles.strong)}>{comparison.convergenceDepth === null ? ">3°" : `${comparison.convergenceDepth}°`}</strong>
-        </div>)}
+        <details>
+          <summary {...stylex.props(styles.summary)}>Nearest converging regions</summary>
+          {nearest.map(({ id, pair: comparison }) => <div key={id} {...stylex.props(styles.stat)}>
+            <span {...stylex.props(styles.path)}>{label(session, id)}</span>
+            <strong {...stylex.props(styles.strong)}>{comparison.convergenceDepth === null ? ">3°" : `${comparison.convergenceDepth}°`}</strong>
+          </div>)}
+        </details>
       </>}
       <div {...stylex.props(styles.stat)}><span>Depth-7 physical reuse · A</span><strong {...stylex.props(styles.strong)}>{physicalReuse(session, a)}</strong></div>
       {b === null ? null : <div {...stylex.props(styles.stat)}><span>Depth-7 physical reuse · B</span><strong {...stylex.props(styles.strong)}>{physicalReuse(session, b)}</strong></div>}
     </>}
-    <span {...stylex.props(styles.small)}>Index {index.constructionMs.toFixed(1)} ms · pair matrices {index.pairMetricsMs.toFixed(1)} ms · {index.nodeIds.length.toLocaleString()} visible nodes. Greedy counts are static heuristics, not measured scheduling.</span>
+    <details data-testid="landscape-aggregate" {...stylex.props(styles.details)}>
+      <summary {...stylex.props(styles.summary)}>Aggregate landscape · {separated.length} separated · {waves.length} waves</summary>
+      <h3 {...stylex.props(styles.subheading)}>Structural convergence graph</h3>
+      <div {...stylex.props(styles.stat)}><span>Visible region candidates</span><strong {...stylex.props(styles.strong)}>{index.candidates.length} / {index.eligibleRegions}</strong></div>
+      <div {...stylex.props(styles.stat)}><span>Pairs at ≥ τ</span><strong {...stylex.props(styles.strong)}>{graph.edges.toLocaleString()}</strong></div>
+      <h3 {...stylex.props(styles.subheading)}>Structural separation decay</h3>
+      {decayRows.map((row) => <div key={row.depth} {...stylex.props(styles.decay)}>
+        <span>{row.depth}°</span><meter {...stylex.props(styles.bar)} min={0} max={maxDecay} value={row.count ?? 0} />
+        <strong>{row.count}</strong>
+      </div>)}
+      <details {...stylex.props(styles.small)}>
+        <summary>Separated region IDs</summary>
+        <ol>{separated.map((id) => <li key={id} {...stylex.props(styles.path)}>{label(session, id)} · <code>{id}</code></li>)}</ol>
+      </details>
+      <details {...stylex.props(styles.small)}>
+        <summary>Greedy wave groups</summary>
+        <ol>{waves.map((members, wave) => <li key={members.join("|")}>
+          Wave {wave + 1} · {members.length} regions
+          <ul>{members.map((id) => <li key={id} {...stylex.props(styles.path)}>{label(session, id)} · <code>{id}</code></li>)}</ul>
+        </li>)}</ol>
+      </details>
+      {index.candidates.length < index.eligibleRegions && <span {...stylex.props(styles.small)}>
+        Aggregate uses the first {index.candidates.length} visible regions by containment depth and stable ID; selected files and remaining regions are measured individually.
+      </span>}
+      <span {...stylex.props(styles.small)}>Dashed region outlines meet the selected origin's overlap threshold. Index {index.constructionMs.toFixed(1)} ms · pair matrices {index.pairMetricsMs.toFixed(1)} ms · {index.nodeIds.length.toLocaleString()} visible nodes. Greedy counts are static heuristics, not measured scheduling.</span>
+    </details>
   </section>;
 }

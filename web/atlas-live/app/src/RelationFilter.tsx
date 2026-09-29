@@ -88,7 +88,7 @@ function asRelations(values: readonly string[]): Relation[] {
   return relations;
 }
 
-export function RelationFilter() {
+export function RelationFilter({ showInspectionPaths }: { readonly showInspectionPaths: boolean }) {
   const enabled = useAtomValue(visibleRelationSetAtom);
   const wireValues = useMemo(() => enabled.filter((relation) => WIRE_RELATIONS.includes(relation)), [enabled]);
   const pathValues = useMemo(() => enabled.filter((relation) => PATH_RELATIONS.includes(relation)), [enabled]);
@@ -128,17 +128,19 @@ export function RelationFilter() {
       >
         {toggles(WIRE_RELATIONS)}
       </ToggleGroup>
-      <span {...stylex.props(styles.subheading)}>Inspection paths</span>
-      <span {...stylex.props(styles.note)}>Definition and parent facts guide highlights; they do not draw wires.</span>
-      <ToggleGroup
-        multiple
-        value={pathValues}
-        onValueChange={(values) => change(PATH_RELATIONS, values)}
-        aria-label="Inspection paths"
-        {...stylex.props(styles.group)}
-      >
-        {toggles(PATH_RELATIONS)}
-      </ToggleGroup>
+      {showInspectionPaths && <>
+        <span {...stylex.props(styles.subheading)}>Inspection paths</span>
+        <span {...stylex.props(styles.note)}>Definition and parent facts guide highlights; they do not draw wires.</span>
+        <ToggleGroup
+          multiple
+          value={pathValues}
+          onValueChange={(values) => change(PATH_RELATIONS, values)}
+          aria-label="Inspection paths"
+          {...stylex.props(styles.group)}
+        >
+          {toggles(PATH_RELATIONS)}
+        </ToggleGroup>
+      </>}
     </section>
   );
 }

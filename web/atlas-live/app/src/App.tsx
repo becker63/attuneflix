@@ -106,6 +106,10 @@ const styles = stylex.create({
     backgroundColor: "rgba(0, 0, 0, 0.78)",
     boxShadow: "#00000f 0 0 10px",
   },
+  parallelSidebar: { gap: 14, padding: 16 },
+  sidebarDisclosure: { borderTopWidth: 1, borderTopStyle: "solid",
+    borderTopColor: "rgba(255,255,255,.2)", paddingTop: 8, fontSize: 13 },
+  sidebarSummary: { cursor: "pointer", fontWeight: 600, color: "#eee3ea" },
   reuseControl: {
     display: "flex",
     flexDirection: "column",
@@ -192,6 +196,28 @@ export function App({ controller }: { controller: SessionController }) {
   const scalarRange =
     session === null ? null : metricShadeRange(session.projectionMetrics(), measurementMode);
   const physicalRange = session?.physical ? reuseShadeRange(session.physical) : null;
+  const shadingLabel = measurementMode === "structure"
+    ? session?.families === null ? "Structure" : "Family + structure"
+    : measurementMode === "physical" ? "Physical reuse"
+    : measurementMode === "locality" ? "Locality" : "Reach";
+  const shadeChoices = session === null ? null : <div {...stylex.props(styles.shadeChoices)}>
+    {(["structure", "locality", "reach", "physical"] as const).map((mode) => (
+      <button
+        key={mode}
+        type="button"
+        aria-pressed={measurementMode === mode}
+        data-testid={mode === "physical" ? "reuse-shading" : undefined}
+        disabled={mode === "physical" && session.physical === null}
+        {...stylex.props(styles.reuseButton, measurementMode === mode && styles.shadeSelected)}
+        onClick={() => setMeasurementMode(mode)}
+      >
+        {mode === "structure"
+          ? session.families === null ? "Structure" : "Family + structure"
+          : mode === "locality" ? "Locality"
+          : mode === "reach" ? "Reach" : "Physical reuse"}
+      </button>
+    ))}
+  </div>;
   return (
     <main {...stylex.props(styles.root)}>
       <Header
@@ -225,7 +251,7 @@ export function App({ controller }: { controller: SessionController }) {
             </p>
           ) : null}
         </div>
-        <aside {...stylex.props(styles.sidebar)}>
+        <aside {...stylex.props(styles.sidebar, landscapeMode === "parallelism" && styles.parallelSidebar)}>
           {session === null ? null : <section {...stylex.props(styles.reuseControl)} aria-label="Atlas Live mode">
             <span {...stylex.props(styles.controlHeading)}>Explore the same graph</span>
             <div {...stylex.props(styles.shadeChoices)}>
@@ -239,39 +265,22 @@ export function App({ controller }: { controller: SessionController }) {
           </section>}
           {session === null ? null : (
             <section {...stylex.props(styles.reuseControl)} aria-label="Graph shading">
-              <span {...stylex.props(styles.controlHeading)}>Color the graph</span>
-              <span>
+              {landscapeMode === "parallelism" ? <details {...stylex.props(styles.sidebarDisclosure)}>
+                <summary {...stylex.props(styles.sidebarSummary)}>Color · {shadingLabel}</summary>
+                {shadeChoices}
+              </details> : <>
+                <span {...stylex.props(styles.controlHeading)}>Color the graph</span>
+                {shadeChoices}
+              </>}
+              {landscapeMode === "structure" && <span>
                 {session.families === null
                   ? "One graph · structural placement"
                   : "One graph · family hue and structural placement"}
-              </span>
-              <div {...stylex.props(styles.shadeChoices)}>
-                {(["structure", "locality", "reach", "physical"] as const).map((mode) => (
-                  <button
-                    key={mode}
-                    type="button"
-                    aria-pressed={measurementMode === mode}
-                    data-testid={mode === "physical" ? "reuse-shading" : undefined}
-                    disabled={mode === "physical" && session.physical === null}
-                    {...stylex.props(styles.reuseButton, measurementMode === mode && styles.shadeSelected)}
-                    onClick={() => setMeasurementMode(mode)}
-                  >
-                    {mode === "structure"
-                      ? session.families === null
-                        ? "Structure"
-                        : "Family + structure"
-                      : mode === "locality"
-                        ? "Locality"
-                        : mode === "reach"
-                          ? "Reach"
-                          : "Physical reuse"}
-                  </button>
-                ))}
-              </div>
-              {measurementMode === "structure" ? (
+              </span>}
+              {landscapeMode === "structure" && measurementMode === "structure" ? (
                 <span>Families tint the fixed structural layout wherever recorded.</span>
               ) : null}
-              {measurementMode === "physical" && session.physical !== null && physicalRange !== null ? (
+              {landscapeMode === "structure" && measurementMode === "physical" && session.physical !== null && physicalRange !== null ? (
                 <>
                   <span>Physical transition reuse</span>
                   <figure
@@ -291,7 +300,7 @@ export function App({ controller }: { controller: SessionController }) {
                   <span>{session.physical.seeds.length} measured files and symbols · depth 7</span>
                 </>
               ) : null}
-              {scalarRange === null ? null : (
+              {landscapeMode === "parallelism" || scalarRange === null ? null : (
                 <>
                   <span>
                     {measurementMode === "locality"
@@ -325,15 +334,19 @@ export function App({ controller }: { controller: SessionController }) {
             </section>
           )}
           {session !== null && landscapeMode === "parallelism" ? <ParallelismPanel session={session} /> : null}
-          <WorldComparison
+          {landscapeMode === "parallelism" ? <details {...stylex.props(styles.sidebarDisclosure)}>
+            <summary {...stylex.props(styles.sidebarSummary)}>Compare repositories</summary>
+            <WorldComparison state={state} onSelect={(value) => { void controller.select(value); }} />
+          </details> : <WorldComparison
             state={state}
-            onSelect={(value) => {
-              void controller.select(value);
-            }}
-          />
-          <RelationFilter />
-          <Legend />
-          <DepthControl />
+            onSelect={(value) => { void controller.select(value); }}
+          />}
+          <RelationFilter showInspectionPaths={landscapeMode === "structure"} />
+          {landscapeMode === "parallelism" ? <details {...stylex.props(styles.sidebarDisclosure)}>
+            <summary {...stylex.props(styles.sidebarSummary)}>Graph legend</summary>
+            <Legend />
+          </details> : <Legend />}
+          {landscapeMode === "structure" ? <DepthControl /> : null}
           {landscapeMode === "structure" ? <Details session={session} /> : null}
         </aside>
       </div>

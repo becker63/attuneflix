@@ -88,9 +88,28 @@ test("structural separation compares two origins on the same relation-filtered g
   const identity = await page.evaluate(() => window.__atlasLive?.layoutIdentity);
   await page.getByTestId("parallelism-mode").click();
   const panel = page.getByTestId("parallelism-panel");
+  const graphKey = page.getByTestId("structural-graph-key");
+  const shading = page.getByRole("region", { name: "Graph shading" });
+  await expect(shading.getByText("Color · Physical reuse")).toBeVisible();
+  await expect(shading.getByTestId("reuse-shading")).not.toBeVisible();
+  await shading.getByText("Color · Physical reuse").click();
+  await expect(shading.getByTestId("reuse-shading")).toBeVisible();
+  await shading.getByText("Color · Physical reuse").click();
+  await expect(graphKey).toContainText("Greedy separated set");
+  await expect(graphKey).toContainText("No wires until selection");
+  await expect(page.getByText("Compare repositories")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Repository signature comparison" })).not.toBeVisible();
+  await expect(page.getByText("Graph legend")).toBeVisible();
+  await expect(page.getByText("Inspection paths")).not.toBeVisible();
+  const aggregate = panel.getByTestId("landscape-aggregate");
+  await expect(aggregate).not.toHaveAttribute("open");
+  await aggregate.locator("summary").first().click();
   await expect(panel.getByText("Structural separation decay")).toBeVisible();
   await expect(panel.getByText("Separated region IDs")).toBeVisible();
   await expect(panel.getByText("Greedy wave groups")).toBeVisible();
+  await aggregate.locator("summary").first().click();
+  const outputs = process.env.TEST_UNDECLARED_OUTPUTS_DIR;
+  if (outputs !== undefined) fs.writeFileSync(path.join(outputs, "structural-empty.png"), await page.screenshot());
   const labels = page.getByTestId("topology-region-label");
   await labels.nth(0).click();
   await expect(panel.getByText(/Origin A/)).toBeVisible();
@@ -100,13 +119,13 @@ test("structural separation compares two origins on the same relation-filtered g
   await expect(panel.getByText("Shared structural neighborhood")).toBeVisible();
   await expect(panel.getByText("Convergence depth")).toBeVisible();
   await expect(panel.locator("tbody tr")).toHaveCount(3);
+  await expect(graphKey).toContainText("Shared ·");
   await expect(page.locator('[data-landscape-role="origin-a"]')).toHaveCount(1);
   await expect(page.locator('[data-landscape-role="origin-b"]')).toHaveCount(1);
   const sharedRegion = page.locator('[data-landscape-role="shared"]').first();
   await expect(sharedRegion).toBeVisible();
   expect(await sharedRegion.getAttribute("stroke-dasharray")).toBeNull();
   await expect(page.getByTestId("structural-region-wash").first()).toBeVisible();
-  const outputs = process.env.TEST_UNDECLARED_OUTPUTS_DIR;
   if (outputs !== undefined) {
     fs.writeFileSync(path.join(outputs, "structural-separation.png"), await page.screenshot());
     fs.writeFileSync(path.join(outputs, "structural-separation-panel.png"), await panel.screenshot());
@@ -123,6 +142,11 @@ test("structural separation compares two origins on the same relation-filtered g
   await expect(page.locator('[data-converging="true"]')).toHaveCount(0);
   await panel.getByRole("button", { name: "Clear B" }).click();
   await expect(panel.getByText(/Origin B/)).toHaveCount(0);
+  await panel.getByRole("button", { name: "Clear A" }).click();
+  await expect(graphKey).toContainText("No wires until selection");
+  await expect(page.locator('[data-landscape-role="shared"]')).toHaveCount(0);
+  await page.waitForTimeout(750);
+  if (outputs !== undefined) fs.writeFileSync(path.join(outputs, "structural-cleared.png"), await page.screenshot());
 });
 
 test("a region label selects its directory while graph points remain hoverable", async ({ page }) => {
