@@ -17,7 +17,11 @@ import { FamilyEdges } from "./FamilyEdges.tsx";
 import { GraphView } from "./GraphView.tsx";
 import { Header } from "./Header.tsx";
 import { Legend } from "./Legend.tsx";
+import { reuseShadeRange, shadeOklab } from "./physical.ts";
 import { RelationFilter } from "./RelationFilter.tsx";
+
+const REUSE_GRADIENT = `linear-gradient(to right, ${shadeOklab("#a78bfa", 0)}, ${shadeOklab("#a78bfa", 0.5)}, ${shadeOklab("#a78bfa", 1)})`;
+const REUSE_GRADIENT_STYLE = { background: REUSE_GRADIENT };
 
 const styles = stylex.create({
   root: {
@@ -26,18 +30,25 @@ const styles = stylex.create({
     height: "100vh",
     overflow: "hidden",
     fontFamily: "system-ui, sans-serif",
-    backgroundColor: "#0b0d12",
+    backgroundColor: "transparent",
     color: "#f4f4f5",
+    padding: 12,
+    gap: 12,
   },
   body: {
     display: "flex",
     flexGrow: 1,
     minHeight: 0,
+    gap: 12,
   },
   graph: {
     flexGrow: 1,
     minWidth: 0,
     position: "relative",
+    overflow: "hidden",
+    borderRadius: 10,
+    backgroundColor: "rgba(0, 0, 0, 0.86)",
+    boxShadow: "#00000f 0 0 10px",
   },
   overlayLayer: {
     position: "absolute",
@@ -54,11 +65,11 @@ const styles = stylex.create({
     paddingBottom: 6,
     paddingLeft: 10,
     paddingRight: 10,
-    borderRadius: 6,
+    borderRadius: 10,
     borderWidth: 1,
     borderStyle: "solid",
     borderColor: "#374151",
-    backgroundColor: "rgba(15, 17, 23, 0.92)",
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
     color: "#e5e7eb",
     fontSize: 13,
   },
@@ -87,12 +98,11 @@ const styles = stylex.create({
     display: "flex",
     flexDirection: "column",
     gap: 18,
-    padding: 16,
+    padding: 20,
     overflowY: "auto",
-    borderLeftWidth: 1,
-    borderLeftStyle: "solid",
-    borderLeftColor: "#1f2937",
-    backgroundColor: "#0f1117",
+    borderRadius: 10,
+    backgroundColor: "rgba(0, 0, 0, 0.78)",
+    boxShadow: "#00000f 0 0 10px",
   },
   reuseControl: {
     display: "flex",
@@ -105,17 +115,32 @@ const styles = stylex.create({
     fontSize: 12,
     color: "#d1d5db",
   },
+  reuseScale: {
+    margin: 0,
+    width: "100%",
+    height: 14,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: "rgba(255, 255, 255, 0.35)",
+  },
+  reuseScaleLabels: {
+    display: "flex",
+    justifyContent: "space-between",
+    fontVariantNumeric: "tabular-nums",
+    color: "#d1d5db",
+  },
   reuseButton: {
     alignSelf: "flex-start",
     borderWidth: 1,
     borderStyle: "solid",
-    borderColor: "#4b5563",
-    borderRadius: 4,
+    borderColor: "rgba(255, 255, 255, 0.22)",
+    borderRadius: 6,
     paddingTop: 4,
     paddingBottom: 4,
     paddingLeft: 8,
     paddingRight: 8,
-    backgroundColor: "#1f2937",
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
     color: "#e5e7eb",
     cursor: "pointer",
   },
@@ -175,7 +200,17 @@ export function App({ controller }: { controller: SessionController }) {
               >
                 Physical reuse shading {shadeReuse ? "on" : "off"}
               </button>
-              <span>Oklab lightness · darker = less reuse · lighter = more reuse</span>
+              <span>Physical transition reuse</span>
+              <figure
+                {...stylex.props(styles.reuseScale)}
+                style={REUSE_GRADIENT_STYLE}
+                aria-label="Dark to bright Oklab scale for low to high physical transition reuse"
+              />
+              <span {...stylex.props(styles.reuseScaleLabels)}>
+                <span>{(reuseShadeRange(session.physical).low * 100).toFixed(2)}% · less</span>
+                <span>{(reuseShadeRange(session.physical).high * 100).toFixed(2)}% · more</span>
+              </span>
+              <span>Scale spans the measured 5th–95th percentiles; inspected nodes show exact values.</span>
               <span>{session.physical.seeds.length} measured files and symbols · depth 7</span>
             </section>
           )}

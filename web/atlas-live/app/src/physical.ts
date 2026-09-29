@@ -43,17 +43,33 @@ function hexFromOklab(color: Oklab): string {
   return `#${encoded(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s)}${encoded(-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s)}${encoded(-0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s)}`;
 }
 
-/** Interpolate perceptual lightness while keeping the base hue/chroma axes. */
+/** Family hue survives; low reuse becomes dark and muted, high reuse bright. */
 export function shadeOklab(baseHex: string, unit: number): string {
   const base = oklab(baseHex);
   const t = Math.max(0, Math.min(1, unit));
-  return hexFromOklab({ l: 0.38 + 0.4 * t, a: base.a, b: base.b });
+  const chroma = 0.2 + 0.8 * t;
+  return hexFromOklab({ l: 0.28 + 0.6 * t, a: base.a * chroma, b: base.b * chroma });
 }
 
-/** Normalized within the measured Preact population; the exact R stays available. */
+const REUSE_RANGES = new WeakMap<WorldPhysical, { low: number; high: number }>();
+
+/** Robust within-world display range. Exact fractions remain in the inspector. */
+export function reuseShadeRange(physical: WorldPhysical): { low: number; high: number } {
+  const cached = REUSE_RANGES.get(physical);
+  if (cached !== undefined) return cached;
+  const sorted = physical.seeds.map((seed) => seed.reuseFraction).toSorted((a, b) => a - b);
+  const low = sorted[Math.floor((sorted.length - 1) * 0.05)] ?? physical.minFraction;
+  const high = sorted[Math.ceil((sorted.length - 1) * 0.95)] ?? physical.maxFraction;
+  const range = high > low ? { low, high } : { low: physical.minFraction, high: physical.maxFraction };
+  REUSE_RANGES.set(physical, range);
+  return range;
+}
+
+/** Normalized within the measured world's 5th–95th percentile range. */
 export function reuseShadePosition(physical: WorldPhysical, reuseFraction: number): number {
-  const span = physical.maxFraction - physical.minFraction;
-  return span <= 0 ? 0.5 : (reuseFraction - physical.minFraction) / span;
+  const { low, high } = reuseShadeRange(physical);
+  const span = high - low;
+  return span <= 0 ? 0.5 : Math.max(0, Math.min(1, (reuseFraction - low) / span));
 }
 
 function baseColor(graph: ViewerGraph, families: WorldFamilies | null, index: number): string {

@@ -40,13 +40,13 @@ const styles = stylex.create({
     borderWidth: 1,
     borderStyle: "solid",
     borderColor: "#4b5563",
-    backgroundColor: "#111827",
+    backgroundColor: "rgba(255, 255, 255, 0.06)",
     color: "#e5e7eb",
     cursor: "pointer",
   },
   pressed: {
     borderColor: "#60a5fa",
-    backgroundColor: "#1e3a8a",
+    backgroundColor: "rgba(96, 165, 250, 0.28)",
     color: "#f9fafb",
   },
   value: {

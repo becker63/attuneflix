@@ -20,15 +20,15 @@ const styles = stylex.create({
     paddingBottom: 10,
     paddingLeft: 16,
     paddingRight: 16,
-    borderBottomWidth: 1,
-    borderBottomStyle: "solid",
-    borderBottomColor: "#1f2937",
-    backgroundColor: "#0f1117",
+    borderRadius: 10,
+    backgroundColor: "rgba(0, 0, 0, 0.75)",
+    boxShadow: "#00000f 0 0 10px",
   },
   brand: {
-    fontSize: 15,
-    fontWeight: 700,
-    letterSpacing: 0.3,
+    fontFamily: "PixelDown, system-ui, sans-serif",
+    fontSize: 22,
+    fontWeight: 600,
+    letterSpacing: 0.6,
     color: "#f9fafb",
   },
   identity: {
@@ -53,7 +53,7 @@ const styles = stylex.create({
     paddingLeft: 6,
     paddingRight: 6,
     borderRadius: 4,
-    backgroundColor: "#1f2937",
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
     color: "#a7f3d0",
   },
   syntheticBadge: {
@@ -62,7 +62,7 @@ const styles = stylex.create({
     fontWeight: 600,
   },
   noteBadge: {
-    backgroundColor: "#1f2937",
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
     color: "#9ca3af",
   },
   spacer: {

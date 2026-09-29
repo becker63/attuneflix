@@ -72,7 +72,7 @@ const styles = stylex.create({
 });
 
 const POINT_COLORS = pointColorMap();
-const BACKGROUND = "#0b0d12";
+const BACKGROUND = "#160c14";
 
 interface ScreenRegion {
   readonly ordinal: number;
@@ -463,7 +463,7 @@ export function GraphView({ session }: { session: GraphSession }) {
             height={region.height}
             rx={3}
             fill={region.color}
-            fillOpacity={0.065}
+            fillOpacity={shadeReuse && session.physical !== null ? 0.26 : 0.065}
             stroke={region.color}
             strokeOpacity={0.85}
             strokeWidth={2}

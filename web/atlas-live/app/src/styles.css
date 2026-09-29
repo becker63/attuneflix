@@ -13,6 +13,13 @@
   color-scheme: dark;
 }
 
+@font-face {
+  font-family: "PixelDown";
+  src: url("/fonts/pixeldown.ttf") format("truetype");
+  font-weight: 600 700;
+  font-display: swap;
+}
+
 *,
 *::before,
 *::after {
@@ -28,5 +35,10 @@ body,
 }
 
 body {
-  background-color: #0b0d12;
+  background-color: #581f37;
+  background-image: url("/img/backgroundImage.jpg");
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-size: auto min(100vh, 864px);
+  background-attachment: fixed;
 }

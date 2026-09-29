@@ -51,6 +51,7 @@ js_library(
         "src/**/*.ts",
         "src/**/*.tsx",
         "src/**/*.css",
+        "public/**/*",
     ]) + [
         "index.html",
         "vite.config.mjs",

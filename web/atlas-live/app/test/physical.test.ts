@@ -19,6 +19,7 @@ describe("physical reuse shading", () => {
       expect(low).toMatch(/^#[0-9a-f]{6}$/);
       expect(relativeLuminance(low)).toBeLessThan(relativeLuminance(middle));
       expect(relativeLuminance(middle)).toBeLessThan(relativeLuminance(high));
+      expect(relativeLuminance(high) / relativeLuminance(low)).toBeGreaterThan(5);
       expect(shadeOklab(familyColor, -1)).toBe(low);
       expect(shadeOklab(familyColor, 2)).toBe(high);
     }
