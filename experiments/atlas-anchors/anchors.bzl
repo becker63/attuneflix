@@ -45,3 +45,17 @@ anchor_experiment = rule(
         "tool": attr.label(executable = True, cfg = "exec", mandatory = True),
     },
 )
+
+def anchor_comparisons(worlds, tool, baseline_commit):
+    """Declare one identical remote experiment per pinned snapshot."""
+    for name, world, digest, anchor_path in worlds:
+        anchor_experiment(
+            name = name,
+            anchor_path = anchor_path,
+            baseline_commit = baseline_commit,
+            digest = digest,
+            exec_properties = {"EstimatedComputeUnits": "4"},
+            tool = tool,
+            visibility = ["//visibility:public"],
+            world = world,
+        )

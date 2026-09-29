@@ -37,6 +37,8 @@ const REUSE_GRADIENT = `linear-gradient(to right, ${shadeOklab("#a78bfa", 0)}, $
 const REUSE_GRADIENT_STYLE = { background: REUSE_GRADIENT };
 
 function firstMeasuredAnchor(data: WorldAnchors | null): string | null {
+  const measuredBoundary = data?.scenarios.find((row) => row.intervention === "masked")?.path;
+  if (measuredBoundary !== undefined && data?.byPath.has(measuredBoundary)) return measuredBoundary;
   return (
     data?.masses.find(
       (row) => row.domain === "symbol" && row.path.includes("/") && row.weightedContaining > 0,

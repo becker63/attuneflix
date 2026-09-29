@@ -27,6 +27,13 @@ import { decodeMetadata, toArrayBuffer } from "../src/tables.ts";
 
 const EXPECTED_WORLD_COUNT = 79;
 const SELF_REVISION = "88f97599901df1be52ce8cb06f2a701c464cbbbe";
+const ANCHOR_TARGETS = new Map([
+  ["002a462e6f58440bbf60071f1e945b38bb304fe46a38ca6fdfd578248693cf01", "packages/babel-types"],
+  ["6bae5cbc218b494824fd4dbdd23e62cdad23301dc9243ee7040a32728daef59a", "src"],
+  ["c09c5aceb7270db20383531fa1c5f16b9e592b3592cabb62da376e8a9a41a872", "src"],
+  ["e5bfbed1587a474108acc0a043858b1b6c6f118463bcafd6344a0d6e47e4af70", "src/components"],
+  ["6e2bef41bf19f638be084df8cb82127e4832d4abbafa8ca20ebd5db9be3ac8a9", "hooks"],
+]);
 
 function fail(message: string): never {
   throw new Error(`data_check: ${message}`);
@@ -82,9 +89,10 @@ async function checkEntry(world: WorldManifestEntry): Promise<void> {
     if (sha256 !== world.sha256.locations) fail(`${digest}: sha256 mismatch for locations.parquet`);
   }
   await checkPhysical(treeRoot, world);
-  if (world.repository === "babel/babel") {
+  const anchorTarget = ANCHOR_TARGETS.get(digest);
+  if (anchorTarget !== undefined) {
     if (world.assets.anchors === undefined || world.sha256.anchors === undefined) {
-      fail(`${digest}: missing Babel anchor evidence`);
+      fail(`${digest}: missing anchor evidence`);
     }
     for (const [name, expected] of [
       ["masses", ANCHOR_COLUMNS],
@@ -104,17 +112,19 @@ async function checkEntry(world: WorldManifestEntry): Promise<void> {
       if (columns.join(",") !== expected.join(",")) fail(`${digest}: anchor ${name} schema mismatch`);
       const rows = await parquetReadObjects({ file: buffer, metadata });
       if (name === "masses") {
-        const target = rows.filter((row) => row["anchor_path"] === "packages/babel-types");
+        const target = rows.filter((row) => row["anchor_path"] === anchorTarget);
         const file = target.find((row) => row["seed_domain"] === "file");
         const symbol = target.find((row) => row["seed_domain"] === "symbol");
+        if (target.length !== 2 || file === undefined || symbol === undefined)
+          fail(`${digest}: target anchor missing from both typed domains`);
         if (
-          target.length !== 2 ||
-          Number(file?.["unique_containing_states"]) !== 0 ||
-          Number(file?.["unique_live_states"]) !== 8 ||
-          Number(symbol?.["unique_containing_states"]) !== 2834 ||
-          Number(symbol?.["unique_live_states"]) !== 3761 ||
-          Number(symbol?.["weighted_containing_observations"]) !== 5314 ||
-          Number(symbol?.["live_observations"]) !== 8022
+          world.repository === "babel/babel" &&
+          (Number(file["unique_containing_states"]) !== 0 ||
+            Number(file["unique_live_states"]) !== 8 ||
+            Number(symbol["unique_containing_states"]) !== 2834 ||
+            Number(symbol["unique_live_states"]) !== 3761 ||
+            Number(symbol["weighted_containing_observations"]) !== 5314 ||
+            Number(symbol["live_observations"]) !== 8022)
         )
           fail(`${digest}: Babel known-answer anchor mass changed`);
       } else {
@@ -123,21 +133,32 @@ async function checkEntry(world: WorldManifestEntry): Promise<void> {
           (row) => row["intervention"] === "baseline" && row["seed_domain"] === "file",
         );
         const maskedFile = rows.find(
-          (row) => row["masked_anchor"] === "packages/babel-types" && row["seed_domain"] === "file",
+          (row) => row["masked_anchor"] === anchorTarget && row["seed_domain"] === "file",
         );
         const baselineSymbol = rows.find(
           (row) => row["intervention"] === "baseline" && row["seed_domain"] === "symbol",
         );
         const maskedSymbol = rows.find(
-          (row) => row["masked_anchor"] === "packages/babel-types" && row["seed_domain"] === "symbol",
+          (row) => row["masked_anchor"] === anchorTarget && row["seed_domain"] === "symbol",
         );
         if (
-          Number(baselineFile?.["extinct_observations"]) !== 26095 ||
-          Number(baselineFile?.["total_recurrence"]) !== 2623.2 ||
-          Number(maskedFile?.["total_recurrence"]) !== 2623.2 ||
-          Number(maskedSymbol?.["masked_calls"]) !== 2262 ||
-          Number(maskedSymbol?.["unique_live_states"]) !== 2189 ||
-          Number(maskedSymbol?.["live_recurrence"]) <= Number(baselineSymbol?.["live_recurrence"])
+          baselineFile === undefined ||
+          baselineSymbol === undefined ||
+          maskedFile === undefined ||
+          maskedSymbol === undefined ||
+          Number(maskedFile["masked_imports"]) + Number(maskedFile["masked_calls"]) <= 0 ||
+          Number(maskedFile["observations"]) !== Number(baselineFile["observations"]) ||
+          Number(maskedSymbol["observations"]) !== Number(baselineSymbol["observations"])
+        )
+          fail(`${digest}: target counterfactual is missing or inconsistent`);
+        if (
+          world.repository === "babel/babel" &&
+          (Number(baselineFile?.["extinct_observations"]) !== 26095 ||
+            Number(baselineFile?.["total_recurrence"]) !== 2623.2 ||
+            Number(maskedFile?.["total_recurrence"]) !== 2623.2 ||
+            Number(maskedSymbol?.["masked_calls"]) !== 2262 ||
+            Number(maskedSymbol?.["unique_live_states"]) !== 2189 ||
+            Number(maskedSymbol?.["live_recurrence"]) <= Number(baselineSymbol?.["live_recurrence"]))
         )
           fail(`${digest}: Babel known-answer counterfactual changed`);
       }

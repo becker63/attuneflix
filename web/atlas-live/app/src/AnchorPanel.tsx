@@ -104,15 +104,19 @@ function scenario(
 }
 
 /** Compare peer regions; nested children remain selectable on the graph. */
-function rankedPeers(masses: readonly AnchorMass[]): readonly AnchorMass[] {
+function rankedPeers(masses: readonly AnchorMass[], measuredBoundary: string | null): readonly AnchorMass[] {
   const eligible = masses.filter(
     (row) => row.domain === "symbol" && row.path.includes("/") && row.weightedContaining > 0,
   );
   const shallowest = eligible.reduce((depth, row) => Math.min(depth, row.path.split("/").length), Infinity);
-  return eligible
+  const peers = eligible
     .filter((row) => row.path.split("/").length === shallowest)
     .toSorted((a, b) => a.rank - b.rank || a.path.localeCompare(b.path))
     .slice(0, 8);
+  const boundary = masses.find((row) => row.domain === "symbol" && row.path === measuredBoundary);
+  return boundary === undefined
+    ? peers
+    : [boundary, ...peers.filter((row) => row.path !== boundary.path)].slice(0, 8);
 }
 
 export function AnchorPanel({ session }: { session: GraphSession }) {
@@ -122,7 +126,8 @@ export function AnchorPanel({ session }: { session: GraphSession }) {
   const setDepth = useSetAtom(landscapeDepthAtom);
   const selectedPath = useAtomValue(selectedAnchorPathAtom);
   const setSelectedPath = useSetAtom(selectedAnchorPathAtom);
-  const ranking = useMemo(() => rankedPeers(data?.masses ?? []), [data]);
+  const measuredBoundary = data?.scenarios.find((row) => row.intervention === "masked")?.path ?? null;
+  const ranking = useMemo(() => rankedPeers(data?.masses ?? [], measuredBoundary), [data, measuredBoundary]);
   const selected = selectedPath === null ? null : (data?.byPath.get(selectedPath) ?? null);
   const directoryStart = session.graph.fileCount + session.graph.symbolCount;
   const anchorIndex =
@@ -184,8 +189,9 @@ export function AnchorPanel({ session }: { session: GraphSession }) {
         ))}
       </div>
       <span {...stylex.props(styles.small)}>
-        Peer regions ranked by live Symbol observation mass. Nested paths remain selectable on the graph; the
-        typed artifact retains every directory candidate.
+        The measured counterfactual boundary appears first; then peer regions are ranked by live Symbol
+        observation mass. Nested paths remain selectable on the graph; the typed artifact retains every
+        directory candidate.
       </span>
       {selectedPath !== null && (
         <button type="button" {...stylex.props(styles.depth)} onClick={() => setSelectedPath(null)}>

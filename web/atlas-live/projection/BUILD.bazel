@@ -81,11 +81,17 @@ copy_to_directory(
     visibility = ["//visibility:public"],
 )
 
-# New Flix-derived anchor concentration and boundary-mask counterfactual for
-# the frozen Babel snapshot. The old census tables remain read-only inputs.
+# Flix-derived anchor concentration and boundary-mask counterfactuals for five
+# pinned snapshots. The old census and self-world tables remain read-only inputs.
 copy_to_directory(
     name = "anchors",
-    srcs = ["//experiments/atlas-anchors:babel"],
+    srcs = [
+        "//experiments/atlas-anchors:attuneflix",
+        "//experiments/atlas-anchors:babel",
+        "//experiments/atlas-anchors:element",
+        "//experiments/atlas-anchors:preact",
+        "//experiments/atlas-anchors:three",
+    ],
     root_paths = ["experiments/atlas-anchors"],
     visibility = ["//visibility:public"],
 )

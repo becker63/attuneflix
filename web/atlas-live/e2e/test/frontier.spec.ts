@@ -191,6 +191,25 @@ test("Babel anchor evidence selects a measured region and traces only enabled de
   await expect(page.getByTestId("structural-graph-key")).toContainText("0 incoming visible nodes");
 });
 
+test("the pinned AttuneFlix snapshot exposes its measured anchor and counterfactual", async ({ page }) => {
+  const self = "repository-snapshot-v1:6bae5cbc218b494824fd4dbdd23e62cdad23301dc9243ee7040a32728daef59a";
+  await page.goto("/");
+  await page.waitForFunction(() => window.__atlasLive?.ready === true, null, { timeout: 90_000 });
+  await page.getByTestId("dataset-picker").click();
+  await page.locator(`[data-snapshot-id="${self}"]`).click();
+  await page.waitForFunction(
+    (id) => window.__atlasLive?.ready === true && window.__atlasLive.snapshotId === id,
+    self,
+    { timeout: 90_000 },
+  );
+  await page.getByTestId("anchors-mode").click();
+  const panel = page.getByTestId("anchor-panel");
+  await expect(panel.getByTestId("anchor-option").first()).toContainText("src");
+  await expect(panel.getByText("Symbol · observations").locator("..")).toContainText("48.13%");
+  await expect(panel.getByText("File · observations").locator("..")).toContainText("57.16%");
+  await expect(panel.getByText("Symbol live recurrence Δ").locator("..")).toContainText("+0.31×");
+});
+
 test("a region label selects its directory while graph points remain hoverable", async ({ page }) => {
   await page.goto("/");
   await page.waitForFunction(() => window.__atlasLive?.ready === true, null, { timeout: 90_000 });
