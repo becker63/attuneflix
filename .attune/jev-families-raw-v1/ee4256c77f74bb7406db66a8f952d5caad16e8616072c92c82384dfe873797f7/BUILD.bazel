@@ -1,0 +1,14 @@
+# Recorded jev-families-raw-v1 evidence for repository-snapshot-v1:ee4256c77f74bb7406db66a8f952d5caad16e8616072c92c82384dfe873797f7.
+# Raw provider envelopes are immutable; Bazel declares them as inputs.
+filegroup(
+    name = "evidence",
+    srcs = glob(["raw/*.json"]) + glob(
+        ["passes/*.json"],
+        allow_empty = True,
+    ) + [
+        "decisions.parquet",
+        "ledger.parquet",
+        "outcomes.parquet",
+    ],
+    visibility = ["//experiments/atlas-families:__pkg__"],
+)

@@ -135,12 +135,10 @@ copy_to_directory(
     srcs = [
         "//web/atlas-live/app:dist",
         "//web/atlas-live/projection:data",
-        "//web/atlas-live/projection:physical",
     ],
     root_paths = [
         "web/atlas-live/app/dist",
         "web/atlas-live/projection/data",
-        "web/atlas-live/projection/physical",
     ],
 )
 

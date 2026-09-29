@@ -22,7 +22,7 @@ describe("visual vocabulary", () => {
   });
 
   it("generates one legend entry per overlay category and enabled relation", () => {
-    const entries = legendEntries("structure", RELATION_ORDER);
+    const entries = legendEntries(false, RELATION_ORDER);
     const keys = entries.map((entry) => `${entry.kind}:${entry.key}`);
     expect(keys).toEqual([
       "category:file",
@@ -42,13 +42,13 @@ describe("visual vocabulary", () => {
   });
 
   it("omits disabled relations from the legend", () => {
-    const keys = legendEntries("structure", ["defines"]).map((entry) => entry.key);
+    const keys = legendEntries(false, ["defines"]).map((entry) => entry.key);
     expect(keys).toContain("defines");
     expect(keys).not.toContain("calls");
   });
 
   it("marks disabled relations in the legend without a second glyph table", () => {
-    const entries = legendEntries("structure", ["defines", "parent"], {
+    const entries = legendEntries(false, ["defines", "parent"], {
       includeDisabledRelations: true,
     });
     const relations = entries.filter((entry) => entry.kind === "relation");
@@ -61,6 +61,13 @@ describe("visual vocabulary", () => {
       expect(entry?.disabled).toBe(relation === "imports" || relation === "calls");
     }
     expect(entries.filter((entry) => entry.kind === "category")).toHaveLength(3);
+  });
+
+  it("includes family hue alongside structural geometry whenever families exist", () => {
+    const categories = legendEntries(true, ["imports", "calls"])
+      .filter((entry) => entry.kind === "category")
+      .map((entry) => entry.key);
+    expect(categories).toEqual(["family", "no-family"]);
   });
 
   it("falls back to a neutral colour for an unknown relation value", () => {

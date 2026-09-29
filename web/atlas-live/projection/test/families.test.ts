@@ -10,7 +10,13 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { decodeFamiliesFiles, familyOfPoint, projectFamilies, type FamilyTables } from "../src/families.ts";
+import {
+  decodeFamiliesFiles,
+  familyOfPoint,
+  projectFamilies,
+  summarizeFamilyTable,
+  type FamilyTables,
+} from "../src/families.ts";
 import { buildViewerArrow } from "../src/arrow.ts";
 import { projectWorld } from "../src/project.ts";
 import type { ViewerGraph } from "../src/graph.ts";
@@ -32,6 +38,15 @@ async function loadPreact(): Promise<{ graph: ViewerGraph; tables: FamilyTables 
 }
 
 describe("families export decode (preact)", () => {
+  it("summarizes the typed families table for a census comparison", async () => {
+    const graph = await projectWorld(await readWorldDir(WORLD_DIR));
+    const files = await readFamiliesDir(WORLD_DIR);
+    expect(await summarizeFamilyTable(files.families, graph)).toEqual({
+      count: 159,
+      largestMembers: 120,
+      largestShare: 120 / graph.symbolCount,
+    });
+  });
   it("decodes the five typed tables with their declared row counts", async () => {
     const { graph, tables } = await loadPreact();
     expect(tables.families.length).toBe(EXPECTED_FAMILIES);

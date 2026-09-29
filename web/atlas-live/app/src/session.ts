@@ -19,8 +19,10 @@ import {
   collapse,
   expand,
   initialFrontier,
+  pi,
   type VisibleFrontier,
 } from "./frontier/frontier.ts";
+import { computeProjectionMetrics, type ProjectionMetrics, type RegionMetrics } from "./frontier/metrics.ts";
 import { projectFrontier, type FrontierProjection, type WireRelation } from "./frontier/wires.ts";
 import {
   degree,
@@ -87,6 +89,7 @@ export class GraphSession {
   #viewSerial = 0;
   #pendingView: Promise<void> = Promise.resolve();
   #visibleMask: Uint8Array;
+  #metrics: ProjectionMetrics | null = null;
 
   readonly #abort: AbortController;
   readonly #disposalListeners = new Set<() => void>();
@@ -119,6 +122,21 @@ export class GraphSession {
 
   getViewSnapshot = (): FrontierViewSnapshot => this.#view;
 
+  /** The selected concrete node's own metrics, or its enclosing visible region. */
+  metricsFor(index: number): RegionMetrics | null {
+    if (index < 0 || index >= this.graph.pointCount) return null;
+    this.#metrics ??= computeProjectionMetrics(this.graph, this.containment, this.#view.projection);
+    const region = pi(this.containment, this.#view.frontier, index);
+    const id = this.graph.pointIds[region];
+    return id === undefined ? null : this.#metrics.get(id) ?? null;
+  }
+
+  /** All metrics for the current projected frontier, cached until it changes. */
+  projectionMetrics(): ProjectionMetrics {
+    this.#metrics ??= computeProjectionMetrics(this.graph, this.containment, this.#view.projection);
+    return this.#metrics;
+  }
+
   isVisibleIndex(index: number): boolean {
     return this.#visibleMask[index] === 1;
   }
@@ -136,6 +154,26 @@ export class GraphSession {
         : collapse(this.containment, this.#view.frontier, id);
       if (next === this.#view.frontier) return;
       await this.#replaceView(next, this.#view.projection.enabled);
+    });
+  }
+
+  /** Reveal a directly selected file or symbol with one projection update. */
+  revealOrigin(id: string): Promise<void> {
+    return this.#enqueue(async () => {
+      const point = this.graph.indexById.get(id);
+      if (point === undefined || this.#disposed) return;
+      const ancestors: string[] = [];
+      let parent = this.containment.containerOf[point] ?? -1;
+      while (parent >= 0 && parent !== this.containment.root) {
+        const ancestorId = this.graph.pointIds[parent];
+        if (ancestorId !== undefined) ancestors.push(ancestorId);
+        parent = this.containment.containerOf[parent] ?? -1;
+      }
+      let frontier = this.#view.frontier;
+      for (const ancestor of ancestors.toReversed()) {
+        frontier = expand(this.containment, frontier, ancestor);
+      }
+      if (frontier !== this.#view.frontier) await this.#replaceView(frontier, this.#view.projection.enabled);
     });
   }
 
@@ -164,6 +202,7 @@ export class GraphSession {
     }
     this.#projectedTables.add(table);
     this.#visibleMask = this.#maskOf(projection);
+    this.#metrics = null;
     this.#view = { frontier, projection, linksTable: table, revision: this.#view.revision + 1 };
     for (const listener of this.#viewListeners) listener();
   }

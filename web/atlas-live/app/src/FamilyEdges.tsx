@@ -1,8 +1,8 @@
 /**
  * The families sidebar section: the strongest cross-family edges of the loaded
  * world, and the drill-down of the edge under inspection. Clicking an edge
- * switches to the Families overlay and reveals the contributing exact edges on
- * the canvas; the same list shows them as labelled lines (bounded, with the
+ * highlights the contributing projected wires on the same graph; the list
+ * shows their exact edges as labelled lines (bounded, with the
  * remainder counted, never silently truncated).
  *
  * The heading carries the F3 honesty counts (singleton families, fallback

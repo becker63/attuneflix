@@ -6,6 +6,7 @@ def main(): Unit \ IO = {
 /// world tables, identities, and output paths as action transport properties;
 /// Flix owns every derivation and every typed table.
 mod FamiliesMain {
+    import java.lang.Integer
     import java.nio.file.{Files, Paths}
 
     pub def execute(): Unit \ IO = match Experiment.property("attune.command") {
@@ -13,6 +14,9 @@ mod FamiliesMain {
         case "report"    => report()
         case "project"   => projection()
         case "acquire"   => acquire()
+        case "prefill-embeddings" => prefillEmbeddings()
+        case "prefill-decisions" => prefillDecisions()
+        case "materialize" => materialize()
         case "replay"    => replay()
         case "acquisition-report" => acquisitionReport()
         case "protocol"  => write(Families.Report.protocol())
@@ -82,6 +86,7 @@ mod FamiliesMain {
         let documents = Experiment.require(Families.Embedding.documents(value#world, Experiment.property("attune.source_root")));
         println("ATLAS_FAMILIES_PROJECTION snapshot=${value#identity#snapshotId} documents=${Vector.length(documents)} " +
             "document_bytes=${Families.Ledger.documentBytes(documents)} seeds=${Vector.length(Families.Navigation.seeds(value#world))} " +
+            "bounded_seeds=${Families.Protocol.boundedSeedsPerPass()} " +
             "truncated=${Vector.count(document -> document#truncated, documents)} " +
             "projected_usd=${Families.Pass.projectedUsd(value#world, documents)} envelope_usd=${Families.Protocol.envelopeUsd()}")
     }
@@ -95,6 +100,34 @@ mod FamiliesMain {
             "${name} acquired=${stats#acquired} recorded=${stats#recorded} spent_usd=${stats#spentUsd}";
         println("ATLAS_FAMILIES_ACQUIRE snapshot=${value#identity#snapshotId} " +
             describe("embeddings", passed#embedding) + " " + describe("decisions", passed#decision))
+    }
+
+    def prefillEmbeddings(): Unit \ IO = {
+        let value = subject();
+        let (stats, reported) = Experiment.require(Families.Pass.prefillEmbeddings(
+            value, Experiment.property("attune.source_root"), roots(), Families.Provider.Transport.Live));
+        println("ATLAS_FAMILIES_PREFILL_EMBEDDINGS snapshot=${value#identity#snapshotId} " +
+            "acquired=${stats#acquired} recorded=${stats#recorded} spent_usd=${stats#spentUsd} reported_usd=${reported}")
+    }
+
+    def prefillDecisions(): Unit \ IO = {
+        let value = subject();
+        let start = Integer.parseInt(Experiment.property("attune.seed_start"));
+        let count = Integer.parseInt(Experiment.property("attune.seed_count"));
+        let (stats, reported) = Experiment.require(Families.Pass.prefillDecisions(
+            value, roots(), start, count, Families.Provider.Transport.Live));
+        println("ATLAS_FAMILIES_PREFILL_DECISIONS snapshot=${value#identity#snapshotId} " +
+            "seed_start=${start} seed_count=${count} acquired=${stats#acquired} " +
+            "recorded=${stats#recorded} spent_usd=${stats#spentUsd} reported_usd=${reported}")
+    }
+
+    def materialize(): Unit \ IO = {
+        let value = subject();
+        let passed = Experiment.require(Families.Pass.materialize(
+            value, Experiment.property("attune.source_root"), roots()));
+        println("ATLAS_FAMILIES_MATERIALIZE snapshot=${value#identity#snapshotId} " +
+            "embedding_hits=${passed#embedding#recorded} decision_hits=${passed#decision#recorded} " +
+            "provider_calls=${passed#embedding#acquired + passed#decision#acquired}")
     }
 
     /// Keyless replay: fails unless every recorded table is reproduced exactly.

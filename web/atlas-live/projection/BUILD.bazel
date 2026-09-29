@@ -1,6 +1,9 @@
 load("@aspect_rules_js//js:defs.bzl", "js_binary", "js_library", "js_run_binary", "js_test")
 load("@bazel_lib//lib:copy_to_directory.bzl", "copy_to_directory")
-load("//experiments/atlas-families:families.bzl", "FAMILY_EXPORTS")
+load("//experiments/atlas-families:acquired_worlds.bzl", "ACQUIRED_DIGESTS")
+load("//experiments/atlas-families:families.bzl", "ACQUIRED_WORLDS", "FAMILY_EXPORTS")
+load("//experiments/atlas-live-physical:physical.bzl", "PHYSICAL_EXPORTS")
+load("//experiments/atlas-live-self:self.bzl", "SELF_DIGEST", "SELF_WORLD")
 load("//experiments/atlas-location-export:locations.bzl", "location_exports")
 load("//experiments/atlas-swe-explore/census:census.bzl", "ATLAS_WORLDS")
 load("//web/atlas-live:defs.bzl", "LAUNCHER_ENV", "atlas_ts_package")
@@ -17,7 +20,7 @@ atlas_ts_package(
     test_data = [
         ":axios_world",
         ":layout_worlds",
-        ":physical",
+        ":physical_preact",
     ],
     test_env = {"WORLD_ROOT": "axios_world"},
 )
@@ -29,11 +32,14 @@ copy_to_directory(
     root_paths = [".attune/repository-world-v1"],
 )
 
-# All 78 frozen worlds, staged as <digest>/{metadata,entities,relations}.parquet.
+# The 78 frozen census worlds plus one separately pinned AttuneFlix snapshot.
 copy_to_directory(
     name = "worlds",
-    srcs = ATLAS_WORLDS,
-    root_paths = [".attune/repository-world-v1"],
+    srcs = ATLAS_WORLDS + [SELF_WORLD],
+    root_paths = [
+        ".attune/repository-world-v1",
+        ".attune/atlas-live-self-v1",
+    ],
     visibility = ["//visibility:public"],
 )
 
@@ -44,8 +50,11 @@ _LOCATION_EXPORTS = location_exports(tool = "//experiments/atlas-location-export
 
 copy_to_directory(
     name = "locations",
-    srcs = _LOCATION_EXPORTS,
-    root_paths = ["web/atlas-live/projection"],
+    srcs = _LOCATION_EXPORTS + ["//experiments/atlas-live-self:locations"],
+    root_paths = [
+        "web/atlas-live/projection",
+        "experiments/atlas-live-self",
+    ],
     visibility = ["//visibility:public"],
 )
 
@@ -60,13 +69,24 @@ copy_to_directory(
     visibility = ["//visibility:public"],
 )
 
-# A new Bazel-derived depth-7 physical-work table for every Preact file and
-# symbol. The frozen 16-seed census table remains untouched as a parity oracle.
+# One Bazel-derived depth-7 physical-work table per frozen census snapshot.
+# The frozen 16-seed census table remains untouched as a parity oracle.
 copy_to_directory(
     name = "physical",
-    srcs = ["//experiments/atlas-live-physical:preact_physical"],
-    root_paths = ["experiments/atlas-live-physical/preact_physical"],
+    srcs = PHYSICAL_EXPORTS + ["//experiments/atlas-live-self:physical"],
+    root_paths = [
+        "experiments/atlas-live-physical",
+        "experiments/atlas-live-self",
+    ],
     visibility = ["//visibility:public"],
+)
+
+# A narrow Preact-only fixture for parity and projection unit laws. The web
+# release data target below consumes the full 78-world physical population.
+copy_to_directory(
+    name = "physical_preact",
+    srcs = ["//experiments/atlas-live-physical:preact_physical"],
+    root_paths = ["experiments/atlas-live-physical"],
 )
 
 copy_to_directory(
@@ -75,22 +95,42 @@ copy_to_directory(
     root_paths = ["experiments/atlas-swe-explore"],
 )
 
+# The frozen 16-seed repository signature medians (typed Flix report table).
+# The web projection copies measured values into the manifest; it does not
+# infer architecture from the current rendering or the all-seed color field.
+copy_to_directory(
+    name = "signatures",
+    srcs = ["//experiments/atlas-swe-explore/census:report"],
+    root_paths = ["experiments/atlas-swe-explore/census"],
+)
+
+copy_to_directory(
+    name = "self_signatures",
+    srcs = ["//experiments/atlas-live-self:signature_report"],
+    root_paths = ["experiments/atlas-live-self"],
+)
+
 # The real worlds the app's structural-layout and frontier unit tests read
 # (preactjs/preact, the default world; babel/babel, the largest snapshot; and
 # axios/axios, the smallest compartmental world the wire conservation laws
 # name), each staged with its locations table as
 # <digest>/{metadata,entities,relations,locations}.parquet.
-# Worlds with a families export (preact) also carry their five family_*.parquet
-# files, so the app tests exercise the real families join (VAL-WEB-001..004).
+# Only the fixture worlds with a families export carry their five family_*.parquet
+# files. The release :families target above still stages every acquired world.
 _LAYOUT_WORLDS = [
     "//.attune/repository-world-v1/6e2bef41bf19f638be084df8cb82127e4832d4abbafa8ca20ebd5db9be3ac8a9:world",
     "//.attune/repository-world-v1/002a462e6f58440bbf60071f1e945b38bb304fe46a38ca6fdfd578248693cf01:world",
     "//.attune/repository-world-v1/1e44a1c45ec4a91bb7774dc6d37a2846a5f56262b6fa7ae5722bcbcc15ba10c7:world",
 ]
 
+_FAMILY_EXPORT_BY_WORLD = {
+    pair[1]: FAMILY_EXPORTS[index]
+    for index, pair in enumerate(ACQUIRED_WORLDS)
+}
+
 copy_to_directory(
     name = "layout_worlds",
-    srcs = _LAYOUT_WORLDS + FAMILY_EXPORTS + [_LOCATION_EXPORTS[ATLAS_WORLDS.index(world)] for world in _LAYOUT_WORLDS],
+    srcs = _LAYOUT_WORLDS + [_FAMILY_EXPORT_BY_WORLD[world] for world in _LAYOUT_WORLDS if world in _FAMILY_EXPORT_BY_WORLD] + [_LOCATION_EXPORTS[ATLAS_WORLDS.index(world)] for world in _LAYOUT_WORLDS],
     root_paths = [
         ".attune/repository-world-v1",
         "experiments/atlas-families",
@@ -99,15 +139,23 @@ copy_to_directory(
     visibility = ["//web/atlas-live:__subpackages__"],
 )
 
-# The 78 expected snapshot digests, one per line, derived from ATLAS_WORLDS.
+# Expected snapshot digests: the frozen census plus the separately pinned self world.
 genrule(
     name = "expected_worlds",
     outs = ["expected_worlds.txt"],
     cmd = "printf '%s\\n' " + " ".join(sorted([
         label.split("/")[-1].split(":")[0]
-        for label in ATLAS_WORLDS
+        for label in ATLAS_WORLDS + [SELF_WORLD]
     ])) + " > $@",
     visibility = ["//visibility:public"],
+)
+
+# User stopped acquisition after the sealed cohort. Keep the validation
+# population tied to the Starlark declarations, never a hard-coded count.
+genrule(
+    name = "expected_families",
+    outs = ["expected_families.txt"],
+    cmd = "printf '%s\\n' " + " ".join(sorted(ACQUIRED_DIGESTS)) + " > $@",
 )
 
 # Node CLI: projects and validates every staged world, copies the Parquet inputs
@@ -179,6 +227,9 @@ js_run_binary(
     srcs = [
         ":families",
         ":locations",
+        ":physical",
+        ":self_signatures",
+        ":signatures",
         ":synthetic_world",
         ":worlds",
     ],
@@ -191,6 +242,12 @@ js_run_binary(
         "locations",
         "--families",
         "families",
+        "--physical",
+        "physical",
+        "--signatures",
+        "signatures/report/repositories.parquet",
+        "--self-signatures",
+        "self_signatures/signature_report/repositories.parquet",
         "--synthetic",
         "synthetic",
     ],
@@ -209,7 +266,10 @@ js_test(
     chdir = package_name(),
     data = [
         ":data",
+        ":expected_families",
         ":expected_worlds",
+        ":self_signatures",
+        ":signatures",
         ":srcs",
     ],
     entry_point = "test/data_check.ts",
@@ -223,8 +283,8 @@ js_test(
     chdir = package_name(),
     data = [
         ":layout_worlds",
-        ":physical",
         ":physical_frozen",
+        ":physical_preact",
         ":srcs",
     ],
     entry_point = "test/physical_check.ts",

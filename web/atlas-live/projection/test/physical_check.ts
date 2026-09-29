@@ -21,7 +21,7 @@ const graph = projectTables(await decodeWorldFiles({
   entities: await bytes(path.join(WORLD, "entities.parquet")),
   relations: await bytes(path.join(WORLD, "relations.parquet")),
 }), { metadata: DIGEST, entities: DIGEST, relations: DIGEST });
-const fullBytes = await bytes("physical/physical.parquet");
+const fullBytes = await bytes(path.join("physical_preact", DIGEST, "physical.parquet"));
 const projected = await projectPhysical(fullBytes, graph);
 if (projected === null || projected.seeds.length !== graph.fileCount + graph.symbolCount) {
   fail("all-seed physical table does not cover every Preact file and symbol");

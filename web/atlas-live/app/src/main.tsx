@@ -20,7 +20,8 @@ import {
   adoptGraphAtom,
   drilledFamilyEdgeAtom,
   familiesAtom,
-  overlayAtom,
+  measurementModeAtom,
+  measurementRevisionAtom,
   sessionRevisionAtom,
   topologyRevisionAtom,
 } from "./atoms.ts";
@@ -39,11 +40,12 @@ function mount(controller: SessionController): void {
     adopted = session;
     // The loaded graph is the reactive identity the derived atoms read; adopting
     // it also drops any pinned selection ids the graph does not contain. The
-    // families layer is adopted with it, and the view returns to the Structure
-    // overlay (a world without families data cannot show the Families one).
+    // families layer is adopted with it. Each world opens on measured physical
+    // reuse when available; family hue and structural geography never switch.
     store.set(adoptGraphAtom, session.graph);
     store.set(familiesAtom, session.families);
-    store.set(overlayAtom, "structure");
+    store.set(measurementModeAtom, session.physical === null ? "structure" : "physical");
+    store.set(measurementRevisionAtom, 0);
     store.set(drilledFamilyEdgeAtom, null);
     store.set(sessionRevisionAtom, session.sessionRevision);
     store.set(topologyRevisionAtom, session.topologyRevision);

@@ -54,6 +54,54 @@ pub mod Families.Pass {
             Families.Rows.retain(path, schema, Map.getWithDefault(name, Vector.empty(), passed#tables)), layout(roots))
     ) yield passed
 
+    /// Record the immutable embedding batches in one bounded pass. No typed
+    /// table is written until all decision ranges have also been recorded.
+    pub def prefillEmbeddings(subject: Subject, sourceRoot: String, roots: Roots, transport: Transport): Result[String, (Families.Provider.Stats, Float64)] \ IO = forM (
+        documents <- Families.Embedding.documents(subject#world, sourceRoot);
+        bound = Families.Protocol.projectedEmbeddingUsd(Families.Ledger.documentBytes(documents));
+        _ <- if (bound <= Families.Protocol.envelopeUsd()) Ok(())
+             else Err("embedding pass bound ${bound} USD exceeds the ${Families.Protocol.envelopeUsd()} USD envelope");
+        (result, stats) = Families.Provider.serve(
+            roots#embeddings, Families.Protocol.embeddings(), transport, Families.Protocol.envelopeUsd(),
+            () -> embed(documents));
+        observations <- result;
+        reported = Families.Ledger.embeddings(documents, observations, Families.Protocol.envelopeUsd())#costUsd
+    ) yield (stats, reported)
+
+    /// Record one range without renumbering its seeds. At most 3,000 seeds
+    /// make at most 24,000 decisions, conservatively bounded at $4.80.
+    pub def prefillDecisions(subject: Subject, roots: Roots, start: Int32, count: Int32, transport: Transport): Result[String, (Families.Provider.Stats, Float64)] \ IO = {
+        let total = Vector.length(Families.Navigation.seeds(subject#world));
+        let admitted = Int32.min(count, total - start);
+        let bound = Families.Protocol.projectedDecisionUsd(admitted);
+        forM (
+            _ <- if (start >= 0 and start < total and count > 0 and count <= Families.Protocol.boundedSeedsPerPass() and
+                     bound <= Families.Protocol.envelopeUsd()) Ok(())
+                 else Err("decision range or ${bound} USD bound exceeds the approved pass");
+            context = {
+                snapshotId = subject#identity#snapshotId,
+                repository = subject#identity#repository,
+                world = subject#world
+            };
+            (result, stats) = Families.Provider.serve(
+                roots#decisions, Families.Protocol.decisions(), transport, Families.Protocol.envelopeUsd(),
+                () -> Families.Navigation.navigateRange(context, start, count));
+            outcomes <- result;
+            observations = Vector.flatMap(outcome -> outcome#records, outcomes)
+                |> Vector.map(record -> record#observation);
+            reported = Families.Ledger.decisions(admitted, observations, Families.Protocol.envelopeUsd())#costUsd
+        ) yield (stats, reported)
+    }
+
+    /// Build the same six whole-world typed tables from a fully recorded
+    /// space. Any missing request fails before a table is retained.
+    pub def materialize(subject: Subject, sourceRoot: String, roots: Roots): Result[String, Run] \ IO = forM (
+        documents <- Families.Embedding.documents(subject#world, sourceRoot);
+        passed <- derive(subject, documents, roots, Transport.Refuse);
+        _ <- Vector.traverse(match (name, path, schema) ->
+            Families.Rows.retain(path, schema, Map.getWithDefault(name, Vector.empty(), passed#tables)), layout(roots))
+    ) yield passed
+
     /// Keyless replay over the recorded space: every recorded table is decoded
     /// under its schema, the recorded documents are verified against the world,
     /// and the pipeline is run with no transport at all.
@@ -67,11 +115,17 @@ pub mod Families.Pass {
             documents <- Families.Embedding.Table.decodeDocuments(snapshotId, table("embedding-documents"));
             _ <- Families.Embedding.verify(subject#world, documents);
             _ <- Families.Embedding.Table.decodeBatches(snapshotId, table("embedding-batches"));
-            _ <- Families.Ledger.decode(snapshotId, table("embedding-ledger"));
+            embeddingLedger <- Families.Ledger.decode(snapshotId, table("embedding-ledger"));
             _ <- Families.Decision.Table.decodeDecisions(snapshotId, table("decisions"));
             _ <- Families.Decision.Table.decodeOutcomes(snapshotId, table("family-outcomes"));
-            _ <- Families.Ledger.decode(snapshotId, table("decision-ledger"));
-            passed <- derive(subject, documents, roots, Transport.Refuse)
+            decisionLedger <- Families.Ledger.decode(snapshotId, table("decision-ledger"));
+            envelope = embeddingLedger#envelopeUsd;
+            _ <- if (envelope == decisionLedger#envelopeUsd and
+                (envelope == Families.Protocol.envelopeUsd() or
+                 (snapshotId == Families.Protocol.legacySnapshotId() and
+                  envelope == Families.Protocol.legacyEnvelopeUsd())))
+                Ok(()) else Err("recorded pass envelope is not the approved cap for this snapshot");
+            passed <- deriveAt(subject, documents, roots, Transport.Refuse, envelope)
         ) yield {
             snapshotId = snapshotId,
             checks = Vector.map(match (name, _, schema) ->
@@ -86,7 +140,10 @@ pub mod Families.Pass {
     /// The shared pipeline: the six tables and the provider statistics of one
     /// pass over fixed documents under one transport.
     pub def derive(subject: Subject, documents: Vector[Families.Embedding.Document], roots: Roots, transport: Transport): Result[String, Run] \ IO = {
-        let envelope = Families.Protocol.envelopeUsd();
+        deriveAt(subject, documents, roots, transport, Families.Protocol.envelopeUsd())
+    }
+
+    def deriveAt(subject: Subject, documents: Vector[Families.Embedding.Document], roots: Roots, transport: Transport, envelope: Float64): Result[String, Run] \ IO = {
         let (embedded, embedding) = Families.Provider.serve(
             roots#embeddings, Families.Protocol.embeddings(), transport, envelope, () -> embed(documents));
         match embedded {
@@ -102,7 +159,7 @@ pub mod Families.Pass {
                     () -> Families.Navigation.navigateAll(context));
                 forM (
                     outcomes <- navigated;
-                    tables0 <- tables(subject, documents, observations, outcomes)
+                    tables0 <- tables(subject, documents, observations, outcomes, envelope)
                 ) yield {tables = tables0, embedding = embedding, decision = decision}
             }
         }
@@ -116,19 +173,20 @@ pub mod Families.Pass {
         subject: Subject,
         documents: Vector[Families.Embedding.Document],
         observations: Vector[Families.Embedding.Observation],
-        outcomes: Vector[Families.Navigation.Outcome]
+        outcomes: Vector[Families.Navigation.Outcome],
+        envelope: Float64
     ): Result[String, Tables] \ IO = {
         let snapshotId = subject#identity#snapshotId;
         let entries = Vector.flatMap(Families.Decision.Table.entries, outcomes);
         Ok(Map#{
             "embedding-documents" => Vector.map(Families.Embedding.Table.documentRow(snapshotId), documents),
             "embedding-batches" => Vector.map(Families.Embedding.Table.batchRow(snapshotId), observations),
-            "embedding-ledger" => Vector#{Families.Ledger.row(snapshotId, Families.Ledger.embeddings(documents, observations))},
+            "embedding-ledger" => Vector#{Families.Ledger.row(snapshotId, Families.Ledger.embeddings(documents, observations, envelope))},
             "decisions" => Vector.map(Families.Decision.Table.decisionRow(snapshotId), entries),
             "family-outcomes" => Vector.map(outcome ->
                 Families.Decision.Table.outcomeRow(snapshotId, Families.Decision.Table.family(subject#world, outcome)), outcomes),
             "decision-ledger" => Vector#{Families.Ledger.row(snapshotId,
-                Families.Ledger.decisions(Vector.length(outcomes), Vector.map(entry -> entry#observation, entries)))}
+                Families.Ledger.decisions(Vector.length(outcomes), Vector.map(entry -> entry#observation, entries), envelope))}
         })
     }
 }

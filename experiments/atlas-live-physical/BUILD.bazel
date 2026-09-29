@@ -1,5 +1,5 @@
 load("//test/build:flix.bzl", "flix_fatjar")
-load(":physical.bzl", "all_seed_physical")
+load(":physical.bzl", "PHYSICAL_EXPORTS", "all_world_physical")
 
 flix_fatjar(
     name = "physical_flix",
@@ -35,12 +35,22 @@ java_binary(
         "-Xss8m",
     ],
     main_class = "Main",
+    visibility = ["//visibility:public"],
     runtime_deps = [":physical_flix"],
 )
 
-all_seed_physical(
-    name = "preact_physical",
-    tool = ":physical_tool",
+all_world_physical(tool = ":physical_tool")
+
+# Download only the merged world tables when building the full population.
+# Shard outputs remain in BuildBuddy's cache instead of filling the host disk.
+filegroup(
+    name = "all_physical",
+    srcs = PHYSICAL_EXPORTS,
     visibility = ["//visibility:public"],
-    world = "//.attune/repository-world-v1/6e2bef41bf19f638be084df8cb82127e4832d4abbafa8ca20ebd5db9be3ac8a9:world",
+)
+
+alias(
+    name = "preact_physical",
+    actual = ":physical_6e2bef41bf19f638be084df8cb82127e4832d4abbafa8ca20ebd5db9be3ac8a9",
+    visibility = ["//visibility:public"],
 )

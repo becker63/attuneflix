@@ -1,13 +1,13 @@
 /**
  * The families layer in the browser (VAL-WEB-001..004).
  *
- * Drives the built static tree against the default world (preactjs/preact, the
- * one world with a families export): the unified graph tints members by
- * family within structural regions, and the sidebar lists
- * the cross-family edges and drills one down to its contributing exact edges,
- * the inspector shows the family fields with the F3 honesty markers, and a
- * world without families data renders exactly as before (no toggle, no family
- * fields, same layout identity format).
+ * Drives the built static tree against the default world (preactjs/preact):
+ * the unified graph tints members by
+ * family within structural regions, while exact connection inspection happens
+ * on the graph rather than through a separate family-edge list,
+ * the inspector shows the family fields with the F3 honesty markers, and the
+ * separate synthetic fixture remains usable without families data after all
+ * 78 real snapshots receive it.
  */
 import { expect, test, type Page } from "@playwright/test";
 
@@ -257,7 +257,7 @@ test("the inspector shows the family fields with the honesty markers", async ({ 
   expect(consoleErrors, "no console errors").toEqual([]);
 });
 
-test("a family edge drills down to its contributing exact edges", async ({ page }) => {
+test("family edge evidence remains in the one graph without a separate sidebar list", async ({ page }) => {
   const consoleErrors: string[] = [];
   page.on("console", (message) => {
     if (message.type() === "error") consoleErrors.push(message.text());
@@ -265,58 +265,18 @@ test("a family edge drills down to its contributing exact edges", async ({ page 
 
   await readyPreact(page);
 
-  // The unified graph retains the cross-family edge list, strongest first.
+  // The typed family-edge evidence remains available, but graph wires own the
+  // connection interaction instead of a competing sidebar ranking.
   const rendered = await page.evaluate(() => window.__atlasLive?.families?.renderedEdges ?? 0);
   expect(rendered).toBeGreaterThan(0);
-  const section = page.getByTestId("family-edges");
-  await expect(section).toBeVisible();
-  await expect(section).toContainText(`Family edges (${String(rendered)})`);
-  // The F3 honesty counts read in the summary line.
-  await expect(section).toContainText(`${String(PREACT_FAMILIES.singletonFamilies)} singletons`);
-
-  const before = await page.evaluate(() => ({
-    layout: window.__atlasLive?.layoutIdentity,
-    pointCount: window.__atlasLive?.pointCount(),
-    projected: window.__atlasLive?.projected,
-  }));
-
-  // Drill into the strongest edge.
-  const firstEdge = section.locator("[data-testid^='family-edge-']").first();
-  const label = (await firstEdge.textContent()) ?? "";
-  const multiplicity = Number(/×(\d+)/.exec(label)?.[1] ?? "0");
-  expect(multiplicity, "the edge button carries its multiplicity").toBeGreaterThan(0);
-  await firstEdge.click();
-
-  const drilled = await page.evaluate(() => window.__atlasLive?.drilledFamilyEdge ?? null);
-  expect(drilled).not.toBeNull();
-
-  // The drill-down lists the contributing exact edges, bounded and counted.
-  const drill = page.getByTestId("family-drill");
-  await expect(drill).toBeVisible();
-  const shown = Math.min(multiplicity, 25);
-  await expect(drill.locator("[data-testid^='contribution-']")).toHaveCount(shown);
-  if (multiplicity > 25) {
-    await expect(drill).toContainText(`+${String(multiplicity - 25)} more contributing edges`);
-  }
-
-  // Inspecting evidence does not alter the shared graph or its placement.
-  const after = await page.evaluate(() => ({
-    layout: window.__atlasLive?.layoutIdentity,
-    pointCount: window.__atlasLive?.pointCount(),
-    projected: window.__atlasLive?.projected,
-  }));
-  expect(after).toEqual(before);
-
-  // Clearing the drill-down closes the detail panel.
-  await page.getByRole("button", { name: "Clear drill-down" }).click();
-  await expect
-    .poll(async () => page.evaluate(() => window.__atlasLive?.drilledFamilyEdge ?? null), { timeout: 5000 })
-    .toBeNull();
+  await expect(page.getByTestId("family-edges")).toHaveCount(0);
+  await expect(page.getByTestId("reuse-comparison-current")).toContainText("159 families");
+  expect(await page.evaluate(() => window.__atlasLive?.drilledFamilyEdge ?? null)).toBeNull();
 
   expect(consoleErrors, "no console errors").toEqual([]);
 });
 
-test("a world without families data renders exactly as before", async ({ page }) => {
+test("the synthetic fixture renders without families data", async ({ page }) => {
   const consoleErrors: string[] = [];
   page.on("console", (message) => {
     if (message.type() === "error") consoleErrors.push(message.text());
@@ -324,20 +284,18 @@ test("a world without families data renders exactly as before", async ({ page })
 
   await readyPreact(page);
 
-  // The smallest census world (axios) ships no families data.
+  // The synthetic stress fixture remains outside the 78-world acquisition.
   const response = await page.request.get("/manifest.json");
   expect(response.ok()).toBe(true);
   const manifest: unknown = await response.json();
-  if (!isRecord(manifest) || !Array.isArray(manifest["worlds"])) throw new Error("bad manifest shape");
-  const withoutFamilies = manifest["worlds"]
-    .filter(isManifestWorld)
-    .filter((world) => world.assets["families"] === undefined)
-    .toSorted((a, b) => a.counts.symbols - b.counts.symbols);
-  const target = withoutFamilies[0]?.snapshotId ?? null;
-  expect(target, "a world without families data exists").not.toBeNull();
+  if (!isRecord(manifest)) throw new Error("bad manifest shape");
+  const synthetic = isManifestWorld(manifest["synthetic"]) ? manifest["synthetic"] : null;
+  expect(synthetic, "the synthetic fixture exists").not.toBeNull();
+  expect(synthetic?.assets["families"], "the synthetic fixture has no families export").toBeUndefined();
+  const target = synthetic?.snapshotId ?? "";
 
-  await selectDataset(page, target ?? "");
-  await waitReady(page, target ?? "", 2);
+  await selectDataset(page, target);
+  await waitReady(page, target, 2);
 
   const after = await page.evaluate(() => {
     const hook = window.__atlasLive;
@@ -385,7 +343,7 @@ test("a world without families data renders exactly as before", async ({ page })
     }
     return count;
   }, png.toString("base64"));
-  expect(painted, "a families-less world paints non-blank").toBeGreaterThan(1000);
+  expect(painted, "the families-less synthetic world paints non-blank").toBeGreaterThan(1000);
 
   expect(consoleErrors, "no console errors").toEqual([]);
 });

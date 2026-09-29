@@ -80,7 +80,8 @@ contains "$report_text" "REPORT.md has the protocol intent" "## Protocol intent"
 contains "$report_text" "REPORT.md has the acquisition ruling" "## Acquisition ruling"
 contains "$report_text" "REPORT.md dates the ruling" "2026-09-28"
 contains "$report_text" "REPORT.md has the cost envelope" "## Cost envelope"
-contains "$report_text" "REPORT.md states the per-pass envelope" "\$50 per acquisition pass"
+contains "$report_text" "REPORT.md states the user-adjusted per-pass envelope" "\$5 per new acquisition pass"
+contains "$report_text" "REPORT.md preserves the first-pass historical cap" "\$50 cap and replays against that historical value"
 contains "$report_text" "REPORT.md states the stop-check" \
     "if the projection exceeds the envelope, acquisition stops and the numbers go to the user."
 

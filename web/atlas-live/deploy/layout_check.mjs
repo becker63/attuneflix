@@ -7,7 +7,7 @@
  * and the payload the viewer needs (index.html, the manifest, every world's
  * Parquet, the JS bundle, the linked stylesheet, and the self-hosted DuckDB eh
  * wasm and worker). The synthetic 10k/50k stress fixture ships as its own
- * manifest entry (`manifest.synthetic`, outside `worlds[]`, dir count 78 + 1);
+ * manifest entry (`manifest.synthetic`, outside `worlds[]`, dir count 79 + 1);
  * later features add census and trace data to `:static`.
  *
  * The stylesheet check is deliberately two-sided (VAL-STYLE-001): the built
@@ -30,8 +30,8 @@ const ROOT = path.resolve(SCRIPT_DIR, "..", "vercel_output");
 /** The exact routes VAL-DEPLOY-001 pins for the single-page app. */
 const EXPECTED_ROUTES = [{ handle: "filesystem" }, { src: "/(.*)", dest: "/index.html" }];
 
-/** The 78 frozen census worlds (ATLAS_WORLDS in experiments/atlas-swe-explore/census/census.bzl). */
-const EXPECTED_WORLDS = 78;
+/** The 78 frozen census worlds plus one separately pinned AttuneFlix snapshot. */
+const EXPECTED_WORLDS = 79;
 
 /** A compiled StyleX class selector: `.x` + base36 hash, e.g. `.x1tamke2`. */
 const STYLEX_CLASS_RE = /\.x[0-9a-z]{3,}\s*[,{]/;

@@ -1,24 +1,26 @@
 /**
- * The application shell. The graph owns most of the viewport; a compact sidebar
- * holds the overlay control, the hovered entity's details, and the generated
+ * The application shell. The graph owns most of the viewport; a readable sidebar
+ * holds the measurement controls, the hovered entity's details, and the generated
  * legend. The dataset lifecycle (loading, ready, error) lives in the
  * SessionController, which React reads through `useSyncExternalStore`.
  */
 import * as stylex from "@stylexjs/stylex";
-import { useAtom } from "jotai";
-import { useSyncExternalStore } from "react";
+import { useAtomValue, useSetAtom } from "jotai";
+import { useEffect, useSyncExternalStore } from "react";
 
 import type { SessionController } from "./controller.ts";
-import { reuseShadingAtom } from "./atoms.ts";
+import { landscapeModeAtom, landscapeOriginsAtom, measurementModeAtom, setMeasurementModeAtom } from "./atoms.ts";
 import { datasetLabel } from "./datasets.ts";
 import { Details } from "./Details.tsx";
 import { DepthControl } from "./DepthControl.tsx";
-import { FamilyEdges } from "./FamilyEdges.tsx";
 import { GraphView } from "./GraphView.tsx";
 import { Header } from "./Header.tsx";
 import { Legend } from "./Legend.tsx";
+import { metricShadeRange } from "./metricShade.ts";
+import { ParallelismPanel } from "./ParallelismPanel.tsx";
 import { reuseShadeRange, shadeOklab } from "./physical.ts";
 import { RelationFilter } from "./RelationFilter.tsx";
+import { WorldComparison } from "./WorldComparison.tsx";
 
 const REUSE_GRADIENT = `linear-gradient(to right, ${shadeOklab("#a78bfa", 0)}, ${shadeOklab("#a78bfa", 0.5)}, ${shadeOklab("#a78bfa", 1)})`;
 const REUSE_GRADIENT_STYLE = { background: REUSE_GRADIENT };
@@ -93,11 +95,11 @@ const styles = stylex.create({
     maxWidth: 560,
   },
   sidebar: {
-    width: 280,
+    width: 360,
     flexShrink: 0,
     display: "flex",
     flexDirection: "column",
-    gap: 18,
+    gap: 22,
     padding: 20,
     overflowY: "auto",
     borderRadius: 10,
@@ -107,18 +109,30 @@ const styles = stylex.create({
   reuseControl: {
     display: "flex",
     flexDirection: "column",
-    gap: 6,
-    paddingBottom: 12,
+    gap: 10,
+    paddingBottom: 18,
     borderBottomWidth: 1,
     borderBottomStyle: "solid",
     borderBottomColor: "#374151",
-    fontSize: 12,
-    color: "#d1d5db",
+    fontSize: 13,
+    lineHeight: 1.4,
+    color: "#e5dce3",
+  },
+  controlHeading: {
+    fontSize: 13,
+    fontWeight: 700,
+    letterSpacing: 0.4,
+    color: "#fff4fa",
+  },
+  shadeChoices: {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: 8,
   },
   reuseScale: {
     margin: 0,
     width: "100%",
-    height: 14,
+    height: 20,
     borderRadius: 4,
     borderWidth: 1,
     borderStyle: "solid",
@@ -131,29 +145,53 @@ const styles = stylex.create({
     color: "#d1d5db",
   },
   reuseButton: {
-    alignSelf: "flex-start",
+    minHeight: 42,
+    textAlign: "left",
+    fontFamily: "inherit",
+    fontSize: 13,
+    fontWeight: 600,
     borderWidth: 1,
     borderStyle: "solid",
     borderColor: "rgba(255, 255, 255, 0.22)",
     borderRadius: 6,
-    paddingTop: 4,
-    paddingBottom: 4,
-    paddingLeft: 8,
-    paddingRight: 8,
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
-    color: "#e5e7eb",
+    paddingTop: 9,
+    paddingBottom: 9,
+    paddingLeft: 10,
+    paddingRight: 10,
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    color: "#e8dce4",
     cursor: "pointer",
+  },
+  shadeSelected: {
+    borderColor: "#f0a4c8",
+    backgroundColor: "#5b3048",
+    color: "#fff4fa",
   },
 });
 
 export function App({ controller }: { controller: SessionController }) {
-  const [shadeReuse, setShadeReuse] = useAtom(reuseShadingAtom);
+  const landscapeMode = useAtomValue(landscapeModeAtom);
+  const setLandscapeMode = useSetAtom(landscapeModeAtom);
+  const setLandscapeOrigins = useSetAtom(landscapeOriginsAtom);
+  const measurementMode = useAtomValue(measurementModeAtom);
+  const setMeasurementMode = useSetAtom(setMeasurementModeAtom);
   const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot, controller.getSnapshot);
   const { session } = state;
   const loading = state.status === "loading" || state.status === "booting";
   const selected = state.options.find((option) => option.value === state.selectedValue);
+  useEffect(() => {
+    if (session !== null) setLandscapeOrigins({ a: null, b: null });
+  }, [session, setLandscapeOrigins]);
+  useEffect(() => {
+    if (session !== null && session.physical === null && measurementMode === "physical") {
+      setMeasurementMode("structure");
+    }
+  }, [session, measurementMode, setMeasurementMode]);
   const loadingText =
     selected === undefined ? "Loading the world list…" : `Loading ${datasetLabel(selected)}…`;
+  const scalarRange =
+    session === null ? null : metricShadeRange(session.projectionMetrics(), measurementMode);
+  const physicalRange = session?.physical ? reuseShadeRange(session.physical) : null;
   return (
     <main {...stylex.props(styles.root)}>
       <Header
@@ -188,37 +226,115 @@ export function App({ controller }: { controller: SessionController }) {
           ) : null}
         </div>
         <aside {...stylex.props(styles.sidebar)}>
-          {session?.physical === null || session === null ? null : (
-            <section {...stylex.props(styles.reuseControl)} aria-label="Physical reuse">
-              <button
-                type="button"
-                role="switch"
-                aria-checked={shadeReuse}
-                data-testid="reuse-shading"
-                {...stylex.props(styles.reuseButton)}
-                onClick={() => setShadeReuse(!shadeReuse)}
-              >
-                Physical reuse shading {shadeReuse ? "on" : "off"}
-              </button>
-              <span>Physical transition reuse</span>
-              <figure
-                {...stylex.props(styles.reuseScale)}
-                style={REUSE_GRADIENT_STYLE}
-                aria-label="Dark to bright Oklab scale for low to high physical transition reuse"
-              />
-              <span {...stylex.props(styles.reuseScaleLabels)}>
-                <span>{(reuseShadeRange(session.physical).low * 100).toFixed(2)}% · less</span>
-                <span>{(reuseShadeRange(session.physical).high * 100).toFixed(2)}% · more</span>
+          {session === null ? null : <section {...stylex.props(styles.reuseControl)} aria-label="Atlas Live mode">
+            <span {...stylex.props(styles.controlHeading)}>Explore the same graph</span>
+            <div {...stylex.props(styles.shadeChoices)}>
+              {(["structure", "parallelism"] as const).map((mode) => <button key={mode} type="button"
+                data-testid={`${mode}-mode`} aria-pressed={landscapeMode === mode}
+                {...stylex.props(styles.reuseButton, landscapeMode === mode && styles.shadeSelected)}
+                onClick={() => setLandscapeMode(mode)}>
+                {mode === "structure" ? "Structure + families" : "Structural separation"}
+              </button>)}
+            </div>
+          </section>}
+          {session === null ? null : (
+            <section {...stylex.props(styles.reuseControl)} aria-label="Graph shading">
+              <span {...stylex.props(styles.controlHeading)}>Color the graph</span>
+              <span>
+                {session.families === null
+                  ? "One graph · structural placement"
+                  : "One graph · family hue and structural placement"}
               </span>
-              <span>Scale spans the measured 5th–95th percentiles; inspected nodes show exact values.</span>
-              <span>{session.physical.seeds.length} measured files and symbols · depth 7</span>
+              <div {...stylex.props(styles.shadeChoices)}>
+                {(["structure", "locality", "reach", "physical"] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    aria-pressed={measurementMode === mode}
+                    data-testid={mode === "physical" ? "reuse-shading" : undefined}
+                    disabled={mode === "physical" && session.physical === null}
+                    {...stylex.props(styles.reuseButton, measurementMode === mode && styles.shadeSelected)}
+                    onClick={() => setMeasurementMode(mode)}
+                  >
+                    {mode === "structure"
+                      ? session.families === null
+                        ? "Structure"
+                        : "Family + structure"
+                      : mode === "locality"
+                        ? "Locality"
+                        : mode === "reach"
+                          ? "Reach"
+                          : "Physical reuse"}
+                  </button>
+                ))}
+              </div>
+              {measurementMode === "structure" ? (
+                <span>Families tint the fixed structural layout wherever recorded.</span>
+              ) : null}
+              {measurementMode === "physical" && session.physical !== null && physicalRange !== null ? (
+                <>
+                  <span>Physical transition reuse</span>
+                  <figure
+                    {...stylex.props(styles.reuseScale)}
+                    style={REUSE_GRADIENT_STYLE}
+                    aria-label="Dark to bright Oklab scale for low to high physical transition reuse"
+                  />
+                  <span {...stylex.props(styles.reuseScaleLabels)}>
+                    <span>{(physicalRange.low * 100).toFixed(2)}% · less</span>
+                    <span>{(((physicalRange.low + physicalRange.high) / 2) * 100).toFixed(2)}%</span>
+                    <span>{(physicalRange.high * 100).toFixed(2)}% · more</span>
+                  </span>
+                  <span>
+                    Colors rescale to each world's 5th–95th percentiles; inspected nodes show exact values.
+                    Compare worlds by the percentages below.
+                  </span>
+                  <span>{session.physical.seeds.length} measured files and symbols · depth 7</span>
+                </>
+              ) : null}
+              {scalarRange === null ? null : (
+                <>
+                  <span>
+                    {measurementMode === "locality"
+                      ? "Internal share of region edges"
+                      : "Directed regions reached within 3 hops"}
+                  </span>
+                  <figure
+                    {...stylex.props(styles.reuseScale)}
+                    style={REUSE_GRADIENT_STYLE}
+                    aria-label="Dark to bright Oklab metric scale"
+                  />
+                  <span {...stylex.props(styles.reuseScaleLabels)}>
+                    <span>
+                      {measurementMode === "locality"
+                        ? `${(scalarRange.low * 100).toFixed(1)}%`
+                        : scalarRange.low.toLocaleString()}{" "}
+                      · less
+                    </span>
+                    <span>
+                      {measurementMode === "locality"
+                        ? `${(scalarRange.high * 100).toFixed(1)}%`
+                        : scalarRange.high.toLocaleString()}{" "}
+                      · more
+                    </span>
+                  </span>
+                  <span>
+                    The displayed range is the 5th–95th percentile; the inspector shows exact metrics.
+                  </span>
+                </>
+              )}
             </section>
           )}
+          {session !== null && landscapeMode === "parallelism" ? <ParallelismPanel session={session} /> : null}
+          <WorldComparison
+            state={state}
+            onSelect={(value) => {
+              void controller.select(value);
+            }}
+          />
           <RelationFilter />
-          <DepthControl />
-          <Details session={session} />
-          <FamilyEdges session={session} />
           <Legend />
+          <DepthControl />
+          {landscapeMode === "structure" ? <Details session={session} /> : null}
         </aside>
       </div>
     </main>

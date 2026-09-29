@@ -107,10 +107,37 @@ async function hoverFirstPoint(page: Page, indices: readonly number[], budgetMs:
       // This point was not hit; try the next candidate.
     }
   }
-  throw new Error(`no point hovered (tried ${String(tried)} candidates)`);
+  const diagnostic = await page.evaluate((candidateIndices) => {
+    const hook = window.__atlasLive;
+    if (hook === undefined) return { positioned: 0, inViewport: 0, candidates: [] };
+    let positioned = 0;
+    let inViewport = 0;
+    for (let index = 0; index < hook.pointCount(); index++) {
+      const position = hook.screenPositionOf(index);
+      if (position === null) continue;
+      positioned++;
+      if (position[0] >= 0 && position[0] < innerWidth && position[1] >= 0 && position[1] < innerHeight) {
+        inViewport++;
+      }
+    }
+    const candidates = candidateIndices.map((index) => {
+      const position = hook.screenPositionOf(index);
+      const target = position === null ? null : document.elementFromPoint(position[0], position[1]);
+      return {
+        index,
+        position,
+        target: target?.tagName ?? null,
+        testId: target?.getAttribute('data-testid') ?? null,
+        y: target?.getAttribute('y') ?? null,
+        height: target?.getAttribute('height') ?? null,
+      };
+    });
+    return { positioned, inViewport, candidates };
+  }, indices);
+  throw new Error(`no point hovered (tried ${String(tried)} candidates): ${JSON.stringify(diagnostic)}`);
 }
 
-test("picker lists the 78 worlds plus the separately labelled synthetic fixture", async ({ page }) => {
+test("picker lists the frozen census, pinned AttuneFlix snapshot, and synthetic fixture", async ({ page }) => {
   const consoleErrors: string[] = [];
   page.on("console", (message) => {
     if (message.type() === "error") consoleErrors.push(message.text());
@@ -120,12 +147,13 @@ test("picker lists the 78 worlds plus the separately labelled synthetic fixture"
   await page.waitForFunction(() => window.__atlasLive?.ready === true, null, { timeout: 90_000 });
 
   const manifest = await readManifest(page);
-  expect(manifest.worlds).toHaveLength(78);
+  expect(manifest.worlds).toHaveLength(79);
+  expect(manifest.worlds.filter((world) => world.repository === "attuneflix")).toHaveLength(1);
   expect(manifest.synthetic?.synthetic).toBe(true);
 
   await openPicker(page);
   const options = page.locator("[data-snapshot-id]");
-  await expect(options).toHaveCount(79);
+  await expect(options).toHaveCount(80);
 
   const listed = await options.evaluateAll((elements) =>
     elements.map((element) => ({
@@ -315,28 +343,46 @@ test("the synthetic stress fixture loads, is labelled synthetic and stays intera
   expect(info.renderLinks).toBe(false);
   expect(info.liveSessions).toBe(1);
 
-  // The identity area labels it synthetic; the header marks the hidden links.
+  // The fitted overview stays bounded; zoom reveals nearby exact connections.
   await expect(page.getByTestId("identity")).toContainText("synthetic");
-  await expect(page.getByTestId("links-hidden")).toBeVisible();
+  const projectedWireCount = await page.evaluate(() => window.__atlasLive?.projected.aggregatedEdgeCount ?? 0);
+  expect(projectedWireCount).toBeGreaterThan(0);
+  if (projectedWireCount > 10_000) {
+    await expect(page.getByTestId("wire-visibility")).toContainText("Zoom in to reveal");
+  } else {
+    await expect(page.getByTestId("wire-visibility")).toHaveCount(0);
+  }
 
-  // The fixture is interactive: a hover updates the hook within the 2 s budget.
+  // Check picking at the fitted overview before the zoom test moves most
+  // candidate points outside the canvas viewport.
   const candidates = await page.evaluate(() => {
     const hook = window.__atlasLive;
     if (hook === undefined) return [];
     const count = hook.pointCount();
     const first = hook.pointWithIncidentLinks();
     const fractions = [0, 0.3, 0.5, 0.7, 0.85, 0.95];
-    const indices = fractions.map((fraction) =>
-      first === null
-        ? Math.floor(count * fraction)
-        : Math.min(count - 1, first + Math.floor(count * fraction)),
-    );
+    const indices = fractions.map((fraction) => Math.floor((count - 1) * fraction));
     if (first !== null) indices.unshift(first);
     return [...new Set(indices)].filter((index) => index >= 0 && index < count);
   });
   expect(candidates.length, "synthetic hover candidates").toBeGreaterThan(0);
   const elapsed = await hoverFirstPoint(page, candidates, 2000);
   expect(elapsed).toBeLessThan(2000);
+
+  const graph = await page.getByTestId("graph").boundingBox();
+  expect(graph).not.toBeNull();
+  if (graph !== null) {
+    await page.mouse.move(graph.x + graph.width / 2, graph.y + graph.height / 2);
+    const fittedZoom = await page.evaluate(() => window.__atlasLive?.camera.zoom ?? 0);
+    await page.mouse.wheel(0, -350);
+    await expect.poll(async () => page.evaluate(() => window.__atlasLive?.camera.zoom ?? 0)).not.toBe(fittedZoom);
+    const firstZoom = await page.evaluate(() => window.__atlasLive?.camera.zoom ?? 0);
+    const zoomInDelta = firstZoom > fittedZoom ? -350 : 350;
+    for (let step = 0; step < 4; step++) await page.mouse.wheel(0, zoomInDelta);
+    if (projectedWireCount > 10_000) {
+      await expect(page.getByTestId("wire-visibility")).toContainText(/Showing [1-9][0-9,]* of/);
+    }
+  }
 
   expect(consoleErrors).toEqual([]);
 });

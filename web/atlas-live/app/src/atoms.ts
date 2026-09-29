@@ -39,25 +39,50 @@ import {
   type RelationMask,
   type Selection,
 } from "./selection.ts";
-import { legendEntries, type LegendEntry, type OverlayName } from "./vocabulary.ts";
+import { legendEntries, type LegendEntry } from "./vocabulary.ts";
 
 /** Renderer index of the hovered point, or null when nothing is hovered. */
 export const hoveredIndexAtom = atom<number | null>(null);
 
-/** The active node-colour overlay. "families" is selectable only while the session has families data. */
-export const overlayAtom = atom<OverlayName>("structure");
-
 /** The loaded session's families layer, or null for a world without families data. */
 export const familiesAtom = atom<WorldFamilies | null>(null);
 
-/** Physical reuse changes only Oklab lightness on the same graph. */
-export const reuseShadingAtom = atom<boolean>(true);
-
-/** Bumped on every overlay change (a view revision, never a topology one). */
-export const overlayRevisionAtom = atom<number>(0);
+/** One scalar shades the same family-informed structural graph at a time. */
+export type MeasurementMode = "structure" | "physical" | "locality" | "reach";
+export const measurementModeAtom = atom<MeasurementMode>("physical");
+/** Static structural separation is a view mode; physical lightness remains independent. */
+export const landscapeModeAtom = atom<"structure" | "parallelism">("structure");
+export const landscapeDepthAtom = atom<1 | 2 | 3>(3);
+export const landscapeThresholdAtom = atom<number>(0.25);
+export const landscapeOriginsAtom = atom<{ readonly a: string | null; readonly b: string | null }>({ a: null, b: null });
+export const selectLandscapeOriginAtom = atom(null, (get, set, selection: { id: string; additive: boolean }) => {
+  const current = get(landscapeOriginsAtom);
+  set(landscapeOriginsAtom, selection.additive
+    ? { a: current.a ?? selection.id, b: current.a === null ? null : selection.id === current.a ? null : selection.id }
+    : { a: selection.id, b: null });
+});
+export const measurementRevisionAtom = atom<number>(0);
+export const setMeasurementModeAtom = atom(null, (get, set, mode: MeasurementMode) => {
+  if (get(measurementModeAtom) === mode) return;
+  set(measurementModeAtom, mode);
+  set(measurementRevisionAtom, get(measurementRevisionAtom) + 1);
+});
 
 /** The drilled-down family edge ordinal, or null when nothing is drilled. */
 export const drilledFamilyEdgeAtom = atom<number | null>(null);
+
+/** One projected wire in the current view; the revision prevents stale drills. */
+export const selectedWireAtom = atom<{ readonly index: number; readonly viewRevision: number } | null>(null);
+export const wireConstituentsAtom = atom<boolean>(false);
+
+export const selectWireAtom = atom(null, (_get, set, selection: { index: number; viewRevision: number } | null) => {
+  set(selectedWireAtom, selection);
+  set(wireConstituentsAtom, false);
+});
+
+export const showWireConstituentsAtom = atom(null, (_get, set, show: boolean) => {
+  set(wireConstituentsAtom, show);
+});
 
 /** The pinned selection: point ids, independent of what is hovered. */
 export const selectedAtom = atom<Selection>(EMPTY_SELECTION);
@@ -90,6 +115,8 @@ export const readyAtom = atom<boolean>(false);
 export const adoptGraphAtom = atom(null, (get, set, graph: ViewerGraph) => {
   set(graphAtom, graph);
   set(selectedAtom, pruneSelection(get(selectedAtom), graph));
+  set(selectedWireAtom, null);
+  set(wireConstituentsAtom, false);
 });
 
 /** Replaces the enabled relation set and bumps the filter revision. */
@@ -102,19 +129,6 @@ export const setRelationMaskAtom = atom(null, (get, set, mask: RelationMask) => 
 export const toggleRelationAtom = atom(null, (get, set, relation: Relation) => {
   set(relationMaskAtom, toggleRelation(get(relationMaskAtom), relation));
   set(filterRevisionAtom, get(filterRevisionAtom) + 1);
-});
-
-/**
- * Sets the active overlay. Choosing "families" without families data is a
- * no-op (the guard keeps a families-less world's rendering identical); leaving
- * the families overlay or switching overlays clears any family drill-down.
- */
-export const setOverlayAtom = atom(null, (get, set, overlay: OverlayName) => {
-  if (overlay === "families" && get(familiesAtom) === null) return;
-  if (get(overlayAtom) === overlay) return;
-  set(overlayAtom, overlay);
-  set(overlayRevisionAtom, get(overlayRevisionAtom) + 1);
-  set(drilledFamilyEdgeAtom, null);
 });
 
 /** Drills into one family edge (its contributing exact edges reappear), or clears the drill-down with null. */
@@ -216,7 +230,7 @@ export const selectedProvenanceAtom = atom<readonly SelectedRecord[]>((get) => {
   }));
 });
 
-/** The legend of the active overlay and filter, with disabled relations marked. */
+/** Family hue is always part of the structural graph when families exist. */
 export const activeLegendAtom = atom<readonly LegendEntry[]>((get) =>
-  legendEntries(get(familiesAtom) === null ? "structure" : "families", get(visibleRelationSetAtom), { includeDisabledRelations: true }),
+  legendEntries(get(familiesAtom) !== null, get(visibleRelationSetAtom), { includeDisabledRelations: true }),
 );

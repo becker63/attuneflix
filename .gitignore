@@ -3,13 +3,21 @@
 !/.attune/BUILD.bazel
 !/.attune/repository-world-v1/
 !/.attune/repository-world-v1/**
-# Atlas Families acquisition evidence (the acquisition-zone carve-out): raw
-# content-addressed exchanges plus typed projections, tracked so the keyless
-# replay laws can read them.
+# One pinned, immutable AttuneFlix self-world. Its three small typed basis
+# tables are the declared source input for BuildBuddy-derived view artifacts.
+!/.attune/atlas-live-self-v1/
+!/.attune/atlas-live-self-v1/**
+# Atlas Families: keep small Starlark package declarations in git so Bazel can
+# address each world, while new raw/typed evidence stays local and git-ignored.
+# Preact's already-tracked exemplar remains tracked without rewriting history.
 !/.attune/families-embeddings-v1/
-!/.attune/families-embeddings-v1/**
+!/.attune/families-embeddings-v1/*/
+/.attune/families-embeddings-v1/*/*
+!/.attune/families-embeddings-v1/*/BUILD.bazel
 !/.attune/jev-families-raw-v1/
-!/.attune/jev-families-raw-v1/**
+!/.attune/jev-families-raw-v1/*/
+/.attune/jev-families-raw-v1/*/*
+!/.attune/jev-families-raw-v1/*/BUILD.bazel
 /.env
 /.env.*
 !/.env.example

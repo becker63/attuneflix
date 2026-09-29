@@ -59,6 +59,17 @@ pub mod Families.Navigation {
         Vector.mapWithIndex((seed, file) -> (seed, file), seeds(context#world))
             |> Vector.traverse(match (seed, file) -> navigate(context, seed, file))
 
+    /// A bounded acquisition pass over original seed ordinals. The slice is
+    /// taken after numbering, so every provider request has the same identity
+    /// as it would in the complete keyless replay.
+    pub def navigateRange(context: Context, start: Int32, count: Int32): Result[String, Vector[Outcome]] \ {Families.Provider.Provider, IO} = {
+        let numbered = Vector.mapWithIndex((seed, file) -> (seed, file), seeds(context#world));
+        if (start < 0 or count <= 0 or start >= Vector.length(numbered))
+            Err("navigation range is outside the admitted seeds")
+        else Vector.slice(start = start, end = Int32.min(start + count, Vector.length(numbered)), numbered)
+            |> Vector.traverse(match (seed, file) -> navigate(context, seed, file))
+    }
+
     def navigate(context: Context, seed: Int32, file: FileId): Result[String, Outcome] \ {Families.Provider.Provider, IO} = {
         let start = State.Files(Set#{file});
         let FileId.FileId(fileId) = file;

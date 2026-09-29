@@ -167,9 +167,9 @@ Suppress a rule only on one line, name the rule, and give the reason:
 
 ## Projected world data
 
-`//web/atlas-live/projection:data` projects all 78 census worlds (the `ATLAS_WORLDS`
-list from `experiments/atlas-swe-explore/census/census.bzl`) into a content-addressed
-tree:
+`//web/atlas-live/projection:data` projects all 78 frozen census worlds (the
+`ATLAS_WORLDS` list) plus one separately pinned AttuneFlix snapshot into a
+content-addressed tree:
 
 ```sh
 nix develop --command bazel build //web/atlas-live/projection:data --config=buildbuddy-rbe
@@ -182,11 +182,18 @@ projects it with `projectWorld`, and writes `data/<digest>/{metadata,entities,re
 `families.parquet` + `family_{members,rollups,edges,contributions}.parquet` when the
 Atlas Families experiment has exported that world) and a top-level
 `manifest.json`. The manifest lists every world sorted by snapshot id with
-`{snapshotId, snapshotDigest, repository, baseRevision, counts, assets, sha256}`; counts
+`{snapshotId, snapshotDigest, repository, baseRevision, counts, assets, sha256}`;
+worlds with Families also carry a `familySummary` (family count and largest
+member share), checked against the shipped typed `families.parquet`; counts
 satisfy `points = files + symbols + directories` with
 `directories = parent - files + 1`, and `links = defines + imports + calls + parent`.
-`//web/atlas-live/projection:data_test` re-checks the manifest against `ATLAS_WORLDS`,
-the shipped metadata tables, and the file hashes.
+`//web/atlas-live/projection:data_test` re-checks the manifest against the
+Bazel-declared census and self snapshot, shipped metadata, typed signature
+summaries, exact physical seed coverage, and file hashes. The self snapshot is
+sealed from pinned revision `88f97599` as a small immutable typed basis;
+the viewer performs no acquisition or provider call.
+Its source-language admission excludes Rust, a limitation kept visible rather
+than changing frozen repository semantics.
 
 ### Synthetic stress fixture
 
@@ -198,11 +205,11 @@ through the identical `projectWorld` path. It is emitted by `projection/src/synt
 Parquet writer (`projection/src/parquet.ts`; PLAIN, UNCOMPRESSED, one row group) because
 the pinned dependencies have no writer.
 
-The fixture is **not** a repository and is never counted among the 78: it lives in its own
+The fixture is **not** a repository and is never counted among the 79 shipped real worlds: it lives in its own
 `manifest.json` field (`manifest.synthetic`, with `synthetic: true` and `repository:
 "synthetic"`), separate from `manifest.worlds`. `data_check.ts` and
-`deploy/layout_check.mjs` assert that separation (`worlds.length === 78`, the fixture is
-labelled synthetic, and `static/data` holds 78 + 1 directories).
+`deploy/layout_check.mjs` assert that separation (`worlds.length === 79`, the fixture is
+labelled synthetic, and `static/data` holds 79 + 1 directories).
 
 ## Telemetry
 
@@ -223,8 +230,8 @@ screen and the browser session stays fast. No synthetic data is used.
 
 ## Snapshot picker and dataset switching
 
-`app/src/DatasetPicker.tsx` is a Base UI `Select` listing exactly the 78 census worlds
-(repository + short base revision + counts) and, separately labelled and last, the
+`app/src/DatasetPicker.tsx` is a Base UI `Select` listing the 78 census worlds
+plus the pinned AttuneFlix snapshot (repository + short base revision + counts) and, separately labelled and last, the
 synthetic stress fixture. The model is `app/src/datasets.ts`; each option's value is the
 manifest `snapshotId`. Nothing is prefetched: a world's Parquet is fetched only when it is
 chosen.
@@ -246,43 +253,54 @@ reads it through `useSyncExternalStore`:
   naming the dataset, with no spinner left running. The explicit loading state is a visible
   `<output data-testid="loading">`; the error is a visible `role="alert"` banner.
 
-### SwiftShader link rendering
+### Dependency wires and one family-informed graph
 
-Under software WebGL (SwiftShader) a single redraw with tens of thousands of drawn links is
-a multi-second main-thread long task (measured 3.6-8.7 s at 50k links; 0.4-1.0 s at
-2k-5k). Datasets over `LINK_RENDER_BUDGET` (10,000 links, `app/src/datasets.ts`) therefore
-keep every point, link and adjacency loaded and queryable but draw each link fully
-transparent and zero-width (`app/src/linkAccessors.ts`). The header marks this with a
-"links hidden" badge, and the choice is reported as `window.__atlasLive.renderLinks`. All
-78 worlds keep their links except the very largest (for example protonmail
-`a57d483946f4` / `bde468c0e909`). Hover and selection still work: emphasis goes through the
-renderer's greyout channel, and the diagnostics hook reports `hovered`/`highlighted`.
+The canvas shows every concrete file, symbol, and directory by default in fixed
+structural slots. The visible frontier aggregates _dependency wires_ (`imports`
+and `calls`); containment (`parent`) and ownership (`defines`) determine space
+rather than becoming painted wires. On SwiftShader, a fitted view with more than
+`LINK_RENDER_BUDGET` projected wires starts without painted connections. Zooming
+selects a bounded, deterministic set of exact wires crossing the camera's
+viewport; panning refreshes that set. Every point, relation, and adjacency
+remains available for inspection at every zoom.
 
-### Families overlay
+Where a world ships Atlas Families evidence, symbols inherit their family hue;
+files and directories use the dominant rollup family. Family information also
+informs placement inside structural territories. The same graph remains on
+screen in every view; there is no Structure/Families graph switch. Worlds without
+Families evidence retain their structural domain colors. The release cohort has
+Families evidence on 50 of the 78 measured real snapshots; the other 28 remain
+physical-only by user decision. Exact family-edge evidence stays in the typed
+tables, while the sidebar uses the same graph's projected connection inspector
+instead of a separate family-edge ranking.
 
-A world whose manifest ships an Atlas Families export (preact first; the tables are the
-Flix-built evidence, mirrored and re-validated by `projection/src/families.ts`, never
-re-derived) offers a second overlay, **Families**, next to **Structure**:
+The shading controls change lightness in Oklab while preserving family hue and
+geometry: base family/structure, measured physical-transition reuse, localness,
+and directed three-hop reach. The physical and metric scales show their
+5th–95th percentile display range; the inspector shows exact values. Clicking a
+region or wire opens its quantified metrics or exact contributing edges. A
+selected node can request deterministic proof cards for the four Flix-derived
+structural relations; those proofs are queries over admitted basis rows, never
+permanent edges or generated explanations.
 
-- every point is tinted by its family (symbols by membership, files and directories by
-  their dominant rollup family), from a deterministic golden-angle palette in
-  `app/src/vocabulary.ts`; points with no family get the neutral no-family tint;
-- exact links hide and the cross-family edges draw instead — one row per family pair,
-  appended after the exact links in the links table (`projection/src/arrow.ts`), anchored
-  at the families' seed files, with width growing in log2 of the multiplicity;
-- clicking a family edge (on the canvas or in the sidebar's family-edge list) drills
-  down: the edge stays drawn and its contributing exact edges reappear; the sidebar lists
-  them, bounded, with the remainder counted. Escape, an empty-canvas click or the "Clear
-  drill-down" button restores the aggregate view;
-- the inspector shows the point's family (name, member count, tint swatch) with the F3
-  honesty markers: a `fallback` badge for a member no recorded frontier held (it joined
-  its defining file's seed family), a `singleton` badge for a one-member family.
+The centered comparison ranks the 11 census repositories plus AttuneFlix by a
+selected raw quantity: file recurrence, physical compression, file survival,
+or file p90 reach. The cards show the selected repository's unnormalized
+numbers, including the orders-of-magnitude contrast between Babel and Three.js.
+The sources are the frozen 16-seed typed census repository-summary table and a
+separately derived typed self summary, with each value a median across
+represented revisions. All-seed physical reuse and per-snapshot Families
+coverage are labelled separately; a 98% reuse percentage is not substituted
+for 2,623× file recurrence or 273× physical compression. Cohort medians for
+survival and reach are shown without qualitative architecture classes.
 
-The overlay is a pure view change: the layout, the filter and the topology never move
-(`layoutIdentity`, `filterRevision` and every screen position are unchanged across an
-overlay switch). A world without families data renders exactly as before — the toggle
-stays disabled, the families section and fields never appear, and its links table is
-byte-identical to the pre-families projection.
+The **Structural separation** mode uses the same graph and projected relation
+filter. It computes cumulative directed neighborhoods at 1°–3°, exact pair
+overlap, convergence depth, a region-pair convergence graph, deterministic
+greedy separated set and waves, and a separation-decay display. Physical
+reuse remains depth-seven measured evaluator evidence and may independently
+shade the graph. See [STRUCTURAL_SEPARATION.md](STRUCTURAL_SEPARATION.md) for
+definitions, algorithm limits, and the distinction from observed contention.
 
 ## `window.__atlasLive`
 
@@ -301,8 +319,9 @@ session boots and populated through `app/src/diagnostics.ts`.
 | `topologyRevision`         | Monotonic counter for the projected topology (points/links) of the current session.                                                                                                                     |
 | `liveSessions`             | The number of live `GraphSession`s; exactly `1` once a dataset is loaded, and `0` before the first load.                                                                                                |
 | `duckdbTables`             | The `atlas_live_*` DuckDB tables the current live session owns, sorted; a switched-away session's tables are dropped and never listed.                                                                  |
-| `renderLinks`              | Whether the renderer draws the current dataset's links (see "SwiftShader link rendering"): `false` above the 10,000-link budget.                                                                        |
-| `overlay`                  | `{ name, revision }` of the active node-colour overlay (`"structure"` or `"families"`); the revision bumps on every overlay change.                                                                     |
+| `renderLinks`              | Whether the raw world fits the unrestricted 10,000-link overview budget. Larger worlds reveal bounded exact connections on zoom.                                                                        |
+| `overlay`                  | The structural topology layer, always `{ name: "structure", revision: 0 }`; families inform this same graph.                                                                                            |
+| `shading`                  | `{ name, revision }` for base structure, physical reuse, localness, or reach color shading; this never changes `layoutIdentity`.                                                                        |
 | `families`                 | The loaded world's families summary (`familyCount`, `singletonFamilies`, `fallbackMembers`, `edges`, `renderedEdges`, `unattributedEdges`), or `null` for a world without families data.                |
 | `drilledFamilyEdge`        | The drilled-down family edge ordinal, or `null`.                                                                                                                                                        |
 | `counts`                   | `{ points, links, files, symbols, directories, defines, imports, calls, parent }`, or `null` before load.                                                                                               |

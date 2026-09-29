@@ -19,7 +19,7 @@ import {
   type WorldManifestEntry,
 } from "../../projection/src/manifest.ts";
 import { decodeWorldFiles, toArrayBuffer, type WorldFiles } from "../../projection/src/tables.ts";
-import { PHYSICAL_ASSET, projectPhysical, type WorldPhysical } from "../../projection/src/physical.ts";
+import { projectPhysical, type WorldPhysical } from "../../projection/src/physical.ts";
 import { structuralLayout, type StructuralLayout } from "./structure.ts";
 import { unifiedTopologyLayout } from "./topology.ts";
 
@@ -43,7 +43,7 @@ export interface LoadedWorld {
    * export), or null — a world without families renders exactly as before.
    */
   readonly families: WorldFamilies | null;
-  /** Bazel-derived depth-7 physical work for every Preact file and symbol, if present. */
+  /** Bazel-derived depth-7 physical work for every file and symbol, if present. */
   readonly physical: WorldPhysical | null;
   /** Milliseconds spent computing the structural layout. */
   readonly layoutMs: number;
@@ -133,13 +133,13 @@ export async function loadWorld(entry: WorldManifestEntry, signal?: AbortSignal)
   const [files, familiesFiles, physicalFile] = await Promise.all([
     fetchWorldFiles(entry, signal),
     fetchFamiliesFiles(entry, signal),
-    fetchBytes(PHYSICAL_ASSET, signal),
+    entry.assets.physical === undefined ? Promise.resolve(undefined) : fetchBytes(entry.assets.physical, signal),
   ]);
   const decoded = await decodeWorldFiles(files);
   const graph = projectTables(decoded, entry.sha256);
   const familyTables = familiesFiles === undefined ? undefined : await decodeFamiliesFiles(familiesFiles);
   const families = familyTables === undefined ? null : projectFamilies(familyTables, graph);
-  const physical = await projectPhysical(physicalFile, graph);
+  const physical = physicalFile === undefined ? null : await projectPhysical(physicalFile, graph);
   const beforeLayout = performance.now();
   const structural = structuralLayout(graph);
   const layout = families === null ? structural : unifiedTopologyLayout(structural, families);

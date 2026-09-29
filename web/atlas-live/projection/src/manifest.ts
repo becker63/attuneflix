@@ -29,6 +29,7 @@ export interface WorldAssets {
   readonly relations: string;
   readonly locations?: string;
   readonly families?: FamiliesTableAssets;
+  readonly physical?: string;
 }
 
 export interface WorldHashes {
@@ -37,6 +38,41 @@ export interface WorldHashes {
   readonly relations: string;
   readonly locations?: string;
   readonly families?: FamiliesTableHashes;
+  readonly physical?: string;
+}
+
+/** Exact aggregate of one world's per-seed physical-transition table. */
+export interface PhysicalSummary {
+  readonly seeds: number;
+  readonly requests: number;
+  readonly evaluations: number;
+  readonly reuses: number;
+  readonly reuseFraction: number;
+  readonly medianSeedFraction: number;
+}
+
+/** Frozen census median across the represented revisions of one repository.
+ * This 16-seed panel is distinct from the all-seed physical color field. */
+export interface RepositorySignature {
+  readonly protocol: "atlas-signature-swe-explore-v1";
+  readonly snapshots: number;
+  readonly files: number;
+  readonly symbols: number;
+  readonly fileExtinction: number;
+  readonly symbolExtinction: number;
+  readonly fileReachP90: number;
+  readonly symbolReachP90: number;
+  readonly fileRecurrence: number;
+  readonly symbolRecurrence: number;
+  readonly physicalCompression: number;
+  readonly reuseFraction: number;
+}
+
+/** Exact counts projected from a world's typed families table. */
+export interface FamilySummary {
+  readonly count: number;
+  readonly largestMembers: number;
+  readonly largestShare: number;
 }
 
 /** The typed families tables a world with families ships (the Atlas Families export). */
@@ -82,6 +118,9 @@ export interface WorldManifestEntry {
   readonly counts: WorldCounts;
   readonly assets: WorldAssets;
   readonly sha256: WorldHashes;
+  readonly familySummary?: FamilySummary;
+  readonly physicalSummary?: PhysicalSummary;
+  readonly signatureSummary?: RepositorySignature;
   /** True only for the synthetic stress fixture; false for every real world. */
   readonly synthetic: boolean;
 }
@@ -154,7 +193,11 @@ export function manifestEntry(graph: ViewerGraph, synthetic = false): WorldManif
  * tables under `data/<digest>/` with their sha256. The bytes are the
  * Flix-built export; the web side only ships them.
  */
-export function attachFamilies(entry: WorldManifestEntry, hashes: FamiliesTableHashes): WorldManifestEntry {
+export function attachFamilies(
+  entry: WorldManifestEntry,
+  hashes: FamiliesTableHashes,
+  summary: FamilySummary,
+): WorldManifestEntry {
   const digest = entry.snapshotDigest;
   const families: FamiliesTableAssets = {
     families: `data/${digest}/${FAMILY_TABLE_FILES.families}`,
@@ -167,6 +210,21 @@ export function attachFamilies(entry: WorldManifestEntry, hashes: FamiliesTableH
     ...entry,
     assets: { ...entry.assets, families },
     sha256: { ...entry.sha256, families: hashes },
+    familySummary: summary,
+  };
+}
+
+/** Records a separately measured, complete physical table and its exact summary. */
+export function attachPhysical(
+  entry: WorldManifestEntry,
+  hash: string,
+  summary: PhysicalSummary,
+): WorldManifestEntry {
+  return {
+    ...entry,
+    assets: { ...entry.assets, physical: `data/${entry.snapshotDigest}/physical.parquet` },
+    sha256: { ...entry.sha256, physical: hash },
+    physicalSummary: summary,
   };
 }
 

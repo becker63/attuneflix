@@ -1,0 +1,630 @@
+{
+  "protocol": "atlas-families-acquisition-population-v1",
+  "cap_usd": 5,
+  "worlds": [
+    {
+      "digest": "000365e13105629d144db298591cebfc4c6cd58e546ab24d4f3bf6e836a14efe",
+      "repository": "preactjs/preact",
+      "revision": "9c5a82efcc3dcbd0035c694817a3022d81264687",
+      "source_tree_identity": "source-tree-js-ts-v1:11d91b862ccaaee90ffd58fbaf2fdc83541daa957797f30b8c70bca9a2182840",
+      "source_root_hint": ".attune/scale-snapshot-roots/2f1l9mdf2mn5b4q3884r3pcm6p9m7qgx-source",
+      "projected_usd": 0.33120967
+    },
+    {
+      "digest": "002a462e6f58440bbf60071f1e945b38bb304fe46a38ca6fdfd578248693cf01",
+      "repository": "babel/babel",
+      "revision": "5134505bf93013c5fa7df66704df8d04becb7f7d",
+      "source_tree_identity": "source-tree-js-ts-v1:dfea6a8a1538c7240f8dad90b7d5765560915d07c5e381ea93002f60c00c52df",
+      "source_root_hint": ".attune/scale-snapshot-roots/0kr18fc2n5qlj28rsk5mr3apzdcqhh0r-source",
+      "projected_usd": 7.56036889
+    },
+    {
+      "digest": "0a4d2c8aacbbd3762bd6976bcf91866f819881ab0aad5580d9fadfdc6bbbd973",
+      "repository": "NodeBB/NodeBB",
+      "revision": "da2441b9bd293d7188ee645be3322a7305a43a19",
+      "source_tree_identity": "source-tree-js-ts-v1:12bec1e3e5b251227101237d0ad32f02ae6775808ffaef6c7ff5f86950fb94b3",
+      "source_root_hint": ".attune/scale-snapshot-roots/0smhix11z5acivc8a7v417pqrl5cmqg3-source",
+      "projected_usd": 0.66620389
+    },
+    {
+      "digest": "0ba18a217eefcafd6ba5afe527e293f53643e7b6d5d6e3ae48cf9ad2e5e3171a",
+      "repository": "mrdoob/three.js",
+      "revision": "b99b3fd955864f534b1e2649518112f7e50fef21",
+      "source_tree_identity": "source-tree-js-ts-v1:7ca2d93376273b2410dc909ed92e0e025ce1bd47adb0cc5d1abc82fd2bf1ab08",
+      "source_root_hint": ".attune/scale-snapshot-roots/5jpwrawcyjfbzhdqkc0scfbpb4pdpckw-source",
+      "projected_usd": 1.47964464
+    },
+    {
+      "digest": "0cc7b7c20b18e7bd7980c4510936b82c6d2a42556bbf86bacb56c23cfd87e6f1",
+      "repository": "protonmail/webclients",
+      "revision": "21b45bd4378834403ad9e69dc91605c21f43438b",
+      "source_tree_identity": "source-tree-js-ts-v1:34f99c2cfc2cfa0de9fa9f3d95fa53f1aafa7371f1601bee4a42f42c085de755",
+      "source_root_hint": ".attune/scale-snapshot-roots/w634l5hl61qs6vy34blfk4whdsqr1hfh-source",
+      "projected_usd": 4.58935211
+    },
+    {
+      "digest": "1044506ddb4491ea06a20209ab5bce6b7a278ee23a14e5db259d9a33d6241dcf",
+      "repository": "preactjs/preact",
+      "revision": "0b9a9275b47e446106e6e97c78011896f7db2a61",
+      "source_tree_identity": "source-tree-js-ts-v1:88ef9289239d100ab71a5e325f2b25e5fa0b76151be8bc7a2f262c9f4b4c1a2d",
+      "source_root_hint": ".attune/scale-snapshot-roots/xzrhbyvszwgz6xnrmkkih4zfz1gl8h2s-source",
+      "projected_usd": 0.31462485
+    },
+    {
+      "digest": "18c7f4c0686bfee7d0ffe6a5a8a503e14957c7896396801aa9bccfee501cdb94",
+      "repository": "element-hq/element-web",
+      "revision": "e6fe7b7ea8aad2672854b96b5eb7fb863e19cf92",
+      "source_tree_identity": "source-tree-js-ts-v1:372ba6afda002b599a8f67428de5fcd3a92de3cc70581780a3d3ea8b8c6372a1",
+      "source_root_hint": ".attune/scale-snapshot-roots/y77jk6jwrvb45nny5nijf8g2153fabzk-source",
+      "projected_usd": 2.28997579
+    },
+    {
+      "digest": "197d5a4deb6c1c7827e89304714830aa9be2c3f01b252d834427cb9a96ac402b",
+      "repository": "preactjs/preact",
+      "revision": "9457b221fdacd1052ffdb385918e1bab4b10e833",
+      "source_tree_identity": "source-tree-js-ts-v1:9be1b6edbde8dc0328a33bce43dede2c9bbad56ea6f02553624c34b3d37031ef",
+      "source_root_hint": ".attune/scale-snapshot-roots/p7q3grj410sp78y1sw5dn00hsxxw4bis-source",
+      "projected_usd": 0.31630783
+    },
+    {
+      "digest": "19fa623c87d7c746cf5b4af08f5b92c9fede4cd02f2e0772da95d223c1b52313",
+      "repository": "facebook/docusaurus",
+      "revision": "02e38d8ccf7811af27a9c15ddbadf4d26cfc0eab",
+      "source_tree_identity": "source-tree-js-ts-v1:c8ec36ab257711451b63d0de433638a248d76c7bc8d850e82d90d7bd50fff1fd",
+      "source_root_hint": ".attune/scale-snapshot-roots/wvwviqcddfv164kl6c1pscvzyvblg3cy-source",
+      "projected_usd": 1.19000376
+    },
+    {
+      "digest": "1b1bc8349e395c8776a0ad6200d81355c753e089ef067543ebf37cbba0949171",
+      "repository": "tutao/tutanota",
+      "revision": "376d4f298af944bda3e3207ab03de0fcbfc13b2f",
+      "source_tree_identity": "source-tree-js-ts-v1:3400a8948fd1c0f631d109b3799ce1b8044dce41ddf038a76531a118f0ee2222",
+      "source_root_hint": ".attune/scale-snapshot-roots/i3nm7hrqb8vhps4i7z5ld8n2k7022qs6-source",
+      "projected_usd": 1.29909634
+    },
+    {
+      "digest": "1dd4f1023c7ec84511b472dc4d888f653fcba7c3cfa07bed8fd24b19f3b5c166",
+      "repository": "tutao/tutanota",
+      "revision": "9dfb7c231f98a2d3bf48a99577d8a55cfdb2480b",
+      "source_tree_identity": "source-tree-js-ts-v1:dca10056964a01afaf45468bef15fd2a2bfcca9a02ef8e59b31339dda20d32e5",
+      "source_root_hint": ".attune/scale-snapshot-roots/0rayqabd2706q4kyp8963yxs4wpnsg1z-source",
+      "projected_usd": 1.61739104
+    },
+    {
+      "digest": "1e44a1c45ec4a91bb7774dc6d37a2846a5f56262b6fa7ae5722bcbcc15ba10c7",
+      "repository": "axios/axios",
+      "revision": "c30252f685e8f4326722de84923fcbc8cf557f06",
+      "source_tree_identity": "source-tree-js-ts-v1:6263b0ef1ef967b350b9674f45766b073c7945e7f80863236cad126445341e8c",
+      "source_root_hint": ".attune/scale-snapshot-roots/2lrvyhagkbmid94r6186m7p9s9qhk5p8-source",
+      "projected_usd": 0.07493666
+    },
+    {
+      "digest": "1f1fb6e8cbfb38f8d2f6f641fba3fbce89a1adfde8e9fd6b73cefd08611df23e",
+      "repository": "element-hq/element-web",
+      "revision": "212233cb0b9127c95966492175a730d5b954690f",
+      "source_tree_identity": "source-tree-js-ts-v1:185d514ca227a647cdc5d8addce94942ecd573608fa9482d1dc88ceccdfebd44",
+      "source_root_hint": ".attune/scale-snapshot-roots/21g5pmkzi2bm4ph78xm9adfaqbpvgf4a-source",
+      "projected_usd": 2.12751818
+    },
+    {
+      "digest": "25054646c3f316d59634b7ef351e4cceae0e15c1ed4ad6e7b6a9e6ea07f4629f",
+      "repository": "element-hq/element-web",
+      "revision": "372720ec8bab38e33fa0c375ce231c67792f43a4",
+      "source_tree_identity": "source-tree-js-ts-v1:fde423c9c8f7811d01a3db32b01dbbddf90ef7321c1f5d9bdd54d23ddcd39ad4",
+      "source_root_hint": ".attune/scale-snapshot-roots/p2rzn46pipl8jcgwcwr1g5bkx4qrm0wr-source",
+      "projected_usd": 2.02070082
+    },
+    {
+      "digest": "262ffb4d4159c53a19b0a2d0e17ba255ad915e6c6c658c91b680e42aa3f6d5d1",
+      "repository": "protonmail/webclients",
+      "revision": "a5e37d3fe77abd2279bea864bf57f8d641e1777b",
+      "source_tree_identity": "source-tree-js-ts-v1:c3183ba4282d3e830bc85c3afa3dd82a272b86ced49de6685e36776e415fadfa",
+      "source_root_hint": ".attune/scale-snapshot-roots/znbc7yxwy0hpcphm560qxq76dki0k85z-source",
+      "projected_usd": 5.27164489
+    },
+    {
+      "digest": "29e9da075af8f7bed29e7fdc29b7239fc39b633ef37658be4dd3200802df24f7",
+      "repository": "NodeBB/NodeBB",
+      "revision": "84dfda59e6a0e8a77240f939a7cb8757e6eaf945",
+      "source_tree_identity": "source-tree-js-ts-v1:05ca7879547d885bf0d4635cf953d3c0dc2ae5f2b5c18394dbcf04de4d2e2565",
+      "source_root_hint": ".attune/scale-snapshot-roots/8hif2chcznza7g375pw6h840kzknhzq2-source",
+      "projected_usd": 0.61509722
+    },
+    {
+      "digest": "2ad7fd77595ba90034705832a91f64bf65800349797341182501c44b6d5c2075",
+      "repository": "element-hq/element-web",
+      "revision": "83612dd4adeb2a4dad77655ec8969fcb1c555e6f",
+      "source_tree_identity": "source-tree-js-ts-v1:a72d2b1dd21c1a546fda00fee864e3d517c517054ef3a255cf6849d2d73c24e4",
+      "source_root_hint": ".attune/scale-snapshot-roots/ws9i1z15g2399cxckx023zb5wcmdk7rx-source",
+      "projected_usd": 1.22451337
+    },
+    {
+      "digest": "2d10a775f9683c1ae129907d2ed2345469363a0553b9cee91c210413aacf6c8e",
+      "repository": "NodeBB/NodeBB",
+      "revision": "be86d8efc7fb019e707754b8b64dd6cf3517e8c7",
+      "source_tree_identity": "source-tree-js-ts-v1:349d18bf15781c510162cc95ed7052e944319bd5d4b6a9f4e63025c7d4dc114c",
+      "source_root_hint": ".attune/scale-snapshot-roots/nixf80xwsjv10k9y6pfynp44s87zafxn-source",
+      "projected_usd": 0.67111502
+    },
+    {
+      "digest": "2d1fa59b3248944c7ea360bc178a689cddf1fe733db9d3dca1e34529c1939157",
+      "repository": "protonmail/webclients",
+      "revision": "c40dccc34870418e29f51861a38647bc1cbdf0a8",
+      "source_tree_identity": "source-tree-js-ts-v1:c83ba18665a8b4087a30b85c348d5c67575ef726de871a6d5cdbf5d331c75bd1",
+      "source_root_hint": ".attune/scale-snapshot-roots/zdhlv1w9ygqv1km81fr2zd19qlpsi8jy-source",
+      "projected_usd": 5.83134629
+    },
+    {
+      "digest": "38cc6652f9833888aecbff584b825a5baadde579abb249860e0a6157d7221839",
+      "repository": "tutao/tutanota",
+      "revision": "7ebf14a3432c8f0d8b31d48968a08d055bec2002",
+      "source_tree_identity": "source-tree-js-ts-v1:e122ef3c2ec0560ddcc54488b834691587a19ed76fad57049a5caca987718fd4",
+      "source_root_hint": ".attune/scale-snapshot-roots/fl7wgpch9ccx8n9izxmdn8x2nbi0aqr0-source",
+      "projected_usd": 1.27400877
+    },
+    {
+      "digest": "3b5f437f41ce2dfe1328116a893b4cada05008f1210045630bef2ed1546038d3",
+      "repository": "vuejs/core",
+      "revision": "67d6596d40b1807b9cd8eb0d9282932ea77be3c0",
+      "source_tree_identity": "source-tree-js-ts-v1:c5681c6eeb4b34b1fba4085666bfddd431af60662eb27329dcf6826a00c22de6",
+      "source_root_hint": ".attune/scale-snapshot-roots/bjcxm6lxxwl7klmqjhgfpp3i77qf8phb-source",
+      "projected_usd": 0.64368718
+    },
+    {
+      "digest": "409e2753ea0dddfc0db2fd2c60a4cd260302ac9e8ef1ef8a5603151a030d23df",
+      "repository": "preactjs/preact",
+      "revision": "db0f4f2e7a2338ea40050f623f05505a798fc1a4",
+      "source_tree_identity": "source-tree-js-ts-v1:253d9e166904ec8ec0da58b7b39651adb66f1f5f74bbc6c6b72bfe1cdeb4a1ca",
+      "source_root_hint": ".attune/scale-snapshot-roots/3nwhyfxm0ajybkm2ma5s8hakridx0724-source",
+      "projected_usd": 0.34110398
+    },
+    {
+      "digest": "43d1969f5d5b33ddcee39867475aaf1fdde2042171e2425b339e9b2fbffb8e5a",
+      "repository": "NodeBB/NodeBB",
+      "revision": "03a98f4de484f16d038892a0a9d2317a45e79df1",
+      "source_tree_identity": "source-tree-js-ts-v1:2b3adcb04b56bbad79f57adec5b2b0ab33cbb8974e458b0f5c70b0fffad8b453",
+      "source_root_hint": ".attune/scale-snapshot-roots/i1k5a3cvyxq5lkg1pfhg5360bbg8lkcy-source",
+      "projected_usd": 0.61319878
+    },
+    {
+      "digest": "45b8021a93812ab4080edeb1f8ebfcb1acad5ffe4d6d7122a30179a7e409c578",
+      "repository": "tutao/tutanota",
+      "revision": "26c98dd37701c1c657edec33465d52e43e4a05cb",
+      "source_tree_identity": "source-tree-js-ts-v1:071705d26d45ce3a08691f7dc4f9a3b4755ea97562cf4b704ab31fc0b1404110",
+      "source_root_hint": ".attune/scale-snapshot-roots/9wia2knpbid622c5vn8ajcf1zs36jw10-source",
+      "projected_usd": 1.65200543
+    },
+    {
+      "digest": "47676c68fbccfe9e87212f9d2225a33ccc4d975a182f5c7d99742069c6bb02e0",
+      "repository": "NodeBB/NodeBB",
+      "revision": "d9c42c000cd6c624794722fd55a741aff9d18823",
+      "source_tree_identity": "source-tree-js-ts-v1:902426a299608cdf831ad1bd7d8b4a6160ba49080edb0807c2070adf5ab1276b",
+      "source_root_hint": ".attune/scale-snapshot-roots/lkzv879rahyfa6y5xfglay8yvh7fr3ww-source",
+      "projected_usd": 0.61346347
+    },
+    {
+      "digest": "482aa007034c4569f2c8f66ea1b732faa197ceab18938fa4fbdd2cd559701987",
+      "repository": "element-hq/element-web",
+      "revision": "53415bfdfeb9f25e6755dde2bc41e9dbca4fa791",
+      "source_tree_identity": "source-tree-js-ts-v1:19b05277ee67106145fca043bdbd43d8beabcaeec367de888ffa7e0dc943c557",
+      "source_root_hint": ".attune/scale-snapshot-roots/2avbz0b24n2z4m3b13s6c4fwp8pw6klg-source",
+      "projected_usd": 2.41223312
+    },
+    {
+      "digest": "4b14c05228d2c59e68c2aaa978fb7d655aed032a75804f35ac94389520607084",
+      "repository": "NodeBB/NodeBB",
+      "revision": "c5ae8a70e1b0305af324ad7b1b0911d4023f1338",
+      "source_tree_identity": "source-tree-js-ts-v1:153d2e096a79845e60747c9f2ec728f09b52a7667e198f18d3a82c4f15672f5b",
+      "source_root_hint": ".attune/scale-snapshot-roots/r97h9kgbjsacvvqw0ww8qgqmb09w90qy-source",
+      "projected_usd": 0.60670852
+    },
+    {
+      "digest": "4fdaac70f41803332ccc735c2a6991132882f2bdb909d1450b287b9f38b9a24d",
+      "repository": "preactjs/preact",
+      "revision": "00c8d1ff1498084c15408cf0014d4c7facdb5dd7",
+      "source_tree_identity": "source-tree-js-ts-v1:081960e355b8bdbc08d78ead3574fb4d35bc45c64544e9e45ab96a9fdd8e1735",
+      "source_root_hint": ".attune/scale-snapshot-roots/i53h8377sn3yqh9zsbwjdpj6phg6p1s4-source",
+      "projected_usd": 0.30818165
+    },
+    {
+      "digest": "50b27b40a91c9d9267da9d5b2620101e4798ef8f819c6e549f32b5f0da02d0ca",
+      "repository": "protonmail/webclients",
+      "revision": "52ada0340f0ae0869ef1e3b92e1cc4c799b637cf",
+      "source_tree_identity": "source-tree-js-ts-v1:e2c1ae40a31c5e7c6182c8359aa192960d0604cec95a9217f282a26596814ee1",
+      "source_root_hint": ".attune/scale-snapshot-roots/298ar7ng4hz6q5qigjhdv5v3sa0g5qsx-source",
+      "projected_usd": 5.38581215
+    },
+    {
+      "digest": "5186c9010641e075f7ffc0d7b0f0752b8260f64862e3e5e9f1ec6b592313844f",
+      "repository": "protonmail/webclients",
+      "revision": "7ff95b70115415f47b89c81a40e90b60bcf3dbd8",
+      "source_tree_identity": "source-tree-js-ts-v1:fe46578e5c9456a578ac1611939e28eb15f7fda37b04cb3cfca0e4c0ceedb834",
+      "source_root_hint": ".attune/scale-snapshot-roots/wgg573pk3gcr0jlwlg6zgs0jp9mcxj6a-source",
+      "projected_usd": 5.42006615
+    },
+    {
+      "digest": "54bbe0595be03ec61e2571706708686925ddbc600bbb001d6d60942dc6e71ede",
+      "repository": "protonmail/webclients",
+      "revision": "a118161e912592cc084945157b713050ca7ea4ba",
+      "source_tree_identity": "source-tree-js-ts-v1:75d58dd62ea26a74949a4f42bb92019e50840fffb2946c6f73a981ac306d2d1d",
+      "source_root_hint": ".attune/scale-snapshot-roots/f20j7lppwfdqapg9bv109ajdv2g7baxb-source",
+      "projected_usd": 8.80948634
+    },
+    {
+      "digest": "55d7a8cefbffbce2fd6aed9ed500e8473d5dc49b8f9308f1eede358dd1593911",
+      "repository": "NodeBB/NodeBB",
+      "revision": "3ecbb624d892b9fce078304cf89c0fe94f8ab3be",
+      "source_tree_identity": "source-tree-js-ts-v1:d86ab15cb09905c1246374db40f4a5c77b9364f90066b096af3bde281bd53cc4",
+      "source_root_hint": ".attune/scale-snapshot-roots/0c9dqnqi2582ks0jyl9p7dkrr8fs5a0f-source",
+      "projected_usd": 0.61324088
+    },
+    {
+      "digest": "5d4287f3c0aaa688c773bd0f4684e2da11fac9a699e511a5c0a49e36e68937a0",
+      "repository": "element-hq/element-web",
+      "revision": "97f6431d60ff5e3f9168948a306036402c316fa1",
+      "source_tree_identity": "source-tree-js-ts-v1:ee5815bff59fa4b5d165682f224b5d5014540d92a46280ad7b444fd08b11faee",
+      "source_root_hint": ".attune/scale-snapshot-roots/xx6q6361pqm3p9mmkmh7jwvixfnzw1z9-source",
+      "projected_usd": 2.25244473
+    },
+    {
+      "digest": "678f8ed4bfb9dda19f2f538fe1248da1ae809a11675498575a989b3b3744a9f3",
+      "repository": "vuejs/core",
+      "revision": "d0b513eb463f580e29378e43d112ff6859aa366e",
+      "source_tree_identity": "source-tree-js-ts-v1:6fdb56d12203835e9ebd06a21a1f7ef01498ca9c15b0378e86a06c7a1db2aa4a",
+      "source_root_hint": ".attune/scale-snapshot-roots/wikdzhz66g5wvd6llfg03rbhdvyrwkdx-source",
+      "projected_usd": 0.6436923
+    },
+    {
+      "digest": "69e49acea3491b2e42ca15990b137fed59d69f5d9fcb8022a5d91b33722e49f9",
+      "repository": "preactjs/preact",
+      "revision": "2cafedee2ddf7c73795e887ef1970df4be2bca90",
+      "source_tree_identity": "source-tree-js-ts-v1:2f296d8308f2f3dcfc89e679eb5d48418277b1f4df77a2af2942ca1c22dc6c54",
+      "source_root_hint": ".attune/scale-snapshot-roots/gi5ghdzz79x2npjxiz7pml82ivjbj72j-source",
+      "projected_usd": 0.31957469
+    },
+    {
+      "digest": "6e2bef41bf19f638be084df8cb82127e4832d4abbafa8ca20ebd5db9be3ac8a9",
+      "repository": "preactjs/preact",
+      "revision": "b17a932342bfdeeaf1dc0fbe4f436c83e258d6c8",
+      "source_tree_identity": "source-tree-js-ts-v1:104333035766582db8710cf1c0182b0d099d7c2f4357a7437601aaf513ca186c",
+      "source_root_hint": ".attune/scale-snapshot-roots/dsw6bgb3qb7m1xvh3xrn325lfbfdfbp2-source",
+      "projected_usd": 0.27718032
+    },
+    {
+      "digest": "6fa65b34fcfd9e959d1cbf442c513bc2648cae8fe87ddd0c4a1217206d65ad17",
+      "repository": "tutao/tutanota",
+      "revision": "5f77040986114d0ed019e58cab6ddf5152e55dbb",
+      "source_tree_identity": "source-tree-js-ts-v1:34c6b0cc22903b20c0d4f5f5547287deddc80aae4338ff54829d5a460a44d5e5",
+      "source_root_hint": ".attune/scale-snapshot-roots/bd30plb1klsm28vacihylkmphrxnpa1n-source",
+      "projected_usd": 1.31363317
+    },
+    {
+      "digest": "72a6fb2a39b820e1d21bb2059d937358647faf44982002ab988da1df6e04b459",
+      "repository": "NodeBB/NodeBB",
+      "revision": "779c73eadea5d4246a60ab60486d5e49164884db",
+      "source_tree_identity": "source-tree-js-ts-v1:2a049c902c1ca51a401c6677af9be14c247486d3910cebffe04de1d607ca3461",
+      "source_root_hint": ".attune/scale-snapshot-roots/s9a1n51nshbv37gf3zp4lmxwy5z2l91k-source",
+      "projected_usd": 0.6497973
+    },
+    {
+      "digest": "7dcd08c6dcd8558e051002333932a19ab74ee48fe7d3e288acda54dad1129b89",
+      "repository": "preactjs/preact",
+      "revision": "a9f7e676dc03b5008b8483e0937fc27c1af8287f",
+      "source_tree_identity": "source-tree-js-ts-v1:4e49733652ebb24d69ba51d2c0eda3ca8cb6d5e62b7e2b1a3adae142e2e61082",
+      "source_root_hint": ".attune/scale-snapshot-roots/dbrnnbpxdlmy66pz6gb7bim6ll2li3v3-source",
+      "projected_usd": 0.29501484
+    },
+    {
+      "digest": "8037ac6f92441b6ba2c9c85ca3cdd7f469430c8c1337a783b44985f6b180829e",
+      "repository": "NodeBB/NodeBB",
+      "revision": "a3e1a666b876e0b3ccbb5284dd826c8c90c113b4",
+      "source_tree_identity": "source-tree-js-ts-v1:e6cd9fd45eae2090016168d2c7e9b64bec45bc52fd1eb001f24975bc3d6e6ba5",
+      "source_root_hint": ".attune/scale-snapshot-roots/5f2zgbcig5p8v2zcj9jfp62l2r11h62w-source",
+      "projected_usd": 0.67104187
+    },
+    {
+      "digest": "80b1792c54806b7f668cfe99126d221f59f280188794510cb57425a54dc9bf26",
+      "repository": "preactjs/preact",
+      "revision": "c12331064f4ea967641cd5e419204422af050fbb",
+      "source_tree_identity": "source-tree-js-ts-v1:7f16ef9ccf4c526b5ae0a7e44a9a7de02a257a0ee4d07953659c42bfd26f39d2",
+      "source_root_hint": ".attune/scale-snapshot-roots/98kx680lsaphiqiin8nz3i7bfs52yw8j-source",
+      "projected_usd": 0.30324997
+    },
+    {
+      "digest": "8708b4d618d69f1f77980c37d9d04e2c0f4f346fd094745a72cf97861d10762a",
+      "repository": "preactjs/preact",
+      "revision": "e968a5a4000dfa9bec7e8d7b26543b23def6d29d",
+      "source_tree_identity": "source-tree-js-ts-v1:73a0bf335d2cb77d9df6402b49bfe1ee4ada85dbf253d6eed43cbb8970dd8d8a",
+      "source_root_hint": ".attune/scale-snapshot-roots/mqgf7plzwd9wrrmwswq0ckq8kih2y8k6-source",
+      "projected_usd": 0.31960153
+    },
+    {
+      "digest": "8c478416d0cc6588a78c78756fd0579c1c84043c8113b9a67734eb2964f912e4",
+      "repository": "element-hq/element-web",
+      "revision": "28f7aac9a5970d27ff3757875b464a5a58a1eb1a",
+      "source_tree_identity": "source-tree-js-ts-v1:4c67337a0ad21d32c30b853c772cd639811491586c8393c5401906675de50e38",
+      "source_root_hint": ".attune/scale-snapshot-roots/5041and7yd4hr12ibmb7afwbfvzc5hil-source",
+      "projected_usd": 2.57509794
+    },
+    {
+      "digest": "8d83c99061722a8356c0ffdcb23976f0af9c6dc2d77131116cf5bff1dc031c0c",
+      "repository": "NodeBB/NodeBB",
+      "revision": "7f48edc02aa68c547d96ad7d6432ff8c1e359742",
+      "source_tree_identity": "source-tree-js-ts-v1:7e4d98c200a424c0271a6c94c1f18e3a3f3758005ef2c9221a94eab68662ece1",
+      "source_root_hint": ".attune/scale-snapshot-roots/8f6cr8zg7ml7g57679w6vz0sdqxw3m71-source",
+      "projected_usd": 0.61324038
+    },
+    {
+      "digest": "9335add06b4ab87b65c8dbffb8aae507f77073e0b89eab4dcd8e1842782e8232",
+      "repository": "vuejs/core",
+      "revision": "cb843e0be31f9e563ccfc30eca0c06f2a224b505",
+      "source_tree_identity": "source-tree-js-ts-v1:0b44611f9d0a6bdb3c0d100fbde6a8f3946bc56ba11207f4c4e5f5f5ae47ef9f",
+      "source_root_hint": ".attune/scale-snapshot-roots/7mz4kydfv8f5z2zbm6hmgjzh82z97kqk-source",
+      "projected_usd": 0.64356052
+    },
+    {
+      "digest": "945252fe6e867e4d406e48af8ec2d7e9b025c4b63a1f878af2a976945021a29b",
+      "repository": "NodeBB/NodeBB",
+      "revision": "6bbe3d1c4cefe56f81629dfa3343fd0a875d9cf1",
+      "source_tree_identity": "source-tree-js-ts-v1:5e1c0e29b7f32820f227af871449d735ddee1fc41bd71243ee283f21c7e6db98",
+      "source_root_hint": ".attune/scale-snapshot-roots/1z7nxsjn7j28sg6haxm134y1wrd40h1j-source",
+      "projected_usd": 0.67111048
+    },
+    {
+      "digest": "962ea6c586b06ccf757b5a22fc7d8eb6a6d69f549949ecd15bfe7b58d5279621",
+      "repository": "NodeBB/NodeBB",
+      "revision": "50e1a1a7ca1d95cbf82187ff685bea8cf3966cd0",
+      "source_tree_identity": "source-tree-js-ts-v1:7706a115fa7dd276895d26613958f5a94c97c061c9df522d12b359bab2d9a9c1",
+      "source_root_hint": ".attune/scale-snapshot-roots/ayp8p4sj4vrxy8nlip2c6wa1dna92aak-source",
+      "projected_usd": 0.60676909
+    },
+    {
+      "digest": "96c87d8880052c38779278f3f6da6b143c57f5f8fc252f529321c73fdfb32510",
+      "repository": "vuejs/core",
+      "revision": "3653bc0f45d6fedf84e29b64ca52584359c383c0",
+      "source_tree_identity": "source-tree-js-ts-v1:00417218678682b50e8ae6a5a31f98cb904284705c6cb8c1682b3c1cc37d5d8a",
+      "source_root_hint": ".attune/scale-snapshot-roots/a96wb59vjms2wx87nwq2z4wix3km9vms-source",
+      "projected_usd": 0.64027346
+    },
+    {
+      "digest": "975db8fff535fc05f8590cff0927c3023de27ade911bc314ae3f9a1bbc39fffe",
+      "repository": "immutable-js/immutable-js",
+      "revision": "493afba6ec17d9c999dc5a15ac80c71c6bdba1c3",
+      "source_tree_identity": "source-tree-js-ts-v1:3ce873400be177179bbf1799720ef206de9c22280ba0cf9bf74e6df05715bc9f",
+      "source_root_hint": ".attune/scale-snapshot-roots/fpqr6ffwj4fa2r6rx7qdbzni9b7gim72-source",
+      "projected_usd": 0.2008272
+    },
+    {
+      "digest": "a2fdbccfb962d71870ef586d45621dd5428a00118b09379d96cde4d4e33ef505",
+      "repository": "element-hq/element-web",
+      "revision": "16e92a4d8cb66c10c46eb9d94d9e2b82d612108a",
+      "source_tree_identity": "source-tree-js-ts-v1:025fc277cbf728d381d218865d514f3929d105b5ae60c1a2ad737a655c576541",
+      "source_root_hint": ".attune/scale-snapshot-roots/93r12v99wx0y8yfbyd6fbsk6r7xkrx9m-source",
+      "projected_usd": 2.1708924
+    },
+    {
+      "digest": "a57d483946f45be372495cb0243cf4b5903726bdfea1909b01ff6a161864659a",
+      "repository": "protonmail/webclients",
+      "revision": "782d01551257eb0a373db3b2d5c39612b87fa7e9",
+      "source_tree_identity": "source-tree-js-ts-v1:fab7fc9a01e9c44161fa90727f93e01461d4f292c1230fe5c47c0e358da9370d",
+      "source_root_hint": ".attune/scale-snapshot-roots/k43a2z4b69jmkmy03a18vqxz6dy3vdcs-source",
+      "projected_usd": 5.83792474
+    },
+    {
+      "digest": "accf5131f33552a6d04eff95d31291c1a10f47a2ac05b625004fd7e50da33881",
+      "repository": "protonmail/webclients",
+      "revision": "078178de4df1ffb606f1fc5a46bebe6c31d06b4a",
+      "source_tree_identity": "source-tree-js-ts-v1:e8be839e14f9e5edfd0e21a726552d37b489cb2d7bf75accf3b311dec25c10f8",
+      "source_root_hint": ".attune/scale-snapshot-roots/kbwdiwanfk9s1pw25gcvpp92cww3qg8i-source",
+      "projected_usd": 4.81054088
+    },
+    {
+      "digest": "af4495290bbce5f65c9fd59841254c0fb0460bda2f72ba2cb42658416c3520a6",
+      "repository": "axios/axios",
+      "revision": "85740c3e7a1fa48346dfcbd4497f463ccb1c1b05",
+      "source_tree_identity": "source-tree-js-ts-v1:c137dc7fe64304f3055e6f2bb259125b483915f4620633a94eda5a8b6fa264cd",
+      "source_root_hint": ".attune/scale-snapshot-roots/cfr11gs5p34rp0716snadrj0ivd79zc3-source",
+      "projected_usd": 0.09283576
+    },
+    {
+      "digest": "b01273c831ecb224f2c459aedf2020d5487d20ec961426026d93b25e015c4186",
+      "repository": "NodeBB/NodeBB",
+      "revision": "88aee439477603da95beb8a1cc23d43b9d6d482c",
+      "source_tree_identity": "source-tree-js-ts-v1:b9fd7c1dcb235354d41240cbc234441b9ed98b5cbe87181094a3c0875ecbc295",
+      "source_root_hint": ".attune/scale-snapshot-roots/cv7drfynvnnji2px8h58yzng2hlwzns6-source",
+      "projected_usd": 0.62966762
+    },
+    {
+      "digest": "b9dd309ede3789e905993b104f3d9ff206a8810300c413fc3d467bbb1c2a1780",
+      "repository": "facebook/docusaurus",
+      "revision": "5e9e1d051b2217b95498ecbc10f7e33f64e7a4d3",
+      "source_tree_identity": "source-tree-js-ts-v1:4986fc15aab953453236f3366943bc3ba83b72ae42a2a9ba20703a5b2cf13f1f",
+      "source_root_hint": ".attune/scale-snapshot-roots/d7i6c2vypx7i4gca81w745gravbh5k16-source",
+      "projected_usd": 1.21929605
+    },
+    {
+      "digest": "bb174a00f1122b9df7e4ebb958bbcad8e5bd9c1842bb8da9add37a00f034747d",
+      "repository": "NodeBB/NodeBB",
+      "revision": "ab5e2a416324ec56cea44b79067ba798f8394de1",
+      "source_tree_identity": "source-tree-js-ts-v1:757b33f8b94d434f5231ca82b29c29f2c7b428bee552004933eb510eb7aae11a",
+      "source_root_hint": ".attune/scale-snapshot-roots/3ffak5hl82mysbqv6cvalvg55w6w5csy-source",
+      "projected_usd": 0.60673989
+    },
+    {
+      "digest": "bc01d02e8d9bea47c2f2f8628d391c32e7b56a072143f6cdc24f027c51384113",
+      "repository": "facebook/docusaurus",
+      "revision": "0589b1475d56b0b541348aa56f201ec7c56c56d5",
+      "source_tree_identity": "source-tree-js-ts-v1:7b33f83fc5f9eaed8b21e468ff8eecbb57f491400231492d03ec0a00225ee63b",
+      "source_root_hint": ".attune/scale-snapshot-roots/2nzrwsazhgnqk7jdw9w1j2ipgf8fsiks-source",
+      "projected_usd": 1.14955083
+    },
+    {
+      "digest": "bde468c0e909ebddbe2138914e2caa0619df93dbeac23ba765a4c701c6554e80",
+      "repository": "protonmail/webclients",
+      "revision": "c35133622a7950d2aa96d1db03ad8b96ccd65df9",
+      "source_tree_identity": "source-tree-js-ts-v1:31fecb057165d0a55c7042242e07921afce0e229f3e61e6dc436cbce9609ea86",
+      "source_root_hint": ".attune/scale-snapshot-roots/4qhx5xmbj7v49map6il1rv2a3icichij-source",
+      "projected_usd": 10.08421577
+    },
+    {
+      "digest": "be4b21ddb7b9f5c36b7d8004dee3a4592466219b32245d5d58b7e012b2a6bc8d",
+      "repository": "element-hq/element-web",
+      "revision": "19b81d257f7b8b134bf5d7e555c9d5fca3570f69",
+      "source_tree_identity": "source-tree-js-ts-v1:dcce945b70cb0747125adddb28d65f37f82cf1b335ccb3ba06bbb0c63c5a6b01",
+      "source_root_hint": ".attune/scale-snapshot-roots/a333r82h0rf5w998swk01hpsfny9g0s8-source",
+      "projected_usd": 2.25889529
+    },
+    {
+      "digest": "c09c5aceb7270db20383531fa1c5f16b9e592b3592cabb62da376e8a9a41a872",
+      "repository": "mrdoob/three.js",
+      "revision": "8d9f8d50b923d5f8a673590ae138bc5d86a3a256",
+      "source_tree_identity": "source-tree-js-ts-v1:0d06fca1a4487ae818f03ce26709b278af285911ca90aa7d55d747cb623fdf71",
+      "source_root_hint": ".attune/scale-snapshot-roots/q0gs0gv74fk3pviwfvvldwv7qv1r4fgh-source",
+      "projected_usd": 1.41619922
+    },
+    {
+      "digest": "c1e88c310b4d2d00ca66f8b05c98726c0a3ccbc6285496f796377029d53b75ac",
+      "repository": "preactjs/preact",
+      "revision": "66cb6a78776b263a2fe4d1283426e699961095d2",
+      "source_tree_identity": "source-tree-js-ts-v1:b57143f5d007ef8e20ef97fb744d16206d7542a17781b664879560b1a9c82cc8",
+      "source_root_hint": ".attune/scale-snapshot-roots/asklzdlgv5zjm17ihcdq5wwjzf2f6sl7-source",
+      "projected_usd": 0.33292788
+    },
+    {
+      "digest": "c39f4787c4aad99b5033c759a3a9acb952f98d199b06d58ffdb231f058760d4e",
+      "repository": "NodeBB/NodeBB",
+      "revision": "163c977d2f4891fa7c4372b9f6a686b1fa34350f",
+      "source_tree_identity": "source-tree-js-ts-v1:dab433d08b3f7b57ba41e854c4d0705118de859b83402bcce49dd1d5d9fb5962",
+      "source_root_hint": ".attune/scale-snapshot-roots/mv68x2ad2k8iyz458pn6zjyd23jjk9fa-source",
+      "projected_usd": 0.63988902
+    },
+    {
+      "digest": "cb161a51dc34e3348154b57d2c4e6882552e5d5e5c9253dfd0e867c6aea5251b",
+      "repository": "NodeBB/NodeBB",
+      "revision": "e0149462b3f4e7c843d89701ad9edd2e744d7593",
+      "source_tree_identity": "source-tree-js-ts-v1:d5f6a31d2f245fbe233b69c1fdf3efb1a2064078e291d03496ee13dd15be5c9e",
+      "source_root_hint": ".attune/scale-snapshot-roots/9133i1c198xhg8ify29al2ap2f0284iw-source",
+      "projected_usd": 0.63990837
+    },
+    {
+      "digest": "d13b9c7923b4753ff87cabfe722a0c6b928a50ed9dffebbda85ccb8d3641d9ed",
+      "repository": "NodeBB/NodeBB",
+      "revision": "754965b572f33bfd864e98e4805e1182c1960080",
+      "source_tree_identity": "source-tree-js-ts-v1:2cca84b6f810d34983c87f5c4b0b5f95efcba0395e8c85c8134fb16d7f8e342e",
+      "source_root_hint": ".attune/scale-snapshot-roots/2n6jl2y22w3bmm7skls3ia5d3adyyj05-source",
+      "projected_usd": 0.60018726
+    },
+    {
+      "digest": "d60aff465833ebc595c2c3681e87a2a8fd3b352c0d45499f29deeec2a410e609",
+      "repository": "NodeBB/NodeBB",
+      "revision": "bbaf26cedc3462ef928906dc90db5cb98a3ec22e",
+      "source_tree_identity": "source-tree-js-ts-v1:8da4b74b7a385a0f35fac7160a36427cff4b57d7ad75c21d04a4652d3872e6e7",
+      "source_root_hint": ".attune/scale-snapshot-roots/bxfssa60ihdbd57ysqj72fq9rmjqxb8v-source",
+      "projected_usd": 0.63459722
+    },
+    {
+      "digest": "d81af495867cd7415488f697c081ce31ea2241c54bced4a8b496d67a894d2178",
+      "repository": "NodeBB/NodeBB",
+      "revision": "a2ebf53b6098635c3abcab3fd9144c766e32b350",
+      "source_tree_identity": "source-tree-js-ts-v1:bd15564b5364d263c676e620437ffc94d46a26addd3aa78d92f6064a3bb53150",
+      "source_root_hint": ".attune/scale-snapshot-roots/4v2rhs2817gnq0kbrhd94qycv321d3hb-source",
+      "projected_usd": 0.62480381
+    },
+    {
+      "digest": "d88ee1076ffd84be98861f5002bbc14c55d667dd31ac773911c490f8cd33d41d",
+      "repository": "protonmail/webclients",
+      "revision": "7264c6bd7f515ae4609be9a5f0c3032ae6fe486a",
+      "source_tree_identity": "source-tree-js-ts-v1:9face03896516dc70bf6e2ff858edeb82dfb36ff04a152dde459238d6e52cf25",
+      "source_root_hint": ".attune/scale-snapshot-roots/rbdn9ihnpi4gm58lhrngyrk3dy8dnnmx-source",
+      "projected_usd": 4.42078829
+    },
+    {
+      "digest": "e340eb56a90c936d4a5879ec37f471260b07abeb021a11a29e2f3db0d1e35520",
+      "repository": "protonmail/webclients",
+      "revision": "ebed8ea9f69216d3ce996dd88457046c0a033caf",
+      "source_tree_identity": "source-tree-js-ts-v1:05fa6c316e581b5ca9f32ee3598aa17678df733eec331231c1d0f4851ee5ec63",
+      "source_root_hint": ".attune/scale-snapshot-roots/994y7la8nlpnkzr18m7l38k472z5rd4x-source",
+      "projected_usd": 5.27649193
+    },
+    {
+      "digest": "e37e024c1844c2b2f4e4221ead91b3aa396db23e7a4fa1b6e9bbe12238bfa1dc",
+      "repository": "protonmail/webclients",
+      "revision": "e131cde781c398b38f649501cae5f03cf77e75bd",
+      "source_tree_identity": "source-tree-js-ts-v1:960b61282e6e828ab2897b62189cc59749a53186ae64e38d30bb37c12584f917",
+      "source_root_hint": ".attune/scale-snapshot-roots/cw5i0ryr5di0jzy1iijwg4h0q35c1pcj-source",
+      "projected_usd": 4.49030682
+    },
+    {
+      "digest": "e5bfbed1587a474108acc0a043858b1b6c6f118463bcafd6344a0d6e47e4af70",
+      "repository": "element-hq/element-web",
+      "revision": "8c13a0f8d48441eccdd69e41e76251478bdeab8c",
+      "source_tree_identity": "source-tree-js-ts-v1:38f22e60597d5a0acac8e2c33b8bc0087513282db98889b517c576d8376ca08d",
+      "source_root_hint": ".attune/scale-snapshot-roots/w35g47fvyws609n4gmx4v60ahm8zb761-source",
+      "projected_usd": 1.73920722
+    },
+    {
+      "digest": "e798747366601b55aa909a8724b64a2949accb6421a45f773251055d1e0313fa",
+      "repository": "protonmail/webclients",
+      "revision": "41f29d1c8dad68d693d2e3e10e5c65b6fb780142",
+      "source_tree_identity": "source-tree-js-ts-v1:423e4ebf55036804062a7547ca6fd806e64f0ff547c459c01021ad77bb540f36",
+      "source_root_hint": ".attune/scale-snapshot-roots/i1zmdz3c3s6d6ikk6rj1nf8nzmvfr0yy-source",
+      "projected_usd": 5.12990694
+    },
+    {
+      "digest": "e87245df2ce6b98863e6644cf146b0cc6992c7a5fdce6a067b997b3e75004230",
+      "repository": "protonmail/webclients",
+      "revision": "3f9771dd682247118e66e9e27bc6ef677ef5214d",
+      "source_tree_identity": "source-tree-js-ts-v1:36f3bf73fb86d65a733f2f86d1ff24ea24140bbd1baa305a5d029f4bbeef177d",
+      "source_root_hint": ".attune/scale-snapshot-roots/h3qmhlgkn72xa70pk35kyb4k4ja7d28b-source",
+      "projected_usd": 6.56373726
+    },
+    {
+      "digest": "ea7c1240175d2dd358d6d532075055d20eeb1d10169b4fd814a0f41dd009cb1e",
+      "repository": "element-hq/element-web",
+      "revision": "c2ae6c279b8c80ea5bd58f3354e5949a9fa5ee41",
+      "source_tree_identity": "source-tree-js-ts-v1:784384ef00499e70514becff9eb133ed4f709eafcc4df1ec762b6a49f73cc02e",
+      "source_root_hint": ".attune/scale-snapshot-roots/ppw71hrpvr4bq0x4252isnb24smkj591-source",
+      "projected_usd": 1.26565711
+    },
+    {
+      "digest": "ee4256c77f74bb7406db66a8f952d5caad16e8616072c92c82384dfe873797f7",
+      "repository": "NodeBB/NodeBB",
+      "revision": "f8cfe64c7e5243ac394695293d7517b0b509a4b3",
+      "source_tree_identity": "source-tree-js-ts-v1:2e13d38fe79647dd3a2561a210784e788931a5c7326b7baeeac5dc6e70d74a2a",
+      "source_root_hint": ".attune/scale-snapshot-roots/457rg3j3l9dnxkq5qcn3sam6264i59ms-source",
+      "projected_usd": 0.67104769
+    },
+    {
+      "digest": "f0d3c13774ad53f40a97c6e74c61e2705718cdd2b215560b9ede898df79c22da",
+      "repository": "immutable-js/immutable-js",
+      "revision": "77434b3cbbc8ee21206f4cc6965e1c9b09cc92b6",
+      "source_tree_identity": "source-tree-js-ts-v1:1e9b61a2423da98af5ccc3dc0fb0a93720473f2380e8c810ac1e9489e3b6571b",
+      "source_root_hint": ".attune/scale-snapshot-roots/4j1zzyippbyffnm46zc1rgclmdv58ajp-source",
+      "projected_usd": 0.20246286
+    },
+    {
+      "digest": "f4f3fb7417a2711fb1cf379687841dab491f79755758f47824920cb11ea7b0ed",
+      "repository": "NodeBB/NodeBB",
+      "revision": "6ecc791db9bfbb2a22e113e4630071da87ce3c1e",
+      "source_tree_identity": "source-tree-js-ts-v1:82d24e51d60ae5675d665cd2c5187b641f6fe9310cc188b83d31b13f2cc0a5b2",
+      "source_root_hint": ".attune/scale-snapshot-roots/xh7ca0d5kr59k4f68hkczw2mrlfr4m3l-source",
+      "projected_usd": 0.6889233
+    },
+    {
+      "digest": "f73daccf345e592d08fdcb534b830943dbe1a30c60b1b9cefbd1cbfa6d97ed33",
+      "repository": "NodeBB/NodeBB",
+      "revision": "d9e2190a6b4b6bef2d8d2558524dd124be33760f",
+      "source_tree_identity": "source-tree-js-ts-v1:5a08e5305b01f33b0a17960630aff340fa424bcc85b32d3af3d70785c863b046",
+      "source_root_hint": ".attune/scale-snapshot-roots/w69nwzlmw58g9b0j8k3kbggzyiz6fk6g-source",
+      "projected_usd": 0.6067713
+    },
+    {
+      "digest": "ff2df8a191125982b3f81183d8edba47888468c0feff1dfd555217faa858a779",
+      "repository": "element-hq/element-web",
+      "revision": "8ebdcab7d92f90422776c4390363338dcfd98ba5",
+      "source_tree_identity": "source-tree-js-ts-v1:26b4e3c3503acd2182f96bdcdc14117112d126ed68746c56eeb4936912980046",
+      "source_root_hint": ".attune/scale-snapshot-roots/d68sv88ndazcdsd6z8h4qssvrsv6ffya-source",
+      "projected_usd": 2.12110733
+    }
+  ]
+}

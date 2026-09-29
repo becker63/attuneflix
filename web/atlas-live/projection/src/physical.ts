@@ -5,8 +5,6 @@
 import type { ViewerGraph } from "./graph.ts";
 import { integer, readTable, text } from "./tables.ts";
 
-export const PHYSICAL_ASSET = "/physical.parquet";
-
 /** Exact column order of Atlas.Signature.Table.physical. */
 export const PHYSICAL_COLUMNS = [
   "signature_protocol", "atlas_protocol", "repository", "base_revision",

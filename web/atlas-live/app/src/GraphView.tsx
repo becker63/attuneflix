@@ -22,13 +22,18 @@ import {
   emphasisAtom,
   filterRevisionAtom,
   hoveredIndexAtom,
+  landscapeDepthAtom,
+  landscapeModeAtom,
+  landscapeOriginsAtom,
+  landscapeThresholdAtom,
+  measurementModeAtom,
+  measurementRevisionAtom,
   neighbourhoodDepthAtom,
-  overlayAtom,
-  overlayRevisionAtom,
   readyAtom,
-  relationMaskAtom,
-  reuseShadingAtom,
+  selectWireAtom,
+  selectedWireAtom,
   selectOnlyAtom,
+  selectLandscapeOriginAtom,
   selectedAtom,
   toggleSelectedAtom,
   visibleRelationSetAtom,
@@ -36,9 +41,11 @@ import {
 import { publish, setDiagnosticsSource } from "./diagnostics.ts";
 import { LINK_RENDER_BUDGET } from "./datasets.ts";
 import { reapplyEmphasis, setEmphasis } from "./emphasis.ts";
-import { familyMembership, familyPointColor, familyTint } from "./families.ts";
+import { familyMembership, familyPointColor } from "./families.ts";
 import { frontierLevel } from "./frontier/frontier.ts";
-import { isWireRelation } from "./frontier/wires.ts";
+import { inspectWire } from "./frontier/inspector.ts";
+import { convergenceGraph, neighborhoodIds, neighborhoodIndex } from "./frontier/parallelism.ts";
+import { isWireRelation, projectedWireWidth } from "./frontier/wires.ts";
 import {
   clearMountedCosmograph,
   mountedCosmograph,
@@ -54,12 +61,20 @@ import {
   setGraphHandlers,
   type MountedCosmograph,
 } from "./graphHandlers.ts";
-import { linkColorAccessor, linkWidthAccessor } from "./linkAccessors.ts";
 import { highlightIds } from "./neighbourhood.ts";
-import { physicalPointColor, regionReuse, reuseShadePosition, shadeOklab } from "./physical.ts";
+import { metricShadeRange, metricValue, scalarPosition, type ScalarRange } from "./metricShade.ts";
+import {
+  basePointColor,
+  physicalPointColor,
+  regionReuse,
+  reuseShadePosition,
+  shadeOklab,
+} from "./physical.ts";
 import { sortedSelection } from "./selection.ts";
 import type { GraphSession } from "./session.ts";
-import { pointColorMap } from "./vocabulary.ts";
+import { pointColorMap, relationColor } from "./vocabulary.ts";
+import { viewportWires, zoomWireBudget } from "./zoomWires.ts";
+import type { MeasurementMode } from "./atoms.ts";
 
 const styles = stylex.create({
   root: {
@@ -69,10 +84,29 @@ const styles = stylex.create({
   },
   graph: { width: "100%", height: "100%" },
   regions: { position: "absolute", pointerEvents: "none", overflow: "hidden" },
+  edgeNotice: {
+    position: "absolute",
+    right: 16,
+    top: 16,
+    maxWidth: 240,
+    paddingTop: 7,
+    paddingBottom: 7,
+    paddingLeft: 10,
+    paddingRight: 10,
+    borderRadius: 5,
+    backgroundColor: "rgba(15, 8, 14, 0.88)",
+    color: "#f5dbe9",
+    fontSize: 12,
+    lineHeight: 1.4,
+    pointerEvents: "none",
+  },
 });
 
 const POINT_COLORS = pointColorMap();
 const BACKGROUND = "#160c14";
+const HIDDEN_LINK: [number, number, number, number] = [0, 0, 0, 0];
+const REGION_LABEL_HIT_STYLE = { cursor: "pointer" } as const;
+const LANDSCAPE_MARKER_BUDGET = 1500;
 
 interface ScreenRegion {
   readonly ordinal: number;
@@ -96,6 +130,12 @@ interface LayoutAnchors {
   readonly maxY: AxisAnchor;
 }
 
+interface WireWindow {
+  readonly revision: number;
+  readonly zoomed: boolean;
+  readonly indices: ReadonlySet<number>;
+}
+
 /** Cosmograph rescales explicit point coordinates; visible point positions calibrate the regions. */
 function layoutAnchors(session: GraphSession): LayoutAnchors {
   const xy = session.layout.xy;
@@ -114,7 +154,13 @@ function layoutAnchors(session: GraphSession): LayoutAnchors {
   return { minX, maxX, minY, maxY };
 }
 
-function topLevelRegions(session: GraphSession, instance: MountedCosmograph, anchors: LayoutAnchors, shadeReuse: boolean): ScreenRegion[] {
+function topLevelRegions(
+  session: GraphSession,
+  instance: MountedCosmograph,
+  anchors: LayoutAnchors,
+  mode: MeasurementMode,
+  range: ScalarRange | null,
+): ScreenRegion[] {
   const screen = (anchor: AxisAnchor): readonly [number, number] | null => {
     const position = instance.getPointPositionByIndex(anchor.index);
     return position === undefined ? null : (instance.spaceToScreenPosition(position) ?? null);
@@ -130,7 +176,8 @@ function topLevelRegions(session: GraphSession, instance: MountedCosmograph, anc
   const xOf = (value: number): number => minX[0] + (value - anchors.minX.value) * xScale;
   const yOf = (value: number): number => minY[1] + (value - anchors.minY.value) * yScale;
   const { directoryRegions, structure } = session.layout;
-  const reuse = shadeReuse && session.physical !== null ? regionReuse(session.layout, session.physical) : null;
+  const reuse =
+    mode === "physical" && session.physical !== null ? regionReuse(session.layout, session.physical) : null;
   const regions: ScreenRegion[] = [];
   for (let ordinal = 0; ordinal < directoryRegions.length; ordinal++) {
     if (ordinal === structure.root || structure.directoryParent[ordinal] !== structure.root) continue;
@@ -141,17 +188,23 @@ function topLevelRegions(session: GraphSession, instance: MountedCosmograph, anc
     const x1 = xOf(region.x1);
     const y1 = yOf(region.y1);
     const pointIndex = session.graph.fileCount + session.graph.symbolCount + ordinal;
-    const baseColor = session.families === null ? POINT_COLORS.location : familyTint(session.families, pointIndex);
+    const baseColor = basePointColor(session.graph, session.families, pointIndex);
     const measured = reuse?.get(ordinal);
+    const metrics = range === null ? null : session.metricsFor(pointIndex);
+    const metricColor =
+      metrics !== null && range !== null && (mode === "locality" || mode === "reach")
+        ? shadeOklab(baseColor, scalarPosition(metricValue(metrics, mode), range))
+        : baseColor;
     regions.push({
       ordinal,
       x: Math.min(x0, x1),
       y: Math.min(y0, y1),
       width: Math.abs(x1 - x0),
       height: Math.abs(y1 - y0),
-      color: measured === undefined || session.physical === null
-        ? baseColor
-        : shadeOklab(baseColor, reuseShadePosition(session.physical, measured.reuseFraction)),
+      color:
+        measured === undefined || session.physical === null
+          ? metricColor
+          : shadeOklab(baseColor, reuseShadePosition(session.physical, measured.reuseFraction)),
       label: session.graph.pointLabels[pointIndex] ?? session.graph.pointPaths[pointIndex] ?? "",
     });
   }
@@ -163,7 +216,7 @@ function screenPositionOf(instance: MountedCosmograph | undefined, index: number
   const space = instance.getPointPositionByIndex(index);
   if (space === undefined) return null;
   const screen = instance.spaceToScreenPosition(space);
-  if (screen === undefined) return null;
+  if (screen == null) return null;
   const canvas = instance.getCanvas();
   if (canvas === null) return null;
   const rect = canvas.getBoundingClientRect();
@@ -174,60 +227,195 @@ export function GraphView({ session }: { session: GraphSession }) {
   const anchors = useMemo(() => layoutAnchors(session), [session]);
   const rootRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<number | null>(null);
-  const [regionLayer, setRegionLayer] = useState<{ left: number; top: number; width: number; height: number; regions: ScreenRegion[] }>({
-    left: 0, top: 0, width: 0, height: 0, regions: [],
+  const regionUpdateRef = useRef<() => void>(() => {});
+  const [regionLayer, setRegionLayer] = useState<{
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+    regions: ScreenRegion[];
+  }>({
+    left: 0,
+    top: 0,
+    width: 0,
+    height: 0,
+    regions: [],
   });
-  const regionStyle = useMemo(() => ({
-    left: regionLayer.left,
-    top: regionLayer.top,
-    width: regionLayer.width,
-    height: regionLayer.height,
-  }), [regionLayer]);
+  const [wireWindow, setWireWindow] = useState<WireWindow | null>(null);
+  const regionStyle = useMemo(
+    () => ({
+      left: regionLayer.left,
+      top: regionLayer.top,
+      width: regionLayer.width,
+      height: regionLayer.height,
+    }),
+    [regionLayer],
+  );
   const view = useSyncExternalStore(session.subscribeView, session.getViewSnapshot, session.getViewSnapshot);
   const setHoveredIndex = useSetAtom(hoveredIndexAtom);
   const setReady = useSetAtom(readyAtom);
   const setSelectedOnly = useSetAtom(selectOnlyAtom);
   const setToggleSelected = useSetAtom(toggleSelectedAtom);
+  const setLandscapeOrigin = useSetAtom(selectLandscapeOriginAtom);
+  const setLandscapeOrigins = useSetAtom(landscapeOriginsAtom);
+  const selectWire = useSetAtom(selectWireAtom);
   const clearSelection = useSetAtom(clearSelectionAtom);
 
   const hovered = useAtomValue(hoveredIndexAtom);
   const emphasis = useAtomValue(emphasisAtom);
   const selected = useAtomValue(selectedAtom);
+  const landscapeMode = useAtomValue(landscapeModeAtom);
+  const landscapeDepth = useAtomValue(landscapeDepthAtom);
+  const landscapeOrigins = useAtomValue(landscapeOriginsAtom);
+  const landscapeThreshold = useAtomValue(landscapeThresholdAtom);
+  const landscapeModeRef = useRef(landscapeMode);
+  useEffect(() => { landscapeModeRef.current = landscapeMode; }, [landscapeMode]);
+  const selectedWire = useAtomValue(selectedWireAtom);
   const visibleRelations = useAtomValue(visibleRelationSetAtom);
   const depth = useAtomValue(neighbourhoodDepthAtom);
   const filterRevision = useAtomValue(filterRevisionAtom);
-  const relationMask = useAtomValue(relationMaskAtom);
-  const overlay = useAtomValue(overlayAtom);
-  const overlayRevision = useAtomValue(overlayRevisionAtom);
+  const measurementRevision = useAtomValue(measurementRevisionAtom);
   const drill = useAtomValue(drilledFamilyEdgeAtom);
   const setDrill = useSetAtom(drillFamilyEdgeAtom);
-
   const families = session.families;
-  const shadeReuse = useAtomValue(reuseShadingAtom);
-  const pointColor = useMemo(
-    () => shadeReuse && session.physical !== null
-      ? physicalPointColor(session.graph, families, session.physical)
-      : families === null ? undefined : familyPointColor(families),
-    [shadeReuse, session, families],
+
+  // The same projected dependency graph stays on screen in every tint mode.
+  // A family-edge drill highlights its backing projected wires in that graph.
+  const drilledRows = useMemo(() => {
+    if (families === null || drill === null) return null;
+    return new Set(
+      (families.edgeContributionLinks.get(drill) ?? []).map((link) => session.graph.linkRows[link]),
+    );
+  }, [families, drill, session]);
+  const renderWires = view.projection.wires.length <= LINK_RENDER_BUDGET;
+  const currentWireWindow = wireWindow?.revision === view.revision ? wireWindow : null;
+  const wireVisible = useMemo(
+    () =>
+      (index: number): boolean => {
+        const wire = view.projection.wires[index];
+        return (
+          (renderWires || (currentWireWindow?.zoomed === true && currentWireWindow.indices.has(index))) &&
+          wire !== undefined &&
+          (drilledRows === null || wire.provenance.some((row) => drilledRows.has(row)))
+        );
+      },
+    [view.projection, renderWires, currentWireWindow, drilledRows],
   );
+  const wireColor = useMemo(
+    () =>
+      (relation: string, index = -1): string | [number, number, number, number] =>
+        wireVisible(index) ? relationColor(relation) : HIDDEN_LINK,
+    [wireVisible],
+  );
+  const wireWidth = useMemo(
+    () =>
+      (_relation: string, index = -1): number => {
+        const wire = view.projection.wires[index];
+        return wireVisible(index) && wire !== undefined ? projectedWireWidth(wire.multiplicity) : 0;
+      },
+    [view.projection, wireVisible],
+  );
+
+  const measurementMode = useAtomValue(measurementModeAtom);
+  const landscapeIndex = useMemo(
+    () => landscapeMode === "parallelism" ? neighborhoodIndex(view.projection, session.containment) : null,
+    [landscapeMode, view.projection, session.containment],
+  );
+  const landscapeA = landscapeIndex?.ordinalById.has(landscapeOrigins.a ?? "") ? landscapeOrigins.a : null;
+  const landscapeB = landscapeIndex?.ordinalById.has(landscapeOrigins.b ?? "") ? landscapeOrigins.b : null;
+  const convergingRegions = useMemo(() => {
+    if (landscapeIndex === null || landscapeA === null) return new Set<string>();
+    return convergenceGraph(landscapeIndex, landscapeDepth, landscapeThreshold).neighbors.get(landscapeA) ?? new Set<string>();
+  }, [landscapeIndex, landscapeA, landscapeDepth, landscapeThreshold]);
+  const aIds = useMemo(() => landscapeIndex !== null && landscapeA !== null
+    ? new Set(neighborhoodIds(landscapeIndex, landscapeA, landscapeDepth)) : new Set<string>(),
+  [landscapeIndex, landscapeA, landscapeDepth]);
+  const bIds = useMemo(() => landscapeIndex !== null && landscapeB !== null
+    ? new Set(neighborhoodIds(landscapeIndex, landscapeB, landscapeDepth)) : new Set<string>(),
+  [landscapeIndex, landscapeB, landscapeDepth]);
+  const landscapeMarkers = useMemo(() => {
+    if (landscapeIndex === null || landscapeA === null) return [];
+    if (regionLayer.regions.length === 0) return [];
+    const instance = mountedCosmograph();
+    if (instance === undefined) return [];
+    const shared: string[] = [];
+    const aOnly: string[] = [];
+    const bOnly: string[] = [];
+    for (const id of aIds) (bIds.has(id) ? shared : aOnly).push(id);
+    for (const id of bIds) if (!aIds.has(id)) bOnly.push(id);
+    const records: { id: string; x: number; y: number; color: string; radius: number }[] = [];
+    const seen = new Set<string>();
+    const add = (id: string, color: string, radius: number): void => {
+      if (records.length >= LANDSCAPE_MARKER_BUDGET || seen.has(id)) return;
+      const point = session.graph.indexById.get(id);
+      if (point === undefined) return;
+      const position = instance.getPointPositionByIndex(point);
+      const screen = position === undefined ? null : instance.spaceToScreenPosition(position);
+      if (screen == null) return;
+      seen.add(id);
+      records.push({ id, x: screen[0], y: screen[1], color, radius });
+    };
+    // Selected origins and shared territory have priority when the budget binds.
+    add(landscapeA, "#86c7ed", 12);
+    if (landscapeB !== null) add(landscapeB, "#dda5df", 12);
+    for (const id of shared) add(id, "#f4c783", 8);
+    for (const id of aOnly) add(id, "#86c7ed", 6);
+    for (const id of bOnly) add(id, "#dda5df", 6);
+    return records;
+  }, [landscapeIndex, landscapeA, landscapeB, aIds, bIds, regionLayer.regions, session]);
+  const projectionMetrics = session.projectionMetrics();
+  const scalarRange = useMemo(
+    () => metricShadeRange(projectionMetrics, measurementMode),
+    [projectionMetrics, measurementMode],
+  );
+  const shadingRef = useRef({ mode: measurementMode, range: scalarRange });
+  const selectRegion = (ordinal: number, additive = false): void => {
+    const index = session.graph.fileCount + session.graph.symbolCount + ordinal;
+    const id = session.pointId(index);
+    if (id === null) return;
+    selectWire(null);
+    if (landscapeMode === "parallelism") setLandscapeOrigin({ id, additive });
+    else setSelectedOnly(id);
+  };
+  const pointColor = useMemo(() => {
+    if (measurementMode === "physical" && session.physical !== null) {
+      return physicalPointColor(session.graph, families, session.physical);
+    }
+    if ((measurementMode === "locality" || measurementMode === "reach") && scalarRange !== null) {
+      const shaded = Array.from({ length: session.graph.pointCount }, (_, index) => {
+        const base = basePointColor(session.graph, families, index);
+        const metrics = session.metricsFor(index);
+        return metrics === null
+          ? base
+          : shadeOklab(base, scalarPosition(metricValue(metrics, measurementMode), scalarRange));
+      });
+      return (_value: unknown, index = -1): string =>
+        shaded[index] ?? basePointColor(session.graph, families, index);
+    }
+    return families === null ? undefined : familyPointColor(families);
+  }, [measurementMode, scalarRange, session, families]);
   const pointSize = useMemo(
-    () => (_value: unknown, index = -1): number => {
-      if (index >= session.graph.fileCount + session.graph.symbolCount) return 18;
-      if (index >= session.graph.fileCount) return 5;
-      return 9;
-    },
+    () =>
+      (_value: unknown, index = -1): number => {
+        if (index >= session.graph.fileCount + session.graph.symbolCount) return 18;
+        if (index >= session.graph.fileCount) return 5;
+        return 9;
+      },
     [session],
   );
   const labelledPoints = useMemo(
-    () => [...view.projection.nodes]
-          .toSorted((a, b) =>
+    () =>
+      [...view.projection.nodes]
+        .toSorted(
+          (a, b) =>
             (a.kind === "directory" ? 0 : a.kind === "file" ? 1 : 2) -
               (b.kind === "directory" ? 0 : b.kind === "file" ? 1 : 2) ||
-            a.depth - b.depth || a.index - b.index,
-          )
-          .filter((node) => node.kind !== "directory")
-          .slice(0, 30)
-          .map((node) => node.id),
+            a.depth - b.depth ||
+            a.index - b.index,
+        )
+        .filter((node) => node.kind !== "directory")
+        .slice(0, 30)
+        .map((node) => node.id),
     [view],
   );
 
@@ -236,6 +424,47 @@ export function GraphView({ session }: { session: GraphSession }) {
   // these handlers even before React unmounts the component.
   useEffect(() => {
     let firstBuild = true;
+    let fitZoom: number | null = null;
+    let wireTimer: number | null = null;
+    const updateWireWindow = (): void => {
+      if (wireTimer !== null) window.clearTimeout(wireTimer);
+      wireTimer = window.setTimeout(() => {
+        wireTimer = null;
+        const instance = mountedCosmograph();
+        const canvas = instance?.getCanvas();
+        if (instance === undefined || canvas == null) return;
+        const snapshot = session.getViewSnapshot();
+        if (snapshot.projection.wires.length <= LINK_RENDER_BUDGET) return;
+        const zoom = instance.getZoomLevel() ?? 1;
+        const fitted = fitZoom ?? zoom;
+        const ratio = fitted > 0 ? zoom / fitted : 1;
+        const budget = zoomWireBudget(ratio);
+        const rect = canvas.getBoundingClientRect();
+        const indices = viewportWires(
+          snapshot.projection.wires,
+          (index) => {
+            const space = instance.getPointPositionByIndex(index);
+            const screen = space === undefined ? undefined : instance.spaceToScreenPosition(space);
+            return screen == null ? null : { x: screen[0], y: screen[1] };
+          },
+          rect.width,
+          rect.height,
+          budget,
+        );
+        setWireWindow((prior) => {
+          const next: WireWindow = { revision: snapshot.revision, zoomed: budget > 0, indices };
+          if (
+            prior?.revision === next.revision &&
+            prior.zoomed === next.zoomed &&
+            prior.indices.size === next.indices.size &&
+            [...prior.indices].every((index) => next.indices.has(index))
+          ) {
+            return prior;
+          }
+          return next;
+        });
+      }, 100);
+    };
     const updateRegions = (): void => {
       if (frameRef.current !== null) return;
       frameRef.current = requestAnimationFrame(() => {
@@ -251,25 +480,37 @@ export function GraphView({ session }: { session: GraphSession }) {
           top: canvasRect.top - rootRect.top,
           width: canvasRect.width,
           height: canvasRect.height,
-          regions: topLevelRegions(session, instance, anchors, shadeReuse),
+          regions: topLevelRegions(
+            session,
+            instance,
+            anchors,
+            shadingRef.current.mode,
+            shadingRef.current.range,
+          ),
         });
       });
     };
+    regionUpdateRef.current = updateRegions;
     const rebuilt = (): void => {
       const instance = mountedCosmograph();
       // A dataset switch gets a new GraphView. A frontier change keeps the
       // user's camera so the expanded region stays in context.
-      if (firstBuild) instance?.fitView(0);
+      if (firstBuild) {
+        instance?.fitView(0);
+        fitZoom = instance?.getZoomLevel() ?? null;
+      }
       firstBuild = false;
       setReady(true);
       reapplyEmphasis();
       publish({ ready: true, camera: { zoom: instance?.getZoomLevel() ?? null } });
       updateRegions();
+      updateWireWindow();
       void session.retireOldProjectedTables();
     };
     const zoom = (): void => {
       publish({ camera: { zoom: mountedCosmograph()?.getZoomLevel() ?? null } });
       updateRegions();
+      updateWireWindow();
     };
     setGraphHandlers({
       enter: (index) => setHoveredIndex(index),
@@ -277,25 +518,53 @@ export function GraphView({ session }: { session: GraphSession }) {
       click: (index, additive) => {
         const id = session.pointId(index);
         if (id === null) return;
+        selectWire(null);
+        if (landscapeModeRef.current === "parallelism") {
+          setLandscapeOrigin({ id, additive });
+          void session.revealOrigin(id);
+          return;
+        }
         if (additive) setToggleSelected(id);
         else setSelectedOnly(id);
       },
-      linkClick: () => setDrill(null),
-      background: () => {
+      linkClick: (index) => {
+        if (session.getViewSnapshot().projection.wires[index] === undefined) return;
         clearSelection();
+        selectWire({ index, viewRevision: session.getViewSnapshot().revision });
+      },
+      background: () => {
+        if (landscapeModeRef.current === "parallelism") setLandscapeOrigins({ a: null, b: null });
+        clearSelection();
+        selectWire(null);
         setDrill(null);
       },
       rebuilt,
       zoom,
-      drag: updateRegions,
+      drag: () => {
+        updateRegions();
+        updateWireWindow();
+      },
     });
     setDiagnosticsSource({
       screenPositionOf: (index) => screenPositionOf(mountedCosmograph(), index),
+      projectedWireScreenEndpoints: (index) => {
+        const wire = session.getViewSnapshot().projection.wires[index];
+        if (wire === undefined) return null;
+        const instance = mountedCosmograph();
+        const source = screenPositionOf(instance, wire.sourceIndex);
+        const target = screenPositionOf(instance, wire.targetIndex);
+        return source === null || target === null ? null : { source, target };
+      },
       pointWithIncidentLinks: () =>
-        session.getViewSnapshot().projection.wires[0]?.sourceIndex ?? session.firstPointWithLinks(RELATION_ORDER),
+        session.getViewSnapshot().projection.wires[0]?.sourceIndex ??
+        session.firstPointWithLinks(RELATION_ORDER),
       pointIdOf: (index) => session.pointId(index),
       pointCount: () => session.pointCount,
       visibleNodeIds: () => session.graph.pointIds,
+      regionMetrics: (id) => {
+        const index = session.graph.indexById.get(id);
+        return index === undefined ? null : session.metricsFor(index);
+      },
       familyOfPoint: (index) =>
         session.families === null ? null : familyMembership(session.families, index),
     });
@@ -308,9 +577,32 @@ export function GraphView({ session }: { session: GraphSession }) {
       setGraphHandlers(null);
       setDiagnosticsSource(null);
       clearMountedCosmograph();
+      regionUpdateRef.current = () => {};
       if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+      if (wireTimer !== null) window.clearTimeout(wireTimer);
     };
-  }, [session, anchors, shadeReuse, setHoveredIndex, setReady, setSelectedOnly, setToggleSelected, clearSelection, setDrill]);
+  }, [
+    session,
+    anchors,
+    setHoveredIndex,
+    setReady,
+    setSelectedOnly,
+    setToggleSelected,
+    clearSelection,
+    selectWire,
+    setDrill,
+    setLandscapeOrigin,
+    setLandscapeOrigins,
+  ]);
+
+  useEffect(() => {
+    shadingRef.current = { mode: measurementMode, range: scalarRange };
+    regionUpdateRef.current();
+  }, [measurementMode, scalarRange]);
+
+  useEffect(() => {
+    if (selectedWire !== null && selectedWire.viewRevision !== view.revision) selectWire(null);
+  }, [selectedWire, view.revision, selectWire]);
 
   const enabledWireKey = visibleRelations.filter(isWireRelation).join(",");
   useEffect(() => {
@@ -320,8 +612,38 @@ export function GraphView({ session }: { session: GraphSession }) {
     });
   }, [session, enabledWireKey]);
 
+  // The documented clear action on the keyboard (the canvas is not focusable).
   useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === "Escape") {
+        setLandscapeOrigins({ a: null, b: null });
+        clearSelection();
+        selectWire(null);
+        setDrill(null);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [clearSelection, selectWire, setDrill, setLandscapeOrigins]);
+
+  useEffect(() => {
+    if (landscapeMode === "parallelism" && landscapeA !== null) {
+      const ids = new Set([...aIds, ...bIds, landscapeA]);
+      if (landscapeB !== null) ids.add(landscapeB);
+      setEmphasis({ points: [...ids].map((id) => session.graph.indexById.get(id)).filter((index): index is number => index !== undefined), links: [] });
+    } else setEmphasis(emphasis);
+  }, [emphasis, landscapeMode, landscapeA, landscapeB, aIds, bIds, session]);
+
+  useEffect(() => {
+    const selection = sortedSelection(selected);
+    const selectedIndex = session.graph.indexById.get(selection[selection.length - 1] ?? "");
     const projection = view.projection;
+    const selectedProjectionWire =
+      selectedWire?.viewRevision === view.revision ? projection.wires[selectedWire.index] : undefined;
+    const inspection =
+      selectedProjectionWire === undefined ? null : inspectWire(session.graph, selectedProjectionWire, 0);
     publish({
       frontier: {
         expanded: view.frontier.expanded,
@@ -330,163 +652,187 @@ export function GraphView({ session }: { session: GraphSession }) {
       },
       projected: {
         nodeCount: projection.nodes.length,
-        edgeCount: projection.wires.reduce((sum, wire) => sum + wire.multiplicity, 0),
+        edgeCount: projection.wires.reduce((sum, edge) => sum + edge.multiplicity, 0),
         aggregatedEdgeCount: projection.wires.length,
         internalizedCount: projection.internalized,
       },
-    });
-  }, [session, view]);
-
-  // The documented clear action on the keyboard (the canvas is not focusable).
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === "Escape") {
-        clearSelection();
-        setDrill(null);
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-    };
-  }, [clearSelection, setDrill]);
-
-  useEffect(() => {
-    setEmphasis(emphasis);
-  }, [emphasis]);
-
-  useEffect(() => {
-    publish({
+      selectedEdge:
+        inspection === null
+          ? null
+          : {
+              source: inspection.source,
+              target: inspection.target,
+              relation: inspection.relation,
+              multiplicity: inspection.multiplicity,
+              provenanceCount: selectedProjectionWire?.provenance.length ?? 0,
+              uniqueSources: inspection.uniqueSources,
+              uniqueTargets: inspection.uniqueTargets,
+            },
       hovered: hovered === null ? null : session.pointId(hovered),
       hoveredIndex: hovered,
       highlighted: { points: highlightIds(session.graph, emphasis), links: [...emphasis.links] },
-      selected: sortedSelection(selected),
+      selected: selection,
+      selectedRegion: selectedIndex === undefined ? null : session.metricsFor(selectedIndex),
       relationFilter: [...visibleRelations],
       depth,
       filterRevision,
-      overlay: { name: overlay, revision: overlayRevision },
+      overlay: { name: "structure", revision: 0 },
+      shading: { name: measurementMode, revision: measurementRevision },
       drilledFamilyEdge: drill,
     });
   }, [
     session,
+    view,
+    selectedWire,
     hovered,
     emphasis,
     selected,
     visibleRelations,
     depth,
     filterRevision,
-    overlay,
-    overlayRevision,
+    measurementMode,
+    measurementRevision,
     drill,
   ]);
 
+  /* oxlint-disable jsx-a11y/prefer-tag-over-role -- SVG text cannot host a native HTML button. */
   return (
     <div ref={rootRef} {...stylex.props(styles.root)}>
-    <Cosmograph
-      {...stylex.props(styles.graph)}
-      duckDBConnection={session.duckdb}
-      points={session.pointsTable}
-      links={view.linksTable}
-      pointIdBy="id"
-      pointIndexBy="index"
-      pointXBy="x"
-      pointYBy="y"
-      linkSourceBy="source"
-      linkTargetBy="target"
-      linkSourceIndexBy="sourceIndex"
-      linkTargetIndexBy="targetIndex"
-      backgroundColor={BACKGROUND}
-      enableSimulation={false}
-      fitViewOnInit
-      transitionDuration={0}
-      selectPointOnClick={false}
-      focusPointOnClick={false}
-      resetSelectionOnEmptyCanvasClick={false}
-      showLabels
-      showDynamicLabels={false}
-      showTopLabels={false}
-      showLabelsFor={labelledPoints}
-      showHoveredPointLabel
-      statusIndicatorMode={false}
-      pointColorBy="domain"
-      pointColorStrategy={pointColor === undefined ? "map" : "direct"}
-      pointColorByMap={POINT_COLORS}
-      pointColorByFn={pointColor}
-      pointSizeBy="index"
-      pointSizeByFn={pointSize}
-      pointLabelBy="label"
-      pointDefaultSize={12}
-      pointGreyoutOpacity={0.08}
-      linkGreyoutOpacity={0.02}
-      linkColorBy="relation"
-      linkColorByFn={linkColorAccessor({
-        mask: relationMask,
-        renderLinks: view.projection.wires.length <= LINK_RENDER_BUDGET,
-        overlay,
-        families,
-        exactLinkCount: Number.MAX_SAFE_INTEGER,
-        drill,
-      })}
-      linkWidthBy="relation"
-      linkWidthByFn={linkWidthAccessor({
-        mask: relationMask,
-        renderLinks: view.projection.wires.length <= LINK_RENDER_BUDGET,
-        overlay,
-        families,
-        exactLinkCount: Number.MAX_SAFE_INTEGER,
-        drill,
-      })}
-      onMount={onGraphMount}
-      onPointMouseOver={onPointMouseOver}
-      onPointMouseOut={onPointMouseOut}
-      onPointClick={onPointClick}
-      onLinkClick={onLinkClick}
-      selectLinkOnClick={false}
-      onBackgroundClick={onBackgroundClick}
-      onGraphRebuilt={onGraphRebuilt}
-      onZoom={onZoom}
-      onDrag={onGraphDrag}
-    />
-    <svg
-      aria-hidden="true"
-      {...stylex.props(styles.regions)}
-      style={regionStyle}
-      viewBox={`0 0 ${regionLayer.width} ${regionLayer.height}`}
-    >
-      {regionLayer.regions.map((region) => (
-        <g key={region.ordinal}>
-          <rect
-            data-testid="topology-region"
-            x={region.x}
-            y={region.y}
-            width={region.width}
-            height={region.height}
-            rx={3}
-            fill={region.color}
-            fillOpacity={shadeReuse && session.physical !== null ? 0.26 : 0.065}
-            stroke={region.color}
-            strokeOpacity={0.85}
-            strokeWidth={2}
-          />
-          {region.width > 34 && region.height > 24 && (
-            <text
-              x={region.x + 5}
-              y={region.y + 14}
-              fill="#f3f5f7"
-              stroke={BACKGROUND}
-              strokeWidth={3}
-              paintOrder="stroke"
-              fontSize={11}
-              fontWeight={600}
-            >
-              {region.label.length > Math.floor((region.width - 9) / 6.5)
-                ? `${region.label.slice(0, Math.max(2, Math.floor((region.width - 16) / 6.5)))}…`
-                : region.label}
-            </text>
-          )}
+      <Cosmograph
+        {...stylex.props(styles.graph)}
+        duckDBConnection={session.duckdb}
+        points={session.pointsTable}
+        links={view.linksTable}
+        pointIdBy="id"
+        pointIndexBy="index"
+        pointXBy="x"
+        pointYBy="y"
+        linkSourceBy="source"
+        linkTargetBy="target"
+        linkSourceIndexBy="sourceIndex"
+        linkTargetIndexBy="targetIndex"
+        backgroundColor={BACKGROUND}
+        enableSimulation={false}
+        fitViewOnInit
+        transitionDuration={0}
+        selectPointOnClick={false}
+        focusPointOnClick={false}
+        resetSelectionOnEmptyCanvasClick={false}
+        showLabels
+        showDynamicLabels={false}
+        showTopLabels={false}
+        showLabelsFor={labelledPoints}
+        showHoveredPointLabel
+        statusIndicatorMode={false}
+        pointColorBy="domain"
+        pointColorStrategy={pointColor === undefined ? "map" : "direct"}
+        pointColorByMap={POINT_COLORS}
+        pointColorByFn={pointColor}
+        pointSizeBy="index"
+        pointSizeByFn={pointSize}
+        pointLabelBy="label"
+        pointDefaultSize={12}
+        pointGreyoutOpacity={landscapeMode === "parallelism" ? 0.32 : 0.08}
+        linkGreyoutOpacity={landscapeMode === "parallelism" ? 0.1 : 0.02}
+        linkColorBy="relation"
+        linkColorByFn={wireColor}
+        linkWidthBy="relation"
+        linkWidthByFn={wireWidth}
+        onMount={onGraphMount}
+        onPointMouseOver={onPointMouseOver}
+        onPointMouseOut={onPointMouseOut}
+        onPointClick={onPointClick}
+        onLinkClick={onLinkClick}
+        selectLinkOnClick={false}
+        onBackgroundClick={onBackgroundClick}
+        onGraphRebuilt={onGraphRebuilt}
+        onZoom={onZoom}
+        onDrag={onGraphDrag}
+      />
+      {renderWires ? null : (
+        <output {...stylex.props(styles.edgeNotice)} data-testid="wire-visibility">
+          {currentWireWindow?.zoomed === true
+            ? `Showing ${currentWireWindow.indices.size.toLocaleString()} of ${view.projection.wires.length.toLocaleString()} connections at this zoom`
+            : `Zoom in to reveal ${view.projection.wires.length.toLocaleString()} connections`}
+        </output>
+      )}
+      <svg
+        aria-label="Repository structural regions"
+        {...stylex.props(styles.regions)}
+        style={regionStyle}
+        viewBox={`0 0 ${regionLayer.width} ${regionLayer.height}`}
+      >
+        {regionLayer.regions.map((region) => (
+          <g key={region.ordinal}>
+            <rect
+              data-testid="topology-region"
+              x={region.x}
+              y={region.y}
+              width={region.width}
+              height={region.height}
+              rx={3}
+              fill={region.color}
+              data-converging={convergingRegions.has(session.graph.pointIds[session.graph.fileCount + session.graph.symbolCount + region.ordinal] ?? "")}
+              fillOpacity={
+                measurementMode !== "structure" &&
+                (measurementMode !== "physical" || session.physical !== null)
+                  ? 0.26
+                  : 0.065
+              }
+              stroke={(() => {
+                const id = session.graph.pointIds[session.graph.fileCount + session.graph.symbolCount + region.ordinal] ?? "";
+                if (id === landscapeA) return "#86c7ed";
+                if (id === landscapeB) return "#dda5df";
+                if (aIds.has(id) && bIds.has(id)) return "#f4c783";
+                if (aIds.has(id)) return "#86c7ed";
+                if (bIds.has(id)) return "#dda5df";
+                if (convergingRegions.has(id)) return "#c5d5a3";
+                return region.color;
+              })()}
+              strokeDasharray={convergingRegions.has(session.graph.pointIds[session.graph.fileCount + session.graph.symbolCount + region.ordinal] ?? "") ? "5 3" : undefined}
+              strokeOpacity={0.85}
+              strokeWidth={landscapeMode === "parallelism" ? 3 : 2}
+            />
+            {region.width > 34 && region.height > 24 && (
+              <text
+                data-testid="topology-region-label"
+                role="button"
+                tabIndex={0}
+                aria-label={`Inspect region ${region.label}`}
+                pointerEvents="visiblePainted"
+                style={REGION_LABEL_HIT_STYLE}
+                onClick={(event) => selectRegion(region.ordinal, event.shiftKey)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    selectRegion(region.ordinal);
+                  }
+                }}
+                x={region.x + 5}
+                y={region.y + 14}
+                fill="#f3f5f7"
+                stroke={BACKGROUND}
+                strokeWidth={3}
+                paintOrder="stroke"
+                fontSize={11}
+                fontWeight={600}
+              >
+                {region.label.length > Math.floor((region.width - 9) / 6.5)
+                  ? `${region.label.slice(0, Math.max(2, Math.floor((region.width - 16) / 6.5)))}…`
+                  : region.label}
+              </text>
+            )}
+          </g>
+        ))}
+        <g aria-hidden="true" pointerEvents="none">
+          {landscapeMarkers.map((marker) => <circle key={marker.id}
+            data-testid="structural-neighborhood-marker"
+            cx={marker.x} cy={marker.y} r={marker.radius}
+            fill={marker.color} fillOpacity={0.16}
+            stroke={marker.color} strokeOpacity={0.92} strokeWidth={2} />)}
         </g>
-      ))}
-    </svg>
+      </svg>
     </div>
   );
+  /* oxlint-enable jsx-a11y/prefer-tag-over-role */
 }

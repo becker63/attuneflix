@@ -18,7 +18,7 @@
  */
 import { ProjectionError } from "./errors.ts";
 import type { ViewerGraph } from "./graph.ts";
-import type { FamiliesTableAssets } from "./manifest.ts";
+import type { FamiliesTableAssets, FamilySummary } from "./manifest.ts";
 import { integer, optionalInteger, readTable, text } from "./tables.ts";
 
 /** The family edge relations: imports at file grain, calls at symbol grain. */
@@ -336,6 +336,47 @@ async function decodeTable(
     }
   }
   return rows;
+}
+
+/** Small, exact manifest summary without loading every family's other tables. */
+export async function summarizeFamilyTable(file: ArrayBuffer, graph: ViewerGraph): Promise<FamilySummary> {
+  const rows = await decodeTable(file, "families");
+  let members = 0;
+  let largestMembers = 0;
+  for (const [ordinal, row] of rows.entries()) {
+    if (
+      text(row, "families", "snapshot_id") !== graph.provenance.snapshotId ||
+      integer(row, "families", "family") !== ordinal
+    ) {
+      throw new ProjectionError({
+        kind: "invalid-schema",
+        table: "families",
+        message: `row ${ordinal} does not belong to this world's ordered families`,
+      });
+    }
+    const count = integer(row, "families", "members");
+    if (count <= 0) {
+      throw new ProjectionError({
+        kind: "invalid-schema",
+        table: "families",
+        message: `family ${ordinal} is empty`,
+      });
+    }
+    members += count;
+    largestMembers = Math.max(largestMembers, count);
+  }
+  if (members !== graph.symbolCount) {
+    throw new ProjectionError({
+      kind: "invalid-schema",
+      table: "families",
+      message: `families cover ${members} members, expected ${graph.symbolCount} symbols`,
+    });
+  }
+  return {
+    count: rows.length,
+    largestMembers,
+    largestShare: graph.symbolCount === 0 ? 0 : largestMembers / graph.symbolCount,
+  };
 }
 
 /** Decodes the five families tables, checking each table's declared schema. */

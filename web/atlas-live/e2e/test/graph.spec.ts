@@ -96,7 +96,7 @@ test("default world renders non-blank, responds to hover, stays same-origin", as
   expect(styles.headerPaddingTop, "the header padding comes from the stylesheet").toBe("10px");
   expect(styles.mainDisplay, "main is the flex column the stylesheet sets").toBe("flex");
   expect(styles.graphPosition, "the graph region is positioned by the stylesheet").toBe("relative");
-  expect(styles.asideWidth, "the sidebar has the stylesheet width").toBe("280px");
+  expect(styles.asideWidth, "the sidebar has the stylesheet width").toBe("360px");
   expect(stylesheetResponses, "at least one stylesheet request was made").not.toEqual([]);
   for (const response of stylesheetResponses) {
     expect(response.status, `stylesheet ${response.url} responds 200`).toBe(200);

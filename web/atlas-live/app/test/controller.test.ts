@@ -5,9 +5,12 @@ import { buildViewerArrow } from "../../projection/src/arrow.ts";
 import { SessionController, type SessionDeps } from "../src/controller.ts";
 import { installDiagnostics } from "../src/diagnostics.ts";
 import type { LocalDuckDB } from "../src/duckdb.ts";
+import { neighborhoodIndex } from "../src/frontier/parallelism.ts";
+import { GraphSession } from "../src/session.ts";
 import { structuralLayout } from "../src/structure.ts";
 import type { LoadedWorld, WorldManifest, WorldManifestEntry } from "../src/world.ts";
 import { fixtureGraph } from "./graphFixture.ts";
+import { FIXTURE_IDS as FRONTIER_ID, frontierFixtureGraph } from "./frontierFixture.ts";
 
 /** A DuckDB stand-in that records the tables it holds and the SQL run against it. */
 class FakeDuckDB {
@@ -213,6 +216,30 @@ describe("SessionController lifecycle", () => {
     expect(h.duckdb.tables.has(expanded.linksTable)).toBe(false);
     expect(h.duckdb.tables.has(collapsed.linksTable)).toBe(true);
     expect(h.duckdb.tables.has(session.linksTable)).toBe(true);
+  });
+
+  it("reveals a directly selected hidden file or symbol without moving the layout", async () => {
+    const graph = frontierFixtureGraph();
+    const duckdb = new FakeDuckDB();
+    const session = new GraphSession({
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the session uses only the FakeDuckDB connection methods.
+      duckdb: duckdb as unknown as LocalDuckDB,
+      entry: entry("a", "acme/frontier-fixture", graph.pointCount),
+      graph,
+      layout: structuralLayout(graph),
+    });
+    const identity = session.layout.identity;
+    expect(session.getViewSnapshot().projection.nodes.some((node) => node.id === FRONTIER_ID.xFile)).toBe(false);
+    await session.revealOrigin(FRONTIER_ID.xFile);
+    const fileView = session.getViewSnapshot();
+    expect(fileView.projection.nodes.some((node) => node.id === FRONTIER_ID.xFile)).toBe(true);
+    expect(neighborhoodIndex(fileView.projection, session.containment).ordinalById.has(FRONTIER_ID.xFile)).toBe(true);
+    await session.revealOrigin(FRONTIER_ID.zaSym);
+    expect(session.getViewSnapshot().projection.nodes.some((node) => node.id === FRONTIER_ID.zaSym)).toBe(true);
+    expect(session.getViewSnapshot().frontier.expanded).toEqual(expect.arrayContaining([
+      FRONTIER_ID.a, FRONTIER_ID.sub, FRONTIER_ID.zFile,
+    ]));
+    expect(session.layout.identity).toBe(identity);
   });
 
   it("a failed switch keeps the previous session usable and reports a readable error", async () => {

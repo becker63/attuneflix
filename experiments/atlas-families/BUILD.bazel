@@ -1,15 +1,26 @@
 load("//test/build:flix.bzl", "checked_test", "flix_check", "flix_fatjar")
+load(":evidence_archive.bzl", "families_evidence_archives")
 load(
     ":families.bzl",
     "families_acquisitions",
     "families_clusterings",
     "families_exports",
     "families_inventories",
+    "families_issue_blindness_tests",
+    "families_launchers",
     "families_method",
     "families_protocol",
 )
 
 package(default_visibility = ["//visibility:public"])
+
+exports_files([
+    "acquisition_population.json",
+    "acquire_population.py",
+    "acquired_worlds.bzl",
+    "evidence_cas.py",
+    "seal_evidence.py",
+])
 
 # The experiment's own production sources, in one declaration so the tool and
 # the law check compile the same closure. `src/` mirrors the repository `src/`
@@ -102,6 +113,23 @@ java_binary(
     runtime_deps = [":families_flix"],
 )
 
+# Pack recorded raw envelopes and typed tables into one immutable BuildBuddy
+# artifact per sealed snapshot. The output is derivable from declared local
+# evidence; hydration from the remote CAS is an explicit operator step.
+java_binary(
+    name = "evidence_archive_tool",
+    srcs = ["native/EvidenceArchive.java"],
+    main_class = "attune.families.EvidenceArchive",
+)
+
+java_binary(
+    name = "clustering_report_merge_tool",
+    srcs = ["native/ClusteringReportMerge.java"],
+    main_class = "attune.families.ClusteringReportMerge",
+)
+
+families_evidence_archives(tool = ":evidence_archive_tool")
+
 # One typed inventory per representative frozen world, and the Markdown
 # projection `report_test` pins REPORT.md against.
 families_inventories(
@@ -117,6 +145,8 @@ families_protocol(
     name = "protocol_constants",
     tool = ":families_tool",
 )
+
+families_launchers(tool = ":families_tool")
 
 ACQUIRED_EVIDENCE = families_acquisitions(
     name = "acquisition_report",
@@ -135,6 +165,7 @@ families_method(
 
 CLUSTERING_LAWS = families_clusterings(
     name = "clustering_report",
+    merge_tool = ":clustering_report_merge_tool",
     tool = ":families_tool",
 )
 
@@ -206,18 +237,12 @@ sh_test(
     ],
 )
 
-# The issue-blindness law: the tool's sources name no Localization module,
-# issue, or gold space, and every retained request is a families state or a
-# document batch naming no issue or gold field.
-sh_test(
+# The issue-blindness law runs once per acquired world under one suite name:
+# the tool's sources name no Localization, issue, or gold input, and every
+# retained request is a families state or document batch naming none of them.
+families_issue_blindness_tests(
     name = "issue_blindness_test",
-    size = "small",
-    srcs = ["issue_blindness_test.sh"],
-    data = [
-        "Main.flix",
-        ":families_sources",
-        "@bazel_tools//tools/bash/runfiles",
-    ] + ACQUIRED_EVIDENCE,
+    evidence = ACQUIRED_EVIDENCE,
 )
 
 # Research law surface for the families experiment; aggregated by the root

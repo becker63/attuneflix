@@ -46,3 +46,55 @@ build:buildbuddy-rbe-arm64 --extra_execution_platforms=@buildbuddy_toolchain//:p
 # whose coreutils and git live only under /run/current-system/sw/bin; the extra
 # entry is inert on the Ubuntu executors.
 test:buildbuddy-rbe-arm64 --test_env=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/run/current-system/sw/bin
+
+# Full-census physical measurement is remote only. BuildBuddy held all 160
+# requested actions on 2026-09-29; local JVM execution is forbidden by the
+# physical rules' no-local requirement. The 256-job follow-up preserves the
+# completed action keys while reducing the batch tail.
+build:atlas-live-physical-population --config=buildbuddy-rbe-arm64
+build:atlas-live-physical-population --spawn_strategy=remote
+build:atlas-live-physical-population --jobs=256
+build:atlas-live-physical-population --remote_download_minimal
+
+# Archives preserve recorded Families raw inputs in BuildBuddy. The archive
+# build transfers many small source files; allow a longer CAS call timeout and
+# bound concurrency independently of the physical population build.
+build:atlas-families-evidence-archive --config=buildbuddy-rbe-arm64
+build:atlas-families-evidence-archive --spawn_strategy=remote
+build:atlas-families-evidence-archive --remote_timeout=30m
+build:atlas-families-evidence-archive --remote_download_toplevel
+# Each raw evidence archive has thousands of input files. Concurrent uploads
+# hit BuildBuddy bulk-transfer pipe failures on large worlds; serialize this
+# preservation stage while acquisition and physical computation retain their
+# separate parallelism settings.
+build:atlas-families-evidence-archive --jobs=1
+
+# Atlas Live's browser/TypeScript actions stay on this host. Flix compilation,
+# family derivation, and physical measurements run on arm64 BuildBuddy.
+# One local action at a time protects the 15 GiB / no-swap graphical session.
+build:atlas-live-mixed --config=buildbuddy-rbe-arm64
+build:atlas-live-mixed --spawn_strategy=sandboxed
+build:atlas-live-mixed --strategy=FlixFatJar=remote
+build:atlas-live-mixed --strategy=FlixCheck=remote
+build:atlas-live-mixed --strategy=FamiliesInventory=remote
+build:atlas-live-mixed --strategy=FamiliesInventoryReport=remote
+build:atlas-live-mixed --strategy=FamiliesProtocol=remote
+build:atlas-live-mixed --strategy=FamiliesReplay=remote
+build:atlas-live-mixed --strategy=FamiliesAcquisitionReport=remote
+build:atlas-live-mixed --strategy=FamiliesCluster=remote
+build:atlas-live-mixed --strategy=FamiliesClusteringReport=remote
+build:atlas-live-mixed --strategy=FamiliesMethod=remote
+build:atlas-live-mixed --strategy=FamiliesEdges=remote
+build:atlas-live-mixed --strategy=FamiliesExport=remote
+build:atlas-live-mixed --strategy=FamiliesExportReport=remote
+build:atlas-live-mixed --strategy=AtlasLivePhysicalShard=remote
+build:atlas-live-mixed --strategy=AtlasLivePhysicalMerge=remote
+build:atlas-live-mixed --strategy=AtlasSignature=remote
+build:atlas-live-mixed --strategy=AtlasSignatureSummary=remote
+build:atlas-live-mixed --strategy=AtlasAggregate=remote
+build:atlas-live-mixed --strategy=AtlasReport=remote
+build:atlas-live-mixed --strategy=Vite=local
+build:atlas-live-mixed --jobs=1
+build:atlas-live-mixed --action_env=NODE_OPTIONS=--max-old-space-size=2048
+build:atlas-live-mixed --noremote_upload_local_results
+test:atlas-live-mixed --test_env=NODE_OPTIONS=--max-old-space-size=2048

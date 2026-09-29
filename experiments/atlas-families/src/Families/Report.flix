@@ -56,14 +56,14 @@ pub mod Families.Report {
         let entries = Vector.flatMap(value -> Vector.map(entry -> (value#repository, entry), value#ledgers), values);
         let total = Vector.foldLeft((sum, pair) -> sum + snd(pair)#costUsd, 0.0, entries);
         let ledger = Vector.append(Vector.append(Vector#{
-            "| repository | space | request | requests | cost reported | input tokens | output tokens | cost USD | unit USD | projected USD |",
-            "|---|---|---|---:|---:|---:|---:|---:|---:|---:|"
+            "| repository | space | request | requests | cost reported | input tokens | output tokens | cost USD | unit USD | projected USD | envelope USD |",
+            "|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|"
         }, Vector.map(match (repository, entry) ->
             "| ${repository} | `${entry#space}` | ${entry#kind} | ${entry#requests} | ${entry#reported} | " +
-            "${entry#inputTokens} | ${entry#outputTokens} | ${usd(entry#costUsd)} | ${usd(entry#unitCostUsd)} | ${usd(entry#projectedUsd)} |",
+            "${entry#inputTokens} | ${entry#outputTokens} | ${usd(entry#costUsd)} | ${usd(entry#unitCostUsd)} | ${usd(entry#projectedUsd)} | ${usd(entry#envelopeUsd)} |",
             entries)), Vector#{
             "| **total** | | | ${Vector.foldLeft((sum, pair) -> sum + snd(pair)#requests, 0, entries)} | | | | " +
-            "${usd(total)} | | ${usd(Vector.foldLeft((sum, pair) -> sum + snd(pair)#projectedUsd, 0.0, entries))} |"
+            "${usd(total)} | | ${usd(Vector.foldLeft((sum, pair) -> sum + snd(pair)#projectedUsd, 0.0, entries))} | |"
         });
         let replay = Vector.append(Vector#{
             "| repository | table | rows | recorded identity | replayed identity | equal |",
@@ -76,7 +76,7 @@ pub mod Families.Report {
             "- ${value#repository}: ${value#proof#served} of ${value#proof#retained} retained exchanges served, " +
             "${value#proof#providerCalls} provider calls, key absent: ${if (value#proof#keyAbsent) "yes" else "no"}, " +
             "exact: ${if (Families.Replay.exact(value#proof)) "yes" else "no"}.", values);
-        let envelope = "Pass envelope: ${usd(Families.Protocol.envelopeUsd())} USD. Measured total: ${usd(total)} USD.";
+        let envelope = "Current pass cap: ${usd(Families.Protocol.envelopeUsd())} USD. Measured total: ${usd(total)} USD.";
         Vector.join("\n", Vector.flatten(Vector#{
             Vector#{"**Recorded evidence**", ""}, counts,
             Vector#{"", "**Cost ledger** (provider-reported usage and cost)", ""}, ledger,
@@ -109,8 +109,10 @@ pub mod Families.Report {
             ("encoding format", Families.Protocol.encodingFormat()),
             ("ledger protocol", Families.Protocol.ledger()),
             ("pass envelope USD", usd(Families.Protocol.envelopeUsd())),
+            ("historical Preact envelope USD", usd(Families.Protocol.legacyEnvelopeUsd())),
             ("embedding USD per token", BigDecimal.valueOf(Families.Protocol.embeddingUsdPerToken()).setScale(8, RoundingMode.HALF_EVEN).toPlainString()),
-            ("decision USD bound", usd(Families.Protocol.decisionUsdBound()))
+            ("decision USD bound", usd(Families.Protocol.decisionUsdBound())),
+            ("bounded seeds per pass", Int32.toString(Families.Protocol.boundedSeedsPerPass()))
         };
         Vector.join("\n", Vector.flatten(Vector#{
             Vector#{"| constant | value |", "|---|---|"},

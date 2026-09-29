@@ -9,34 +9,44 @@ import * as stylex from "@stylexjs/stylex";
 import { useAtomValue } from "jotai";
 
 import { activeLegendAtom } from "./atoms.ts";
-import { swatchStyle } from "./swatch.ts";
+import { accentStyle, swatchStyle } from "./swatch.ts";
+import type { LegendEntry } from "./vocabulary.ts";
 
 const styles = stylex.create({
   root: {
     display: "flex",
     flexDirection: "column",
-    gap: 6,
+    gap: 9,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopStyle: "solid",
+    borderTopColor: "rgba(255, 255, 255, 0.18)",
   },
   heading: {
+    fontSize: 13,
+    fontWeight: 700,
+    color: "#fff4fa",
+  },
+  subheading: {
+    marginTop: 4,
     fontSize: 12,
     fontWeight: 600,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-    color: "#9ca3af",
+    color: "#e8c5d8",
   },
   entry: {
     display: "flex",
     alignItems: "center",
     gap: 8,
-    fontSize: 12,
-    color: "#e5e7eb",
+    minHeight: 25,
+    fontSize: 13,
+    color: "#f1e7ee",
   },
   disabledEntry: {
-    color: "#6b7280",
+    color: "#a69aa3",
   },
   disabledLabel: {
     marginLeft: "auto",
-    fontSize: 10,
+    fontSize: 11,
     textTransform: "uppercase",
     letterSpacing: 0.5,
     color: "#9ca3af",
@@ -45,9 +55,9 @@ const styles = stylex.create({
     opacity: 0.3,
   },
   swatch: {
-    width: 14,
-    height: 10,
-    borderWidth: 2,
+    width: 22,
+    height: 14,
+    borderWidth: 3,
     flexShrink: 0,
   },
   solid: {
@@ -60,9 +70,10 @@ const styles = stylex.create({
     borderStyle: "dotted",
   },
   glyph: {
-    width: 14,
+    width: 22,
     textAlign: "center",
-    color: "#9ca3af",
+    fontSize: 17,
+    fontWeight: 700,
   },
   label: {
     textTransform: "capitalize",
@@ -75,37 +86,41 @@ const PATTERN_STYLES = {
   dotted: styles.dotted,
 };
 
+function LegendRow({ entry }: { entry: LegendEntry }) {
+  const disabled = entry.disabled === true;
+  return (
+    <div
+      aria-disabled={disabled}
+      data-disabled={disabled ? "true" : "false"}
+      {...stylex.props(styles.entry, disabled && styles.disabledEntry)}
+    >
+      <span
+        aria-hidden="true"
+        {...stylex.props(styles.swatch, PATTERN_STYLES[entry.pattern], disabled && styles.disabledSwatch)}
+        style={swatchStyle(entry.color)}
+      />
+      <span aria-hidden="true" {...stylex.props(styles.glyph)} style={accentStyle(entry.color)}>
+        {entry.glyph}
+      </span>
+      <span {...stylex.props(styles.label)}>{entry.label}</span>
+      {disabled ? <span {...stylex.props(styles.disabledLabel)}>off</span> : null}
+    </div>
+  );
+}
+
 export function Legend() {
   const entries = useAtomValue(activeLegendAtom);
   return (
     <section aria-label="Legend" {...stylex.props(styles.root)}>
       <h2 {...stylex.props(styles.heading)}>Legend</h2>
-      {entries.map((entry) => {
-        const disabled = entry.disabled === true;
-        return (
-          <div
-            key={`${entry.kind}:${entry.key}`}
-            aria-disabled={disabled}
-            data-disabled={disabled ? "true" : "false"}
-            {...stylex.props(styles.entry, disabled && styles.disabledEntry)}
-          >
-            <span
-              aria-hidden="true"
-              {...stylex.props(
-                styles.swatch,
-                PATTERN_STYLES[entry.pattern],
-                disabled && styles.disabledSwatch,
-              )}
-              style={swatchStyle(entry.color)}
-            />
-            <span {...stylex.props(styles.glyph)}>{entry.glyph}</span>
-            <span {...stylex.props(styles.label)}>
-              {entry.kind === "relation" ? `relation ${entry.label}` : entry.label}
-            </span>
-            {disabled ? <span {...stylex.props(styles.disabledLabel)}>off</span> : null}
-          </div>
-        );
-      })}
+      <span {...stylex.props(styles.subheading)}>Nodes</span>
+      {entries.filter((entry) => entry.kind === "category").map((entry) => (
+        <LegendRow key={entry.key} entry={entry} />
+      ))}
+      <span {...stylex.props(styles.subheading)}>Relations</span>
+      {entries.filter((entry) => entry.kind === "relation").map((entry) => (
+        <LegendRow key={entry.key} entry={entry} />
+      ))}
     </section>
   );
 }

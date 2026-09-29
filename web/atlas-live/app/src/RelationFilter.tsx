@@ -9,8 +9,9 @@ import { Toggle } from "@base-ui/react/toggle";
 import { ToggleGroup } from "@base-ui/react/toggle-group";
 import * as stylex from "@stylexjs/stylex";
 import { useAtomValue, useSetAtom } from "jotai";
+import { useMemo } from "react";
 
-import { RELATION_ORDER, type Relation } from "../../projection/src/relation.ts";
+import type { Relation } from "../../projection/src/relation.ts";
 import { setRelationMaskAtom, visibleRelationSetAtom } from "./atoms.ts";
 import { relationMask } from "./selection.ts";
 import { accentStyle } from "./swatch.ts";
@@ -20,47 +21,64 @@ const styles = stylex.create({
   root: {
     display: "flex",
     flexDirection: "column",
-    gap: 6,
+    gap: 8,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopStyle: "solid",
+    borderTopColor: "rgba(255, 255, 255, 0.18)",
   },
   heading: {
+    fontSize: 13,
+    fontWeight: 700,
+    color: "#fff4fa",
+  },
+  subheading: {
+    marginTop: 10,
     fontSize: 12,
     fontWeight: 600,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-    color: "#9ca3af",
+    color: "#e8c5d8",
+  },
+  note: {
+    fontSize: 12,
+    lineHeight: 1.4,
+    color: "#c9bac5",
   },
   group: {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: 6,
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: 8,
   },
   toggle: {
     display: "inline-flex",
     alignItems: "center",
-    gap: 6,
-    fontSize: 12,
+    gap: 8,
+    width: "100%",
+    minHeight: 38,
+    fontSize: 13,
     fontFamily: "inherit",
-    paddingTop: 4,
-    paddingBottom: 4,
-    paddingLeft: 8,
-    paddingRight: 8,
+    fontWeight: 600,
+    paddingTop: 7,
+    paddingBottom: 7,
+    paddingLeft: 10,
+    paddingRight: 10,
     borderRadius: 6,
     borderWidth: 1,
     borderStyle: "solid",
-    backgroundColor: "rgba(255, 255, 255, 0.06)",
+    backgroundColor: "rgba(255, 255, 255, 0.04)",
     cursor: "pointer",
-    opacity: 0.45,
-    textDecoration: "line-through",
+    opacity: 0.6,
   },
   pressed: {
-    backgroundColor: "rgba(255, 255, 255, 0.14)",
+    backgroundColor: "rgba(255, 255, 255, 0.12)",
     opacity: 1,
-    textDecoration: "none",
   },
   glyph: {
     fontVariantNumeric: "tabular-nums",
   },
 });
+
+const WIRE_RELATIONS: readonly Relation[] = ["imports", "calls"];
+const PATH_RELATIONS: readonly Relation[] = ["defines", "parent"];
 
 function asRelations(values: readonly string[]): Relation[] {
   const relations: Relation[] = [];
@@ -72,38 +90,54 @@ function asRelations(values: readonly string[]): Relation[] {
 
 export function RelationFilter() {
   const enabled = useAtomValue(visibleRelationSetAtom);
+  const wireValues = useMemo(() => enabled.filter((relation) => WIRE_RELATIONS.includes(relation)), [enabled]);
+  const pathValues = useMemo(() => enabled.filter((relation) => PATH_RELATIONS.includes(relation)), [enabled]);
   const setMask = useSetAtom(setRelationMaskAtom);
-  const change = (values: string[]): void => {
-    setMask(relationMask(asRelations(values)));
+  const change = (group: readonly Relation[], values: string[]): void => {
+    setMask(relationMask([...enabled.filter((relation) => !group.includes(relation)), ...asRelations(values)]));
   };
+  const toggles = (group: readonly Relation[]) =>
+    group.map((relation) => {
+      const style = relationStyle(relation);
+      const pressed = enabled.includes(relation);
+      return (
+        <Toggle
+          key={relation}
+          value={relation}
+          aria-label={`${style.label} edges`}
+          {...stylex.props(styles.toggle, pressed && styles.pressed)}
+          style={accentStyle(style.color)}
+        >
+          <span aria-hidden="true" {...stylex.props(styles.glyph)}>
+            {style.glyph}
+          </span>
+          {style.label}
+        </Toggle>
+      );
+    });
   return (
     <section aria-label="Relation filter" {...stylex.props(styles.root)}>
-      <span {...stylex.props(styles.heading)}>Relations</span>
+      <span {...stylex.props(styles.heading)}>Connections</span>
+      <span {...stylex.props(styles.note)}>Colored wires between regions and entities.</span>
       <ToggleGroup
         multiple
-        value={enabled}
-        onValueChange={change}
-        aria-label="Enabled relations"
+        value={wireValues}
+        onValueChange={(values) => change(WIRE_RELATIONS, values)}
+        aria-label="Visible connections"
         {...stylex.props(styles.group)}
       >
-        {RELATION_ORDER.map((relation) => {
-          const style = relationStyle(relation);
-          const pressed = enabled.includes(relation);
-          return (
-            <Toggle
-              key={relation}
-              value={relation}
-              aria-label={`${style.label} edges`}
-              {...stylex.props(styles.toggle, pressed && styles.pressed)}
-              style={accentStyle(style.color)}
-            >
-              <span aria-hidden="true" {...stylex.props(styles.glyph)}>
-                {style.glyph}
-              </span>
-              {style.label}
-            </Toggle>
-          );
-        })}
+        {toggles(WIRE_RELATIONS)}
+      </ToggleGroup>
+      <span {...stylex.props(styles.subheading)}>Inspection paths</span>
+      <span {...stylex.props(styles.note)}>Definition and parent facts guide highlights; they do not draw wires.</span>
+      <ToggleGroup
+        multiple
+        value={pathValues}
+        onValueChange={(values) => change(PATH_RELATIONS, values)}
+        aria-label="Inspection paths"
+        {...stylex.props(styles.group)}
+      >
+        {toggles(PATH_RELATIONS)}
       </ToggleGroup>
     </section>
   );

@@ -129,13 +129,25 @@ mod Atlas {
         repository: Repository.World,
         input: State,
         family: Vector[Program]
-    ): Result[String, Evaluation] = region rc {
-        let physical = Repository.Physical.fromBasis(
+    ): Result[String, Evaluation] =
+        evaluateOn(physical(repository), input, family)
+
+    /// The immutable physical index is a pure function of the admitted basis.
+    /// Population measurements can share it across independent seed queries;
+    /// each query still has its own transition memo and exact counters.
+    pub def physical(repository: Repository.World): Repository.Physical.World =
+        Repository.Physical.fromBasis(
             repository#defines,
             repository#imports,
             repository#calls,
             repository#parents
-        );
+        )
+
+    pub def evaluateOn(
+        physical: Repository.Physical.World,
+        input: State,
+        family: Vector[Program]
+    ): Result[String, Evaluation] = region rc {
         let memos: Memos[rc] = {
             transitions = MutHashMap.empty(rc),
             physicalTransitions = Ref.fresh(rc, 0),
@@ -148,6 +160,62 @@ mod Atlas {
                 transitionReuses = Ref.get(memos#transitionReuses)
             })
     }
+
+    /// Count the physical work of the complete typed grammar without walking
+    /// every syntactic route. At each depth, equal exact frontiers have the
+    /// same three possible transitions, so expanding each frontier once
+    /// discovers precisely the transition keys the route evaluator memoizes.
+    /// Route requests are the grammar's fixed sum of depth times route count;
+    /// every request beyond a distinct key is exactly one memo reuse.
+    pub def completeWork(
+        physical: Repository.Physical.World,
+        input: State,
+        maxDepth: Int32
+    ): { logicalPrograms = Int32, uniqueStates = Int32, physicalTransitions = Int32, transitionReuses = Int32 } = {
+        let layers = completeLayers(
+            physical, Set.singleton(input), Set.empty(), Set.empty(), 1, maxDepth);
+        let evaluations = Set.size(layers#transitions);
+        {
+            logicalPrograms = counts(maxDepth)#logical,
+            uniqueStates = Set.size(layers#states),
+            physicalTransitions = evaluations,
+            transitionReuses = completeRequests(1, 1, maxDepth, 0) - evaluations
+        }
+    }
+
+    def completeLayers(
+        physical: Repository.Physical.World,
+        frontier: Set[State],
+        states: Set[State],
+        transitions: Set[(Atom, State)],
+        depth: Int32,
+        maxDepth: Int32
+    ): { states = Set[State], transitions = Set[(Atom, State)] } =
+        if (depth > maxDepth)
+            { states = states, transitions = transitions }
+        else {
+            let pairs = Set.toVector(frontier)
+                |> Vector.flatMap(state -> Vector.map(atom -> (atom, state),
+                    compatible(stateDomain(state))));
+            let outputs = Vector.map(match (atom, state) -> apply(physical, atom, state), pairs)
+                |> Vector.toSet;
+            completeLayers(
+                physical,
+                outputs,
+                Set.union(states, outputs),
+                Set.union(transitions, Vector.toSet(pairs)),
+                depth + 1,
+                maxDepth
+            )
+        }
+
+    def completeRequests(depth: Int32, previous: Int32, maxDepth: Int32, total: Int32): Int32 =
+        if (depth > maxDepth) total
+        else {
+            let programsAtDepth = previous * 3;
+            completeRequests(depth + 1, programsAtDepth, maxDepth,
+                total + depth * programsAtDepth)
+        }
 
     def loop(remaining: Int32, symbols: Int32, files: Int32, logical: Int32, complete: Int32): Counts =
         if (remaining <= 0) {

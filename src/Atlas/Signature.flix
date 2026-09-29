@@ -67,6 +67,41 @@ pub mod Atlas.Signature {
         transitionReuses    = Int32
     }
 
+    /// The physical table's exact fields, without constructing thousands of
+    /// route observations that the all-seed view does not retain.
+    pub type alias PhysicalMetrics = {
+        logicalPrograms     = Int32,
+        uniqueStates        = Int32,
+        physicalTransitions = Int32,
+        transitionReuses    = Int32
+    }
+
+    /// Identical evaluator, grammar, seed state, and per-seed memo as `compute`.
+    /// The immutable basis index and grammar are reused across a shard's seeds.
+    pub def physicalMetrics(
+        physical: Repository.Physical.World,
+        input: Atlas.State,
+        family: Vector[Atlas.Program]
+    ): Result[String, PhysicalMetrics] =
+        Atlas.evaluateOn(physical, input, family)
+            |> Result.map(evaluation -> {
+                logicalPrograms = Vector.length(family),
+                uniqueStates = Vector.toSet(evaluation#outputs) |> Set.size,
+                physicalTransitions = evaluation#physicalTransitions,
+                transitionReuses = evaluation#transitionReuses
+            })
+
+    /// Exact counters for the complete depth-bounded typed family. This
+    /// collapses equal intermediate frontiers while preserving the original
+    /// evaluator's per-seed transition keys and request multiplicity.
+    pub def physicalMetricsComplete(
+        physical: Repository.Physical.World,
+        input: Atlas.State,
+        depth: Int32
+    ): Result[String, PhysicalMetrics] =
+        if (depth < 1) Err("Atlas physical depth must be positive")
+        else Ok(Atlas.completeWork(physical, input, depth))
+
     pub def compute(
         repository: Repository.World,
         input: Atlas.State,

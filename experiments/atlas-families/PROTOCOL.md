@@ -7,6 +7,8 @@ experiment clusters over: Jev family-formation decisions
 owned by `src/Families/Protocol.flix`. The constants block below is rendered
 from that module by `:protocol_constants` and pinned byte for byte by
 `:report_test`, so this document cannot drift from the code.
+The $5 cap applies to new passes. The retained Preact pass keeps its recorded
+$50 envelope for exact keyless replay.
 
 <!-- families:protocol:begin -->
 | constant | value |
@@ -32,9 +34,11 @@ from that module by `:protocol_constants` and pinned byte for byte by
 | batch size | `64` |
 | encoding format | `base64` |
 | ledger protocol | `attune-families-ledger-v1` |
-| pass envelope USD | `50.000000` |
+| pass envelope USD | `5.000000` |
+| historical Preact envelope USD | `50.000000` |
 | embedding USD per token | `0.00000001` |
 | decision USD bound | `0.000200` |
+| bounded seeds per pass | `3000` |
 
 Navigation instructions (`next_action`):
 
@@ -155,21 +159,30 @@ vectors themselves stay in the retained raw bodies.
   with explicit schemas and exact round-trips: `documents.parquet`,
   `batches.parquet`, and `ledger.parquet` (embeddings); `decisions.parquet`,
   `outcomes.parquet`, and `ledger.parquet` (decisions). A table is written only
-  after the whole pass is admitted, and an existing table must equal the
+  after the complete world's raw evidence is admitted, and an existing table must equal the
   regenerated one.
 
 ## Budget accounting
 
 - **Envelope.** One acquisition pass is bounded by the pass envelope.
-- **Projection before any call.** The pass projection bounds embeddings by
-  document bytes times the catalog price per token (a token covers at least
-  one byte) and decisions by `seeds x (7 + 1)` times the per-decision bound. A
-  pass whose projection exceeds the envelope stops before any provider call.
+- **Projection before any call.** The whole-world projection bounds embeddings
+  by document bytes times the catalog price per token (a token covers at least
+  one byte) and decisions by `seeds x (7 + 1)` times the per-decision bound.
+  A world below the envelope uses one pass. A larger world uses one embedding
+  pass and original-ordinal ranges of at most 3,000 seeds. Each bounded
+  decision pass has a conservative bound of at most $4.80. The six whole-world
+  typed tables are materialized only after every raw exchange is recorded,
+  with `Refuse` transport and no provider calls.
 - **Measured stop.** The live handler stops before a call once the pass's
   measured spend (the provider's own `usage.cost`) reaches the envelope.
-- **Ledger.** Each space records one ledger row per world: requests, requests
+- **Ledger.** Each space records one typed ledger row per world: requests, requests
   with a reported cost, input and output tokens, measured cost, unit cost,
-  projection, and envelope, all from the provider's own usage fields.
+  projection, and envelope, all from the provider's own usage fields. Bounded
+  passes also retain a per-pass JSON record under `passes/` with the original
+  seed range and the full sum of provider-reported usage costs over its logical
+  observations, including store hits after a resumed attempt. The acquired
+  count separately records new calls in the successful attempt. Those records are
+  declared Bazel inputs and included in the BuildBuddy evidence archive.
 
 ## Transport and replay
 
@@ -197,6 +210,32 @@ ATTUNE_WORKSPACE=$PWD OPENROUTER_API_KEY=... /tmp/acquire_preact <retained sourc
 
 The key is taken from the environment of that one command (the git-ignored
 `.env`) and is never printed, logged, or committed.
+
+After a whole world has six typed tables, `seal_evidence.py` declares its raw
+envelopes and typed tables as Bazel inputs. A hermetic Starlark action packages
+each world's two evidence spaces into a deterministic ZIP in BuildBuddy's CAS;
+the small address index in `evidence-cas-index.json` makes those remote bytes
+locatable from a fresh checkout:
+
+```bash
+python3 experiments/atlas-families/seal_evidence.py
+nix develop --command bazel build //experiments/atlas-families:evidence_cas_index \
+  --config=atlas-families-evidence-archive
+cp bazel-bin/experiments/atlas-families/evidence-cas-index.json \
+  experiments/atlas-families/evidence-cas-index.json
+python3 experiments/atlas-families/evidence_cas.py verify \
+  --index experiments/atlas-families/evidence-cas-index.json
+# On a checkout missing one world's evidence, with at least 5 GiB free:
+python3 experiments/atlas-families/evidence_cas.py hydrate \
+  --index experiments/atlas-families/evidence-cas-index.json --digest <snapshot-digest>
+python3 experiments/atlas-families/seal_evidence.py
+```
+
+`verify` retrieves every indexed blob and checks its SHA-256, ZIP integrity,
+and typed-table presence without contacting a provider. `hydrate` restores
+missing inputs atomically and checks existing bytes without replacing them.
+BuildBuddy is a cache that may evict entries, so the local recorded evidence
+is retained until a separate durable archive exists.
 
 ## Clustering method (`atlas-families-v1`)
 

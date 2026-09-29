@@ -1,7 +1,7 @@
 /**
  * The families view layer (VAL-WEB-001..004 app side): deterministic family
- * tints, the family-edge listing and drill-down model, and the families-aware
- * link accessors. Exercises a hand-built two-family fixture (mirroring
+ * tints and the family-edge listing and drill-down model on one graph.
+ * Exercises a hand-built two-family fixture (mirroring
  * graphFixture.ts) and the real preact export staged by
  * //web/atlas-live/projection:layout_worlds.
  */
@@ -9,7 +9,6 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { buildViewerArrow } from "../../projection/src/arrow.ts";
 import {
   decodeFamiliesFiles,
   familyOfPoint,
@@ -21,8 +20,6 @@ import type { ViewerGraph } from "../../projection/src/graph.ts";
 import { projectWorld } from "../../projection/src/project.ts";
 import { readFamiliesDir, readWorldDir } from "../../projection/src/world_dir.ts";
 import { contributionLines, drillFamilyEdge, familyTint, topFamilyEdges } from "../src/families.ts";
-import { linkColorAccessor, linkWidthAccessor } from "../src/linkAccessors.ts";
-import { ALL_RELATIONS_MASK, relationMask } from "../src/selection.ts";
 import { NO_FAMILY_COLOR, familyColor } from "../src/vocabulary.ts";
 import { FIXTURE_SNAPSHOT_ID, fixtureGraph } from "./graphFixture.ts";
 
@@ -278,81 +275,5 @@ describe("family edge listing and drill-down", () => {
       expect(line.target.length).toBeGreaterThan(0);
       expect(line.sourceId).toMatch(/^(file|symbol):\d+$/);
     }
-  });
-});
-
-describe("families-aware link accessors", () => {
-  // Fixture links: defines 0-1, imports 2, calls 3-4, parent 5-7; family rows at
-  // 8, 9, 10 (edges 0, 1, 2).
-  const EXACT = 8;
-
-  function build(overlay: "structure" | "families", drill: number | null, mask = ALL_RELATIONS_MASK) {
-    const { graph, families } = fixtureFamilies();
-    expect(buildViewerArrow(graph, { families }).links.numRows).toBe(EXACT + 3);
-    const options = {
-      mask,
-      renderLinks: true,
-      overlay,
-      families,
-      exactLinkCount: graph.linkCount,
-      drill,
-    };
-    return { color: linkColorAccessor(options), width: linkWidthAccessor(options) };
-  }
-
-  it("structure overlay renders exactly as without families (family rows hidden)", () => {
-    const { color, width } = build("structure", null);
-    expect(color("imports", 2)).not.toEqual([0, 0, 0, 0]);
-    expect(width("imports", 2)).toBe(1);
-    for (const row of [EXACT, EXACT + 1, EXACT + 2]) {
-      expect(color("imports", row)).toEqual([0, 0, 0, 0]);
-      expect(width("imports", row)).toBe(0);
-    }
-    // The relation filter still governs exact links.
-    const filtered = build("structure", null, relationMask(["defines"]));
-    expect(filtered.width("imports", 2)).toBe(0);
-  });
-
-  it("families overlay hides exact links and draws family edges", () => {
-    const { color, width } = build("families", null);
-    for (let link = 0; link < EXACT; link++) {
-      expect(width("imports", link)).toBe(0);
-    }
-    expect(width("imports", EXACT)).toBeGreaterThan(0);
-    expect(color("calls", EXACT + 1)).not.toEqual([0, 0, 0, 0]);
-    // The relation filter governs family edges too.
-    const filtered = build("families", null, relationMask(["calls"]));
-    expect(filtered.width("imports", EXACT)).toBe(0);
-    expect(filtered.width("calls", EXACT + 1)).toBeGreaterThan(0);
-  });
-
-  it("drill-down reveals exactly the contributing exact links", () => {
-    const { color, width } = build("families", 1);
-    // Edge 1 contributes exact link 3 only.
-    expect(width("calls", 3)).toBe(1);
-    expect(color("calls", 3)).not.toEqual([0, 0, 0, 0]);
-    for (const link of [0, 1, 2, 4, 5, 6, 7]) {
-      expect(width("calls", link)).toBe(0);
-    }
-    // The drilled family edge stays visible, the others hide.
-    expect(width("calls", EXACT + 1)).toBeGreaterThan(0);
-    expect(width("imports", EXACT)).toBe(0);
-    expect(width("calls", EXACT + 2)).toBe(0);
-  });
-
-  it("is referentially stable for identical view state", () => {
-    const { graph, families } = fixtureFamilies();
-    const options = {
-      mask: ALL_RELATIONS_MASK,
-      renderLinks: true,
-      overlay: "families" as const,
-      families,
-      exactLinkCount: graph.linkCount,
-      drill: null,
-    };
-    expect(linkColorAccessor(options)).toBe(linkColorAccessor(options));
-    expect(linkWidthAccessor(options)).toBe(linkWidthAccessor(options));
-    // A drill change is a new view state: new identities.
-    expect(linkColorAccessor({ ...options, drill: 1 })).not.toBe(linkColorAccessor(options));
   });
 });

@@ -8,9 +8,9 @@ cd "$root"
 # developer shell and secret-safe credential helper, not project construction.
 #
 # Two sequential invocations: the law suite under BuildBuddy RBE without //web/...,
-# then the web suite locally. Web actions cannot run remotely from an aarch64 host
-# (its target-config node runfiles and npm bindings do not execute on the x86_64
-# executors).
+# then the web suite locally. The web suite's Flix-derived Families and physical
+# actions use BuildBuddy; its Node, Vite, and browser actions stay local because
+# their target-config runfiles/npm bindings are not portable on this aarch64 host.
 #
 # The subtraction goes through a pattern file: the nix `bazel` wrapper appends its
 # flags after the user's arguments, so they would land after a `--` separator.
@@ -27,4 +27,5 @@ nix develop --command bazel test --target_pattern_file="$patterns" "--config=$rb
 
 browsers_path="${PLAYWRIGHT_BROWSERS_PATH:-$HOME/.cache/ms-playwright}"
 nix develop --command bazel test //web/... \
+  --config=atlas-live-mixed \
   "--//web/atlas-live/e2e:browsers_path=$browsers_path" "$@"

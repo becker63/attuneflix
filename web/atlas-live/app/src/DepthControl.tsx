@@ -15,27 +15,26 @@ const styles = stylex.create({
   root: {
     display: "flex",
     flexDirection: "column",
-    gap: 6,
+    gap: 8,
   },
   heading: {
-    fontSize: 12,
-    fontWeight: 600,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-    color: "#9ca3af",
+    fontSize: 13,
+    fontWeight: 700,
+    color: "#fff4fa",
   },
   group: {
     display: "flex",
     gap: 6,
   },
   toggle: {
-    minWidth: 28,
-    fontSize: 12,
+    minWidth: 42,
+    minHeight: 36,
+    fontSize: 13,
     fontFamily: "inherit",
-    paddingTop: 4,
-    paddingBottom: 4,
-    paddingLeft: 8,
-    paddingRight: 8,
+    paddingTop: 7,
+    paddingBottom: 7,
+    paddingLeft: 12,
+    paddingRight: 12,
     borderRadius: 6,
     borderWidth: 1,
     borderStyle: "solid",
@@ -50,8 +49,8 @@ const styles = stylex.create({
     color: "#f9fafb",
   },
   value: {
-    fontSize: 12,
-    color: "#e5e7eb",
+    fontSize: 13,
+    color: "#d9cbd4",
   },
 });
 
@@ -78,7 +77,7 @@ export function DepthControl() {
   };
   return (
     <section aria-label="Neighbourhood depth" {...stylex.props(styles.root)}>
-      <span {...stylex.props(styles.heading)}>Depth</span>
+      <span {...stylex.props(styles.heading)}>Highlight distance</span>
       <ToggleGroup
         value={selectionFor(depth)}
         onValueChange={change}

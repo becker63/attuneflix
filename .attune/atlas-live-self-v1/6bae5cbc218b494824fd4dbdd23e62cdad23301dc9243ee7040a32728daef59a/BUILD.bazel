@@ -1,0 +1,13 @@
+load("//build:attune.bzl", "attune_world_files")
+package(default_visibility = ["//visibility:public"])
+attune_world_files(
+    name = "world",
+    metadata = "metadata.parquet",
+    entities = "entities.parquet",
+    relations = "relations.parquet",
+    repository = 'attuneflix',
+    base_revision = '88f97599901df1be52ce8cb06f2a701c464cbbbe',
+    source_tree_identity = 'attuneflix-source-tree-v2:88f97599901df1be52ce8cb06f2a701c464cbbbe',
+    fact_identity = 'repository-facts-v2:51fd0342852e771b588edcd4ef89b105b57e8ec400741aa562c7fbabfb6c95a5',
+    snapshot_id = 'repository-snapshot-v1:6bae5cbc218b494824fd4dbdd23e62cdad23301dc9243ee7040a32728daef59a',
+)

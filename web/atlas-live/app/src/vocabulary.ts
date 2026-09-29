@@ -10,16 +10,6 @@
 import type { Domain } from "../../projection/src/domain.ts";
 import { RELATION_ORDER, type Relation } from "../../projection/src/relation.ts";
 
-/** Overlays available in the viewer. Families is offered only for worlds with families data. */
-export const OVERLAY_ORDER = ["structure", "families"] as const;
-
-export type OverlayName = (typeof OVERLAY_ORDER)[number];
-
-export const OVERLAY_LABELS: Record<OverlayName, string> = {
-  structure: "Structure",
-  families: "Families",
-};
-
 export interface CategoryStyle {
   /** Human label shown in the legend and details. */
   readonly label: string;
@@ -45,10 +35,10 @@ const DOMAIN_STYLES: Record<Domain, CategoryStyle> = {
 };
 
 const RELATION_STYLES: Record<Relation, RelationStyle> = {
-  defines: { label: "defines", color: "#8ab4ff", glyph: "▸", dash: "solid" },
-  imports: { label: "imports", color: "#c792ea", glyph: "⇢", dash: "dashed" },
-  calls: { label: "calls", color: "#ffcb6b", glyph: "↻", dash: "dotted" },
-  parent: { label: "parent", color: "#80cbc4", glyph: "⤴", dash: "solid" },
+  defines: { label: "defines", color: "#F28EC8", glyph: "▸", dash: "solid" },
+  imports: { label: "imports", color: "#59E3F6", glyph: "⇢", dash: "dashed" },
+  calls: { label: "calls", color: "#FFB84D", glyph: "↻", dash: "dotted" },
+  parent: { label: "parent", color: "#76EA59", glyph: "⤴", dash: "solid" },
 };
 
 export const DOMAIN_ORDER_FOR_LEGEND: readonly Domain[] = ["file", "symbol", "location"];
@@ -135,19 +125,18 @@ export interface LegendOptions {
 }
 
 /**
- * The legend for an overlay and a set of enabled relations. Both the overlay
- * categories and the relation entries are read from this module's styles, so the
- * legend cannot disagree with what is rendered. The families overlay tints every
- * point by family (too many for per-family entries), so its categories are the
- * two tint classes: a family sample and the no-family neutral.
+ * The legend for the one graph and enabled relations. Family hue is always
+ * included when the world has families; scalar shading only changes lightness.
+ * There are too many families for per-family entries, so the family categories
+ * are a sample hue and the neutral for points without family evidence.
  */
 export function legendEntries(
-  overlay: OverlayName,
+  familiesPresent: boolean,
   enabledRelations: readonly Relation[],
   options?: LegendOptions,
 ): LegendEntry[] {
   const categories: LegendEntry[] =
-    overlay === "families"
+    familiesPresent
       ? [
           {
             kind: "category",
@@ -192,6 +181,6 @@ export function legendEntries(
       };
     },
   );
-  // `overlay` selects the category set above; relations are overlay-independent.
+  // Scalar shading never changes these category or relation identities.
   return [...categories, ...relations];
 }

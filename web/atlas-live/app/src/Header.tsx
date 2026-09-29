@@ -1,9 +1,8 @@
 /**
  * The header: the snapshot picker, the dataset identity (repository, short base
  * revision, and a synthetic/real-world marker), and the active overlay name. All
- * values come from the loaded world's manifest entry; none are invented. When
- * the dataset's links exceed the render budget the header says so, so a
- * link-free view is never mistaken for an empty one.
+ * values come from the loaded world's manifest entry; none are invented. Large
+ * projected connection sets show a zoom cue instead of silently disappearing.
  */
 import * as stylex from "@stylexjs/stylex";
 import type { SessionSnapshot } from "./controller.ts";
@@ -97,13 +96,13 @@ export function Header({ state, onSelect }: { state: SessionSnapshot; onSelect: 
           <span {...stylex.props(styles.badge, session.entry.synthetic ? styles.syntheticBadge : null)}>
             {session.entry.synthetic ? "synthetic" : "real world"}
           </span>
-          {session.renderLinks ? null : (
+          {session.getViewSnapshot().projection.wires.length <= LINK_RENDER_BUDGET ? null : (
             <span
               {...stylex.props(styles.badge, styles.noteBadge)}
-              data-testid="links-hidden"
-              title={`More than the ${LINK_RENDER_BUDGET}-link render budget: links stay in the graph but are not drawn, so the view stays interactive under software WebGL.`}
+              data-testid="zoom-connections"
+              title={`The fitted view exceeds the ${LINK_RENDER_BUDGET}-connection draw budget. Zooming reveals the exact connections near the camera.`}
             >
-              links hidden
+              zoom for connections
             </span>
           )}
         </span>

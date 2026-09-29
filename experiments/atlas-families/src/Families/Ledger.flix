@@ -31,17 +31,17 @@ pub mod Families.Ledger {
         }
     }
 
-    pub def embeddings(documents: Vector[Families.Embedding.Document], observations: Vector[Families.Embedding.Observation]): Entry \ IO =
+    pub def embeddings(documents: Vector[Families.Embedding.Document], observations: Vector[Families.Embedding.Observation], envelope: Float64): Entry \ IO =
         entry(
             Families.Protocol.embeddingSpace(), "embedding-batch",
             Vector.map(value -> (value#promptTokens, None, value#cost), observations),
-            Families.Protocol.projectedEmbeddingUsd(documentBytes(documents)))
+            Families.Protocol.projectedEmbeddingUsd(documentBytes(documents)), envelope)
 
-    pub def decisions(seeds: Int32, observations: Vector[Families.Decision.Observation]): Entry =
+    pub def decisions(seeds: Int32, observations: Vector[Families.Decision.Observation], envelope: Float64): Entry =
         entry(
             Families.Protocol.decisionSpace(), "decision",
             Vector.map(value -> (value#inputTokens, value#outputTokens, value#cost), observations),
-            Families.Protocol.projectedDecisionUsd(seeds))
+            Families.Protocol.projectedDecisionUsd(seeds), envelope)
 
     /// UTF-8 bytes of every embedded document, the token upper bound.
     pub def documentBytes(documents: Vector[Families.Embedding.Document]): Int64 \ IO =
@@ -49,7 +49,7 @@ pub mod Families.Ledger {
             sum + Int32.toInt64(Array.length(document#text.getBytes(StandardCharsets.UTF_8))), 0i64, documents)
 
     /// Usage per request: (input tokens, output tokens, cost), as reported.
-    def entry(space: String, kind: String, usage: Vector[(Option[Int32], Option[Int32], Option[Float64])], projected: Float64): Entry = {
+    def entry(space: String, kind: String, usage: Vector[(Option[Int32], Option[Int32], Option[Float64])], projected: Float64, envelope: Float64): Entry = {
         let requests = Vector.length(usage);
         let tokens = values -> Vector.foldLeft((sum, value) -> sum + Int32.toInt64(Option.getWithDefault(0, value)), 0i64, values);
         let costs = Vector.map(match (_, _, value) -> value, usage);
@@ -64,7 +64,7 @@ pub mod Families.Ledger {
             costUsd = cost,
             unitCostUsd = if (requests == 0) 0.0 else cost / Int32.toFloat64(requests),
             projectedUsd = projected,
-            envelopeUsd = Families.Protocol.envelopeUsd()
+            envelopeUsd = envelope
         }
     }
 

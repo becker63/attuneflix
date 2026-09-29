@@ -1,7 +1,8 @@
 /**
  * Entry point of //web/atlas-live/projection:data_test (a plain js_test, not a
- * Vitest case). Validates the :data output: manifest.json lists exactly the 78
- * ATLAS_WORLDS snapshots, every entry's counts match the formulas over the
+ * Vitest case). Validates the :data output: manifest.json lists the 78 frozen
+ * census snapshots plus one pinned AttuneFlix snapshot, with every entry's
+ * counts matching the formulas over the
  * shipped metadata.parquet, and every shipped file's sha256 matches the manifest.
  */
 import { createHash } from "node:crypto";
@@ -19,9 +20,12 @@ import {
   type WorldManifest,
   type WorldManifestEntry,
 } from "../src/manifest.ts";
+import { PHYSICAL_COLUMNS } from "../src/physical.ts";
+import { repositorySignatures } from "../src/signatures.ts";
 import { decodeMetadata, toArrayBuffer } from "../src/tables.ts";
 
-const EXPECTED_WORLD_COUNT = 78;
+const EXPECTED_WORLD_COUNT = 79;
+const SELF_REVISION = "88f97599901df1be52ce8cb06f2a701c464cbbbe";
 
 function fail(message: string): never {
   throw new Error(`data_check: ${message}`);
@@ -76,9 +80,7 @@ async function checkEntry(world: WorldManifestEntry): Promise<void> {
     const sha256 = createHash("sha256").update(bytes).digest("hex");
     if (sha256 !== world.sha256.locations) fail(`${digest}: sha256 mismatch for locations.parquet`);
   }
-  if (world.assets.families !== undefined) {
-    await checkFamilies(treeRoot, world);
-  }
+  await checkPhysical(treeRoot, world);
 
   const metadataBytes = await readBytes(path.join(treeRoot, world.assets.metadata));
   const metadata = await decodeMetadata(toArrayBuffer(metadataBytes));
@@ -100,6 +102,56 @@ async function checkEntry(world: WorldManifestEntry): Promise<void> {
   }
   if (counts.links !== counts.defines + counts.imports + counts.calls + counts.parent) {
     fail(`${digest}: links ${counts.links} !== defines + imports + calls + parent`);
+  }
+}
+
+/** Every real snapshot ships a complete measured table and an honest summary. */
+async function checkPhysical(treeRoot: string, world: WorldManifestEntry): Promise<void> {
+  const { snapshotDigest: digest, physicalSummary: summary } = world;
+  const asset = world.assets.physical;
+  const hash = world.sha256.physical;
+  if (asset !== `data/${digest}/physical.parquet` || hash === undefined || summary === undefined) {
+    fail(`${digest}: missing physical artifact or summary`);
+  }
+  const bytes = await readBytes(path.join(treeRoot, asset));
+  if (createHash("sha256").update(bytes).digest("hex") !== hash) fail(`${digest}: physical sha256 mismatch`);
+  const buffer = toArrayBuffer(bytes);
+  const metadata = parquetMetadata(buffer);
+  const columns = parquetSchema(metadata).children.map((child) => child.element.name);
+  if (columns.join(",") !== PHYSICAL_COLUMNS.join(",")) fail(`${digest}: physical schema mismatch`);
+  const rows = await parquetReadObjects({ file: buffer, metadata });
+  if (rows.length !== world.counts.files + world.counts.symbols || summary.seeds !== rows.length) {
+    fail(`${digest}: physical seed coverage mismatch`);
+  }
+  let requests = 0;
+  let evaluations = 0;
+  let reuses = 0;
+  const fractions: number[] = [];
+  for (const row of rows) {
+    if (row["snapshot_id"] !== world.snapshotId) fail(`${digest}: foreign physical row`);
+    const seedRequests = Number(row["physical_transition_requests"]);
+    const seedEvaluations = Number(row["physical_transition_evaluations"]);
+    const seedReuses = Number(row["physical_transition_reuses"]);
+    if (seedRequests <= 0 || seedRequests !== seedEvaluations + seedReuses) {
+      fail(`${digest}: physical seed work does not reconcile`);
+    }
+    requests += seedRequests;
+    evaluations += seedEvaluations;
+    reuses += seedReuses;
+    fractions.push(seedReuses / seedRequests);
+  }
+  fractions.sort((a, b) => a - b);
+  const median = fractions[Math.floor((fractions.length - 1) / 2)];
+  if (
+    requests !== evaluations + reuses ||
+    requests !== summary.requests ||
+    evaluations !== summary.evaluations ||
+    reuses !== summary.reuses ||
+    Math.abs(summary.reuseFraction - reuses / requests) > 1e-12 ||
+    median === undefined ||
+    Math.abs(summary.medianSeedFraction - median) > 1e-12
+  ) {
+    fail(`${digest}: physical work does not reconcile with manifest summary`);
   }
 }
 
@@ -136,6 +188,21 @@ async function checkFamilies(treeRoot: string, world: WorldManifestEntry): Promi
       if (row["snapshot_id"] !== world.snapshotId) fail(`${digest}: ${file} carries another snapshot`);
     }
     if (rows.length === 0) fail(`${digest}: ${file} is empty`);
+    if (table === "families") {
+      const summary = world.familySummary;
+      if (summary === undefined) fail(`${digest}: missing family summary`);
+      const sizes = rows.map((row) => Number(row["members"]));
+      const largest = Math.max(...sizes);
+      if (
+        sizes.some((size) => !Number.isSafeInteger(size) || size <= 0) ||
+        sizes.reduce((sum, size) => sum + size, 0) !== counts.symbols ||
+        summary.count !== rows.length ||
+        summary.largestMembers !== largest ||
+        Math.abs(summary.largestShare - largest / counts.symbols) > 1e-12
+      ) {
+        fail(`${digest}: family summary differs from the typed table`);
+      }
+    }
   }
   if (rowCount.get("members") !== counts.symbols) {
     fail(`${digest}: family_members.parquet has ${rowCount.get("members")} rows, expected ${counts.symbols}`);
@@ -178,7 +245,7 @@ async function checkSynthetic(manifest: WorldManifest): Promise<void> {
 async function check(): Promise<void> {
   const manifest = parseManifest(await readFile(path.join("data", "manifest.json"), "utf8"));
   const worlds = manifest.worlds;
-  if (worlds.length !== EXPECTED_WORLD_COUNT) fail(`expected 78 worlds, got ${worlds.length}`);
+  if (worlds.length !== EXPECTED_WORLD_COUNT) fail(`expected ${EXPECTED_WORLD_COUNT} worlds, got ${worlds.length}`);
 
   const expected = (await readFile("expected_worlds.txt", "utf8"))
     .split("\n")
@@ -189,6 +256,18 @@ async function check(): Promise<void> {
 
   const digests = worlds.map((world) => world.snapshotDigest).toSorted((a, b) => (a < b ? -1 : 1));
   if (digests.join("\n") !== expected.join("\n")) fail("manifest digests differ from ATLAS_WORLDS");
+  const expectedFamilies = new Set((await readFile("expected_families.txt", "utf8"))
+    .split("\n").map((line) => line.trim()).filter(Boolean));
+  const signatures = new Map(await repositorySignatures(toArrayBuffer(await readBytes("signatures/report/repositories.parquet"))));
+  const selfSignatures = await repositorySignatures(toArrayBuffer(await readBytes("self_signatures/signature_report/repositories.parquet")));
+  for (const [repository, signature] of selfSignatures) {
+    if (signatures.has(repository)) fail(`duplicate signature source: ${repository}`);
+    signatures.set(repository, signature);
+  }
+  const selfWorlds = worlds.filter((world) => world.repository === "attuneflix");
+  if (selfWorlds.length !== 1 || selfWorlds[0]?.baseRevision !== SELF_REVISION) {
+    fail("pinned AttuneFlix snapshot missing or duplicated");
+  }
   for (let i = 1; i < worlds.length; i++) {
     const previous = worlds[i - 1];
     const current = worlds[i];
@@ -198,6 +277,14 @@ async function check(): Promise<void> {
 
   for (const world of worlds) {
     await checkEntry(world);
+    const hasFamilies = expectedFamilies.has(world.snapshotDigest);
+    if (hasFamilies !== (world.assets.families !== undefined)) {
+      fail(`${world.snapshotDigest}: Families export differs from sealed cohort`);
+    }
+    if (hasFamilies) await checkFamilies("data", world);
+    if (JSON.stringify(world.signatureSummary) !== JSON.stringify(signatures.get(world.repository))) {
+      fail(`${world.snapshotDigest}: signature differs from typed repository summary table`);
+    }
   }
   await checkSynthetic(manifest);
   console.log(`data_check: ${worlds.length} worlds validated against manifest.json`);

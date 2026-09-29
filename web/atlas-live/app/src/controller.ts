@@ -167,8 +167,7 @@ export class SessionController {
         sessionRevision: revision,
         abort,
       });
-      // The exact table remains available for the existing Families overlay;
-      // the default Structure view starts from the projected, coarse wires.
+      // One family-informed structural graph starts from projected wires.
       await duckdb.connection.insertArrowTable(session.initialProjectedLinks(), {
         name: session.getViewSnapshot().linksTable,
       });

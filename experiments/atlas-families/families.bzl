@@ -7,6 +7,7 @@ table. World labels come from the frozen census graph and are never re-declared.
 
 load("//build:attune.bzl", "AttuneWorldInfo")
 load("//experiments/atlas-swe-explore/census:census.bzl", "ATLAS_WORLDS")
+load(":acquired_worlds.bzl", "ACQUIRED_DIGESTS")
 
 FamiliesInventoryInfo = provider(
     doc = "One typed families acquisition inventory for one admitted world.",
@@ -45,13 +46,27 @@ FamiliesAcquiredInfo = provider(
 EMBEDDING_SPACE = "families-embeddings-v1"
 DECISION_SPACE = "jev-families-raw-v1"
 
-# The worlds acquired so far, in report order. Each world's evidence lives at
-# `.attune/<space>/<snapshot digest>/` and is exported by that directory's
-# `:evidence` filegroup. Scaling to further representative worlds happens only
-# after the milestone-1 review of protocol, cost, and storage.
-ACQUIRED_WORLDS = [
-    ("preact", REPRESENTATIVE_WORLDS[0][1]),
-]
+# The worlds whose six typed evidence tables have been sealed as declared
+# Bazel inputs. The Preact key preserves the already-published target names.
+# Each further digest uses a stable target key derived from its snapshot ID.
+def _world_digest(world):
+    return world.rpartition("/")[2].partition(":")[0]
+
+_PREACT_DIGEST = _world_digest(REPRESENTATIVE_WORLDS[0][1])
+
+def _acquired_worlds():
+    if _PREACT_DIGEST not in ACQUIRED_DIGESTS:
+        fail("the frozen Preact acquisition must remain declared")
+    worlds = [("preact", REPRESENTATIVE_WORLDS[0][1])] + [
+        ("snapshot_" + _world_digest(world), world)
+        for world in ATLAS_WORLDS
+        if _world_digest(world) != _PREACT_DIGEST and _world_digest(world) in ACQUIRED_DIGESTS
+    ]
+    if len(worlds) != len(ACQUIRED_DIGESTS):
+        fail("acquired evidence names a snapshot outside the frozen census")
+    return worlds
+
+ACQUIRED_WORLDS = _acquired_worlds()
 
 # The families export of every acquired world (`export_<key>`, a
 # `<snapshot digest>/` tree of the tables Atlas Live ships), for the web
@@ -187,19 +202,28 @@ _ACQUIRE_TEMPLATE = """#!/usr/bin/env bash
 #   bazel run --script_path=/tmp/acquire <this target>
 #   ATTUNE_WORKSPACE=$PWD /tmp/acquire <source-root> project   # bound only, no provider
 #   ATTUNE_WORKSPACE=$PWD /tmp/acquire <source-root> acquire
+#   ATTUNE_WORKSPACE=$PWD /tmp/acquire <source-root> prefill-decisions <start> <count>
 set -euo pipefail
 workspace="${{BUILD_WORKSPACE_DIRECTORY:-${{ATTUNE_WORKSPACE:-}}}}"
 if [ -z "$workspace" ]; then echo "set ATTUNE_WORKSPACE to the repository root" >&2; exit 2; fi
 source_root="${{1:?usage: acquire <retained source root of the world> [project|acquire]}}"
 command="${{2:-project}}"
-case "$command" in project|acquire) ;; *) echo "unknown command: $command" >&2; exit 2 ;; esac
+case "$command" in project|acquire|prefill-embeddings|prefill-decisions|materialize) ;;
+  *) echo "unknown command: $command" >&2; exit 2 ;; esac
 if [ -n "${{RUNFILES_DIR:-}}" ]; then runfiles="$RUNFILES_DIR"
 elif [ -d "$0.runfiles" ]; then runfiles="$(cd "$0.runfiles" && pwd)"
 else runfiles="$(cd "$(dirname "$0")" && pwd)"; runfiles="${{runfiles%/_main*}}"
 fi
 export JAVA_RUNFILES="$runfiles"
-exec "$runfiles/_main/{tool}" "--jvm_flag=-Dattune.command=$command" {properties} \\
+# The live launcher runs on the user's 15 GiB / no-swap desktop. Bound its
+# heap and direct buffers so a failed large pass cannot evict Hyprland.
+exec "$runfiles/_main/{tool}" \\
+  "--jvm_flag=-Xmx2048m" "--jvm_flag=-XX:MaxDirectMemorySize=512m" \\
+  "--jvm_flag=-XX:ActiveProcessorCount=2" \\
+  "--jvm_flag=-Dattune.command=$command" {properties} \\
   "--jvm_flag=-Dattune.source_root=$source_root" \\
+  "--jvm_flag=-Dattune.seed_start=${{3:-0}}" \\
+  "--jvm_flag=-Dattune.seed_count=${{4:-0}}" \\
   "--jvm_flag=-Dattune.embeddings_root=$workspace/.attune/{embeddings}" \\
   "--jvm_flag=-Dattune.decisions_root=$workspace/.attune/{decisions}"
 """
@@ -366,6 +390,50 @@ def families_acquisitions(name, tool):
     )
     return evidence
 
+def families_issue_blindness_tests(name, evidence):
+    """Run the source and retained-payload law once per sealed world.
+
+    Each test receives only that world's raw envelopes. This keeps the
+    complete source-and-payload law while allowing BuildBuddy to distribute
+    the acquired population across workers.
+    """
+    if len(evidence) != 2 * len(ACQUIRED_WORLDS):
+        fail("issue-blindness evidence and acquired worlds disagree")
+    tests = []
+    for index, (key, _) in enumerate(ACQUIRED_WORLDS):
+        test = name + "_" + key
+        native.sh_test(
+            name = test,
+            size = "large",
+            srcs = ["issue_blindness_test.sh"],
+            data = [
+                "Main.flix",
+                ":families_sources",
+                "issue_blindness_payload.awk",
+                "@bazel_tools//tools/bash/runfiles",
+            ] + evidence[2 * index:2 * index + 2],
+        )
+        tests.append(":" + test)
+    native.test_suite(
+        name = name,
+        tests = tests,
+    )
+
+def families_launchers(tool):
+    """Issue-blind live launchers for every frozen census snapshot.
+
+    A launcher is an opt-in bazel-run tool, not a cached live network action.
+    Keyless replay and every derived table become Bazel actions only after the
+    recorded evidence for that snapshot has been sealed as declared inputs.
+    """
+    for world in ATLAS_WORLDS:
+        digest = world.rpartition("/")[2].partition(":")[0]
+        families_acquisition(
+            name = "acquire_world_" + digest,
+            tool = tool,
+            world = world,
+        )
+
 # The clustering method's output tables (space `atlas-families-v1`), one
 # directory per built run.
 CLUSTERING_TABLES = ["families", "members", "rollups"]
@@ -478,6 +546,32 @@ families_clustering_report = rule(
     attrs = _CLUSTERED_ATTRS,
 )
 
+def _families_clustering_report_merge_impl(ctx):
+    reports = ctx.files.reports
+    if not reports:
+        fail("a clustering report requires at least one acquired world")
+    output = ctx.actions.declare_file(ctx.label.name + ".md")
+    args = ctx.actions.args()
+    args.add_all(reports)
+    args.add(output)
+    ctx.actions.run(
+        executable = ctx.executable.tool,
+        arguments = [args],
+        inputs = reports,
+        outputs = [output],
+        mnemonic = "FamiliesClusteringReportMerge",
+        progress_message = "Joining parallel families clustering reports %{label}",
+    )
+    return [DefaultInfo(files = depset([output]))]
+
+families_clustering_report_merge = rule(
+    implementation = _families_clustering_report_merge_impl,
+    attrs = {
+        "reports": attr.label_list(allow_files = True, mandatory = True),
+        "tool": attr.label(executable = True, cfg = "exec", mandatory = True),
+    },
+)
+
 _LAW_TEMPLATE = """#!/usr/bin/env bash
 # A families clustering law over the built `atlas-families-v1` tables; the
 # Flix law command exits non-zero when any law fails.
@@ -524,7 +618,7 @@ families_law_test = rule(
     }),
 )
 
-def families_clusterings(name, tool):
+def families_clusterings(name, tool, merge_tool):
     """Declares the clustering of every acquired world, twice, and its laws.
 
     Per acquired world `<key>`: `cluster_<key>` (the method's tables, a
@@ -543,7 +637,10 @@ def families_clusterings(name, tool):
     """
     runs = []
     reruns = []
+    reports = []
     for key, world in ACQUIRED_WORLDS:
+        # Recorded vectors are decoded and digest-checked against the retained
+        # embedding response bodies; typed tables alone are insufficient.
         embeddings, decisions = _evidence_labels(world)
         for label, labels in [("cluster_" + key, runs), ("cluster_%s_rerun" % key, reruns)]:
             families_clustering(
@@ -554,21 +651,36 @@ def families_clusterings(name, tool):
                 world = world,
             )
             labels.append(":" + label)
-    families_clustering_report(
+        report = "clustering_report_" + key
+        families_clustering_report(
+            name = report,
+            reruns = [reruns[-1]],
+            runs = [runs[-1]],
+            tool = tool,
+        )
+        reports.append(":" + report)
+    families_clustering_report_merge(
         name = name,
-        reruns = reruns,
-        runs = runs,
-        tool = tool,
+        reports = reports,
+        tool = merge_tool,
     )
     tests = []
     for test, command in [("atlas_families_table_test", "table-law"), ("atlas_families_law_test", "family-law")]:
-        families_law_test(
+        world_tests = []
+        for (key, _), run, rerun in zip(ACQUIRED_WORLDS, runs, reruns):
+            label = test + "_" + key
+            families_law_test(
+                name = label,
+                size = "large",
+                command = command,
+                reruns = [rerun],
+                runs = [run],
+                tool = tool,
+            )
+            world_tests.append(":" + label)
+        native.test_suite(
             name = test,
-            size = "small",
-            command = command,
-            reruns = reruns,
-            runs = runs,
-            tool = tool,
+            tests = world_tests,
         )
         tests.append(":" + test)
     return tests
@@ -790,13 +902,30 @@ def families_exports(name, tool, staging):
         ("atlas_family_edges_law_test", "edge-law"),
         ("families_export_parity_test", "parity"),
     ]:
-        families_export_law_test(
-            name = test,
-            size = "small",
-            command = command,
-            exports = exports,
-            staging = staging if command == "parity" else None,
-            tool = tool,
-        )
+        if command == "parity":
+            families_export_law_test(
+                name = test,
+                size = "large",
+                command = command,
+                exports = exports,
+                staging = staging,
+                tool = tool,
+            )
+        else:
+            world_tests = []
+            for (key, _), export in zip(ACQUIRED_WORLDS, exports):
+                label = test + "_" + key
+                families_export_law_test(
+                    name = label,
+                    size = "large",
+                    command = command,
+                    exports = [export],
+                    tool = tool,
+                )
+                world_tests.append(":" + label)
+            native.test_suite(
+                name = test,
+                tests = world_tests,
+            )
         tests.append(":" + test)
     return tests

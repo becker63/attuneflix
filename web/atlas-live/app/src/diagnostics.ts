@@ -9,7 +9,8 @@
  * projected graph and change nothing.
  */
 import { RELATION_ORDER, type Relation } from "../../projection/src/relation.ts";
-import type { OverlayName } from "./vocabulary.ts";
+import type { RegionMetrics } from "./frontier/metrics.ts";
+import type { MeasurementMode } from "./atoms.ts";
 
 export interface AtlasCounts {
   readonly points: number;
@@ -65,7 +66,12 @@ export interface AtlasFamilyMembership {
 }
 
 export interface AtlasOverlay {
-  readonly name: OverlayName;
+  readonly name: "structure";
+  readonly revision: number;
+}
+
+export interface AtlasShading {
+  readonly name: MeasurementMode;
   readonly revision: number;
 }
 
@@ -84,9 +90,21 @@ export interface AtlasProjected {
   readonly internalizedCount: number;
 }
 
+export interface AtlasSelectedEdge {
+  readonly source: string;
+  readonly target: string;
+  readonly relation: "imports" | "calls";
+  readonly multiplicity: number;
+  readonly provenanceCount: number;
+  readonly uniqueSources: number;
+  readonly uniqueTargets: number;
+}
+
 export interface DiagnosticsSource {
   /** Viewport coordinates ([x, y]) of a point's centre, or null if unknown. */
   screenPositionOf(index: number): [number, number] | null;
+  /** Viewport endpoints of one projected wire, for read-only browser inspection. */
+  projectedWireScreenEndpoints(index: number): { source: [number, number]; target: [number, number] } | null;
   /** A point index with at least one incident link, or null if none. */
   pointWithIncidentLinks(): number | null;
   /** The identity (`domain:localId`) of the point at this renderer index, or null. */
@@ -97,6 +115,7 @@ export interface DiagnosticsSource {
   familyOfPoint(index: number): AtlasFamilyMembership | null;
   /** Point ids on the visible frontier, in graph order. */
   visibleNodeIds(): readonly string[];
+  regionMetrics(id: string): RegionMetrics | null;
 }
 
 interface DiagnosticsState {
@@ -113,8 +132,11 @@ interface DiagnosticsState {
   /** Whether the renderer draws the current dataset's links (see LINK_RENDER_BUDGET). */
   renderLinks: boolean;
   overlay: AtlasOverlay;
+  shading: AtlasShading;
   frontier: AtlasFrontier;
   projected: AtlasProjected;
+  selectedEdge: AtlasSelectedEdge | null;
+  selectedRegion: RegionMetrics | null;
   counts: AtlasCounts | null;
   hovered: string | null;
   hoveredIndex: number | null;
@@ -151,9 +173,12 @@ const state: DiagnosticsState = {
   liveSessions: 0,
   duckdbTables: [],
   renderLinks: true,
-  overlay: { name: "structure", revision: 1 },
+  overlay: { name: "structure", revision: 0 },
+  shading: { name: "structure", revision: 0 },
   frontier: { expanded: [], revision: 0, level: "repository" },
   projected: { nodeCount: 0, edgeCount: 0, aggregatedEdgeCount: 0, internalizedCount: 0 },
+  selectedEdge: null,
+  selectedRegion: null,
   counts: null,
   hovered: null,
   hoveredIndex: null,
@@ -220,11 +245,20 @@ export function installDiagnostics(): void {
     get overlay(): AtlasOverlay {
       return state.overlay;
     },
+    get shading(): AtlasShading {
+      return state.shading;
+    },
     get frontier(): AtlasFrontier {
       return state.frontier;
     },
     get projected(): AtlasProjected {
       return state.projected;
+    },
+    get selectedEdge(): AtlasSelectedEdge | null {
+      return state.selectedEdge;
+    },
+    get selectedRegion(): RegionMetrics | null {
+      return state.selectedRegion;
     },
     get counts(): AtlasCounts | null {
       return state.counts;
@@ -277,6 +311,9 @@ export function installDiagnostics(): void {
     screenPositionOf(index: number): [number, number] | null {
       return source?.screenPositionOf(index) ?? null;
     },
+    projectedWireScreenEndpoints(index: number): { source: [number, number]; target: [number, number] } | null {
+      return source?.projectedWireScreenEndpoints(index) ?? null;
+    },
     pointWithIncidentLinks(): number | null {
       return source?.pointWithIncidentLinks() ?? null;
     },
@@ -288,6 +325,9 @@ export function installDiagnostics(): void {
     },
     visibleNodeIds(): readonly string[] {
       return source?.visibleNodeIds() ?? [];
+    },
+    regionMetrics(id: string): RegionMetrics | null {
+      return source?.regionMetrics(id) ?? null;
     },
     familyOfPoint(index: number): AtlasFamilyMembership | null {
       return source?.familyOfPoint(index) ?? null;

@@ -47,6 +47,82 @@ def atlasEvaluationReturnsExactTypedStatesAndReusesTransitions(): Unit \ Assert 
 }
 
 @Test
+def sharedPhysicalIndexPreservesIndependentSeedCounters(): Unit \ Assert = {
+    let world = TestWorlds.abWorld();
+    let physical = Atlas.physical(world);
+    let input = Atlas.State.Symbols(Set.singleton(Repository.Structure.SymbolId.SymbolId(0)));
+    let family = Atlas.programs(2);
+    match (Atlas.evaluate(world, input, family), Atlas.evaluateOn(physical, input, family)) {
+        case (Ok(original), Ok(shared)) => {
+            Assert.assertEq(expected = original#outputs, shared#outputs);
+            Assert.assertEq(expected = (
+                original#physicalTransitions,
+                original#transitionReuses
+            ), (
+                shared#physicalTransitions,
+                shared#transitionReuses
+            ));
+            match (Atlas.Signature.compute(world, input, 2),
+                Atlas.Signature.physicalMetrics(physical, input, family)) {
+                case (Ok(signature), Ok(metrics)) =>
+                    Assert.assertEq(expected = (
+                        signature#logicalPrograms,
+                        signature#uniqueStates,
+                        signature#physicalTransitions,
+                        signature#transitionReuses
+                    ), (
+                        metrics#logicalPrograms,
+                        metrics#uniqueStates,
+                        metrics#physicalTransitions,
+                        metrics#transitionReuses
+                    ))
+                case (Err(error), _) => Assert.fail(error)
+                case (_, Err(error)) => Assert.fail(error)
+            }
+        }
+        case (Err(error), _) => Assert.fail(error)
+        case (_, Err(error)) => Assert.fail(error)
+    }
+}
+
+@Test
+def collapsedFrontiersPreserveCompleteRouteWork(): Unit \ Assert = {
+    let physical = Atlas.physical(TestWorlds.abWorld());
+    let symbol = Atlas.State.Symbols(Set.singleton(Repository.Structure.SymbolId.SymbolId(0)));
+    let file = Atlas.State.Files(Set.singleton(Repository.Structure.FileId.FileId(0)));
+    assertCompleteWork(physical, symbol, 2);
+    assertCompleteWork(physical, file, 2);
+    assertCompleteWork(physical, symbol, 7);
+    assertCompleteWork(physical, file, 7);
+    assertCompleteWork(physical, Atlas.State.Symbols(Set.empty()), 7)
+}
+
+def assertCompleteWork(
+    physical: Repository.Physical.World,
+    input: Atlas.State,
+    depth: Int32
+): Unit \ Assert = {
+    let family = Atlas.programsFrom(Atlas.stateDomain(input), depth);
+    match (Atlas.Signature.physicalMetrics(physical, input, family),
+        Atlas.Signature.physicalMetricsComplete(physical, input, depth)) {
+        case (Ok(routes), Ok(collapsed)) =>
+            Assert.assertEq(expected = (
+                routes#logicalPrograms,
+                routes#uniqueStates,
+                routes#physicalTransitions,
+                routes#transitionReuses
+            ), (
+                collapsed#logicalPrograms,
+                collapsed#uniqueStates,
+                collapsed#physicalTransitions,
+                collapsed#transitionReuses
+            ))
+        case (Err(error), _) => Assert.fail(error)
+        case (_, Err(error)) => Assert.fail(error)
+    }
+}
+
+@Test
 def atlasSignatureExplainsExtinctionExpansionReachAndReuse(): Unit \ Assert = {
     let s0 = Repository.Structure.SymbolId.SymbolId(0);
     let world = TestWorlds.abWorld();

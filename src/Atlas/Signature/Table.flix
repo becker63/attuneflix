@@ -97,11 +97,22 @@ pub mod Atlas.Signature.Table {
         snapshot: SnapshotIdentity,
         seed: Atlas.Signature.Seed,
         signature: Atlas.Signature.Signature
+    ): ScientificTable.Row = physicalRowFromMetrics(snapshot, seed, {
+        logicalPrograms = signature#logicalPrograms,
+        uniqueStates = signature#uniqueStates,
+        physicalTransitions = signature#physicalTransitions,
+        transitionReuses = signature#transitionReuses
+    })
+
+    pub def physicalRowFromMetrics(
+        snapshot: SnapshotIdentity,
+        seed: Atlas.Signature.Seed,
+        metrics: Atlas.Signature.PhysicalMetrics
     ): ScientificTable.Row = {
-        let evaluations = signature#physicalTransitions;
-        let reuses = signature#transitionReuses;
-        let logical = signature#logicalPrograms;
-        let unique = signature#uniqueStates;
+        let evaluations = metrics#physicalTransitions;
+        let reuses = metrics#transitionReuses;
+        let logical = metrics#logicalPrograms;
+        let unique = metrics#uniqueStates;
         Map.union(identityRow(snapshot), Map#{
             "seed_domain" => Value.Text(Atlas.Signature.domainName(seed#domain)),
             "seed_identity" => Value.Text(seed#identity),

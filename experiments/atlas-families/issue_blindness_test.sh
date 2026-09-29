@@ -6,13 +6,14 @@
 # 1. The families tool's own sources name no Localization module, no frozen
 #    population, issue, or gold space, and no issue field.
 # 2. Every retained Jev decision request is the fixed families state and names
-#    no issue, gold, or benchmark field.
+#    no benchmark issue field, gold, or benchmark payload. Repository paths
+#    containing the ordinary word "issue" remain admitted source facts.
 # 3. Every retained embedding request is a document batch under the pinned
 #    recipe and names no benchmark issue field.
 # Exact reconstruction of every retained request from the protocol and the
 # world alone is the replay law (`replay_<world>`); this law scans the bytes.
 #
-# Only bash builtins, find, and grep are used so the test runs hermetically on RBE.
+# Bash, find, grep, and awk are available on the pinned RBE platform.
 set -euo pipefail
 
 if [ -n "${TEST_SRCDIR:-}" ]; then
@@ -30,11 +31,6 @@ source_markers=(
     "Localization." "gold.parquet" "jev-selection-diagnosis-v1" "localization-inputs"
     "localization-v1" "evaluation-inputs" "problem_statement" "instance_id"
 )
-payload_markers=(
-    "problem_statement" "hints_text" "instance_id" "fail_to_pass" "pass_to_pass"
-    "gold" "issue"
-)
-
 sources=0
 decisions=0
 embeddings=0
@@ -46,36 +42,17 @@ for file in "$RUNFILES_DIR"/_main/experiments/atlas-families/Main.flix \
     done
 done
 
-# The retained request of one exchange file: everything before its response
-# (the exchange keys are written in sorted order, so `request` precedes it).
-request() {
-    local content
-    content="$(<"$1")"
-    printf '%s' "${content%%\",\"response\":\"*}"
-}
-
-while IFS= read -r file; do
-    decisions=$((decisions + 1))
-    payload="$(request "$file")"
-    if [[ "$payload" != *'ATTUNE_FAMILIES_STATE_V1\\nobjective: family-formation\\n'* ]]; then
-        fail "${file##*/_main/} is not a families state"
-    fi
-    for marker in "${payload_markers[@]}"; do
-        if [[ "${payload,,}" == *"$marker"* ]]; then fail "${file##*/_main/} names $marker"; fi
-    done
-done < <(find "$RUNFILES_DIR"/_main/.attune/jev-families-raw-v1 -path '*/raw/*.json' | sort)
-
-while IFS= read -r file; do
-    embeddings=$((embeddings + 1))
-    payload="$(request "$file")"
-    if [[ "$payload" != *'"protocol":"attune-families-embeddings-v1"'* ||
-        "$payload" != *'\"encoding_format\":\"base64\"'* ]]; then
-        fail "${file##*/_main/} is not a families document batch"
-    fi
-    for marker in "problem_statement" "hints_text" "FAIL_TO_PASS" "PASS_TO_PASS"; do
-        if [[ "$payload" == *"$marker"* ]]; then fail "${file##*/_main/} names $marker"; fi
-    done
-done < <(find "$RUNFILES_DIR"/_main/.attune/families-embeddings-v1 -path '*/raw/*.json' | sort)
+scanner="$RUNFILES_DIR/_main/experiments/atlas-families/issue_blindness_payload.awk"
+decision_root="$RUNFILES_DIR/_main/.attune/jev-families-raw-v1"
+embedding_root="$RUNFILES_DIR/_main/.attune/families-embeddings-v1"
+decisions="$(find "$decision_root" -path '*/raw/*.json' | wc -l)"
+embeddings="$(find "$embedding_root" -path '*/raw/*.json' | wc -l)"
+if ! find "$decision_root" -path '*/raw/*.json' -exec awk -v kind=decision -f "$scanner" {} +; then
+    status=1
+fi
+if ! find "$embedding_root" -path '*/raw/*.json' -exec awk -v kind=embedding -f "$scanner" {} +; then
+    status=1
+fi
 
 [ "$sources" -gt 0 ] || fail "no families sources scanned"
 [ "$decisions" -gt 0 ] || fail "no retained decisions scanned"

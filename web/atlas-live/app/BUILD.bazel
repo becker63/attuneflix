@@ -1,5 +1,6 @@
 load("@aspect_rules_js//js:defs.bzl", "js_library")
 load("@npm//web/atlas-live:vite/package_json.bzl", vite_bin = "bin")
+load("@npm//web/atlas-live:vitest/package_json.bzl", vitest_bin = "bin")
 load("//web/atlas-live:defs.bzl", "LAUNCHER_ENV", "atlas_ts_package")
 
 # Runtime + typecheck npm deps of the app.
@@ -41,6 +42,70 @@ atlas_ts_package(
         "//web/atlas-live/projection:import_fixtures",
         "//web/atlas-live/projection:layout_worlds",
     ],
+)
+
+# Pure frontier/inspector checks have no Parquet world data dependency. Keep
+# this fast loop separate from :unit_test, which intentionally stages every
+# acquired Families world for its real-data laws.
+vitest_bin.vitest_test(
+    name = "inspector_unit_test",
+    size = "small",
+    args = [
+        "run",
+        "--config",
+        "vitest.config.mjs",
+        "test/inspector.test.ts",
+    ],
+    chdir = package_name(),
+    data = [
+        "vitest.config.mjs",
+        ":srcs",
+        ":test_srcs",
+        "//web/atlas-live:node_modules/vitest",
+        "//web/atlas-live/projection:srcs",
+    ],
+    env = LAUNCHER_ENV,
+)
+
+vitest_bin.vitest_test(
+    name = "proofs_unit_test",
+    size = "small",
+    args = [
+        "run",
+        "--config",
+        "vitest.config.mjs",
+        "test/proofs.test.ts",
+    ],
+    chdir = package_name(),
+    data = [
+        "vitest.config.mjs",
+        ":srcs",
+        ":test_srcs",
+        "//web/atlas-live:node_modules/vitest",
+        "//web/atlas-live/projection:srcs",
+    ],
+    env = LAUNCHER_ENV,
+)
+
+vitest_bin.vitest_test(
+    name = "viewer_unit_test",
+    size = "small",
+    args = [
+        "run",
+        "--config",
+        "vitest.config.mjs",
+        "test/atoms.test.ts",
+        "test/vocabulary.test.ts",
+    ],
+    chdir = package_name(),
+    data = [
+        "vitest.config.mjs",
+        ":srcs",
+        ":test_srcs",
+        "//web/atlas-live:node_modules/vitest",
+        "//web/atlas-live/projection:srcs",
+    ],
+    env = LAUNCHER_ENV,
 )
 
 # Everything the bundler reads: the app sources and entry, plus the projection

@@ -7,7 +7,11 @@ import { familyTint } from "./families.ts";
 import type { StructuralLayout } from "./structure.ts";
 import { pointColorMap } from "./vocabulary.ts";
 
-interface Oklab { readonly l: number; readonly a: number; readonly b: number }
+interface Oklab {
+  readonly l: number;
+  readonly a: number;
+  readonly b: number;
+}
 
 const BASE_COLORS = pointColorMap();
 
@@ -33,7 +37,9 @@ function oklab(hex: string): Oklab {
 function encoded(linearValue: number): string {
   const bounded = Math.max(0, Math.min(1, linearValue));
   const value = bounded <= 0.0031308 ? 12.92 * bounded : 1.055 * bounded ** (1 / 2.4) - 0.055;
-  return Math.round(value * 255).toString(16).padStart(2, "0");
+  return Math.round(value * 255)
+    .toString(16)
+    .padStart(2, "0");
 }
 
 function hexFromOklab(color: Oklab): string {
@@ -72,7 +78,7 @@ export function reuseShadePosition(physical: WorldPhysical, reuseFraction: numbe
   return span <= 0 ? 0.5 : Math.max(0, Math.min(1, (reuseFraction - low) / span));
 }
 
-function baseColor(graph: ViewerGraph, families: WorldFamilies | null, index: number): string {
+export function basePointColor(graph: ViewerGraph, families: WorldFamilies | null, index: number): string {
   if (families !== null) return familyTint(families, index);
   const domain = DOMAIN_ORDER[graph.pointDomains[index] ?? -1];
   return domain === undefined ? "#3f4756" : BASE_COLORS[domain];
@@ -86,37 +92,68 @@ export function physicalPointColor(
 ): (value: unknown, index?: number) => string {
   const shaded = new Map<number, string>();
   for (const seed of physical.seeds) {
-    shaded.set(seed.pointIndex, shadeOklab(
-      baseColor(graph, families, seed.pointIndex),
-      reuseShadePosition(physical, seed.reuseFraction),
-    ));
+    shaded.set(
+      seed.pointIndex,
+      shadeOklab(
+        basePointColor(graph, families, seed.pointIndex),
+        reuseShadePosition(physical, seed.reuseFraction),
+      ),
+    );
   }
-  return (_value: unknown, index = -1): string => shaded.get(index) ?? baseColor(graph, families, index);
+  return (_value: unknown, index = -1): string => shaded.get(index) ?? basePointColor(graph, families, index);
 }
 
 export interface RegionReuse {
   readonly measuredSeeds: number;
+  readonly requests: number;
+  readonly reuses: number;
   readonly reuseFraction: number;
 }
 
-/** Sample mean over seeds physically contained by a directory, including descendants. */
-export function regionReuse(layout: StructuralLayout, physical: WorldPhysical): ReadonlyMap<number, RegionReuse> {
+const REGION_REUSE = new WeakMap<
+  WorldPhysical,
+  WeakMap<StructuralLayout, ReadonlyMap<number, RegionReuse>>
+>();
+
+/** Exact transition reuse fraction over seeds in a directory and its descendants. */
+export function regionReuse(
+  layout: StructuralLayout,
+  physical: WorldPhysical,
+): ReadonlyMap<number, RegionReuse> {
+  const cached = REGION_REUSE.get(physical)?.get(layout);
+  if (cached !== undefined) return cached;
   const { fileDirectory, symbolFile, directoryParent } = layout.structure;
-  const totals = new Map<number, { count: number; sum: number }>();
+  const totals = new Map<number, { count: number; requests: number; reuses: number }>();
   for (const seed of physical.seeds) {
-    const file = seed.pointIndex < fileDirectory.length
-      ? seed.pointIndex
-      : (symbolFile[seed.pointIndex - fileDirectory.length] ?? -1);
+    const file =
+      seed.pointIndex < fileDirectory.length
+        ? seed.pointIndex
+        : (symbolFile[seed.pointIndex - fileDirectory.length] ?? -1);
     if (file < 0) continue;
     let directory = fileDirectory[file] ?? -1;
     while (directory >= 0) {
-      const prior = totals.get(directory) ?? { count: 0, sum: 0 };
-      totals.set(directory, { count: prior.count + 1, sum: prior.sum + seed.reuseFraction });
+      const prior = totals.get(directory) ?? { count: 0, requests: 0, reuses: 0 };
+      totals.set(directory, {
+        count: prior.count + 1,
+        requests: prior.requests + seed.requests,
+        reuses: prior.reuses + seed.reuses,
+      });
       directory = directoryParent[directory] ?? -1;
     }
   }
-  return new Map(Array.from(totals, ([ordinal, value]) => [ordinal, {
-    measuredSeeds: value.count,
-    reuseFraction: value.sum / value.count,
-  }]));
+  const regions = new Map(
+    Array.from(totals, ([ordinal, value]) => [
+      ordinal,
+      {
+        measuredSeeds: value.count,
+        requests: value.requests,
+        reuses: value.reuses,
+        reuseFraction: value.reuses / value.requests,
+      },
+    ]),
+  );
+  const byLayout = REGION_REUSE.get(physical) ?? new WeakMap();
+  byLayout.set(layout, regions);
+  REGION_REUSE.set(physical, byLayout);
+  return regions;
 }

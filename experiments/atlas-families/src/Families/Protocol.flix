@@ -55,11 +55,21 @@ pub mod Families.Protocol {
     /// bounds are deliberately pessimistic so the projection made before any
     /// provider call is an upper bound on the measured spend.
     pub def ledger(): String = "attune-families-ledger-v1"
-    pub def envelopeUsd(): Float64 = 50.0
+    /// User-adjusted operational cap for every new live pass.
+    pub def envelopeUsd(): Float64 = 5.0
+    /// Preact was acquired before the M1 cap adjustment; its immutable typed
+    /// ledger must continue to replay against the envelope it recorded.
+    pub def legacyEnvelopeUsd(): Float64 = 50.0
+    pub def legacySnapshotId(): String =
+        "repository-snapshot-v1:6e2bef41bf19f638be084df8cb82127e4832d4abbafa8ca20ebd5db9be3ac8a9"
     /// Catalog price of the pinned embedding model, USD per input token.
     pub def embeddingUsdPerToken(): Float64 = 0.00000001
     /// Upper bound per decision (the frozen Jev mean was about 0.00005 USD).
     pub def decisionUsdBound(): Float64 = 0.0002
+
+    /// Bounded live navigation preserves original seed ordinals across passes.
+    /// 3,000 seeds x eight possible decisions x the per-decision bound = $4.80.
+    pub def boundedSeedsPerPass(): Int32 = 3000
 
     /// A token covers at least one byte, so document bytes bound the tokens.
     pub def projectedEmbeddingUsd(documentBytes: Int64): Float64 =

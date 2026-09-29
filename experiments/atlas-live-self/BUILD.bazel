@@ -1,0 +1,37 @@
+# One additional, explicitly requested AttuneFlix snapshot. The frozen 78-world
+# census remains unchanged. Its small immutable typed basis is declared to
+# Bazel; every derived measurement is an action output.
+load("//build:attune.bzl", "attune_atlas_signature", "attune_atlas_signature_summary", "attune_location_labels")
+load(":self.bzl", "SELF_DIGEST", "SELF_WORLD", "self_physical", "single_report")
+
+attune_location_labels(
+    name = "locations",
+    tool = "//experiments/atlas-location-export:locations_tool",
+    visibility = ["//visibility:public"],
+    world = SELF_WORLD,
+)
+
+self_physical(
+    digest = SELF_DIGEST,
+    seeds = 2616,
+    world = SELF_WORLD,
+)
+
+attune_atlas_signature(
+    name = "signature",
+    tool = "//experiments/atlas-swe-explore:signature",
+    world = SELF_WORLD,
+)
+
+attune_atlas_signature_summary(
+    name = "signature_summary",
+    signature = ":signature",
+    tool = "//experiments/atlas-swe-explore:summary",
+)
+
+single_report(
+    name = "signature_report",
+    summary = ":signature_summary",
+    tool = "//experiments/atlas-swe-explore:report",
+    visibility = ["//visibility:public"],
+)

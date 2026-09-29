@@ -179,6 +179,31 @@ mod FamiliesAcquisitionTest {
     }
 
     @Test
+    def boundedSeedPassesReproduceTheSameWholeWorldKeylessly(): Unit \ {Assert, IO} = {
+        let value = subject();
+        let expected = tablesOf(Families.Pass.derive(value, documents(), roots(), simulated()));
+        let evidence = roots();
+        let embeddings = Families.Pass.prefillEmbeddings(value, sourceRoot(), evidence, simulated());
+        let first = Families.Pass.prefillDecisions(value, evidence, 0, 1, simulated());
+        let rest = Families.Pass.prefillDecisions(value, evidence, 1, 2, simulated());
+        let materialized = Families.Pass.derive(value, documents(), evidence, Transport.Refuse);
+        Assert.assertEq(expected = Ok(1), Result.map(pair -> fst(pair)#acquired, embeddings));
+        Assert.assertEq(expected = Ok(12), forM (
+            a <- first;
+            b <- rest
+        ) yield fst(a)#acquired + fst(b)#acquired);
+        Assert.assertEq(expected = expected, tablesOf(materialized));
+        Assert.assertEq(expected = Ok(13), Result.map(passed ->
+            passed#embedding#recorded + passed#decision#recorded, materialized));
+        Assert.assertEq(expected = Ok(0), Result.map(passed ->
+            passed#embedding#acquired + passed#decision#acquired, materialized));
+        Assert.assertTrue(Families.Protocol.projectedDecisionUsd(Families.Protocol.boundedSeedsPerPass())
+            <= Families.Protocol.envelopeUsd());
+        Assert.assertTrue(Result.isErr(Families.Pass.prefillDecisions(value, evidence, 0, 3001, simulated())));
+        Assert.assertTrue(Result.isErr(Families.Pass.prefillDecisions(value, evidence, -1, 1, simulated())))
+    }
+
+    @Test
     def keylessReplayRefusesAMissAndTheEnvelopeStopsLiveCalls(): Unit \ {Assert, IO} = {
         let values = documents();
         Assert.assertTrue(Families.Provider.keyAbsent());

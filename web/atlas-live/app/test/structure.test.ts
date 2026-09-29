@@ -17,7 +17,7 @@ import { readWorldDir } from "../../projection/src/world_dir.ts";
 import {
   adoptGraphAtom,
   hoveredIndexAtom,
-  overlayAtom,
+  measurementModeAtom,
   selectedAtom,
   setDepthAtom,
   setRelationMaskAtom,
@@ -325,7 +325,7 @@ describe("structural layout on preactjs/preact (the default world)", () => {
       );
       check();
     }
-    store.set(overlayAtom, "structure");
+    store.set(measurementModeAtom, "reach");
     check();
     for (const depth of [1, 2, 3, 2, 1]) {
       store.set(setDepthAtom, depth);

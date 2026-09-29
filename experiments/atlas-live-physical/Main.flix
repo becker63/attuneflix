@@ -3,7 +3,15 @@ def main(): Unit \ IO = AtlasLivePhysical.execute()
 /// A new view measurement over every admitted Preact file and symbol. The
 /// frozen signature seed panel and evaluator remain untouched.
 mod AtlasLivePhysical {
-    pub def execute(): Unit \ IO = {
+    import java.lang.Integer
+
+    pub def execute(): Unit \ IO = match Experiment.property("attune.command") {
+        case "measure" => measureShard()
+        case "merge" => mergeShards()
+        case command => bug!("unknown physical command: ${command}")
+    }
+
+    def measureShard(): Unit \ IO = {
         let identity: Repository.Table.Identity = {
             repository = Experiment.property("attune.repository"),
             baseRevision = Experiment.property("attune.base_revision"),
@@ -41,32 +49,62 @@ mod AtlasLivePhysical {
                     state = Atlas.State.Symbols(Set.singleton(Repository.Structure.SymbolId.SymbolId(ordinal)))
                 }, world#symbols);
                 let seeds = Vector.append(files, symbols);
-                match measure(snapshot, world, Vector.toList(seeds), Nil) {
-                    case Err(error) => bug!(error)
-                    case Ok(rows) => {
-                        let _ = ScientificTable.write(
-                            Experiment.property("attune.output_physical"),
-                            Atlas.Signature.Table.physical(),
-                            List.reverse(rows) |> List.toVector
-                        );
-                        println("ATLAS_LIVE_PHYSICAL seeds=${Vector.length(seeds)}")
+                let expected = Integer.parseInt(Experiment.property("attune.expected_seeds"));
+                let start = Integer.parseInt(Experiment.property("attune.seed_start"));
+                let end = Integer.parseInt(Experiment.property("attune.seed_end"));
+                if (Vector.length(seeds) != expected or start < 0 or end < start or end > expected)
+                    bug!("physical shard bounds disagree with admitted world")
+                else {
+                    let selected = Vector.slice(start = start, end = end, seeds);
+                    let physical = Atlas.physical(world);
+                    match measure(snapshot, physical, Vector.toList(selected), Nil) {
+                        case Err(error) => bug!(error)
+                        case Ok(rows) => {
+                            let _ = ScientificTable.write(
+                                Experiment.property("attune.output_physical"),
+                                Atlas.Signature.Table.physical(),
+                                List.reverse(rows) |> List.toVector
+                            );
+                            println("ATLAS_LIVE_PHYSICAL snapshot=${identity#snapshotId} seeds=${Vector.length(selected)}")
+                        }
                     }
                 }
             }
         }
     }
 
+    /// Ordered shards retain the same exact per-seed evaluator and counters.
+    def mergeShards(): Unit \ IO = {
+        let rows = Experiment.paths("attune.shard")
+            |> Vector.map(path -> ScientificTable.read(path, Atlas.Signature.Table.physical()))
+            |> Vector.flatten;
+        let expected = Integer.parseInt(Experiment.property("attune.expected_seeds"));
+        if (Vector.length(rows) != expected)
+            bug!("physical shards contain ${Vector.length(rows)} seeds, expected ${expected}")
+        else {
+            let written = ScientificTable.write(
+                Experiment.property("attune.output_physical"),
+                Atlas.Signature.Table.physical(),
+                rows
+            );
+            if (written == rows)
+                println("ATLAS_LIVE_PHYSICAL_MERGE seeds=${expected}")
+            else bug!("physical merged table did not round-trip exactly")
+        }
+    }
+
     def measure(
         snapshot: Atlas.Signature.Table.SnapshotIdentity,
-        world: Repository.World,
+        physical: Repository.Physical.World,
         seeds: List[Atlas.Signature.Seed],
         rows: List[ScientificTable.Row]
     ): Result[String, List[ScientificTable.Row]] \ IO = match seeds {
         case Nil => Ok(rows)
-        case seed :: rest => forM (
-            signature <- Atlas.Signature.compute(world, seed#state, 7);
-            result <- measure(snapshot, world, rest,
-                Atlas.Signature.Table.physicalRow(snapshot, seed, signature) :: rows)
-        ) yield result
+        case seed :: rest =>
+            match Atlas.Signature.physicalMetricsComplete(physical, seed#state, 7) {
+                case Err(error) => Err(error)
+                case Ok(metrics) => measure(snapshot, physical, rest,
+                    Atlas.Signature.Table.physicalRowFromMetrics(snapshot, seed, metrics) :: rows)
+            }
     }
 }

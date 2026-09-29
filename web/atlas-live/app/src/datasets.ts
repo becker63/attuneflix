@@ -1,5 +1,5 @@
 /**
- * The dataset picker's data model: the 78 census worlds plus the separately
+ * The dataset picker's data model: the 78 census worlds, one pinned self world, and the separately
  * labelled synthetic stress fixture, derived from the shipped `manifest.json`.
  * Pure functions only, so the label, short revision and ordering rules are
  * unit-testable without React or the renderer.
@@ -10,9 +10,9 @@ import type { WorldManifest, WorldManifestEntry } from "./world.ts";
  * Above this many links a single SwiftShader redraw of the drawn links is a
  * multi-second main-thread long task (research: 3.6-8.7 s at 50k, 0.4-1.0 s at
  * 2k-5k). Datasets over the budget keep every point, link and adjacency in the
- * graph and stay interactive, but the renderer does not draw their links; the
- * choice is reported as `renderLinks` in `window.__atlasLive` and documented in
- * the README. The 78 words keep their links except the very largest.
+ * graph. Their fitted overview stays quiet; zooming selects a bounded set of
+ * exact projected connections near the camera. `renderLinks` in the diagnostics
+ * hook reports whether the raw world fits the unrestricted budget at overview.
  */
 export const LINK_RENDER_BUDGET = 10_000;
 
@@ -46,14 +46,21 @@ function optionFor(entry: WorldManifestEntry): DatasetOption {
     synthetic: entry.synthetic,
     label: entry.synthetic ? "synthetic stress fixture" : `${entry.repository} @ ${revision}`,
     // A world that ships a families export says so; the others render exactly as before.
-    detail: entry.assets.families === undefined ? counts : `${counts} · families`,
+    detail: [
+      counts,
+      entry.familySummary === undefined ? null : `${entry.familySummary.count} families`,
+      entry.physicalSummary === undefined
+        ? null
+        : `${(entry.physicalSummary.reuseFraction * 100).toFixed(2)}% reuse`,
+    ]
+      .filter((part) => part !== null)
+      .join(" · "),
   };
 }
 
 /**
- * The picker's options: exactly the 78 worlds (manifest order, sorted by snapshot
- * id), then the synthetic stress fixture last. The fixture is never counted among
- * the 78.
+ * The picker's options: manifest worlds in snapshot-id order, then the
+ * synthetic stress fixture last. The fixture is not a repository.
  */
 export function datasetOptions(manifest: WorldManifest): DatasetOption[] {
   const worlds = manifest.worlds.map(optionFor);

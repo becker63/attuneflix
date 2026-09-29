@@ -58,8 +58,31 @@ export interface AtlasLiveHook {
   selected: readonly string[];
   filterRevision: number;
   overlay: { name: string; revision: number };
+  shading: { name: "structure" | "physical" | "locality" | "reach"; revision: number };
   frontier: { expanded: readonly string[]; revision: number; level: "repository" | "directory" | "file" | "symbol" };
   projected: { nodeCount: number; edgeCount: number; aggregatedEdgeCount: number; internalizedCount: number };
+  selectedEdge: {
+    source: string;
+    target: string;
+    relation: "imports" | "calls";
+    multiplicity: number;
+    provenanceCount: number;
+    uniqueSources: number;
+    uniqueTargets: number;
+  } | null;
+  selectedRegion: {
+    region: string;
+    internal: number;
+    egress: number;
+    ingress: number;
+    boundary: number;
+    peers: number;
+    localness: number;
+    reach: readonly [number, number, number];
+    internalByRelation: { imports: number; calls: number };
+    egressByRelation: { imports: number; calls: number };
+    ingressByRelation: { imports: number; calls: number };
+  } | null;
   camera: { zoom: number | null };
   perf: Record<string, number>;
   layoutIdentity: string | null;
@@ -69,10 +92,12 @@ export interface AtlasLiveHook {
   buildRevision: string;
   error: string | null;
   screenPositionOf(index: number): [number, number] | null;
+  projectedWireScreenEndpoints(index: number): { source: [number, number]; target: [number, number] } | null;
   pointWithIncidentLinks(): number | null;
   pointIdOf(index: number): string | null;
   pointCount(): number;
   visibleNodeIds(): readonly string[];
+  regionMetrics(id: string): AtlasLiveHook["selectedRegion"];
   familyOfPoint(index: number): AtlasFamilyMembership | null;
 }
 

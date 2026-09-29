@@ -13,7 +13,7 @@ import {
   hoveredNeighbourhoodAtom,
   incidentEdgesAtom,
   neighbourhoodDepthAtom,
-  overlayAtom,
+  measurementModeAtom,
   relationMaskAtom,
   selectedAtom,
   selectedIndicesAtom,
@@ -86,7 +86,7 @@ describe("viewer state atoms", () => {
   it("keeps the pinned selection across overlay, filter and hover changes", () => {
     store.set(toggleSelectedAtom, "file:0");
     const pinned = store.get(selectedAtom);
-    store.set(overlayAtom, "structure");
+    store.set(measurementModeAtom, "locality");
     store.set(setRelationMaskAtom, relationMask(["parent"]));
     store.set(hoveredIndexAtom, 5);
     store.set(hoveredIndexAtom, null);
