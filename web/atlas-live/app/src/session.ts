@@ -9,9 +9,19 @@ import type { Domain } from "../../projection/src/domain.ts";
 import { DOMAIN_ORDER } from "../../projection/src/domain.ts";
 import type { WorldFamilies } from "../../projection/src/families.ts";
 import type { ViewerGraph } from "../../projection/src/graph.ts";
+import type { WorldPhysical } from "../../projection/src/physical.ts";
 import { RELATION_ORDER, type Relation } from "../../projection/src/relation.ts";
 import { shouldRenderLinks } from "./datasets.ts";
 import type { LocalDuckDB } from "./duckdb.ts";
+import { projectedLinksArrow } from "./frontier/arrow.ts";
+import { containmentTree, type ContainmentTree } from "./frontier/containment.ts";
+import {
+  collapse,
+  expand,
+  initialFrontier,
+  type VisibleFrontier,
+} from "./frontier/frontier.ts";
+import { projectFrontier, type FrontierProjection, type WireRelation } from "./frontier/wires.ts";
 import {
   degree,
   incidentCounts,
@@ -25,6 +35,14 @@ import type { WorldManifestEntry } from "./world.ts";
 export const POINTS_TABLE = "atlas_live_points";
 export const LINKS_TABLE = "atlas_live_links";
 
+export interface FrontierViewSnapshot {
+  readonly frontier: VisibleFrontier;
+  readonly projection: FrontierProjection;
+  readonly linksTable: string;
+  /** Advances for expansion, collapse, and enabled-wire changes. */
+  readonly revision: number;
+}
+
 export interface GraphSessionOptions {
   readonly duckdb: LocalDuckDB;
   readonly entry: WorldManifestEntry;
@@ -33,6 +51,7 @@ export interface GraphSessionOptions {
   readonly layout: StructuralLayout;
   /** The world's families layer, or null for a world without families data. */
   readonly families?: WorldFamilies | null;
+  readonly physical?: WorldPhysical | null;
   readonly pointsTable?: string;
   readonly linksTable?: string;
   /** Monotonic across dataset switches; 1 for the first session. */
@@ -53,12 +72,21 @@ export class GraphSession {
   readonly layout: StructuralLayout;
   /** The world's families layer; null when the world ships no families data. */
   readonly families: WorldFamilies | null;
+  readonly physical: WorldPhysical | null;
   readonly pointsTable: string;
   readonly linksTable: string;
   /** Increments when a new session replaces this one; stable for a loaded world. */
   readonly sessionRevision: number;
   /** Increments when the projected topology changes; overlays never touch it. */
   readonly topologyRevision = 1;
+  readonly containment: ContainmentTree;
+
+  #view: FrontierViewSnapshot;
+  readonly #viewListeners = new Set<() => void>();
+  readonly #projectedTables = new Set<string>();
+  #viewSerial = 0;
+  #pendingView: Promise<void> = Promise.resolve();
+  #visibleMask: Uint8Array;
 
   readonly #abort: AbortController;
   readonly #disposalListeners = new Set<() => void>();
@@ -70,10 +98,89 @@ export class GraphSession {
     this.graph = options.graph;
     this.layout = options.layout;
     this.families = options.families ?? null;
+    this.physical = options.physical ?? null;
     this.pointsTable = options.pointsTable ?? POINTS_TABLE;
     this.linksTable = options.linksTable ?? LINKS_TABLE;
     this.sessionRevision = options.sessionRevision ?? 1;
     this.#abort = options.abort ?? new AbortController();
+    this.containment = containmentTree(this.graph);
+    const frontier = initialFrontier();
+    const projection = projectFrontier(this.graph, this.containment, frontier, ["imports", "calls"]);
+    const table = `${this.linksTable}_frontier_0`;
+    this.#view = { frontier, projection, linksTable: table, revision: 0 };
+    this.#projectedTables.add(table);
+    this.#visibleMask = this.#maskOf(projection);
+  }
+
+  subscribeView = (listener: () => void): (() => void) => {
+    this.#viewListeners.add(listener);
+    return () => this.#viewListeners.delete(listener);
+  };
+
+  getViewSnapshot = (): FrontierViewSnapshot => this.#view;
+
+  isVisibleIndex(index: number): boolean {
+    return this.#visibleMask[index] === 1;
+  }
+
+  /** Controller inserts this before publishing the session, so the first paint is coarse. */
+  initialProjectedLinks() {
+    return projectedLinksArrow(this.graph, this.#view.projection);
+  }
+
+  /** Expands or collapses a visible container without changing admitted graph or layout. */
+  changeFrontier(id: string, action: "expand" | "collapse"): Promise<void> {
+    return this.#enqueue(async () => {
+      const next = action === "expand"
+        ? expand(this.containment, this.#view.frontier, id)
+        : collapse(this.containment, this.#view.frontier, id);
+      if (next === this.#view.frontier) return;
+      await this.#replaceView(next, this.#view.projection.enabled);
+    });
+  }
+
+  /** A relation filter changes the projected wires, never the basis graph. */
+  setWireRelations(enabled: readonly WireRelation[]): Promise<void> {
+    return this.#enqueue(async () => {
+      if (enabled.join(",") === this.#view.projection.enabled.join(",")) return;
+      await this.#replaceView(this.#view.frontier, enabled);
+    });
+  }
+
+  #enqueue(change: () => Promise<void>): Promise<void> {
+    const next = this.#pendingView.then(change, change);
+    this.#pendingView = next.catch(() => undefined);
+    return next;
+  }
+
+  async #replaceView(frontier: VisibleFrontier, enabled: readonly WireRelation[]): Promise<void> {
+    if (this.#disposed) return;
+    const projection = projectFrontier(this.graph, this.containment, frontier, enabled);
+    const table = `${this.linksTable}_frontier_${++this.#viewSerial}`;
+    await this.duckdb.connection.insertArrowTable(projectedLinksArrow(this.graph, projection), { name: table });
+    if (this.#disposed) {
+      await this.duckdb.connection.query(`DROP TABLE IF EXISTS ${table}`);
+      return;
+    }
+    this.#projectedTables.add(table);
+    this.#visibleMask = this.#maskOf(projection);
+    this.#view = { frontier, projection, linksTable: table, revision: this.#view.revision + 1 };
+    for (const listener of this.#viewListeners) listener();
+  }
+
+  #maskOf(projection: FrontierProjection): Uint8Array {
+    const mask = new Uint8Array(this.graph.pointCount);
+    for (const node of projection.nodes) mask[node.index] = 1;
+    return mask;
+  }
+
+  /** Called after Cosmograph has rebuilt against the latest projected table. */
+  async retireOldProjectedTables(): Promise<void> {
+    for (const table of this.#projectedTables) {
+      if (table === this.#view.linksTable) continue;
+      await this.duckdb.connection.query(`DROP TABLE IF EXISTS ${table}`);
+      this.#projectedTables.delete(table);
+    }
   }
 
   get pointCount(): number {
@@ -160,6 +267,12 @@ export class GraphSession {
     if (!this.#abort.signal.aborted) this.#abort.abort();
     for (const listener of this.#disposalListeners) listener();
     this.#disposalListeners.clear();
+    this.#viewListeners.clear();
+    await this.#pendingView;
+    for (const table of this.#projectedTables) {
+      await this.duckdb.connection.query(`DROP TABLE IF EXISTS ${table}`);
+    }
+    this.#projectedTables.clear();
     await this.duckdb.connection.query(`DROP TABLE IF EXISTS ${this.pointsTable}`);
     await this.duckdb.connection.query(`DROP TABLE IF EXISTS ${this.linksTable}`);
   }

@@ -1,5 +1,11 @@
-load("//test/build:flix.bzl", "flix_fatjar")
 load("//build:attune.bzl", "attune_atlas_signature", "attune_atlas_signature_summary", "attune_world_fixture")
+load("//test/build:flix.bzl", "flix_fatjar")
+
+# Frozen typed per-seed physical-transition evidence, shipped read-only to Atlas Live.
+exports_files(
+    ["physical.parquet"],
+    visibility = ["//web/atlas-live:__subpackages__"],
+)
 
 flix_fatjar(
     name = "signature_flix",
@@ -11,11 +17,11 @@ flix_fatjar(
         "//src:Experiment.flix",
         "//src:Radii.flix",
         "//src:Repository.flix",
-        "//src:Repository/Location.flix",
         "//src:Repository/Grit.flix",
+        "//src:Repository/Location.flix",
         "//src:Repository/Physical.flix",
-        "//src:Repository/Table.flix",
         "//src:Repository/Structure.flix",
+        "//src:Repository/Table.flix",
         "//src:ScientificIdentity.flix",
         "//src:ScientificTable.flix",
         "//src:ScientificTable/Columns.flix",
@@ -35,8 +41,8 @@ java_binary(
         "-Xss8m",
     ],
     main_class = "Main",
-    runtime_deps = [":signature_flix"],
     visibility = ["//visibility:public"],
+    runtime_deps = [":signature_flix"],
 )
 
 # Summary/report semantics compile separately so changing a reduction does not
@@ -52,8 +58,8 @@ flix_fatjar(
         "//src:Experiment.flix",
         "//src:Radii.flix",
         "//src:Repository.flix",
-        "//src:Repository/Location.flix",
         "//src:Repository/Grit.flix",
+        "//src:Repository/Location.flix",
         "//src:Repository/Physical.flix",
         "//src:Repository/Structure.flix",
         "//src:ScientificIdentity.flix",
@@ -75,8 +81,8 @@ java_binary(
         "-Xss8m",
     ],
     main_class = "Main",
-    runtime_deps = [":summary_flix"],
     visibility = ["//visibility:public"],
+    runtime_deps = [":summary_flix"],
 )
 
 flix_fatjar(
@@ -92,8 +98,8 @@ flix_fatjar(
         "//src:Population/Table.flix",
         "//src:Radii.flix",
         "//src:Repository.flix",
-        "//src:Repository/Location.flix",
         "//src:Repository/Grit.flix",
+        "//src:Repository/Location.flix",
         "//src:Repository/Physical.flix",
         "//src:Repository/Structure.flix",
         "//src:ScientificIdentity.flix",
@@ -115,8 +121,8 @@ java_binary(
         "-Xss8m",
     ],
     main_class = "Main",
-    runtime_deps = [":aggregate_flix"],
     visibility = ["//visibility:public"],
+    runtime_deps = [":aggregate_flix"],
 )
 
 flix_fatjar(
@@ -130,8 +136,8 @@ flix_fatjar(
         "//src:Experiment.flix",
         "//src:Radii.flix",
         "//src:Repository.flix",
-        "//src:Repository/Location.flix",
         "//src:Repository/Grit.flix",
+        "//src:Repository/Location.flix",
         "//src:Repository/Physical.flix",
         "//src:Repository/Structure.flix",
         "//src:ScientificIdentity.flix",
@@ -153,8 +159,8 @@ java_binary(
         "-Xss8m",
     ],
     main_class = "Main",
-    runtime_deps = [":report_flix"],
     visibility = ["//visibility:public"],
+    runtime_deps = [":report_flix"],
 )
 
 genrule(

@@ -69,6 +69,21 @@ export interface AtlasOverlay {
   readonly revision: number;
 }
 
+export interface AtlasFrontier {
+  readonly expanded: readonly string[];
+  readonly revision: number;
+  readonly level: "repository" | "directory" | "file" | "symbol";
+}
+
+export interface AtlasProjected {
+  readonly nodeCount: number;
+  /** Enabled basis edges that cross frontier boundaries. */
+  readonly edgeCount: number;
+  /** Distinct drawn wires after aggregation. */
+  readonly aggregatedEdgeCount: number;
+  readonly internalizedCount: number;
+}
+
 export interface DiagnosticsSource {
   /** Viewport coordinates ([x, y]) of a point's centre, or null if unknown. */
   screenPositionOf(index: number): [number, number] | null;
@@ -80,6 +95,8 @@ export interface DiagnosticsSource {
   pointCount(): number;
   /** The family membership of a point, or null when the world or point has none. */
   familyOfPoint(index: number): AtlasFamilyMembership | null;
+  /** Point ids on the visible frontier, in graph order. */
+  visibleNodeIds(): readonly string[];
 }
 
 interface DiagnosticsState {
@@ -96,6 +113,8 @@ interface DiagnosticsState {
   /** Whether the renderer draws the current dataset's links (see LINK_RENDER_BUDGET). */
   renderLinks: boolean;
   overlay: AtlasOverlay;
+  frontier: AtlasFrontier;
+  projected: AtlasProjected;
   counts: AtlasCounts | null;
   hovered: string | null;
   hoveredIndex: number | null;
@@ -133,6 +152,8 @@ const state: DiagnosticsState = {
   duckdbTables: [],
   renderLinks: true,
   overlay: { name: "structure", revision: 1 },
+  frontier: { expanded: [], revision: 0, level: "repository" },
+  projected: { nodeCount: 0, edgeCount: 0, aggregatedEdgeCount: 0, internalizedCount: 0 },
   counts: null,
   hovered: null,
   hoveredIndex: null,
@@ -199,6 +220,12 @@ export function installDiagnostics(): void {
     get overlay(): AtlasOverlay {
       return state.overlay;
     },
+    get frontier(): AtlasFrontier {
+      return state.frontier;
+    },
+    get projected(): AtlasProjected {
+      return state.projected;
+    },
     get counts(): AtlasCounts | null {
       return state.counts;
     },
@@ -258,6 +285,9 @@ export function installDiagnostics(): void {
     },
     pointCount(): number {
       return source?.pointCount() ?? 0;
+    },
+    visibleNodeIds(): readonly string[] {
+      return source?.visibleNodeIds() ?? [];
     },
     familyOfPoint(index: number): AtlasFamilyMembership | null {
       return source?.familyOfPoint(index) ?? null;

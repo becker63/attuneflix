@@ -50,6 +50,9 @@ export const overlayAtom = atom<OverlayName>("structure");
 /** The loaded session's families layer, or null for a world without families data. */
 export const familiesAtom = atom<WorldFamilies | null>(null);
 
+/** Physical reuse changes only Oklab lightness on the same graph. */
+export const reuseShadingAtom = atom<boolean>(true);
+
 /** Bumped on every overlay change (a view revision, never a topology one). */
 export const overlayRevisionAtom = atom<number>(0);
 
@@ -215,5 +218,5 @@ export const selectedProvenanceAtom = atom<readonly SelectedRecord[]>((get) => {
 
 /** The legend of the active overlay and filter, with disabled relations marked. */
 export const activeLegendAtom = atom<readonly LegendEntry[]>((get) =>
-  legendEntries(get(overlayAtom), get(visibleRelationSetAtom), { includeDisabledRelations: true }),
+  legendEntries(get(familiesAtom) === null ? "structure" : "families", get(visibleRelationSetAtom), { includeDisabledRelations: true }),
 );

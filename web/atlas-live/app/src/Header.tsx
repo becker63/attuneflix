@@ -6,13 +6,9 @@
  * link-free view is never mistaken for an empty one.
  */
 import * as stylex from "@stylexjs/stylex";
-import { useAtomValue } from "jotai";
-
-import { overlayAtom } from "./atoms.ts";
 import type { SessionSnapshot } from "./controller.ts";
 import { DatasetPicker } from "./DatasetPicker.tsx";
 import { LINK_RENDER_BUDGET, shortRevision } from "./datasets.ts";
-import { OVERLAY_LABELS } from "./vocabulary.ts";
 
 const styles = stylex.create({
   root: {
@@ -79,7 +75,6 @@ const styles = stylex.create({
 });
 
 export function Header({ state, onSelect }: { state: SessionSnapshot; onSelect: (value: string) => void }) {
-  const overlay = useAtomValue(overlayAtom);
   const { session } = state;
   const pickerDisabled = state.status === "loading" || state.status === "booting";
   return (
@@ -120,7 +115,7 @@ export function Header({ state, onSelect }: { state: SessionSnapshot; onSelect: 
         </span>
       )}
       <span {...stylex.props(styles.stat)} data-testid="overlay">
-        Overlay: {OVERLAY_LABELS[overlay]}
+        {session?.families === null ? "Structure" : "Structure + families"}
       </span>
     </header>
   );

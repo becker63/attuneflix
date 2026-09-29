@@ -118,6 +118,7 @@ test_suite(
         "//web/atlas-live/e2e:typecheck_test",
         "//web/atlas-live/projection:data_test",
         "//web/atlas-live/projection:import_fixtures_test",
+        "//web/atlas-live/projection:physical_parity_test",
         "//web/atlas-live/projection:typecheck_test",
         "//web/atlas-live/projection:unit_test",
         "//web/atlas-live/protocol:typecheck_test",
@@ -134,10 +135,12 @@ copy_to_directory(
     srcs = [
         "//web/atlas-live/app:dist",
         "//web/atlas-live/projection:data",
+        "//web/atlas-live/projection:physical",
     ],
     root_paths = [
         "web/atlas-live/app/dist",
         "web/atlas-live/projection/data",
+        "web/atlas-live/projection/physical",
     ],
 )
 

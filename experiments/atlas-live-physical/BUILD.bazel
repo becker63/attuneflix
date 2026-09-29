@@ -1,0 +1,46 @@
+load("//test/build:flix.bzl", "flix_fatjar")
+load(":physical.bzl", "all_seed_physical")
+
+flix_fatjar(
+    name = "physical_flix",
+    srcs = [
+        "Main.flix",
+        "//src:Atlas.flix",
+        "//src:Atlas/Signature.flix",
+        "//src:Atlas/Signature/Table.flix",
+        "//src:Experiment.flix",
+        "//src:Radii.flix",
+        "//src:Repository.flix",
+        "//src:Repository/Grit.flix",
+        "//src:Repository/Location.flix",
+        "//src:Repository/Physical.flix",
+        "//src:Repository/Structure.flix",
+        "//src:Repository/Table.flix",
+        "//src:ScientificIdentity.flix",
+        "//src:ScientificTable.flix",
+        "//src:ScientificTable/Columns.flix",
+    ],
+    java_deps = [
+        "//src/native/identity:attune_identity",
+        "//src/native/parquet:attune_parquet",
+    ],
+    threads = 2,
+)
+
+java_binary(
+    name = "physical_tool",
+    jvm_flags = [
+        "--add-opens=java.base/java.nio=ALL-UNNAMED",
+        "--enable-native-access=ALL-UNNAMED",
+        "-Xss8m",
+    ],
+    main_class = "Main",
+    runtime_deps = [":physical_flix"],
+)
+
+all_seed_physical(
+    name = "preact_physical",
+    tool = ":physical_tool",
+    visibility = ["//visibility:public"],
+    world = "//.attune/repository-world-v1/6e2bef41bf19f638be084df8cb82127e4832d4abbafa8ca20ebd5db9be3ac8a9:world",
+)

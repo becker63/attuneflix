@@ -21,6 +21,7 @@ export interface GraphHandlers {
   background(): void;
   rebuilt(stats: { readonly pointsCount: number; readonly linksCount: number }): void;
   zoom(): void;
+  drag(): void;
 }
 
 let handlers: GraphHandlers | null = null;
@@ -76,6 +77,10 @@ export function onGraphRebuilt(stats: { readonly pointsCount: number; readonly l
 
 export function onZoom(): void {
   handlers?.zoom();
+}
+
+export function onGraphDrag(): void {
+  handlers?.drag();
 }
 
 export function onGraphMount(instance: MountedCosmograph): void {

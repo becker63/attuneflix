@@ -79,6 +79,7 @@ function loaded(manifestEntry: WorldManifestEntry): LoadedWorld {
     tables: buildViewerArrow(graph, { xy: layout.xy }),
     layout,
     families: null,
+    physical: null,
     layoutMs: 0,
   };
 }
@@ -137,7 +138,11 @@ describe("SessionController lifecycle", () => {
     expect(snapshot.status).toBe("ready");
     expect(snapshot.session?.entry.snapshotId).toBe(worlds[0]?.snapshotId);
     expect(snapshot.liveSessions).toBe(1);
-    expect(snapshot.duckdbTables).toEqual(["atlas_live_links_1", "atlas_live_points_1"]);
+    expect(snapshot.duckdbTables).toEqual([
+      "atlas_live_links_1",
+      "atlas_live_links_1_frontier_0",
+      "atlas_live_points_1",
+    ]);
     expect(h.controller.liveSessions).toHaveLength(1);
   });
 
@@ -167,7 +172,47 @@ describe("SessionController lifecycle", () => {
     expect(first.listenerCount).toBe(0);
     expect(h.duckdb.tables.has("atlas_live_points_1")).toBe(false);
     expect(h.duckdb.tables.has("atlas_live_links_1")).toBe(false);
-    expect(snapshot.duckdbTables).toEqual(["atlas_live_links_2", "atlas_live_points_2"]);
+    expect(h.duckdb.tables.has("atlas_live_links_1_frontier_0")).toBe(false);
+    expect(snapshot.duckdbTables).toEqual([
+      "atlas_live_links_2",
+      "atlas_live_links_2_frontier_0",
+      "atlas_live_points_2",
+    ]);
+  });
+
+  it("frontier transitions replace only view tables and keep the admitted graph and geometry", async () => {
+    const h = harness([entry("a", "acme/one", 3)], null);
+    await h.controller.start();
+    const session = h.controller.getSnapshot().session;
+    expect(session).not.toBeNull();
+    if (session === null) return;
+    const graph = session.graph;
+    const identity = session.layout.identity;
+    const first = session.getViewSnapshot();
+    const region = first.projection.nodes.find((node) => node.kind === "file");
+    expect(region).toBeDefined();
+    if (region === undefined) return;
+    const onView = vi.fn();
+    session.subscribeView(onView);
+
+    await session.changeFrontier(region.id, "expand");
+    const expanded = session.getViewSnapshot();
+    expect(expanded.frontier.expanded).toContain(region.id);
+    expect(expanded.projection.nodes.length).toBeGreaterThan(first.projection.nodes.length);
+    expect(expanded.linksTable).not.toBe(first.linksTable);
+    expect(h.duckdb.tables.has(expanded.linksTable)).toBe(true);
+    expect(session.graph).toBe(graph);
+    expect(session.layout.identity).toBe(identity);
+    expect(onView).toHaveBeenCalledTimes(1);
+
+    await session.changeFrontier(region.id, "collapse");
+    const collapsed = session.getViewSnapshot();
+    expect(collapsed.projection.nodes.map((node) => node.id)).toEqual(first.projection.nodes.map((node) => node.id));
+    await session.retireOldProjectedTables();
+    expect(h.duckdb.tables.has(first.linksTable)).toBe(false);
+    expect(h.duckdb.tables.has(expanded.linksTable)).toBe(false);
+    expect(h.duckdb.tables.has(collapsed.linksTable)).toBe(true);
+    expect(h.duckdb.tables.has(session.linksTable)).toBe(true);
   });
 
   it("a failed switch keeps the previous session usable and reports a readable error", async () => {

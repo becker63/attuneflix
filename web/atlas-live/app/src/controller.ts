@@ -161,11 +161,21 @@ export class SessionController {
         graph: loaded.graph,
         layout: loaded.layout,
         families: loaded.families,
+        physical: loaded.physical,
         pointsTable,
         linksTable,
         sessionRevision: revision,
         abort,
       });
+      // The exact table remains available for the existing Families overlay;
+      // the default Structure view starts from the projected, coarse wires.
+      await duckdb.connection.insertArrowTable(session.initialProjectedLinks(), {
+        name: session.getViewSnapshot().linksTable,
+      });
+      if (abort.signal.aborted) {
+        await session.dispose();
+        return;
+      }
       this.#revision = revision;
       this.#live.add(session);
       // The old session is dropped only once its replacement is live.

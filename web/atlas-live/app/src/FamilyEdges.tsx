@@ -12,7 +12,7 @@ import * as stylex from "@stylexjs/stylex";
 import { useAtomValue, useSetAtom } from "jotai";
 
 import type { FamilyEdge } from "../../projection/src/families.ts";
-import { drillFamilyEdgeAtom, drilledFamilyEdgeAtom, setOverlayAtom } from "./atoms.ts";
+import { drillFamilyEdgeAtom, drilledFamilyEdgeAtom } from "./atoms.ts";
 import {
   CONTRIBUTION_LINE_LIMIT,
   TOP_FAMILY_EDGE_LIMIT,
@@ -103,7 +103,6 @@ function edgeLabel(session: GraphSession, edge: FamilyEdge): string {
 export function FamilyEdges({ session }: { session: GraphSession | null }) {
   const drill = useAtomValue(drilledFamilyEdgeAtom);
   const setDrill = useSetAtom(drillFamilyEdgeAtom);
-  const setOverlay = useSetAtom(setOverlayAtom);
   const families = session?.families ?? null;
   if (session === null || families === null) return null;
 
@@ -123,7 +122,6 @@ export function FamilyEdges({ session }: { session: GraphSession | null }) {
               type="button"
               data-testid={`family-edge-${edge.edge}`}
               onClick={() => {
-                setOverlay("families");
                 setDrill(edge.edge);
               }}
               {...stylex.props(styles.edge)}

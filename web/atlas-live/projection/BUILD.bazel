@@ -17,6 +17,7 @@ atlas_ts_package(
     test_data = [
         ":axios_world",
         ":layout_worlds",
+        ":physical",
     ],
     test_env = {"WORLD_ROOT": "axios_world"},
 )
@@ -57,6 +58,21 @@ copy_to_directory(
     srcs = FAMILY_EXPORTS,
     root_paths = ["experiments/atlas-families"],
     visibility = ["//visibility:public"],
+)
+
+# A new Bazel-derived depth-7 physical-work table for every Preact file and
+# symbol. The frozen 16-seed census table remains untouched as a parity oracle.
+copy_to_directory(
+    name = "physical",
+    srcs = ["//experiments/atlas-live-physical:preact_physical"],
+    root_paths = ["experiments/atlas-live-physical/preact_physical"],
+    visibility = ["//visibility:public"],
+)
+
+copy_to_directory(
+    name = "physical_frozen",
+    srcs = ["//experiments/atlas-swe-explore:physical.parquet"],
+    root_paths = ["experiments/atlas-swe-explore"],
 )
 
 # The real worlds the app's structural-layout and frontier unit tests read
@@ -197,6 +213,21 @@ js_test(
         ":srcs",
     ],
     entry_point = "test/data_check.ts",
+)
+
+# The new all-seed view measurement is an exact extension of the frozen Preact
+# 16-seed panel. This law also checks complete file/symbol coverage.
+js_test(
+    name = "physical_parity_test",
+    size = "small",
+    chdir = package_name(),
+    data = [
+        ":layout_worlds",
+        ":physical",
+        ":physical_frozen",
+        ":srcs",
+    ],
+    entry_point = "test/physical_check.ts",
 )
 
 # The checked-in sources (no npm deps); scanned by //web/atlas-live:secret_scan_test.

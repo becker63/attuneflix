@@ -26,8 +26,10 @@ async function readLayout(page: Page): Promise<LayoutRead> {
   return page.evaluate(() => {
     const live = window.__atlasLive;
     if (live === undefined) throw new Error("no diagnostics hook");
-    const count = live.pointCount();
-    const samples = [0, 1, Math.floor(count / 3), Math.floor(count / 2), count - 1];
+    const samples: number[] = [];
+    for (let index = 0; index < live.pointCount() && samples.length < 5; index++) {
+      if (live.screenPositionOf(index) !== null) samples.push(index);
+    }
     return {
       snapshotId: live.snapshotId,
       layoutIdentity: live.layoutIdentity,
@@ -43,7 +45,7 @@ test("reloading the same world reproduces the layout identity and screen positio
   await page.goto("/");
   await waitReady(page);
   const first = await readLayout(page);
-  expect(first.layoutIdentity).toMatch(/^structure-v1:[0-9a-f]+$/);
+  expect(first.layoutIdentity).toMatch(/^topology-v1:[0-9a-f]+$/);
   expect(first.layoutRevision).toBeGreaterThanOrEqual(1);
   expect(first.layoutMs).not.toBeNull();
   expect(first.layoutMs ?? -1).toBeGreaterThanOrEqual(0);

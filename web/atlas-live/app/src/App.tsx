@@ -5,9 +5,11 @@
  * SessionController, which React reads through `useSyncExternalStore`.
  */
 import * as stylex from "@stylexjs/stylex";
+import { useAtom } from "jotai";
 import { useSyncExternalStore } from "react";
 
 import type { SessionController } from "./controller.ts";
+import { reuseShadingAtom } from "./atoms.ts";
 import { datasetLabel } from "./datasets.ts";
 import { Details } from "./Details.tsx";
 import { DepthControl } from "./DepthControl.tsx";
@@ -15,7 +17,6 @@ import { FamilyEdges } from "./FamilyEdges.tsx";
 import { GraphView } from "./GraphView.tsx";
 import { Header } from "./Header.tsx";
 import { Legend } from "./Legend.tsx";
-import { OverlayControl } from "./OverlayControl.tsx";
 import { RelationFilter } from "./RelationFilter.tsx";
 
 const styles = stylex.create({
@@ -93,9 +94,35 @@ const styles = stylex.create({
     borderLeftColor: "#1f2937",
     backgroundColor: "#0f1117",
   },
+  reuseControl: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 6,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomStyle: "solid",
+    borderBottomColor: "#374151",
+    fontSize: 12,
+    color: "#d1d5db",
+  },
+  reuseButton: {
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: "#4b5563",
+    borderRadius: 4,
+    paddingTop: 4,
+    paddingBottom: 4,
+    paddingLeft: 8,
+    paddingRight: 8,
+    backgroundColor: "#1f2937",
+    color: "#e5e7eb",
+    cursor: "pointer",
+  },
 });
 
 export function App({ controller }: { controller: SessionController }) {
+  const [shadeReuse, setShadeReuse] = useAtom(reuseShadingAtom);
   const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot, controller.getSnapshot);
   const { session } = state;
   const loading = state.status === "loading" || state.status === "booting";
@@ -136,7 +163,22 @@ export function App({ controller }: { controller: SessionController }) {
           ) : null}
         </div>
         <aside {...stylex.props(styles.sidebar)}>
-          <OverlayControl />
+          {session?.physical === null || session === null ? null : (
+            <section {...stylex.props(styles.reuseControl)} aria-label="Physical reuse">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={shadeReuse}
+                data-testid="reuse-shading"
+                {...stylex.props(styles.reuseButton)}
+                onClick={() => setShadeReuse(!shadeReuse)}
+              >
+                Physical reuse shading {shadeReuse ? "on" : "off"}
+              </button>
+              <span>Oklab lightness · darker = less reuse · lighter = more reuse</span>
+              <span>{session.physical.seeds.length} measured files and symbols · depth 7</span>
+            </section>
+          )}
           <RelationFilter />
           <DepthControl />
           <Details session={session} />

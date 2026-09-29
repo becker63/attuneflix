@@ -58,6 +58,8 @@ export interface AtlasLiveHook {
   selected: readonly string[];
   filterRevision: number;
   overlay: { name: string; revision: number };
+  frontier: { expanded: readonly string[]; revision: number; level: "repository" | "directory" | "file" | "symbol" };
+  projected: { nodeCount: number; edgeCount: number; aggregatedEdgeCount: number; internalizedCount: number };
   camera: { zoom: number | null };
   perf: Record<string, number>;
   layoutIdentity: string | null;
@@ -70,6 +72,7 @@ export interface AtlasLiveHook {
   pointWithIncidentLinks(): number | null;
   pointIdOf(index: number): string | null;
   pointCount(): number;
+  visibleNodeIds(): readonly string[];
   familyOfPoint(index: number): AtlasFamilyMembership | null;
 }
 

@@ -152,6 +152,7 @@ export function Details({ session }: { session: GraphSession | null }) {
   // a fallback member joined its defining file's seed family (no recorded
   // frontier held it); a singleton family has exactly one member.
   const family = session.families === null ? null : familyMembership(session.families, inspected);
+  const physical = session.physical?.byPointIndex.get(inspected);
   return (
     <div {...stylex.props(styles.root)}>
       <div {...stylex.props(styles.chip)}>
@@ -180,6 +181,13 @@ export function Details({ session }: { session: GraphSession | null }) {
             </span>
           </div>
           <Field label="Family members" value={String(family.members)} />
+        </>
+      )}
+      {physical === undefined ? null : (
+        <>
+          <span {...stylex.props(styles.sectionHeading)}>Physical reuse · depth 7</span>
+          <Field label="Reuse fraction" value={`${(physical.reuseFraction * 100).toFixed(2)}%`} />
+          <Field label="Reused / requests" value={`${physical.reuses.toLocaleString()} / ${physical.requests.toLocaleString()}`} />
         </>
       )}
       <div {...stylex.props(styles.counts)}>

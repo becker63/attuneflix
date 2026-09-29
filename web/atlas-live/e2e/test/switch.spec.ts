@@ -178,6 +178,8 @@ test("switching disposes the old session, fits the camera and prunes the selecti
   const absentSymbolId = `symbol:${entryB.counts.symbols + 25}`;
   expect(entryA?.counts.symbols ?? 0).toBeGreaterThan(entryB.counts.symbols + 25);
 
+  // The unified graph exposes symbols in their structural positions.
+
   // Find that symbol's renderer index in A and pin it with a real click.
   const target = await page.evaluate((wanted) => {
     const hook = window.__atlasLive;
@@ -241,8 +243,10 @@ test("switching disposes the old session, fits the camera and prunes the selecti
 
   // Exactly one live session; A's DuckDB tables are dropped.
   expect(after.liveSessions).toBe(1);
-  expect(after.duckdbTables).toHaveLength(2);
-  expect(after.duckdbTables.every((name) => name.endsWith(`_${worldA.revision + 1}`))).toBe(true);
+  expect(after.duckdbTables).toHaveLength(3);
+  expect(after.duckdbTables).toContain(`atlas_live_points_${worldA.revision + 1}`);
+  expect(after.duckdbTables).toContain(`atlas_live_links_${worldA.revision + 1}`);
+  expect(after.duckdbTables).toContain(`atlas_live_links_${worldA.revision + 1}_frontier_0`);
 
   // The pinned symbol from A does not exist in B: the selection is cleared.
   expect(after.selected).toEqual([]);
