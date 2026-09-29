@@ -6,6 +6,7 @@
  * revision counters.
  */
 import type { Domain } from "../../projection/src/domain.ts";
+import type { WorldAnchors } from "../../projection/src/anchors.ts";
 import { DOMAIN_ORDER } from "../../projection/src/domain.ts";
 import type { WorldFamilies } from "../../projection/src/families.ts";
 import type { ViewerGraph } from "../../projection/src/graph.ts";
@@ -15,13 +16,7 @@ import { shouldRenderLinks } from "./datasets.ts";
 import type { LocalDuckDB } from "./duckdb.ts";
 import { projectedLinksArrow } from "./frontier/arrow.ts";
 import { containmentTree, type ContainmentTree } from "./frontier/containment.ts";
-import {
-  collapse,
-  expand,
-  initialFrontier,
-  pi,
-  type VisibleFrontier,
-} from "./frontier/frontier.ts";
+import { collapse, expand, initialFrontier, pi, type VisibleFrontier } from "./frontier/frontier.ts";
 import { computeProjectionMetrics, type ProjectionMetrics, type RegionMetrics } from "./frontier/metrics.ts";
 import { projectFrontier, type FrontierProjection, type WireRelation } from "./frontier/wires.ts";
 import {
@@ -54,6 +49,7 @@ export interface GraphSessionOptions {
   /** The world's families layer, or null for a world without families data. */
   readonly families?: WorldFamilies | null;
   readonly physical?: WorldPhysical | null;
+  readonly anchors?: WorldAnchors | null;
   readonly pointsTable?: string;
   readonly linksTable?: string;
   /** Monotonic across dataset switches; 1 for the first session. */
@@ -75,6 +71,7 @@ export class GraphSession {
   /** The world's families layer; null when the world ships no families data. */
   readonly families: WorldFamilies | null;
   readonly physical: WorldPhysical | null;
+  readonly anchors: WorldAnchors | null;
   readonly pointsTable: string;
   readonly linksTable: string;
   /** Increments when a new session replaces this one; stable for a loaded world. */
@@ -102,6 +99,7 @@ export class GraphSession {
     this.layout = options.layout;
     this.families = options.families ?? null;
     this.physical = options.physical ?? null;
+    this.anchors = options.anchors ?? null;
     this.pointsTable = options.pointsTable ?? POINTS_TABLE;
     this.linksTable = options.linksTable ?? LINKS_TABLE;
     this.sessionRevision = options.sessionRevision ?? 1;
@@ -128,7 +126,7 @@ export class GraphSession {
     this.#metrics ??= computeProjectionMetrics(this.graph, this.containment, this.#view.projection);
     const region = pi(this.containment, this.#view.frontier, index);
     const id = this.graph.pointIds[region];
-    return id === undefined ? null : this.#metrics.get(id) ?? null;
+    return id === undefined ? null : (this.#metrics.get(id) ?? null);
   }
 
   /** All metrics for the current projected frontier, cached until it changes. */
@@ -149,9 +147,10 @@ export class GraphSession {
   /** Expands or collapses a visible container without changing admitted graph or layout. */
   changeFrontier(id: string, action: "expand" | "collapse"): Promise<void> {
     return this.#enqueue(async () => {
-      const next = action === "expand"
-        ? expand(this.containment, this.#view.frontier, id)
-        : collapse(this.containment, this.#view.frontier, id);
+      const next =
+        action === "expand"
+          ? expand(this.containment, this.#view.frontier, id)
+          : collapse(this.containment, this.#view.frontier, id);
       if (next === this.#view.frontier) return;
       await this.#replaceView(next, this.#view.projection.enabled);
     });
@@ -195,7 +194,9 @@ export class GraphSession {
     if (this.#disposed) return;
     const projection = projectFrontier(this.graph, this.containment, frontier, enabled);
     const table = `${this.linksTable}_frontier_${++this.#viewSerial}`;
-    await this.duckdb.connection.insertArrowTable(projectedLinksArrow(this.graph, projection), { name: table });
+    await this.duckdb.connection.insertArrowTable(projectedLinksArrow(this.graph, projection), {
+      name: table,
+    });
     if (this.#disposed) {
       await this.duckdb.connection.query(`DROP TABLE IF EXISTS ${table}`);
       return;

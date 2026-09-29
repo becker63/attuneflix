@@ -105,9 +105,14 @@ export class SessionController {
       const manifestMs = Math.round(performance.now() - beforeManifest);
       this.#publish({ manifest, options: datasetOptions(manifest) });
       publishPerf({ duckDbMs, manifestMs });
-      const requested = typeof window === "undefined" ? null : new URL(window.location.href).searchParams.get("snapshot");
-      const linked = requested === null ? undefined : manifest.worlds.find((entry) =>
-        entry.snapshotId === requested || entry.snapshotDigest === requested);
+      const requested =
+        typeof window === "undefined" ? null : new URL(window.location.href).searchParams.get("snapshot");
+      const linked =
+        requested === null
+          ? undefined
+          : manifest.worlds.find(
+              (entry) => entry.snapshotId === requested || entry.snapshotDigest === requested,
+            );
       await this.#load(linked ?? this.#deps.chooseDefaultWorld(manifest));
     } catch (cause) {
       const error = `Could not load the world list: ${messageOf(cause)}`;
@@ -165,6 +170,7 @@ export class SessionController {
         layout: loaded.layout,
         families: loaded.families,
         physical: loaded.physical,
+        anchors: loaded.anchors,
         pointsTable,
         linksTable,
         sessionRevision: revision,

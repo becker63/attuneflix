@@ -30,6 +30,7 @@ export interface WorldAssets {
   readonly locations?: string;
   readonly families?: FamiliesTableAssets;
   readonly physical?: string;
+  readonly anchors?: AnchorTableAssets;
 }
 
 export interface WorldHashes {
@@ -39,7 +40,15 @@ export interface WorldHashes {
   readonly locations?: string;
   readonly families?: FamiliesTableHashes;
   readonly physical?: string;
+  readonly anchors?: AnchorTableHashes;
 }
+
+export interface AnchorTableAssets {
+  readonly masses: string;
+  readonly scenarios: string;
+}
+
+export type AnchorTableHashes = Record<keyof AnchorTableAssets, string>;
 
 /** Exact aggregate of one world's per-seed physical-transition table. */
 export interface PhysicalSummary {
@@ -225,6 +234,22 @@ export function attachPhysical(
     assets: { ...entry.assets, physical: `data/${entry.snapshotDigest}/physical.parquet` },
     sha256: { ...entry.sha256, physical: hash },
     physicalSummary: summary,
+  };
+}
+
+/** Stages a new derived Flix anchor experiment beside its frozen world. */
+export function attachAnchors(entry: WorldManifestEntry, hashes: AnchorTableHashes): WorldManifestEntry {
+  const digest = entry.snapshotDigest;
+  return {
+    ...entry,
+    assets: {
+      ...entry.assets,
+      anchors: {
+        masses: `data/${digest}/anchors.parquet`,
+        scenarios: `data/${digest}/scenarios.parquet`,
+      },
+    },
+    sha256: { ...entry.sha256, anchors: hashes },
   };
 }
 

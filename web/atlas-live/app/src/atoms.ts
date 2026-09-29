@@ -52,15 +52,30 @@ export type MeasurementMode = "structure" | "physical" | "locality" | "reach";
 export const measurementModeAtom = atom<MeasurementMode>("physical");
 /** Static structural separation is a view mode; physical lightness remains independent. */
 export const landscapeModeAtom = atom<"structure" | "parallelism">("structure");
+/** The same graph offers either pair separation or measured anchor evidence. */
+export const landscapeViewAtom = atom<"separation" | "anchors">("separation");
+export const selectedAnchorPathAtom = atom<string | null>(null);
 export const landscapeDepthAtom = atom<1 | 2 | 3>(3);
 export const landscapeThresholdAtom = atom<number>(0.25);
-export const landscapeOriginsAtom = atom<{ readonly a: string | null; readonly b: string | null }>({ a: null, b: null });
-export const selectLandscapeOriginAtom = atom(null, (get, set, selection: { id: string; additive: boolean }) => {
-  const current = get(landscapeOriginsAtom);
-  set(landscapeOriginsAtom, selection.additive
-    ? { a: current.a ?? selection.id, b: current.a === null ? null : selection.id === current.a ? null : selection.id }
-    : { a: selection.id, b: null });
+export const landscapeOriginsAtom = atom<{ readonly a: string | null; readonly b: string | null }>({
+  a: null,
+  b: null,
 });
+export const selectLandscapeOriginAtom = atom(
+  null,
+  (get, set, selection: { id: string; additive: boolean }) => {
+    const current = get(landscapeOriginsAtom);
+    set(
+      landscapeOriginsAtom,
+      selection.additive
+        ? {
+            a: current.a ?? selection.id,
+            b: current.a === null ? null : selection.id === current.a ? null : selection.id,
+          }
+        : { a: selection.id, b: null },
+    );
+  },
+);
 export const measurementRevisionAtom = atom<number>(0);
 export const setMeasurementModeAtom = atom(null, (get, set, mode: MeasurementMode) => {
   if (get(measurementModeAtom) === mode) return;
@@ -75,10 +90,13 @@ export const drilledFamilyEdgeAtom = atom<number | null>(null);
 export const selectedWireAtom = atom<{ readonly index: number; readonly viewRevision: number } | null>(null);
 export const wireConstituentsAtom = atom<boolean>(false);
 
-export const selectWireAtom = atom(null, (_get, set, selection: { index: number; viewRevision: number } | null) => {
-  set(selectedWireAtom, selection);
-  set(wireConstituentsAtom, false);
-});
+export const selectWireAtom = atom(
+  null,
+  (_get, set, selection: { index: number; viewRevision: number } | null) => {
+    set(selectedWireAtom, selection);
+    set(wireConstituentsAtom, false);
+  },
+);
 
 export const showWireConstituentsAtom = atom(null, (_get, set, show: boolean) => {
   set(wireConstituentsAtom, show);

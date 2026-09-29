@@ -25,6 +25,7 @@ import {
   landscapeDepthAtom,
   landscapeModeAtom,
   landscapeOriginsAtom,
+  landscapeViewAtom,
   landscapeThresholdAtom,
   measurementModeAtom,
   measurementRevisionAtom,
@@ -35,6 +36,7 @@ import {
   selectOnlyAtom,
   selectLandscapeOriginAtom,
   selectedAtom,
+  selectedAnchorPathAtom,
   toggleSelectedAtom,
   visibleRelationSetAtom,
 } from "./atoms.ts";
@@ -43,8 +45,14 @@ import { LINK_RENDER_BUDGET } from "./datasets.ts";
 import { reapplyEmphasis, setEmphasis } from "./emphasis.ts";
 import { familyMembership, familyPointColor } from "./families.ts";
 import { frontierLevel } from "./frontier/frontier.ts";
+import { incomingAnchorTrace } from "./frontier/anchorTrace.ts";
 import { inspectWire } from "./frontier/inspector.ts";
-import { convergenceGraph, greedySeparatedSet, neighborhoodIds, neighborhoodIndex } from "./frontier/parallelism.ts";
+import {
+  convergenceGraph,
+  greedySeparatedSet,
+  neighborhoodIds,
+  neighborhoodIndex,
+} from "./frontier/parallelism.ts";
 import { isWireRelation, projectedWireWidth } from "./frontier/wires.ts";
 import {
   clearMountedCosmograph,
@@ -289,6 +297,7 @@ export function GraphView({ session }: { session: GraphSession }) {
   const setToggleSelected = useSetAtom(toggleSelectedAtom);
   const setLandscapeOrigin = useSetAtom(selectLandscapeOriginAtom);
   const setLandscapeOrigins = useSetAtom(landscapeOriginsAtom);
+  const setAnchorPath = useSetAtom(selectedAnchorPathAtom);
   const selectWire = useSetAtom(selectWireAtom);
   const clearSelection = useSetAtom(clearSelectionAtom);
 
@@ -296,11 +305,19 @@ export function GraphView({ session }: { session: GraphSession }) {
   const emphasis = useAtomValue(emphasisAtom);
   const selected = useAtomValue(selectedAtom);
   const landscapeMode = useAtomValue(landscapeModeAtom);
+  const landscapeView = useAtomValue(landscapeViewAtom);
+  const selectedAnchorPath = useAtomValue(selectedAnchorPathAtom);
   const landscapeDepth = useAtomValue(landscapeDepthAtom);
   const landscapeOrigins = useAtomValue(landscapeOriginsAtom);
   const landscapeThreshold = useAtomValue(landscapeThresholdAtom);
   const landscapeModeRef = useRef(landscapeMode);
-  useEffect(() => { landscapeModeRef.current = landscapeMode; }, [landscapeMode]);
+  useEffect(() => {
+    landscapeModeRef.current = landscapeMode;
+  }, [landscapeMode]);
+  const landscapeViewRef = useRef(landscapeView);
+  useEffect(() => {
+    landscapeViewRef.current = landscapeView;
+  }, [landscapeView]);
   const selectedWire = useAtomValue(selectedWireAtom);
   const visibleRelations = useAtomValue(visibleRelationSetAtom);
   const depth = useAtomValue(neighbourhoodDepthAtom);
@@ -311,33 +328,69 @@ export function GraphView({ session }: { session: GraphSession }) {
   const families = session.families;
   const measurementMode = useAtomValue(measurementModeAtom);
   const landscapeIndex = useMemo(
-    () => landscapeMode === "parallelism" ? neighborhoodIndex(view.projection, session.containment) : null,
-    [landscapeMode, view.projection, session.containment],
+    () =>
+      landscapeMode === "parallelism" && landscapeView === "separation"
+        ? neighborhoodIndex(view.projection, session.containment)
+        : null,
+    [landscapeMode, landscapeView, view.projection, session.containment],
+  );
+  const anchorId = useMemo(() => {
+    if (landscapeMode !== "parallelism" || landscapeView !== "anchors" || selectedAnchorPath === null)
+      return null;
+    const start = session.graph.fileCount + session.graph.symbolCount;
+    const index = session.graph.pointPaths.findIndex(
+      (path, point) => point >= start && path === selectedAnchorPath,
+    );
+    return index < 0 ? null : (session.graph.pointIds[index] ?? null);
+  }, [landscapeMode, landscapeView, selectedAnchorPath, session]);
+  const anchorTrace = useMemo(
+    () => (anchorId === null ? null : incomingAnchorTrace(view.projection, anchorId, landscapeDepth)),
+    [view.projection, anchorId, landscapeDepth],
   );
   const landscapeA = landscapeIndex?.ordinalById.has(landscapeOrigins.a ?? "") ? landscapeOrigins.a : null;
   const landscapeB = landscapeIndex?.ordinalById.has(landscapeOrigins.b ?? "") ? landscapeOrigins.b : null;
-  const landscapeGraph = useMemo(() => landscapeIndex === null ? null
-    : convergenceGraph(landscapeIndex, landscapeDepth, landscapeThreshold),
-  [landscapeIndex, landscapeDepth, landscapeThreshold]);
-  const separatedRegions = useMemo(() => landscapeGraph === null ? new Set<string>()
-    : new Set(greedySeparatedSet(landscapeGraph)), [landscapeGraph]);
-  const convergingRegions = landscapeA === null
-    ? new Set<string>() : landscapeGraph?.neighbors.get(landscapeA) ?? new Set<string>();
-  const aIds = useMemo(() => landscapeIndex !== null && landscapeA !== null
-    ? new Set(neighborhoodIds(landscapeIndex, landscapeA, landscapeDepth)) : new Set<string>(),
-  [landscapeIndex, landscapeA, landscapeDepth]);
-  const bIds = useMemo(() => landscapeIndex !== null && landscapeB !== null
-    ? new Set(neighborhoodIds(landscapeIndex, landscapeB, landscapeDepth)) : new Set<string>(),
-  [landscapeIndex, landscapeB, landscapeDepth]);
+  const landscapeGraph = useMemo(
+    () =>
+      landscapeIndex === null ? null : convergenceGraph(landscapeIndex, landscapeDepth, landscapeThreshold),
+    [landscapeIndex, landscapeDepth, landscapeThreshold],
+  );
+  const separatedRegions = useMemo(
+    () => (landscapeGraph === null ? new Set<string>() : new Set(greedySeparatedSet(landscapeGraph))),
+    [landscapeGraph],
+  );
+  const convergingRegions =
+    landscapeA === null
+      ? new Set<string>()
+      : (landscapeGraph?.neighbors.get(landscapeA) ?? new Set<string>());
+  const aIds = useMemo(
+    () =>
+      landscapeIndex !== null && landscapeA !== null
+        ? new Set(neighborhoodIds(landscapeIndex, landscapeA, landscapeDepth))
+        : new Set<string>(),
+    [landscapeIndex, landscapeA, landscapeDepth],
+  );
+  const bIds = useMemo(
+    () =>
+      landscapeIndex !== null && landscapeB !== null
+        ? new Set(neighborhoodIds(landscapeIndex, landscapeB, landscapeDepth))
+        : new Set<string>(),
+    [landscapeIndex, landscapeB, landscapeDepth],
+  );
   const sharedCount = [...aIds].filter((id) => bIds.has(id)).length;
   // Structure mode keeps every admitted wire. A structural comparison traces
   // only wires inside the selected depth-1/2/3 territory; clearing A clears them.
-  const focusedWireIds = useMemo(() => landscapeMode !== "parallelism" ? null
-    : new Set([
-      ...aIds, ...bIds,
-      ...(landscapeA === null ? [] : [landscapeA]),
-      ...(landscapeB === null ? [] : [landscapeB]),
-    ]), [landscapeMode, landscapeA, landscapeB, aIds, bIds]);
+  const focusedWireIds = useMemo(
+    () =>
+      landscapeMode !== "parallelism"
+        ? null
+        : new Set([
+            ...aIds,
+            ...bIds,
+            ...(landscapeA === null ? [] : [landscapeA]),
+            ...(landscapeB === null ? [] : [landscapeB]),
+          ]),
+    [landscapeMode, landscapeA, landscapeB, aIds, bIds],
+  );
 
   // The same projected dependency graph underlies every mode. Structural
   // separation traces its selected territory and leaves the empty mode clear.
@@ -355,13 +408,17 @@ export function GraphView({ session }: { session: GraphSession }) {
       (index: number): boolean => {
         const wire = view.projection.wires[index];
         return (
-          (renderWires || (currentWireWindow?.zoomed === true && currentWireWindow.indices.has(index))) &&
+          (anchorTrace !== null
+            ? anchorTrace.wireIndices.has(index)
+            : renderWires || (currentWireWindow?.zoomed === true && currentWireWindow.indices.has(index))) &&
           wire !== undefined &&
-          (focusedWireIds === null || (focusedWireIds.has(wire.source) && focusedWireIds.has(wire.target))) &&
+          (anchorTrace !== null ||
+            focusedWireIds === null ||
+            (focusedWireIds.has(wire.source) && focusedWireIds.has(wire.target))) &&
           (drilledRows === null || wire.provenance.some((row) => drilledRows.has(row)))
         );
       },
-    [view.projection, renderWires, currentWireWindow, focusedWireIds, drilledRows],
+    [view.projection, renderWires, currentWireWindow, focusedWireIds, drilledRows, anchorTrace],
   );
   const wireColor = useMemo(
     () =>
@@ -379,15 +436,18 @@ export function GraphView({ session }: { session: GraphSession }) {
   );
 
   const landscapeMarkers = useMemo(() => {
-    if (landscapeIndex === null || landscapeA === null) return [];
+    if (landscapeIndex === null && anchorTrace === null) return [];
     if (regionLayer.regions.length === 0) return [];
     const instance = mountedCosmograph();
     if (instance === undefined) return [];
     const shared: string[] = [];
     const aOnly: string[] = [];
     const bOnly: string[] = [];
-    for (const id of aIds) (bIds.has(id) ? shared : aOnly).push(id);
-    for (const id of bIds) if (!aIds.has(id)) bOnly.push(id);
+    if (anchorTrace === null) {
+      if (landscapeA === null) return [];
+      for (const id of aIds) (bIds.has(id) ? shared : aOnly).push(id);
+      for (const id of bIds) if (!aIds.has(id)) bOnly.push(id);
+    }
     const records: { id: string; x: number; y: number; color: string; radius: number }[] = [];
     const seen = new Set<string>();
     const add = (id: string, color: string, radius: number): void => {
@@ -401,13 +461,18 @@ export function GraphView({ session }: { session: GraphSession }) {
       records.push({ id, x: screen[0], y: screen[1], color, radius });
     };
     // Selected origins and shared territory have priority when the budget binds.
-    add(landscapeA, LANDSCAPE_A_COLOR, 16);
+    if (anchorTrace !== null) {
+      add(anchorTrace.anchorId, LANDSCAPE_SHARED_COLOR, 24);
+      for (const id of anchorTrace.incomingIds) add(id, LANDSCAPE_A_COLOR, 11);
+      return records;
+    }
+    if (landscapeA !== null) add(landscapeA, LANDSCAPE_A_COLOR, 16);
     if (landscapeB !== null) add(landscapeB, LANDSCAPE_B_COLOR, 16);
     for (const id of shared) add(id, LANDSCAPE_SHARED_COLOR, 12);
     for (const id of aOnly) add(id, LANDSCAPE_A_COLOR, 9);
     for (const id of bOnly) add(id, LANDSCAPE_B_COLOR, 9);
     return records;
-  }, [landscapeIndex, landscapeA, landscapeB, aIds, bIds, regionLayer.regions, session]);
+  }, [landscapeIndex, landscapeA, landscapeB, aIds, bIds, anchorTrace, regionLayer.regions, session]);
   const projectionMetrics = session.projectionMetrics();
   const scalarRange = useMemo(
     () => metricShadeRange(projectionMetrics, measurementMode),
@@ -419,7 +484,10 @@ export function GraphView({ session }: { session: GraphSession }) {
     const id = session.pointId(index);
     if (id === null) return;
     selectWire(null);
-    if (landscapeMode === "parallelism") setLandscapeOrigin({ id, additive });
+    if (landscapeMode === "parallelism" && landscapeView === "anchors") {
+      const path = session.graph.pointPaths[index];
+      if (typeof path === "string" && session.anchors?.byPath.has(path)) setAnchorPath(path);
+    } else if (landscapeMode === "parallelism") setLandscapeOrigin({ id, additive });
     else setSelectedOnly(id);
   };
   const pointColor = useMemo(() => {
@@ -564,6 +632,12 @@ export function GraphView({ session }: { session: GraphSession }) {
         const id = session.pointId(index);
         if (id === null) return;
         selectWire(null);
+        if (landscapeModeRef.current === "parallelism" && landscapeViewRef.current === "anchors") {
+          const path = session.graph.pointPaths[index];
+          if (typeof path === "string" && session.anchors?.byPath.has(path)) setAnchorPath(path);
+          void session.revealOrigin(id);
+          return;
+        }
         if (landscapeModeRef.current === "parallelism") {
           setLandscapeOrigin({ id, additive });
           void session.revealOrigin(id);
@@ -579,6 +653,7 @@ export function GraphView({ session }: { session: GraphSession }) {
       },
       background: () => {
         if (landscapeModeRef.current === "parallelism") setLandscapeOrigins({ a: null, b: null });
+        if (landscapeViewRef.current === "anchors") setAnchorPath(null);
         clearSelection();
         selectWire(null);
         setDrill(null);
@@ -638,6 +713,7 @@ export function GraphView({ session }: { session: GraphSession }) {
     setDrill,
     setLandscapeOrigin,
     setLandscapeOrigins,
+    setAnchorPath,
   ]);
 
   useEffect(() => {
@@ -662,6 +738,7 @@ export function GraphView({ session }: { session: GraphSession }) {
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.key === "Escape") {
         setLandscapeOrigins({ a: null, b: null });
+        setAnchorPath(null);
         clearSelection();
         selectWire(null);
         setDrill(null);
@@ -671,16 +748,29 @@ export function GraphView({ session }: { session: GraphSession }) {
     return () => {
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [clearSelection, selectWire, setDrill, setLandscapeOrigins]);
+  }, [clearSelection, selectWire, setDrill, setLandscapeOrigins, setAnchorPath]);
 
   useEffect(() => {
-    if (landscapeMode === "parallelism" && landscapeA !== null) {
+    if (landscapeMode === "parallelism" && anchorTrace !== null) {
+      const ids = [anchorTrace.anchorId, ...anchorTrace.incomingIds];
+      setEmphasis({
+        points: ids
+          .map((id) => session.graph.indexById.get(id))
+          .filter((index): index is number => index !== undefined),
+        links: [],
+      });
+    } else if (landscapeMode === "parallelism" && landscapeA !== null) {
       const ids = new Set([...aIds, ...bIds, landscapeA]);
       if (landscapeB !== null) ids.add(landscapeB);
-      setEmphasis({ points: [...ids].map((id) => session.graph.indexById.get(id)).filter((index): index is number => index !== undefined), links: [] });
+      setEmphasis({
+        points: [...ids]
+          .map((id) => session.graph.indexById.get(id))
+          .filter((index): index is number => index !== undefined),
+        links: [],
+      });
     } else if (landscapeMode === "parallelism") setEmphasis({ points: [], links: [] });
     else setEmphasis(emphasis);
-  }, [emphasis, landscapeMode, landscapeA, landscapeB, aIds, bIds, session]);
+  }, [emphasis, landscapeMode, landscapeA, landscapeB, aIds, bIds, anchorTrace, session]);
 
   useEffect(() => {
     const selection = sortedSelection(selected);
@@ -795,42 +885,75 @@ export function GraphView({ session }: { session: GraphSession }) {
         onZoom={onZoom}
         onDrag={onGraphDrag}
       />
-      {renderWires ? null : (
+      {renderWires || anchorTrace !== null ? null : (
         <output {...stylex.props(styles.edgeNotice)} data-testid="wire-visibility">
           {currentWireWindow?.zoomed === true
             ? `Showing ${currentWireWindow.indices.size.toLocaleString()} of ${view.projection.wires.length.toLocaleString()} connections at this zoom`
             : `Zoom in to reveal ${view.projection.wires.length.toLocaleString()} connections`}
         </output>
       )}
-      {landscapeMode === "parallelism" && <div
-        aria-label="Structural separation graph key"
-        data-testid="structural-graph-key"
-        {...stylex.props(styles.landscapeKey)}
-      >
-        <strong>{landscapeA === null ? "Greedy separated set" : `Neighborhoods · ${landscapeDepth}°`}</strong>
-        {landscapeA === null ? <>
-          <span {...stylex.props(styles.landscapeKeyRow)}>
-            <span {...stylex.props(styles.landscapeKeySwatch)} style={LANDSCAPE_SET_SWATCH_STYLE} />
-            {separatedRegions.size} / {landscapeIndex?.candidates.length ?? 0} regions
-          </span>
-          <span {...stylex.props(styles.landscapeKeyDetail)}>{landscapeDepth}° · τ {landscapeThreshold.toFixed(2)}<br />No wires until selection</span>
-        </> : <>
-          <span {...stylex.props(styles.landscapeKeyRow)}>
-            <span {...stylex.props(styles.landscapeKeySwatch)} style={LANDSCAPE_A_SWATCH_STYLE} />
-            {landscapeB === null ? `A reaches ${aIds.size}` : `A only · ${aIds.size - sharedCount}`}
-          </span>
-          {landscapeB !== null && <>
-            <span {...stylex.props(styles.landscapeKeyRow)}>
-              <span {...stylex.props(styles.landscapeKeySwatch)} style={LANDSCAPE_SHARED_SWATCH_STYLE} />
-              Shared · {sharedCount}
-            </span>
-            <span {...stylex.props(styles.landscapeKeyRow)}>
-              <span {...stylex.props(styles.landscapeKeySwatch)} style={LANDSCAPE_B_SWATCH_STYLE} />
-              B only · {bIds.size - sharedCount}
-            </span>
-          </>}
-        </>}
-      </div>}
+      {landscapeMode === "parallelism" && (
+        <div
+          aria-label="Structural separation graph key"
+          data-testid="structural-graph-key"
+          {...stylex.props(styles.landscapeKey)}
+        >
+          <strong>
+            {landscapeView === "anchors"
+              ? `Incoming to anchor · ${landscapeDepth}°`
+              : landscapeA === null
+                ? "Greedy separated set"
+                : `Neighborhoods · ${landscapeDepth}°`}
+          </strong>
+          {landscapeView === "anchors" ? (
+            <>
+              <span {...stylex.props(styles.landscapeKeyRow)}>
+                <span {...stylex.props(styles.landscapeKeySwatch)} style={LANDSCAPE_SHARED_SWATCH_STYLE} />
+                Selected anchor
+              </span>
+              <span {...stylex.props(styles.landscapeKeyRow)}>
+                <span {...stylex.props(styles.landscapeKeySwatch)} style={LANDSCAPE_A_SWATCH_STYLE} />
+                {anchorTrace?.incomingIds.size ?? 0} incoming visible nodes
+              </span>
+              <span {...stylex.props(styles.landscapeKeyDetail)}>Projected Imports/Calls only</span>
+            </>
+          ) : landscapeA === null ? (
+            <>
+              <span {...stylex.props(styles.landscapeKeyRow)}>
+                <span {...stylex.props(styles.landscapeKeySwatch)} style={LANDSCAPE_SET_SWATCH_STYLE} />
+                {separatedRegions.size} / {landscapeIndex?.candidates.length ?? 0} regions
+              </span>
+              <span {...stylex.props(styles.landscapeKeyDetail)}>
+                {landscapeDepth}° · τ {landscapeThreshold.toFixed(2)}
+                <br />
+                No wires until selection
+              </span>
+            </>
+          ) : (
+            <>
+              <span {...stylex.props(styles.landscapeKeyRow)}>
+                <span {...stylex.props(styles.landscapeKeySwatch)} style={LANDSCAPE_A_SWATCH_STYLE} />
+                {landscapeB === null ? `A reaches ${aIds.size}` : `A only · ${aIds.size - sharedCount}`}
+              </span>
+              {landscapeB !== null && (
+                <>
+                  <span {...stylex.props(styles.landscapeKeyRow)}>
+                    <span
+                      {...stylex.props(styles.landscapeKeySwatch)}
+                      style={LANDSCAPE_SHARED_SWATCH_STYLE}
+                    />
+                    Shared · {sharedCount}
+                  </span>
+                  <span {...stylex.props(styles.landscapeKeyRow)}>
+                    <span {...stylex.props(styles.landscapeKeySwatch)} style={LANDSCAPE_B_SWATCH_STYLE} />
+                    B only · {bIds.size - sharedCount}
+                  </span>
+                </>
+              )}
+            </>
+          )}
+        </div>
+      )}
       <svg
         aria-label="Repository structural regions"
         {...stylex.props(styles.regions)}
@@ -838,106 +961,157 @@ export function GraphView({ session }: { session: GraphSession }) {
         viewBox={`0 0 ${regionLayer.width} ${regionLayer.height}`}
       >
         {regionLayer.regions.map((region) => {
-          const id = session.graph.pointIds[
-            session.graph.fileCount + session.graph.symbolCount + region.ordinal
-          ] ?? "";
-          const role = id === landscapeA ? "origin-a"
-            : id === landscapeB ? "origin-b"
-            : aIds.has(id) && bIds.has(id) ? "shared"
-            : aIds.has(id) ? "a-only"
-            : bIds.has(id) ? "b-only"
-            : landscapeA === null && separatedRegions.has(id) ? "separated"
-            : convergingRegions.has(id) ? "converging" : "none";
-          const accent = role === "origin-a" || role === "a-only" ? LANDSCAPE_A_COLOR
-            : role === "origin-b" || role === "b-only" ? LANDSCAPE_B_COLOR
-            : role === "shared" ? LANDSCAPE_SHARED_COLOR
-            : role === "separated" ? LANDSCAPE_SET_COLOR
-            : role === "converging" ? "#c5d5a3" : region.color;
+          const id =
+            session.graph.pointIds[session.graph.fileCount + session.graph.symbolCount + region.ordinal] ??
+            "";
+          const role =
+            id === landscapeA
+              ? "origin-a"
+              : id === landscapeB
+                ? "origin-b"
+                : aIds.has(id) && bIds.has(id)
+                  ? "shared"
+                  : aIds.has(id)
+                    ? "a-only"
+                    : bIds.has(id)
+                      ? "b-only"
+                      : landscapeA === null && separatedRegions.has(id)
+                        ? "separated"
+                        : convergingRegions.has(id)
+                          ? "converging"
+                          : "none";
+          const accent =
+            role === "origin-a" || role === "a-only"
+              ? LANDSCAPE_A_COLOR
+              : role === "origin-b" || role === "b-only"
+                ? LANDSCAPE_B_COLOR
+                : role === "shared"
+                  ? LANDSCAPE_SHARED_COLOR
+                  : role === "separated"
+                    ? LANDSCAPE_SET_COLOR
+                    : role === "converging"
+                      ? "#c5d5a3"
+                      : region.color;
           const highlighted = role !== "none" && role !== "converging";
-          return <g key={region.ordinal}>
-            <rect
-              data-testid="topology-region"
-              data-landscape-role={role}
-              x={region.x}
-              y={region.y}
-              width={region.width}
-              height={region.height}
-              rx={3}
-              fill={region.color}
-              data-converging={convergingRegions.has(id)}
-              fillOpacity={
-                measurementMode !== "structure" &&
-                (measurementMode !== "physical" || session.physical !== null)
-                  ? 0.26
-                  : 0.065
-              }
-              stroke={accent}
-              strokeDasharray={role === "converging" ? "5 4" : undefined}
-              strokeOpacity={role === "converging" ? 0.6 : 0.9}
-              strokeWidth={highlighted ? role === "separated" ? 4 : 5 : role === "converging" ? 2.5 : 2}
-            />
-            {highlighted && <rect
-              data-testid="structural-region-wash"
-              x={region.x}
-              y={region.y}
-              width={region.width}
-              height={region.height}
-              rx={3}
-              fill={accent}
-              fillOpacity={role === "shared" ? 0.48
-                : role.startsWith("origin") ? 0.43
-                : role === "separated" ? 0.2 : 0.36}
-            />}
-            {highlighted && role !== "separated" && region.width > 42 && region.height > 48 && <g
-              data-testid="structural-region-role"
-              aria-hidden="true"
-            >
-              <rect x={region.x + 3} y={region.y + region.height - 21}
-                width={role === "shared" ? 45 : role.startsWith("origin") ? 25 : 43}
-                height={17} rx={2} fill={accent} />
-              <text x={region.x + 8} y={region.y + region.height - 8}
-                fill={BACKGROUND} fontSize={10} fontWeight={800}>
-                {role === "shared" ? "BOTH" : role === "origin-a" ? "A" : role === "origin-b" ? "B"
-                  : role === "a-only" ? "A ONLY" : "B ONLY"}
-              </text>
-            </g>}
-            {region.width > 34 && region.height > 24 && (
-              <text
-                data-testid="topology-region-label"
-                role="button"
-                tabIndex={0}
-                aria-label={`Inspect region ${region.label}`}
-                pointerEvents="visiblePainted"
-                style={REGION_LABEL_HIT_STYLE}
-                onClick={(event) => selectRegion(region.ordinal, event.shiftKey)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    selectRegion(region.ordinal);
+          return (
+            <g key={region.ordinal}>
+              <rect
+                data-testid="topology-region"
+                data-landscape-role={role}
+                x={region.x}
+                y={region.y}
+                width={region.width}
+                height={region.height}
+                rx={3}
+                fill={region.color}
+                data-converging={convergingRegions.has(id)}
+                fillOpacity={
+                  measurementMode !== "structure" &&
+                  (measurementMode !== "physical" || session.physical !== null)
+                    ? 0.26
+                    : 0.065
+                }
+                stroke={accent}
+                strokeDasharray={role === "converging" ? "5 4" : undefined}
+                strokeOpacity={role === "converging" ? 0.6 : 0.9}
+                strokeWidth={highlighted ? (role === "separated" ? 4 : 5) : role === "converging" ? 2.5 : 2}
+              />
+              {highlighted && (
+                <rect
+                  data-testid="structural-region-wash"
+                  x={region.x}
+                  y={region.y}
+                  width={region.width}
+                  height={region.height}
+                  rx={3}
+                  fill={accent}
+                  fillOpacity={
+                    role === "shared"
+                      ? 0.48
+                      : role.startsWith("origin")
+                        ? 0.43
+                        : role === "separated"
+                          ? 0.2
+                          : 0.36
                   }
-                }}
-                x={region.x + 5}
-                y={region.y + 14}
-                fill="#f3f5f7"
-                stroke={BACKGROUND}
-                strokeWidth={3}
-                paintOrder="stroke"
-                fontSize={11}
-                fontWeight={600}
-              >
-                {region.label.length > Math.floor((region.width - 9) / 6.5)
-                  ? `${region.label.slice(0, Math.max(2, Math.floor((region.width - 16) / 6.5)))}…`
-                  : region.label}
-              </text>
-            )}
-          </g>;
+                />
+              )}
+              {highlighted && role !== "separated" && region.width > 42 && region.height > 48 && (
+                <g data-testid="structural-region-role" aria-hidden="true">
+                  <rect
+                    x={region.x + 3}
+                    y={region.y + region.height - 21}
+                    width={role === "shared" ? 45 : role.startsWith("origin") ? 25 : 43}
+                    height={17}
+                    rx={2}
+                    fill={accent}
+                  />
+                  <text
+                    x={region.x + 8}
+                    y={region.y + region.height - 8}
+                    fill={BACKGROUND}
+                    fontSize={10}
+                    fontWeight={800}
+                  >
+                    {role === "shared"
+                      ? "BOTH"
+                      : role === "origin-a"
+                        ? "A"
+                        : role === "origin-b"
+                          ? "B"
+                          : role === "a-only"
+                            ? "A ONLY"
+                            : "B ONLY"}
+                  </text>
+                </g>
+              )}
+              {region.width > 34 && region.height > 24 && (
+                <text
+                  data-testid="topology-region-label"
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Inspect region ${region.label}`}
+                  pointerEvents="visiblePainted"
+                  style={REGION_LABEL_HIT_STYLE}
+                  onClick={(event) => selectRegion(region.ordinal, event.shiftKey)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      selectRegion(region.ordinal);
+                    }
+                  }}
+                  x={region.x + 5}
+                  y={region.y + 14}
+                  fill="#f3f5f7"
+                  stroke={BACKGROUND}
+                  strokeWidth={3}
+                  paintOrder="stroke"
+                  fontSize={11}
+                  fontWeight={600}
+                >
+                  {region.label.length > Math.floor((region.width - 9) / 6.5)
+                    ? `${region.label.slice(0, Math.max(2, Math.floor((region.width - 16) / 6.5)))}…`
+                    : region.label}
+                </text>
+              )}
+            </g>
+          );
         })}
         <g aria-hidden="true" pointerEvents="none">
-          {landscapeMarkers.map((marker) => <circle key={marker.id}
-            data-testid="structural-neighborhood-marker"
-            cx={marker.x} cy={marker.y} r={marker.radius}
-            fill={marker.color} fillOpacity={0.3}
-            stroke={marker.color} strokeOpacity={0.96} strokeWidth={2.5} />)}
+          {landscapeMarkers.map((marker) => (
+            <circle
+              key={marker.id}
+              data-testid="structural-neighborhood-marker"
+              cx={marker.x}
+              cy={marker.y}
+              r={marker.radius}
+              fill={marker.color}
+              fillOpacity={0.3}
+              stroke={marker.color}
+              strokeOpacity={0.96}
+              strokeWidth={2.5}
+            />
+          ))}
         </g>
       </svg>
     </div>

@@ -1,0 +1,90 @@
+load("//test/build:flix.bzl", "checked_test", "flix_check", "flix_fatjar")
+load(":anchors.bzl", "anchor_experiment")
+
+BABEL_WORLD = "//.attune/repository-world-v1/002a462e6f58440bbf60071f1e945b38bb304fe46a38ca6fdfd578248693cf01:world"
+
+BABEL_DIGEST = "002a462e6f58440bbf60071f1e945b38bb304fe46a38ca6fdfd578248693cf01"
+
+flix_check(
+    name = "anchor_check",
+    srcs = [
+        "Anchor.flix",
+        "AnchorAnalysis.flix",
+        "AnchorTest.flix",
+        "//src:Atlas.flix",
+        "//src:Atlas/Signature.flix",
+        "//src:Atlas/Signature/Summary.flix",
+        "//src:Experiment.flix",
+        "//src:Radii.flix",
+        "//src:Repository.flix",
+        "//src:Repository/Grit.flix",
+        "//src:Repository/Location.flix",
+        "//src:Repository/Physical.flix",
+        "//src:Repository/Structure.flix",
+        "//src:ScientificIdentity.flix",
+        "//src:ScientificTable.flix",
+        "//src:ScientificTable/Columns.flix",
+    ],
+    command = "test",
+    java_deps = [
+        "//src/native/identity:attune_identity",
+        "//src/native/parquet:attune_parquet",
+    ],
+    threads = 2,
+)
+
+checked_test(
+    name = "anchor_test",
+    check = ":anchor_check",
+)
+
+flix_fatjar(
+    name = "anchors_flix",
+    srcs = [
+        "Anchor.flix",
+        "AnchorAnalysis.flix",
+        "AnchorTable.flix",
+        "Main.flix",
+        "//src:Atlas.flix",
+        "//src:Atlas/Signature.flix",
+        "//src:Atlas/Signature/Summary.flix",
+        "//src:Experiment.flix",
+        "//src:Radii.flix",
+        "//src:Repository.flix",
+        "//src:Repository/Grit.flix",
+        "//src:Repository/Location.flix",
+        "//src:Repository/Physical.flix",
+        "//src:Repository/Structure.flix",
+        "//src:Repository/Table.flix",
+        "//src:ScientificIdentity.flix",
+        "//src:ScientificTable.flix",
+        "//src:ScientificTable/Columns.flix",
+    ],
+    java_deps = [
+        "//src/native/identity:attune_identity",
+        "//src/native/parquet:attune_parquet",
+    ],
+    threads = 2,
+)
+
+java_binary(
+    name = "anchors_tool",
+    jvm_flags = [
+        "--add-opens=java.base/java.nio=ALL-UNNAMED",
+        "--enable-native-access=ALL-UNNAMED",
+        "-Xss8m",
+    ],
+    main_class = "Main",
+    runtime_deps = [":anchors_flix"],
+)
+
+anchor_experiment(
+    name = "babel",
+    anchor_path = "packages/babel-types",
+    baseline_commit = "7da9f5536333379bcde8065cc718267f12eb90f0",
+    digest = BABEL_DIGEST,
+    exec_properties = {"EstimatedComputeUnits": "4"},
+    tool = ":anchors_tool",
+    visibility = ["//visibility:public"],
+    world = BABEL_WORLD,
+)

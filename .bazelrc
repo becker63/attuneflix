@@ -93,6 +93,7 @@ build:atlas-live-mixed --strategy=AtlasSignature=remote
 build:atlas-live-mixed --strategy=AtlasSignatureSummary=remote
 build:atlas-live-mixed --strategy=AtlasAggregate=remote
 build:atlas-live-mixed --strategy=AtlasReport=remote
+build:atlas-live-mixed --strategy=AtlasAnchorCounterfactual=remote
 build:atlas-live-mixed --strategy=Vite=local
 build:atlas-live-mixed --jobs=1
 build:atlas-live-mixed --action_env=NODE_OPTIONS=--max-old-space-size=2048

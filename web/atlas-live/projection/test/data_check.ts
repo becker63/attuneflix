@@ -21,6 +21,7 @@ import {
   type WorldManifestEntry,
 } from "../src/manifest.ts";
 import { PHYSICAL_COLUMNS } from "../src/physical.ts";
+import { ANCHOR_COLUMNS, SCENARIO_COLUMNS } from "../src/anchors.ts";
 import { repositorySignatures } from "../src/signatures.ts";
 import { decodeMetadata, toArrayBuffer } from "../src/tables.ts";
 
@@ -81,6 +82,69 @@ async function checkEntry(world: WorldManifestEntry): Promise<void> {
     if (sha256 !== world.sha256.locations) fail(`${digest}: sha256 mismatch for locations.parquet`);
   }
   await checkPhysical(treeRoot, world);
+  if (world.repository === "babel/babel") {
+    if (world.assets.anchors === undefined || world.sha256.anchors === undefined) {
+      fail(`${digest}: missing Babel anchor evidence`);
+    }
+    for (const [name, expected] of [
+      ["masses", ANCHOR_COLUMNS],
+      ["scenarios", SCENARIO_COLUMNS],
+    ] as const) {
+      const asset = world.assets.anchors[name];
+      if (asset !== `data/${digest}/${name === "masses" ? "anchors" : "scenarios"}.parquet`) {
+        fail(`${digest}: bad anchor asset path`);
+      }
+      const bytes = await readBytes(path.join(treeRoot, asset));
+      if (createHash("sha256").update(bytes).digest("hex") !== world.sha256.anchors[name]) {
+        fail(`${digest}: anchor ${name} sha256 mismatch`);
+      }
+      const buffer = toArrayBuffer(bytes);
+      const metadata = parquetMetadata(buffer);
+      const columns = parquetSchema(metadata).children.map((child) => child.element.name);
+      if (columns.join(",") !== expected.join(",")) fail(`${digest}: anchor ${name} schema mismatch`);
+      const rows = await parquetReadObjects({ file: buffer, metadata });
+      if (name === "masses") {
+        const target = rows.filter((row) => row["anchor_path"] === "packages/babel-types");
+        const file = target.find((row) => row["seed_domain"] === "file");
+        const symbol = target.find((row) => row["seed_domain"] === "symbol");
+        if (
+          target.length !== 2 ||
+          Number(file?.["unique_containing_states"]) !== 0 ||
+          Number(file?.["unique_live_states"]) !== 8 ||
+          Number(symbol?.["unique_containing_states"]) !== 2834 ||
+          Number(symbol?.["unique_live_states"]) !== 3761 ||
+          Number(symbol?.["weighted_containing_observations"]) !== 5314 ||
+          Number(symbol?.["live_observations"]) !== 8022
+        )
+          fail(`${digest}: Babel known-answer anchor mass changed`);
+      } else {
+        if (rows.length !== 8) fail(`${digest}: expected baseline and three masks in both domains`);
+        const baselineFile = rows.find(
+          (row) => row["intervention"] === "baseline" && row["seed_domain"] === "file",
+        );
+        const maskedFile = rows.find(
+          (row) => row["masked_anchor"] === "packages/babel-types" && row["seed_domain"] === "file",
+        );
+        const baselineSymbol = rows.find(
+          (row) => row["intervention"] === "baseline" && row["seed_domain"] === "symbol",
+        );
+        const maskedSymbol = rows.find(
+          (row) => row["masked_anchor"] === "packages/babel-types" && row["seed_domain"] === "symbol",
+        );
+        if (
+          Number(baselineFile?.["extinct_observations"]) !== 26095 ||
+          Number(baselineFile?.["total_recurrence"]) !== 2623.2 ||
+          Number(maskedFile?.["total_recurrence"]) !== 2623.2 ||
+          Number(maskedSymbol?.["masked_calls"]) !== 2262 ||
+          Number(maskedSymbol?.["unique_live_states"]) !== 2189 ||
+          Number(maskedSymbol?.["live_recurrence"]) <= Number(baselineSymbol?.["live_recurrence"])
+        )
+          fail(`${digest}: Babel known-answer counterfactual changed`);
+      }
+    }
+  } else if (world.assets.anchors !== undefined || world.sha256.anchors !== undefined) {
+    fail(`${digest}: anchor evidence attached to a different snapshot`);
+  }
 
   const metadataBytes = await readBytes(path.join(treeRoot, world.assets.metadata));
   const metadata = await decodeMetadata(toArrayBuffer(metadataBytes));
@@ -245,7 +309,8 @@ async function checkSynthetic(manifest: WorldManifest): Promise<void> {
 async function check(): Promise<void> {
   const manifest = parseManifest(await readFile(path.join("data", "manifest.json"), "utf8"));
   const worlds = manifest.worlds;
-  if (worlds.length !== EXPECTED_WORLD_COUNT) fail(`expected ${EXPECTED_WORLD_COUNT} worlds, got ${worlds.length}`);
+  if (worlds.length !== EXPECTED_WORLD_COUNT)
+    fail(`expected ${EXPECTED_WORLD_COUNT} worlds, got ${worlds.length}`);
 
   const expected = (await readFile("expected_worlds.txt", "utf8"))
     .split("\n")
@@ -256,10 +321,18 @@ async function check(): Promise<void> {
 
   const digests = worlds.map((world) => world.snapshotDigest).toSorted((a, b) => (a < b ? -1 : 1));
   if (digests.join("\n") !== expected.join("\n")) fail("manifest digests differ from ATLAS_WORLDS");
-  const expectedFamilies = new Set((await readFile("expected_families.txt", "utf8"))
-    .split("\n").map((line) => line.trim()).filter(Boolean));
-  const signatures = new Map(await repositorySignatures(toArrayBuffer(await readBytes("signatures/report/repositories.parquet"))));
-  const selfSignatures = await repositorySignatures(toArrayBuffer(await readBytes("self_signatures/signature_report/repositories.parquet")));
+  const expectedFamilies = new Set(
+    (await readFile("expected_families.txt", "utf8"))
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean),
+  );
+  const signatures = new Map(
+    await repositorySignatures(toArrayBuffer(await readBytes("signatures/report/repositories.parquet"))),
+  );
+  const selfSignatures = await repositorySignatures(
+    toArrayBuffer(await readBytes("self_signatures/signature_report/repositories.parquet")),
+  );
   for (const [repository, signature] of selfSignatures) {
     if (signatures.has(repository)) fail(`duplicate signature source: ${repository}`);
     signatures.set(repository, signature);

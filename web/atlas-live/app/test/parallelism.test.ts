@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { projectWorld } from "../../projection/src/project.ts";
 import { readWorldDir } from "../../projection/src/world_dir.ts";
 import { containmentTree } from "../src/frontier/containment.ts";
+import { incomingAnchorTrace } from "../src/frontier/anchorTrace.ts";
 import { expand, initialFrontier } from "../src/frontier/frontier.ts";
 import {
   buildNeighborhoodIndex,
@@ -20,9 +21,27 @@ import { FIXTURE_IDS as ID, frontierFixtureGraph } from "./frontierFixture.ts";
 
 const graph = frontierFixtureGraph();
 const tree = containmentTree(graph);
-const index = buildNeighborhoodIndex(projectFrontier(graph, tree, initialFrontier(), ["imports", "calls"]), tree);
+const index = buildNeighborhoodIndex(
+  projectFrontier(graph, tree, initialFrontier(), ["imports", "calls"]),
+  tree,
+);
 
 describe("static structural neighborhoods on a known directed graph", () => {
+  it("traces only backed projected dependencies entering an anchor", () => {
+    const projected = projectFrontier(graph, tree, initialFrontier(), ["imports", "calls"]);
+    const trace = incomingAnchorTrace(projected, ID.b, 2);
+    expect(trace.directSources.has(ID.a)).toBe(true);
+    expect(trace.incomingIds.has(ID.a)).toBe(true);
+    expect(trace.directBackingEdges).toBe(
+      [...trace.wireIndices]
+        .map((wireIndex) => projected.wires[wireIndex])
+        .filter((wire) => wire?.target === ID.b)
+        .reduce((sum, wire) => sum + (wire?.provenance.length ?? 0), 0),
+    );
+    const hidden = incomingAnchorTrace(projectFrontier(graph, tree, initialFrontier(), []), ID.b, 3);
+    expect(hidden.incomingIds.size).toBe(0);
+    expect(hidden.directBackingEdges).toBe(0);
+  });
   it("keeps directed cumulative reach, excludes origin seeds, and finds first convergence at degree two", () => {
     expect(index.candidates).toEqual([ID.a, ID.b, ID.c]);
     expect(neighborhoodIds(index, ID.a, 1)).toEqual([ID.b]);
@@ -52,7 +71,8 @@ describe("static structural neighborhoods on a known directed graph", () => {
     const disabled = buildNeighborhoodIndex(projectFrontier(graph, tree, initialFrontier(), []), tree);
     expect(pairGeometry(disabled, ID.a, ID.b).convergenceDepth).toBeNull();
     const finer = buildNeighborhoodIndex(
-      projectFrontier(graph, tree, expand(tree, initialFrontier(), ID.a), ["imports", "calls"]), tree,
+      projectFrontier(graph, tree, expand(tree, initialFrontier(), ID.a), ["imports", "calls"]),
+      tree,
     );
     for (const origin of finer.candidates) {
       const one = new Set(neighborhoodIds(finer, origin, 1));
@@ -95,42 +115,61 @@ function measure(label: string, built: ReturnType<typeof buildNeighborhoodIndex>
   }
   const selectionMs = (performance.now() - started) / 100;
   const setBytes = [...built.byOrigin.values()].reduce(
-    (sum, neighborhood) => sum + neighborhood.sets.reduce((bytes, bits) => bytes + bits.byteLength, 0), 0,
+    (sum, neighborhood) => sum + neighborhood.sets.reduce((bytes, bits) => bytes + bits.byteLength, 0),
+    0,
   );
   const matrixBytes = [...built.overlapMatrices.values()].reduce((sum, matrix) => sum + matrix.byteLength, 0);
   expect(decay.every(Number.isFinite)).toBe(true);
   expect(selectionMs).toBeGreaterThanOrEqual(0);
-  console.log(JSON.stringify({ benchmark: label, visibleNodes: built.nodeIds.length,
-    eligibleRegions: built.eligibleRegions, indexedRegions: built.candidates.length,
-    indexMs: Number(built.constructionMs.toFixed(2)), pairMatricesMs: Number(built.pairMetricsMs.toFixed(2)),
-    selectionMs: Number(selectionMs.toFixed(3)), indexBytes: setBytes + matrixBytes, decay }));
+  console.log(
+    JSON.stringify({
+      benchmark: label,
+      visibleNodes: built.nodeIds.length,
+      eligibleRegions: built.eligibleRegions,
+      indexedRegions: built.candidates.length,
+      indexMs: Number(built.constructionMs.toFixed(2)),
+      pairMatricesMs: Number(built.pairMetricsMs.toFixed(2)),
+      selectionMs: Number(selectionMs.toFixed(3)),
+      indexBytes: setBytes + matrixBytes,
+      decay,
+    }),
+  );
 }
 
 describe("measured index cost on the staged small, medium and largest worlds", () => {
-  it.each(BENCHMARK_WORLDS)("records actual %s costs without a timing pass/fail threshold", async (name, digest) => {
-    const world = await projectWorld(await readWorldDir(`../projection/layout_worlds/${digest}`));
-    const worldTree = containmentTree(world);
-    const projection = projectFrontier(world, worldTree, initialFrontier(), ["imports", "calls"]);
-    const built = buildNeighborhoodIndex(projection, worldTree);
-    measure(name, built);
-    // Pick the top-level visible region with the most physically contained
-    // entities, then measure a real expansion rather than only the coarse 12-node overview.
-    const descendantCounts = new Int32Array(world.pointCount);
-    for (let point = 0; point < world.pointCount; point++) {
-      let ancestor = point;
-      while (ancestor >= 0) {
-        descendantCounts[ancestor] = (descendantCounts[ancestor] ?? 0) + 1;
-        ancestor = worldTree.containerOf[ancestor] ?? -1;
+  it.each(BENCHMARK_WORLDS)(
+    "records actual %s costs without a timing pass/fail threshold",
+    async (name, digest) => {
+      const world = await projectWorld(await readWorldDir(`../projection/layout_worlds/${digest}`));
+      const worldTree = containmentTree(world);
+      const projection = projectFrontier(world, worldTree, initialFrontier(), ["imports", "calls"]);
+      const built = buildNeighborhoodIndex(projection, worldTree);
+      measure(name, built);
+      // Pick the top-level visible region with the most physically contained
+      // entities, then measure a real expansion rather than only the coarse 12-node overview.
+      const descendantCounts = new Int32Array(world.pointCount);
+      for (let point = 0; point < world.pointCount; point++) {
+        let ancestor = point;
+        while (ancestor >= 0) {
+          descendantCounts[ancestor] = (descendantCounts[ancestor] ?? 0) + 1;
+          ancestor = worldTree.containerOf[ancestor] ?? -1;
+        }
       }
-    }
-    const largestRegion = [...built.candidates].toSorted((a, b) =>
-      (descendantCounts[world.indexById.get(b) ?? -1] ?? 0) -
-      (descendantCounts[world.indexById.get(a) ?? -1] ?? 0) || a.localeCompare(b))[0];
-    if (largestRegion !== undefined) {
-      const expanded = expand(worldTree, initialFrontier(), largestRegion);
-      measure(`${name}:expanded`, buildNeighborhoodIndex(
-        projectFrontier(world, worldTree, expanded, ["imports", "calls"]), worldTree,
-      ));
-    }
-  });
+      const largestRegion = [...built.candidates].toSorted(
+        (a, b) =>
+          (descendantCounts[world.indexById.get(b) ?? -1] ?? 0) -
+            (descendantCounts[world.indexById.get(a) ?? -1] ?? 0) || a.localeCompare(b),
+      )[0];
+      if (largestRegion !== undefined) {
+        const expanded = expand(worldTree, initialFrontier(), largestRegion);
+        measure(
+          `${name}:expanded`,
+          buildNeighborhoodIndex(
+            projectFrontier(world, worldTree, expanded, ["imports", "calls"]),
+            worldTree,
+          ),
+        );
+      }
+    },
+  );
 });

@@ -54,6 +54,7 @@ sh_test(
 test_suite(
     name = "tests",
     tests = [
+        "//experiments/atlas-anchors:anchor_test",
         "//experiments/atlas-families:families_tests",
         "//experiments/atlas-work-topology:research_tests",
         "//test/Applications:applications_tests",

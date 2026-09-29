@@ -81,6 +81,15 @@ copy_to_directory(
     visibility = ["//visibility:public"],
 )
 
+# New Flix-derived anchor concentration and boundary-mask counterfactual for
+# the frozen Babel snapshot. The old census tables remain read-only inputs.
+copy_to_directory(
+    name = "anchors",
+    srcs = ["//experiments/atlas-anchors:babel"],
+    root_paths = ["experiments/atlas-anchors"],
+    visibility = ["//visibility:public"],
+)
+
 # A narrow Preact-only fixture for parity and projection unit laws. The web
 # release data target below consumes the full 78-world physical population.
 copy_to_directory(
@@ -225,6 +234,7 @@ js_test(
 js_run_binary(
     name = "data",
     srcs = [
+        ":anchors",
         ":families",
         ":locations",
         ":physical",
@@ -244,6 +254,8 @@ js_run_binary(
         "families",
         "--physical",
         "physical",
+        "--anchors",
+        "anchors",
         "--signatures",
         "signatures/report/repositories.parquet",
         "--self-signatures",

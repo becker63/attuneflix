@@ -83,6 +83,7 @@ function loaded(manifestEntry: WorldManifestEntry): LoadedWorld {
     layout,
     families: null,
     physical: null,
+    anchors: null,
     layoutMs: 0,
   };
 }
@@ -210,7 +211,9 @@ describe("SessionController lifecycle", () => {
 
     await session.changeFrontier(region.id, "collapse");
     const collapsed = session.getViewSnapshot();
-    expect(collapsed.projection.nodes.map((node) => node.id)).toEqual(first.projection.nodes.map((node) => node.id));
+    expect(collapsed.projection.nodes.map((node) => node.id)).toEqual(
+      first.projection.nodes.map((node) => node.id),
+    );
     await session.retireOldProjectedTables();
     expect(h.duckdb.tables.has(first.linksTable)).toBe(false);
     expect(h.duckdb.tables.has(expanded.linksTable)).toBe(false);
@@ -229,16 +232,22 @@ describe("SessionController lifecycle", () => {
       layout: structuralLayout(graph),
     });
     const identity = session.layout.identity;
-    expect(session.getViewSnapshot().projection.nodes.some((node) => node.id === FRONTIER_ID.xFile)).toBe(false);
+    expect(session.getViewSnapshot().projection.nodes.some((node) => node.id === FRONTIER_ID.xFile)).toBe(
+      false,
+    );
     await session.revealOrigin(FRONTIER_ID.xFile);
     const fileView = session.getViewSnapshot();
     expect(fileView.projection.nodes.some((node) => node.id === FRONTIER_ID.xFile)).toBe(true);
-    expect(neighborhoodIndex(fileView.projection, session.containment).ordinalById.has(FRONTIER_ID.xFile)).toBe(true);
+    expect(
+      neighborhoodIndex(fileView.projection, session.containment).ordinalById.has(FRONTIER_ID.xFile),
+    ).toBe(true);
     await session.revealOrigin(FRONTIER_ID.zaSym);
-    expect(session.getViewSnapshot().projection.nodes.some((node) => node.id === FRONTIER_ID.zaSym)).toBe(true);
-    expect(session.getViewSnapshot().frontier.expanded).toEqual(expect.arrayContaining([
-      FRONTIER_ID.a, FRONTIER_ID.sub, FRONTIER_ID.zFile,
-    ]));
+    expect(session.getViewSnapshot().projection.nodes.some((node) => node.id === FRONTIER_ID.zaSym)).toBe(
+      true,
+    );
+    expect(session.getViewSnapshot().frontier.expanded).toEqual(
+      expect.arrayContaining([FRONTIER_ID.a, FRONTIER_ID.sub, FRONTIER_ID.zFile]),
+    );
     expect(session.layout.identity).toBe(identity);
   });
 

@@ -6,6 +6,7 @@
  * inferred; provenance comes from the shipped manifest entry.
  */
 import { buildViewerArrow, type ViewerArrowTables } from "../../projection/src/arrow.ts";
+import { projectAnchors, type WorldAnchors } from "../../projection/src/anchors.ts";
 import {
   decodeFamiliesFiles,
   projectFamilies,
@@ -45,6 +46,7 @@ export interface LoadedWorld {
   readonly families: WorldFamilies | null;
   /** Bazel-derived depth-7 physical work for every file and symbol, if present. */
   readonly physical: WorldPhysical | null;
+  readonly anchors: WorldAnchors | null;
   /** Milliseconds spent computing the structural layout. */
   readonly layoutMs: number;
 }
@@ -130,20 +132,30 @@ async function fetchFamiliesFiles(
 }
 
 export async function loadWorld(entry: WorldManifestEntry, signal?: AbortSignal): Promise<LoadedWorld> {
-  const [files, familiesFiles, physicalFile] = await Promise.all([
+  const [files, familiesFiles, physicalFile, anchorFiles] = await Promise.all([
     fetchWorldFiles(entry, signal),
     fetchFamiliesFiles(entry, signal),
-    entry.assets.physical === undefined ? Promise.resolve(undefined) : fetchBytes(entry.assets.physical, signal),
+    entry.assets.physical === undefined
+      ? Promise.resolve(undefined)
+      : fetchBytes(entry.assets.physical, signal),
+    entry.assets.anchors === undefined
+      ? Promise.resolve(undefined)
+      : Promise.all([
+          fetchBytes(entry.assets.anchors.masses, signal),
+          fetchBytes(entry.assets.anchors.scenarios, signal),
+        ]),
   ]);
   const decoded = await decodeWorldFiles(files);
   const graph = projectTables(decoded, entry.sha256);
   const familyTables = familiesFiles === undefined ? undefined : await decodeFamiliesFiles(familiesFiles);
   const families = familyTables === undefined ? null : projectFamilies(familyTables, graph);
   const physical = physicalFile === undefined ? null : await projectPhysical(physicalFile, graph);
+  const anchors =
+    anchorFiles === undefined ? null : await projectAnchors(anchorFiles[0], anchorFiles[1], graph);
   const beforeLayout = performance.now();
   const structural = structuralLayout(graph);
   const layout = families === null ? structural : unifiedTopologyLayout(structural, families);
   const layoutMs = Math.round(performance.now() - beforeLayout);
   const tables = buildViewerArrow(graph, families === null ? { xy: layout.xy } : { xy: layout.xy, families });
-  return { entry, graph, tables, layout, families, physical, layoutMs };
+  return { entry, graph, tables, layout, families, physical, anchors, layoutMs };
 }

@@ -9,6 +9,7 @@
  *            [--locations <dir of <digest>/locations.parquet>]
  *            [--families <dir of <digest>/{families,family_*}.parquet>]
  *            [--physical <dir of <digest>/physical.parquet>]
+ *            [--anchors <dir of <digest>/{anchors,scenarios}.parquet>]
  *            [--signatures <frozen repositories.parquet>]
  *            [--self-signatures <pinned self repositories.parquet>]
  */
@@ -17,9 +18,11 @@ import path from "node:path";
 import process from "node:process";
 
 import { ProjectionError } from "./errors.ts";
+import { projectAnchors } from "./anchors.ts";
 import { summarizeFamilyTable } from "./families.ts";
 import {
   attachPhysical,
+  attachAnchors,
   attachFamilies,
   FAMILY_TABLE_FILES,
   manifestEntry,
@@ -40,6 +43,7 @@ interface CliOptions {
   readonly locations: string | null;
   readonly families: string | null;
   readonly physical: string | null;
+  readonly anchors: string | null;
   readonly synthetic: string | null;
   readonly signatures: string | null;
   readonly selfSignatures: string | null;
@@ -51,6 +55,7 @@ function parseArgs(argv: readonly string[]): CliOptions {
   let locations: string | null = null;
   let families: string | null = null;
   let physical: string | null = null;
+  let anchors: string | null = null;
   let synthetic: string | null = null;
   let signatures: string | null = null;
   let selfSignatures: string | null = null;
@@ -79,6 +84,9 @@ function parseArgs(argv: readonly string[]): CliOptions {
       case "--physical":
         physical = value;
         break;
+      case "--anchors":
+        anchors = value;
+        break;
       case "--synthetic":
         synthetic = value;
         break;
@@ -98,7 +106,7 @@ function parseArgs(argv: readonly string[]): CliOptions {
       "usage: cli --worlds <dir> --out <dir> [--locations <dir>] [--families <dir>] [--physical <dir>] [--synthetic <dir>]",
     );
   }
-  return { worlds, out, locations, families, physical, synthetic, signatures, selfSignatures };
+  return { worlds, out, locations, families, physical, anchors, synthetic, signatures, selfSignatures };
 }
 
 /** One staged families table of a world: its file name and bytes. */
@@ -138,6 +146,7 @@ async function projectDir(
   locationsFile: string | null,
   families: FamilyFiles | null,
   physicalFile: string | null,
+  anchorFiles: { masses: string; scenarios: string } | null,
   synthetic: boolean,
 ): Promise<WorldManifestEntry> {
   const files = await readWorldDir(dir, locationsFile);
@@ -197,6 +206,19 @@ async function projectDir(
       medianSeedFraction,
     });
   }
+  if (anchorFiles !== null) {
+    const [masses, scenarios] = await Promise.all([
+      readBytes(anchorFiles.masses),
+      readBytes(anchorFiles.scenarios),
+    ]);
+    await projectAnchors(masses, scenarios, graph);
+    await writeFile(path.join(assetDir, "anchors.parquet"), new Uint8Array(masses));
+    await writeFile(path.join(assetDir, "scenarios.parquet"), new Uint8Array(scenarios));
+    entry = attachAnchors(entry, {
+      masses: await sha256Hex(masses),
+      scenarios: await sha256Hex(scenarios),
+    });
+  }
   return entry;
 }
 
@@ -205,12 +227,20 @@ async function projectOne(
   locationsDir: string | null,
   familiesDir: string | null,
   physicalDir: string | null,
+  anchorDir: string | null,
   outDir: string,
   digest: string,
 ): Promise<WorldManifestEntry> {
   const locationsFile = locationsDir === null ? null : path.join(locationsDir, digest, "locations.parquet");
   const families = familiesDir === null ? null : await readFamilies(familiesDir, digest);
   const physicalFile = physicalDir === null ? null : path.join(physicalDir, digest, "physical.parquet");
+  const anchorFiles =
+    anchorDir === null || !(await fileExists(path.join(anchorDir, digest, "anchors.parquet")))
+      ? null
+      : {
+          masses: path.join(anchorDir, digest, "anchors.parquet"),
+          scenarios: path.join(anchorDir, digest, "scenarios.parquet"),
+        };
   if (physicalFile !== null && !(await fileExists(physicalFile))) {
     throw new Error(`${digest}: missing physical measurement`);
   }
@@ -221,6 +251,7 @@ async function projectOne(
     locationsFile,
     families,
     physicalFile,
+    anchorFiles,
     false,
   );
 }
@@ -236,17 +267,17 @@ async function projectSynthetic(syntheticDir: string, outDir: string): Promise<W
   const digest = digests[0];
   if (digest === undefined) return null;
   const dir = path.join(syntheticDir, digest);
-  return projectDir(dir, outDir, digest, path.join(dir, "locations.parquet"), null, null, true);
+  return projectDir(dir, outDir, digest, path.join(dir, "locations.parquet"), null, null, null, true);
 }
 
 async function main(argv: readonly string[]): Promise<number> {
   const options = parseArgs(argv);
-  const censusSignatures = options.signatures === null
-    ? null
-    : await repositorySignatures(await readBytes(options.signatures));
-  const selfSignatures = options.selfSignatures === null
-    ? null
-    : await repositorySignatures(await readBytes(options.selfSignatures));
+  const censusSignatures =
+    options.signatures === null ? null : await repositorySignatures(await readBytes(options.signatures));
+  const selfSignatures =
+    options.selfSignatures === null
+      ? null
+      : await repositorySignatures(await readBytes(options.selfSignatures));
   const signatures = censusSignatures === null ? null : new Map(censusSignatures);
   if (selfSignatures !== null) {
     if (signatures === null) throw new Error("self signatures require census signatures");
@@ -267,12 +298,14 @@ async function main(argv: readonly string[]): Promise<number> {
         options.locations,
         options.families,
         options.physical,
+        options.anchors,
         options.out,
         digest,
       );
       if (signatures !== null) {
         const signature = signatures.get(entry.repository);
-        if (signature === undefined) throw new Error(`${digest}: missing frozen signature for ${entry.repository}`);
+        if (signature === undefined)
+          throw new Error(`${digest}: missing frozen signature for ${entry.repository}`);
         entry = { ...entry, signatureSummary: signature };
       }
       entries.push(entry);

@@ -141,7 +141,7 @@ pub mod Atlas.Signature.Summary {
     def metric(name: String, value: Float64, sampleCount: Int32): Metric =
         {name = name, value = value, sampleCount = sampleCount}
 
-    def quantile(values: Vector[Float64], percentile: Int32): Float64 = {
+    pub def quantile(values: Vector[Float64], percentile: Int32): Float64 = {
         let sorted = mergeSort(values);
         if (Vector.isEmpty(sorted)) 0.0
         else Vector.get((Vector.length(sorted) - 1) * percentile / 100, sorted)

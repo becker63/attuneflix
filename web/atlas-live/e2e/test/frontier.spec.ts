@@ -109,7 +109,8 @@ test("structural separation compares two origins on the same relation-filtered g
   await expect(panel.getByText("Greedy wave groups")).toBeVisible();
   await aggregate.locator("summary").first().click();
   const outputs = process.env.TEST_UNDECLARED_OUTPUTS_DIR;
-  if (outputs !== undefined) fs.writeFileSync(path.join(outputs, "structural-empty.png"), await page.screenshot());
+  if (outputs !== undefined)
+    fs.writeFileSync(path.join(outputs, "structural-empty.png"), await page.screenshot());
   const labels = page.getByTestId("topology-region-label");
   await labels.nth(0).click();
   await expect(panel.getByText(/Origin A/)).toBeVisible();
@@ -137,8 +138,17 @@ test("structural separation compares two origins on the same relation-filtered g
   expect(await page.evaluate(() => window.__atlasLive?.layoutIdentity)).toBe(identity);
   await page.getByRole("button", { name: "Imports edges" }).click();
   await page.getByRole("button", { name: "Calls edges" }).click();
-  await expect.poll(async () => page.evaluate(() => window.__atlasLive?.projected.aggregatedEdgeCount ?? -1)).toBe(0);
-  await expect(panel.locator("tbody tr").first().locator("td")).toHaveText(["1°", "0", "0", "0", "0", "0.000"]);
+  await expect
+    .poll(async () => page.evaluate(() => window.__atlasLive?.projected.aggregatedEdgeCount ?? -1))
+    .toBe(0);
+  await expect(panel.locator("tbody tr").first().locator("td")).toHaveText([
+    "1°",
+    "0",
+    "0",
+    "0",
+    "0",
+    "0.000",
+  ]);
   await expect(page.locator('[data-converging="true"]')).toHaveCount(0);
   await panel.getByRole("button", { name: "Clear B" }).click();
   await expect(panel.getByText(/Origin B/)).toHaveCount(0);
@@ -146,7 +156,39 @@ test("structural separation compares two origins on the same relation-filtered g
   await expect(graphKey).toContainText("No wires until selection");
   await expect(page.locator('[data-landscape-role="shared"]')).toHaveCount(0);
   await page.waitForTimeout(750);
-  if (outputs !== undefined) fs.writeFileSync(path.join(outputs, "structural-cleared.png"), await page.screenshot());
+  if (outputs !== undefined)
+    fs.writeFileSync(path.join(outputs, "structural-cleared.png"), await page.screenshot());
+});
+
+test("Babel anchor evidence selects a measured region and traces only enabled dependencies", async ({
+  page,
+}) => {
+  const babel = "repository-snapshot-v1:002a462e6f58440bbf60071f1e945b38bb304fe46a38ca6fdfd578248693cf01";
+  await page.goto("/");
+  await page.waitForFunction(() => window.__atlasLive?.ready === true, null, { timeout: 90_000 });
+  await page.getByTestId("dataset-picker").click();
+  await page.locator(`[data-snapshot-id="${babel}"]`).click();
+  await page.waitForFunction(
+    (id) => window.__atlasLive?.ready === true && window.__atlasLive.snapshotId === id,
+    babel,
+    { timeout: 90_000 },
+  );
+  await page.getByTestId("anchors-mode").click();
+  const panel = page.getByTestId("anchor-panel");
+  await expect(panel.getByTestId("anchor-option").first()).toContainText("packages/babel-types");
+  await expect(panel.getByText("Symbol · observations").locator("..")).toContainText("66.24%");
+  await expect(panel.getByText("File · observations").locator("..")).toContainText("0.00%");
+  await expect(panel.getByText("Symbol live recurrence Δ").locator("..")).toContainText("+0.66×");
+  await expect(panel.getByText("Direct sources / backing edges").locator("..").locator("strong")).toHaveText(
+    /\d+ \/ [1-9][\d,]*/,
+  );
+  await expect
+    .poll(async () => page.getByTestId("structural-neighborhood-marker").count())
+    .toBeGreaterThan(1);
+  await page.getByRole("button", { name: "Calls edges" }).click();
+  await expect(panel.getByText("Direct sources / backing edges").locator("..")).toContainText("0 / 0");
+  await panel.getByRole("button", { name: "Clear anchor highlight" }).click();
+  await expect(page.getByTestId("structural-graph-key")).toContainText("0 incoming visible nodes");
 });
 
 test("a region label selects its directory while graph points remain hoverable", async ({ page }) => {
@@ -156,7 +198,8 @@ test("a region label selects its directory while graph points remain hoverable",
   const label = page.getByTestId("topology-region-label").filter({ hasText: "src" }).first();
   await expect(label).toBeVisible();
   await label.click();
-  await expect.poll(async () => page.evaluate(() => window.__atlasLive?.selectedRegion?.region ?? null))
+  await expect
+    .poll(async () => page.evaluate(() => window.__atlasLive?.selectedRegion?.region ?? null))
     .not.toBeNull();
 
   const position = await page.evaluate(() => window.__atlasLive?.screenPositionOf(500) ?? null);
@@ -173,7 +216,10 @@ test("one graph keeps its geometry while shading, proves derived relations, and 
   const identity = await page.evaluate(() => window.__atlasLive?.layoutIdentity);
   await page.getByRole("button", { name: "Locality", exact: true }).click();
   await expect.poll(async () => page.evaluate(() => window.__atlasLive?.shading.name)).toBe("locality");
-  await page.getByRole("region", { name: "Graph shading" }).getByRole("button", { name: "Reach", exact: true }).click();
+  await page
+    .getByRole("region", { name: "Graph shading" })
+    .getByRole("button", { name: "Reach", exact: true })
+    .click();
   await expect.poll(async () => page.evaluate(() => window.__atlasLive?.shading.name)).toBe("reach");
   expect(await page.evaluate(() => window.__atlasLive?.layoutIdentity)).toBe(identity);
 
