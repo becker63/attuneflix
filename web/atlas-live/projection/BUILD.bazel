@@ -59,14 +59,17 @@ copy_to_directory(
     visibility = ["//visibility:public"],
 )
 
-# The real worlds the app's structural-layout unit tests read (preactjs/preact,
-# the default world, and babel/babel, the largest snapshot), each staged with its
-# locations table as <digest>/{metadata,entities,relations,locations}.parquet.
+# The real worlds the app's structural-layout and frontier unit tests read
+# (preactjs/preact, the default world; babel/babel, the largest snapshot; and
+# axios/axios, the smallest compartmental world the wire conservation laws
+# name), each staged with its locations table as
+# <digest>/{metadata,entities,relations,locations}.parquet.
 # Worlds with a families export (preact) also carry their five family_*.parquet
 # files, so the app tests exercise the real families join (VAL-WEB-001..004).
 _LAYOUT_WORLDS = [
     "//.attune/repository-world-v1/6e2bef41bf19f638be084df8cb82127e4832d4abbafa8ca20ebd5db9be3ac8a9:world",
     "//.attune/repository-world-v1/002a462e6f58440bbf60071f1e945b38bb304fe46a38ca6fdfd578248693cf01:world",
+    "//.attune/repository-world-v1/1e44a1c45ec4a91bb7774dc6d37a2846a5f56262b6fa7ae5722bcbcc15ba10c7:world",
 ]
 
 copy_to_directory(
