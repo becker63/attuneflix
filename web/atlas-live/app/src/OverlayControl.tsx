@@ -1,15 +1,16 @@
 /**
- * The overlay control. Slice A ships one node-colour overlay ("Structure", fill
- * by domain); the control makes the active overlay an explicit, focusable choice
- * that updates the diagnostics hook. Edge colour by relation is independent of
- * this overlay.
+ * The overlay control. "Structure" fills nodes by domain; "Families" fills them
+ * by family tint and swaps exact links for family edges. Families is offered
+ * only while the loaded world ships families data (the toggle stays disabled
+ * otherwise), so a world without families renders exactly as before. Edge
+ * colour by relation is independent of this overlay.
  */
 import { Toggle } from "@base-ui/react/toggle";
 import * as stylex from "@stylexjs/stylex";
-import { useAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 
-import { overlayAtom } from "./atoms.ts";
-import { publish } from "./diagnostics.ts";
+import { familiesAtom, overlayAtom, setOverlayAtom } from "./atoms.ts";
+import { OVERLAY_LABELS, OVERLAY_ORDER, type OverlayName } from "./vocabulary.ts";
 
 const styles = stylex.create({
   root: {
@@ -35,6 +36,10 @@ const styles = stylex.create({
     color: "#e5e7eb",
     cursor: "pointer",
   },
+  disabled: {
+    color: "#6b7280",
+    cursor: "not-allowed",
+  },
   pressed: {
     borderColor: "#60a5fa",
     backgroundColor: "#1e3a8a",
@@ -43,22 +48,29 @@ const styles = stylex.create({
 });
 
 export function OverlayControl() {
-  const [overlay, setOverlay] = useAtom(overlayAtom);
-  const selectStructure = (): void => {
-    setOverlay("structure");
-    publish({ overlay: { name: "structure", revision: 1 } });
-  };
+  const overlay = useAtomValue(overlayAtom);
+  const setOverlay = useSetAtom(setOverlayAtom);
+  const families = useAtomValue(familiesAtom);
+  const selectable = (name: OverlayName): boolean => name !== "families" || families !== null;
   return (
     <div {...stylex.props(styles.root)}>
       <span {...stylex.props(styles.label)}>Overlay</span>
-      <Toggle
-        aria-label="Structure overlay"
-        pressed={overlay === "structure"}
-        onPressedChange={selectStructure}
-        {...stylex.props(styles.toggle, overlay === "structure" && styles.pressed)}
-      >
-        Structure
-      </Toggle>
+      {OVERLAY_ORDER.map((name) => (
+        <Toggle
+          key={name}
+          aria-label={`${OVERLAY_LABELS[name]} overlay`}
+          pressed={overlay === name}
+          disabled={!selectable(name)}
+          onPressedChange={() => setOverlay(name)}
+          {...stylex.props(
+            styles.toggle,
+            !selectable(name) && styles.disabled,
+            overlay === name && styles.pressed,
+          )}
+        >
+          {OVERLAY_LABELS[name]}
+        </Toggle>
+      ))}
     </div>
   );
 }

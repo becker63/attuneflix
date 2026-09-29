@@ -7,6 +7,7 @@
  */
 import type { Domain } from "../../projection/src/domain.ts";
 import { DOMAIN_ORDER } from "../../projection/src/domain.ts";
+import type { WorldFamilies } from "../../projection/src/families.ts";
 import type { ViewerGraph } from "../../projection/src/graph.ts";
 import { RELATION_ORDER, type Relation } from "../../projection/src/relation.ts";
 import { shouldRenderLinks } from "./datasets.ts";
@@ -30,6 +31,8 @@ export interface GraphSessionOptions {
   readonly graph: ViewerGraph;
   /** The graph's structural layout; the points table's x/y columns come from it. */
   readonly layout: StructuralLayout;
+  /** The world's families layer, or null for a world without families data. */
+  readonly families?: WorldFamilies | null;
   readonly pointsTable?: string;
   readonly linksTable?: string;
   /** Monotonic across dataset switches; 1 for the first session. */
@@ -48,6 +51,8 @@ export class GraphSession {
   readonly graph: ViewerGraph;
   /** Fixed for the session's lifetime: no view change recomputes it. */
   readonly layout: StructuralLayout;
+  /** The world's families layer; null when the world ships no families data. */
+  readonly families: WorldFamilies | null;
   readonly pointsTable: string;
   readonly linksTable: string;
   /** Increments when a new session replaces this one; stable for a loaded world. */
@@ -64,6 +69,7 @@ export class GraphSession {
     this.entry = options.entry;
     this.graph = options.graph;
     this.layout = options.layout;
+    this.families = options.families ?? null;
     this.pointsTable = options.pointsTable ?? POINTS_TABLE;
     this.linksTable = options.linksTable ?? LINKS_TABLE;
     this.sessionRevision = options.sessionRevision ?? 1;
@@ -106,6 +112,17 @@ export class GraphSession {
 
   pointId(index: number): string | null {
     return this.graph.pointIds[index] ?? null;
+  }
+
+  /**
+   * The family edge ordinal of an appended family link row, or null when the
+   * row is an exact link (or the world has no families). Family rows follow the
+   * exact links in the links table (see projection/src/arrow.ts).
+   */
+  familyEdgeAt(linkIndex: number): number | null {
+    const { families } = this;
+    if (families === null || linkIndex < this.graph.linkCount) return null;
+    return families.renderedEdges[linkIndex - this.graph.linkCount] ?? null;
   }
 
   domainOf(index: number): Domain | null {

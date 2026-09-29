@@ -37,6 +37,7 @@ export function shortRevision(baseRevision: string): string {
 
 function optionFor(entry: WorldManifestEntry): DatasetOption {
   const revision = shortRevision(entry.baseRevision);
+  const counts = `${entry.counts.points} points · ${entry.counts.links} links`;
   return {
     value: entry.snapshotId,
     entry,
@@ -44,7 +45,8 @@ function optionFor(entry: WorldManifestEntry): DatasetOption {
     revision,
     synthetic: entry.synthetic,
     label: entry.synthetic ? "synthetic stress fixture" : `${entry.repository} @ ${revision}`,
-    detail: `${entry.counts.points} points · ${entry.counts.links} links`,
+    // A world that ships a families export says so; the others render exactly as before.
+    detail: entry.assets.families === undefined ? counts : `${counts} · families`,
   };
 }
 

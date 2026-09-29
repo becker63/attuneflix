@@ -77,8 +77,6 @@ export interface WorldFiles {
   readonly locations?: ArrayBuffer;
 }
 
-type TableName = "metadata" | "entities" | "relations" | "locations";
-
 const METADATA_COLUMNS = [
   "repository",
   "base_revision",
@@ -117,9 +115,9 @@ const RELATION_COLUMNS = [
 
 const LOCATION_COLUMNS = ["snapshot_id", "location_id", "path", "kind"] as const;
 
-async function readTable(
+export async function readTable(
   file: ArrayBuffer,
-  table: TableName,
+  table: string,
   expectedColumns: readonly string[],
 ): Promise<Record<string, unknown>[]> {
   let metadata: FileMetaData;
@@ -155,7 +153,7 @@ async function readTable(
   });
 }
 
-function cell(row: Record<string, unknown>, table: TableName, column: string): unknown {
+export function cell(row: Record<string, unknown>, table: string, column: string): unknown {
   const value = row[column];
   if (value === undefined) {
     throw new ProjectionError({ kind: "invalid-schema", table, message: `missing column ${column}` });
@@ -163,7 +161,7 @@ function cell(row: Record<string, unknown>, table: TableName, column: string): u
   return value;
 }
 
-function text(row: Record<string, unknown>, table: TableName, column: string): string {
+export function text(row: Record<string, unknown>, table: string, column: string): string {
   const value = cell(row, table, column);
   if (typeof value !== "string") {
     throw new ProjectionError({ kind: "invalid-schema", table, message: `column ${column} is not a string` });
@@ -171,7 +169,7 @@ function text(row: Record<string, unknown>, table: TableName, column: string): s
   return value;
 }
 
-function optionalText(row: Record<string, unknown>, table: TableName, column: string): string | null {
+export function optionalText(row: Record<string, unknown>, table: string, column: string): string | null {
   const value = cell(row, table, column);
   if (value === null) return null;
   if (typeof value !== "string") {
@@ -184,7 +182,7 @@ function optionalText(row: Record<string, unknown>, table: TableName, column: st
   return value;
 }
 
-function integer(row: Record<string, unknown>, table: TableName, column: string): number {
+export function integer(row: Record<string, unknown>, table: string, column: string): number {
   const value = cell(row, table, column);
   const asNumber = typeof value === "bigint" ? Number(value) : value;
   if (typeof asNumber !== "number" || !Number.isSafeInteger(asNumber)) {
@@ -197,7 +195,7 @@ function integer(row: Record<string, unknown>, table: TableName, column: string)
   return asNumber;
 }
 
-function optionalInteger(row: Record<string, unknown>, table: TableName, column: string): number | null {
+export function optionalInteger(row: Record<string, unknown>, table: string, column: string): number | null {
   const value = cell(row, table, column);
   if (value === null) return null;
   const asNumber = typeof value === "bigint" ? Number(value) : value;

@@ -160,6 +160,7 @@ export class SessionController {
         entry: loaded.entry,
         graph: loaded.graph,
         layout: loaded.layout,
+        families: loaded.families,
         pointsTable,
         linksTable,
         sessionRevision: revision,
@@ -207,6 +208,17 @@ export class SessionController {
         },
         layoutIdentity: loaded.layout.identity,
         layoutRevision: revision,
+        families:
+          loaded.families === null
+            ? null
+            : {
+                familyCount: loaded.families.familyCount,
+                singletonFamilies: loaded.families.singletonCount,
+                fallbackMembers: loaded.families.fallbackCount,
+                edges: loaded.families.edges.length,
+                renderedEdges: loaded.families.renderedEdges.length,
+                unattributedEdges: loaded.families.unattributed,
+              },
         error: null,
       });
       publishPerf({ loadMs, insertMs, layoutMs: loaded.layoutMs });

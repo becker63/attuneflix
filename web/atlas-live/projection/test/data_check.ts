@@ -11,110 +11,17 @@ import process from "node:process";
 
 import { parquetMetadata, parquetReadObjects, parquetSchema } from "hyparquet";
 
+import { FAMILY_TABLE_SCHEMAS } from "../src/families.ts";
 import {
   FAMILY_TABLE_FILES,
   FAMILY_TABLE_NAMES,
   SNAPSHOT_ID_PREFIX,
-  type FamiliesTableAssets,
   type WorldManifest,
   type WorldManifestEntry,
 } from "../src/manifest.ts";
 import { decodeMetadata, toArrayBuffer } from "../src/tables.ts";
 
 const EXPECTED_WORLD_COUNT = 78;
-
-/**
- * The declared typed schema (format identity + exact column order) of every
- * families table; the owners are `Families.Cluster.Table` and
- * `Families.Edge.Table` in the Flix experiment, and
- * `//experiments/atlas-families:families_export_parity_test` holds the shipped
- * bytes to the Flix-built tables.
- */
-const FAMILY_SCHEMAS: Record<keyof FamiliesTableAssets, { format: string; columns: readonly string[] }> = {
-  families: {
-    format: "attune-atlas-families-v1",
-    columns: [
-      "protocol",
-      "snapshot_id",
-      "family",
-      "family_id",
-      "name",
-      "name_kind",
-      "named",
-      "seed",
-      "name_decision",
-      "seed_files",
-      "route",
-      "state_id",
-      "members",
-      "files",
-    ],
-  },
-  members: {
-    format: "attune-atlas-families-members-v1",
-    columns: [
-      "protocol",
-      "snapshot_id",
-      "family",
-      "family_id",
-      "domain",
-      "entity_id",
-      "path",
-      "name",
-      "start_byte",
-      "end_byte",
-      "candidates",
-      "affinity",
-      "structural_affinity",
-      "semantic_affinity",
-    ],
-  },
-  rollups: {
-    format: "attune-atlas-families-rollups-v1",
-    columns: [
-      "protocol",
-      "snapshot_id",
-      "level",
-      "location_id",
-      "location",
-      "family",
-      "family_id",
-      "members",
-      "location_members",
-      "dominant",
-    ],
-  },
-  edges: {
-    format: "attune-atlas-family-edges-v1",
-    columns: [
-      "protocol",
-      "snapshot_id",
-      "relation",
-      "grain",
-      "edge",
-      "source_family",
-      "source_family_id",
-      "target_family",
-      "target_family_id",
-      "multiplicity",
-    ],
-  },
-  contributions: {
-    format: "attune-atlas-family-edge-contributions-v1",
-    columns: [
-      "protocol",
-      "snapshot_id",
-      "relation",
-      "source_domain",
-      "source_id",
-      "target_domain",
-      "target_id",
-      "source_family",
-      "target_family",
-      "edge",
-    ],
-  },
-};
 
 function fail(message: string): never {
   throw new Error(`data_check: ${message}`);
@@ -216,7 +123,7 @@ async function checkFamilies(treeRoot: string, world: WorldManifestEntry): Promi
     const bytes = await readBytes(path.join(treeRoot, assetPath));
     const sha256 = createHash("sha256").update(bytes).digest("hex");
     if (sha256 !== hashes[table]) fail(`${digest}: sha256 mismatch for ${file}`);
-    const { format, columns } = FAMILY_SCHEMAS[table];
+    const { format, columns } = FAMILY_TABLE_SCHEMAS[table];
     const metadata = parquetMetadata(toArrayBuffer(bytes));
     const actual = parquetSchema(metadata).children.map((child) => child.element.name);
     if (actual.length !== columns.length || !columns.every((column, i) => actual[i] === column)) {

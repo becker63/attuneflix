@@ -38,6 +38,32 @@ export interface AtlasCamera {
   readonly zoom: number | null;
 }
 
+/** The families-layer summary of the loaded world, or null when it has none. */
+export interface AtlasFamilies {
+  readonly familyCount: number;
+  /** Families with exactly one member. */
+  readonly singletonFamilies: number;
+  /** Members no recorded frontier held (the defining-file seed fallback). */
+  readonly fallbackMembers: number;
+  /** Family edges in total (intra-family included). */
+  readonly edges: number;
+  /** Cross-family edges (the rendered family links). */
+  readonly renderedEdges: number;
+  /** Exact imports/calls edges that name no family edge (no callable endpoint). */
+  readonly unattributedEdges: number;
+}
+
+/** The family membership of one point, or null when it has none. */
+export interface AtlasFamilyMembership {
+  readonly ordinal: number;
+  readonly familyId: string;
+  readonly name: string;
+  readonly members: number;
+  readonly singleton: boolean;
+  /** True when this symbol joined via the defining-file seed fallback. */
+  readonly fallback: boolean;
+}
+
 export interface AtlasOverlay {
   readonly name: OverlayName;
   readonly revision: number;
@@ -52,6 +78,8 @@ export interface DiagnosticsSource {
   pointIdOf(index: number): string | null;
   /** The current number of points in the loaded graph. */
   pointCount(): number;
+  /** The family membership of a point, or null when the world or point has none. */
+  familyOfPoint(index: number): AtlasFamilyMembership | null;
 }
 
 interface DiagnosticsState {
@@ -82,6 +110,10 @@ interface DiagnosticsState {
   layoutIdentity: string | null;
   /** Advances only when a new world's geometry is adopted; no view change touches it. */
   layoutRevision: number;
+  /** The loaded world's families summary, or null when it ships no families data. */
+  families: AtlasFamilies | null;
+  /** The drilled-down family edge ordinal, or null. */
+  drilledFamilyEdge: number | null;
   buildRevision: string;
   error: string | null;
 }
@@ -113,6 +145,8 @@ const state: DiagnosticsState = {
   perf: {},
   layoutIdentity: null,
   layoutRevision: 0,
+  families: null,
+  drilledFamilyEdge: null,
   buildRevision: BUILD_REVISION,
   error: null,
 };
@@ -201,6 +235,12 @@ export function installDiagnostics(): void {
     get layoutRevision(): number {
       return state.layoutRevision;
     },
+    get families(): AtlasFamilies | null {
+      return state.families;
+    },
+    get drilledFamilyEdge(): number | null {
+      return state.drilledFamilyEdge;
+    },
     get buildRevision(): string {
       return state.buildRevision;
     },
@@ -218,6 +258,9 @@ export function installDiagnostics(): void {
     },
     pointCount(): number {
       return source?.pointCount() ?? 0;
+    },
+    familyOfPoint(index: number): AtlasFamilyMembership | null {
+      return source?.familyOfPoint(index) ?? null;
     },
   };
   Object.defineProperty(globalThis, "__atlasLive", {

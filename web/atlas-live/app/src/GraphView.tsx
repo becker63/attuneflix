@@ -12,15 +12,19 @@
 import { Cosmograph } from "@cosmograph/react";
 import * as stylex from "@stylexjs/stylex";
 import { useAtomValue, useSetAtom } from "jotai";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 import { RELATION_ORDER } from "../../projection/src/relation.ts";
 import {
   clearSelectionAtom,
+  drillFamilyEdgeAtom,
+  drilledFamilyEdgeAtom,
   emphasisAtom,
   filterRevisionAtom,
   hoveredIndexAtom,
   neighbourhoodDepthAtom,
+  overlayAtom,
+  overlayRevisionAtom,
   readyAtom,
   relationMaskAtom,
   selectOnlyAtom,
@@ -30,12 +34,14 @@ import {
 } from "./atoms.ts";
 import { publish, setDiagnosticsSource } from "./diagnostics.ts";
 import { reapplyEmphasis, setEmphasis } from "./emphasis.ts";
+import { familyMembership, familyPointColor } from "./families.ts";
 import {
   clearMountedCosmograph,
   mountedCosmograph,
   onBackgroundClick,
   onGraphMount,
   onGraphRebuilt,
+  onLinkClick,
   onPointClick,
   onPointMouseOut,
   onPointMouseOver,
@@ -43,7 +49,7 @@ import {
   setGraphHandlers,
   type MountedCosmograph,
 } from "./graphHandlers.ts";
-import { linkColorFn, linkWidthFn } from "./linkAccessors.ts";
+import { linkColorAccessor, linkWidthAccessor } from "./linkAccessors.ts";
 import { highlightIds } from "./neighbourhood.ts";
 import { sortedSelection } from "./selection.ts";
 import type { GraphSession } from "./session.ts";
@@ -85,6 +91,20 @@ export function GraphView({ session }: { session: GraphSession }) {
   const depth = useAtomValue(neighbourhoodDepthAtom);
   const filterRevision = useAtomValue(filterRevisionAtom);
   const relationMask = useAtomValue(relationMaskAtom);
+  const overlay = useAtomValue(overlayAtom);
+  const overlayRevision = useAtomValue(overlayRevisionAtom);
+  const drill = useAtomValue(drilledFamilyEdgeAtom);
+  const setDrill = useSetAtom(drillFamilyEdgeAtom);
+
+  const families = session.families;
+  const familiesOverlay = overlay === "families" && families !== null;
+  // The renderer's stable callbacks run outside React; the ref lets the link
+  // click handler read the current overlay without re-registering the handlers
+  // (which would drop the mounted instance) on every overlay change.
+  const familiesOverlayRef = useRef(familiesOverlay);
+  useEffect(() => {
+    familiesOverlayRef.current = familiesOverlay;
+  }, [familiesOverlay]);
 
   // The renderer's stable callbacks delegate here; the dependency list is only
   // the setters (all stable) and the session. Disposing the session removes
@@ -111,7 +131,16 @@ export function GraphView({ session }: { session: GraphSession }) {
         if (additive) setToggleSelected(id);
         else setSelectedOnly(id);
       },
-      background: () => clearSelection(),
+      linkClick: (linkIndex) => {
+        // A click on a family edge drills into it; exact link rows do nothing.
+        if (!familiesOverlayRef.current) return;
+        const ordinal = session.familyEdgeAt(linkIndex);
+        if (ordinal !== null) setDrill(ordinal);
+      },
+      background: () => {
+        clearSelection();
+        setDrill(null);
+      },
       rebuilt,
       zoom,
     });
@@ -120,6 +149,8 @@ export function GraphView({ session }: { session: GraphSession }) {
       pointWithIncidentLinks: () => session.firstPointWithLinks(RELATION_ORDER),
       pointIdOf: (index) => session.pointId(index),
       pointCount: () => session.pointCount,
+      familyOfPoint: (index) =>
+        session.families === null ? null : familyMembership(session.families, index),
     });
     const unsubscribe = session.onDispose(() => {
       setGraphHandlers(null);
@@ -131,18 +162,21 @@ export function GraphView({ session }: { session: GraphSession }) {
       setDiagnosticsSource(null);
       clearMountedCosmograph();
     };
-  }, [session, setHoveredIndex, setReady, setSelectedOnly, setToggleSelected, clearSelection]);
+  }, [session, setHoveredIndex, setReady, setSelectedOnly, setToggleSelected, clearSelection, setDrill]);
 
   // The documented clear action on the keyboard (the canvas is not focusable).
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === "Escape") clearSelection();
+      if (event.key === "Escape") {
+        clearSelection();
+        setDrill(null);
+      }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => {
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [clearSelection]);
+  }, [clearSelection, setDrill]);
 
   useEffect(() => {
     setEmphasis(emphasis);
@@ -157,8 +191,21 @@ export function GraphView({ session }: { session: GraphSession }) {
       relationFilter: [...visibleRelations],
       depth,
       filterRevision,
+      overlay: { name: overlay, revision: overlayRevision },
+      drilledFamilyEdge: drill,
     });
-  }, [session, hovered, emphasis, selected, visibleRelations, depth, filterRevision]);
+  }, [
+    session,
+    hovered,
+    emphasis,
+    selected,
+    visibleRelations,
+    depth,
+    filterRevision,
+    overlay,
+    overlayRevision,
+    drill,
+  ]);
 
   return (
     <Cosmograph
@@ -187,19 +234,36 @@ export function GraphView({ session }: { session: GraphSession }) {
       showHoveredPointLabel={false}
       statusIndicatorMode={false}
       pointColorBy="domain"
-      pointColorStrategy="map"
+      pointColorStrategy={familiesOverlay ? "direct" : "map"}
       pointColorByMap={POINT_COLORS}
+      pointColorByFn={familiesOverlay ? familyPointColor(families) : undefined}
       pointDefaultSize={12}
       pointGreyoutOpacity={0.08}
       linkGreyoutOpacity={0.02}
       linkColorBy="relation"
-      linkColorByFn={linkColorFn(relationMask, session.renderLinks)}
+      linkColorByFn={linkColorAccessor({
+        mask: relationMask,
+        renderLinks: session.renderLinks,
+        overlay,
+        families,
+        exactLinkCount: session.graph.linkCount,
+        drill,
+      })}
       linkWidthBy="relation"
-      linkWidthByFn={linkWidthFn(relationMask, session.renderLinks)}
+      linkWidthByFn={linkWidthAccessor({
+        mask: relationMask,
+        renderLinks: session.renderLinks,
+        overlay,
+        families,
+        exactLinkCount: session.graph.linkCount,
+        drill,
+      })}
       onMount={onGraphMount}
       onPointMouseOver={onPointMouseOver}
       onPointMouseOut={onPointMouseOut}
       onPointClick={onPointClick}
+      onLinkClick={onLinkClick}
+      selectLinkOnClick={false}
       onBackgroundClick={onBackgroundClick}
       onGraphRebuilt={onGraphRebuilt}
       onZoom={onZoom}

@@ -10,13 +10,14 @@
 import type { Domain } from "../../projection/src/domain.ts";
 import { RELATION_ORDER, type Relation } from "../../projection/src/relation.ts";
 
-/** Overlays available in the viewer. Slice A ships only the Structure overlay. */
-export const OVERLAY_ORDER = ["structure"] as const;
+/** Overlays available in the viewer. Families is offered only for worlds with families data. */
+export const OVERLAY_ORDER = ["structure", "families"] as const;
 
 export type OverlayName = (typeof OVERLAY_ORDER)[number];
 
 export const OVERLAY_LABELS: Record<OverlayName, string> = {
   structure: "Structure",
+  families: "Families",
 };
 
 export interface CategoryStyle {
@@ -73,6 +74,37 @@ export function isRelationName(value: string): value is Relation {
   return (RELATION_ORDER as readonly string[]).includes(value);
 }
 
+/** The neutral tint of a point with no family (a file without callables, an empty directory). */
+export const NO_FAMILY_COLOR = "#3f4756";
+
+/** One hex channel, two digits (module scope: it captures nothing). */
+function hexChannel(value: number): string {
+  return Math.round(value * 255)
+    .toString(16)
+    .padStart(2, "0");
+}
+
+function hslToHex(hue: number, saturation: number, lightness: number): string {
+  const s = saturation / 100;
+  const l = lightness / 100;
+  const a = s * Math.min(l, 1 - l);
+  const channel = (n: number): number => {
+    const k = (n + hue / 30) % 12;
+    return l - a * Math.max(-1, Math.min(k - 3, Math.min(9 - k, 1)));
+  };
+  return `#${hexChannel(channel(0))}${hexChannel(channel(8))}${hexChannel(channel(4))}`;
+}
+
+/**
+ * The deterministic tint of one family: a golden-angle hue rotation at fixed
+ * saturation and lightness, so neighbouring family ordinals land far apart on
+ * the colour wheel and the palette is a pure function of the family ordinal.
+ */
+export function familyColor(ordinal: number): string {
+  const hue = (((ordinal * 137.508) % 360) + 360) % 360;
+  return hslToHex(hue, 62, 58);
+}
+
 /**
  * Edge colour accessor for the renderer, called with the value of the link's
  * `relation` column. Falls back to a neutral grey for an unexpected value so the
@@ -105,24 +137,46 @@ export interface LegendOptions {
 /**
  * The legend for an overlay and a set of enabled relations. Both the overlay
  * categories and the relation entries are read from this module's styles, so the
- * legend cannot disagree with what is rendered.
+ * legend cannot disagree with what is rendered. The families overlay tints every
+ * point by family (too many for per-family entries), so its categories are the
+ * two tint classes: a family sample and the no-family neutral.
  */
 export function legendEntries(
   overlay: OverlayName,
   enabledRelations: readonly Relation[],
   options?: LegendOptions,
 ): LegendEntry[] {
-  const categories = DOMAIN_ORDER_FOR_LEGEND.map((domain): LegendEntry => {
-    const style = DOMAIN_STYLES[domain];
-    return {
-      kind: "category",
-      key: domain,
-      label: style.label,
-      color: style.color,
-      glyph: style.glyph,
-      pattern: style.pattern,
-    };
-  });
+  const categories: LegendEntry[] =
+    overlay === "families"
+      ? [
+          {
+            kind: "category",
+            key: "family",
+            label: "Family tint",
+            color: familyColor(1),
+            glyph: "◆",
+            pattern: "solid",
+          },
+          {
+            kind: "category",
+            key: "no-family",
+            label: "No family",
+            color: NO_FAMILY_COLOR,
+            glyph: "·",
+            pattern: "dotted",
+          },
+        ]
+      : DOMAIN_ORDER_FOR_LEGEND.map((domain): LegendEntry => {
+          const style = DOMAIN_STYLES[domain];
+          return {
+            kind: "category",
+            key: domain,
+            label: style.label,
+            color: style.color,
+            glyph: style.glyph,
+            pattern: style.pattern,
+          };
+        });
   const relations = (options?.includeDisabledRelations === true ? RELATION_ORDER : enabledRelations).map(
     (relation): LegendEntry => {
       const style = RELATION_STYLES[relation];
@@ -138,8 +192,6 @@ export function legendEntries(
       };
     },
   );
-  // `overlay` currently selects the same category set; keep it in the signature
-  // so a future overlay cannot silently reuse another overlay's legend.
-  void overlay;
+  // `overlay` selects the category set above; relations are overlay-independent.
   return [...categories, ...relations];
 }

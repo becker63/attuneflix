@@ -11,6 +11,7 @@ import type { SessionController } from "./controller.ts";
 import { datasetLabel } from "./datasets.ts";
 import { Details } from "./Details.tsx";
 import { DepthControl } from "./DepthControl.tsx";
+import { FamilyEdges } from "./FamilyEdges.tsx";
 import { GraphView } from "./GraphView.tsx";
 import { Header } from "./Header.tsx";
 import { Legend } from "./Legend.tsx";
@@ -139,6 +140,7 @@ export function App({ controller }: { controller: SessionController }) {
           <RelationFilter />
           <DepthControl />
           <Details session={session} />
+          <FamilyEdges session={session} />
           <Legend />
         </aside>
       </div>

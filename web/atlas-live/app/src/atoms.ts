@@ -12,6 +12,7 @@
 import { atom } from "jotai";
 
 import { DOMAIN_ORDER, type Domain } from "../../projection/src/domain.ts";
+import type { WorldFamilies } from "../../projection/src/families.ts";
 import type { ViewerGraph } from "../../projection/src/graph.ts";
 import type { Relation } from "../../projection/src/relation.ts";
 import {
@@ -43,8 +44,17 @@ import { legendEntries, type LegendEntry, type OverlayName } from "./vocabulary.
 /** Renderer index of the hovered point, or null when nothing is hovered. */
 export const hoveredIndexAtom = atom<number | null>(null);
 
-/** The active node-colour overlay. Slice B ships only the Structure overlay. */
+/** The active node-colour overlay. "families" is selectable only while the session has families data. */
 export const overlayAtom = atom<OverlayName>("structure");
+
+/** The loaded session's families layer, or null for a world without families data. */
+export const familiesAtom = atom<WorldFamilies | null>(null);
+
+/** Bumped on every overlay change (a view revision, never a topology one). */
+export const overlayRevisionAtom = atom<number>(0);
+
+/** The drilled-down family edge ordinal, or null when nothing is drilled. */
+export const drilledFamilyEdgeAtom = atom<number | null>(null);
 
 /** The pinned selection: point ids, independent of what is hovered. */
 export const selectedAtom = atom<Selection>(EMPTY_SELECTION);
@@ -89,6 +99,24 @@ export const setRelationMaskAtom = atom(null, (get, set, mask: RelationMask) => 
 export const toggleRelationAtom = atom(null, (get, set, relation: Relation) => {
   set(relationMaskAtom, toggleRelation(get(relationMaskAtom), relation));
   set(filterRevisionAtom, get(filterRevisionAtom) + 1);
+});
+
+/**
+ * Sets the active overlay. Choosing "families" without families data is a
+ * no-op (the guard keeps a families-less world's rendering identical); leaving
+ * the families overlay or switching overlays clears any family drill-down.
+ */
+export const setOverlayAtom = atom(null, (get, set, overlay: OverlayName) => {
+  if (overlay === "families" && get(familiesAtom) === null) return;
+  if (get(overlayAtom) === overlay) return;
+  set(overlayAtom, overlay);
+  set(overlayRevisionAtom, get(overlayRevisionAtom) + 1);
+  set(drilledFamilyEdgeAtom, null);
+});
+
+/** Drills into one family edge (its contributing exact edges reappear), or clears the drill-down with null. */
+export const drillFamilyEdgeAtom = atom(null, (_get, set, ordinal: number | null) => {
+  set(drilledFamilyEdgeAtom, ordinal);
 });
 
 /** Sets the neighbourhood depth, clamped to 1..3. */

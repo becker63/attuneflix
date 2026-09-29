@@ -7,11 +7,13 @@
  */
 import * as stylex from "@stylexjs/stylex";
 import { useAtomValue } from "jotai";
+import { useMemo } from "react";
 
 import { RELATION_ORDER } from "../../projection/src/relation.ts";
 import { inspectedIndexAtom, selectedAtom, selectedProvenanceAtom } from "./atoms.ts";
+import { familyMembership } from "./families.ts";
 import type { GraphSession } from "./session.ts";
-import { domainStyle, relationStyle } from "./vocabulary.ts";
+import { domainStyle, familyColor, relationStyle } from "./vocabulary.ts";
 
 const styles = stylex.create({
   root: {
@@ -65,6 +67,18 @@ const styles = stylex.create({
     backgroundColor: "#374151",
     color: "#e5e7eb",
   },
+  markerBadge: {
+    backgroundColor: "#374151",
+    color: "#e5e7eb",
+    marginLeft: 6,
+  },
+  swatch: {
+    display: "inline-block",
+    width: 9,
+    height: 9,
+    borderRadius: 2,
+    marginRight: 6,
+  },
   counts: {
     display: "flex",
     flexDirection: "column",
@@ -110,6 +124,12 @@ function Field({ label, value }: { label: string; value: string }) {
   );
 }
 
+/** The family's tint swatch; the colour is memoized so the style prop is stable. */
+function FamilySwatch({ ordinal }: { ordinal: number }) {
+  const style = useMemo(() => ({ backgroundColor: familyColor(ordinal) }), [ordinal]);
+  return <span {...stylex.props(styles.swatch)} style={style} />;
+}
+
 export function Details({ session }: { session: GraphSession | null }) {
   const inspected = useAtomValue(inspectedIndexAtom);
   const selected = useAtomValue(selectedAtom);
@@ -128,6 +148,10 @@ export function Details({ session }: { session: GraphSession | null }) {
   const name = session.graph.pointNames[inspected] ?? null;
   const counts = session.counts(inspected);
   const domainInfo = domain === null ? null : domainStyle(domain);
+  // The family membership of the inspected point, with the F3 honesty markers:
+  // a fallback member joined its defining file's seed family (no recorded
+  // frontier held it); a singleton family has exactly one member.
+  const family = session.families === null ? null : familyMembership(session.families, inspected);
   return (
     <div {...stylex.props(styles.root)}>
       <div {...stylex.props(styles.chip)}>
@@ -140,6 +164,24 @@ export function Details({ session }: { session: GraphSession | null }) {
       <Field label="Domain" value={domainInfo?.label ?? "unknown"} />
       {path === null ? null : <Field label="Path" value={path} />}
       {name === null ? null : <Field label="Symbol" value={name} />}
+      {family === null ? null : (
+        <>
+          <div {...stylex.props(styles.row)}>
+            <span {...stylex.props(styles.label)}>Family</span>
+            <span {...stylex.props(styles.value)}>
+              <FamilySwatch ordinal={family.ordinal} />
+              {family.name}
+              {family.singleton ? (
+                <span {...stylex.props(styles.badge, styles.markerBadge)}>singleton</span>
+              ) : null}
+              {family.fallback ? (
+                <span {...stylex.props(styles.badge, styles.markerBadge)}>fallback</span>
+              ) : null}
+            </span>
+          </div>
+          <Field label="Family members" value={String(family.members)} />
+        </>
+      )}
       <div {...stylex.props(styles.counts)}>
         {RELATION_ORDER.map((relation) => {
           const count = counts[relation];

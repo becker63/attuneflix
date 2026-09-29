@@ -258,6 +258,32 @@ transparent and zero-width (`app/src/linkAccessors.ts`). The header marks this w
 `a57d483946f4` / `bde468c0e909`). Hover and selection still work: emphasis goes through the
 renderer's greyout channel, and the diagnostics hook reports `hovered`/`highlighted`.
 
+### Families overlay
+
+A world whose manifest ships an Atlas Families export (preact first; the tables are the
+Flix-built evidence, mirrored and re-validated by `projection/src/families.ts`, never
+re-derived) offers a second overlay, **Families**, next to **Structure**:
+
+- every point is tinted by its family (symbols by membership, files and directories by
+  their dominant rollup family), from a deterministic golden-angle palette in
+  `app/src/vocabulary.ts`; points with no family get the neutral no-family tint;
+- exact links hide and the cross-family edges draw instead — one row per family pair,
+  appended after the exact links in the links table (`projection/src/arrow.ts`), anchored
+  at the families' seed files, with width growing in log2 of the multiplicity;
+- clicking a family edge (on the canvas or in the sidebar's family-edge list) drills
+  down: the edge stays drawn and its contributing exact edges reappear; the sidebar lists
+  them, bounded, with the remainder counted. Escape, an empty-canvas click or the "Clear
+  drill-down" button restores the aggregate view;
+- the inspector shows the point's family (name, member count, tint swatch) with the F3
+  honesty markers: a `fallback` badge for a member no recorded frontier held (it joined
+  its defining file's seed family), a `singleton` badge for a one-member family.
+
+The overlay is a pure view change: the layout, the filter and the topology never move
+(`layoutIdentity`, `filterRevision` and every screen position are unchanged across an
+overlay switch). A world without families data renders exactly as before — the toggle
+stays disabled, the families section and fields never appear, and its links table is
+byte-identical to the pre-families projection.
+
 ## `window.__atlasLive`
 
 `window.__atlasLive` is the read-only diagnostics hook for Playwright and agent-browser. It
@@ -276,7 +302,9 @@ session boots and populated through `app/src/diagnostics.ts`.
 | `liveSessions`             | The number of live `GraphSession`s; exactly `1` once a dataset is loaded, and `0` before the first load.                                                                                                |
 | `duckdbTables`             | The `atlas_live_*` DuckDB tables the current live session owns, sorted; a switched-away session's tables are dropped and never listed.                                                                  |
 | `renderLinks`              | Whether the renderer draws the current dataset's links (see "SwiftShader link rendering"): `false` above the 10,000-link budget.                                                                        |
-| `overlay`                  | `{ name, revision }` of the active node-colour overlay (`"structure"` in this slice).                                                                                                                   |
+| `overlay`                  | `{ name, revision }` of the active node-colour overlay (`"structure"` or `"families"`); the revision bumps on every overlay change.                                                                     |
+| `families`                 | The loaded world's families summary (`familyCount`, `singletonFamilies`, `fallbackMembers`, `edges`, `renderedEdges`, `unattributedEdges`), or `null` for a world without families data.                |
+| `drilledFamilyEdge`        | The drilled-down family edge ordinal, or `null`.                                                                                                                                                        |
 | `counts`                   | `{ points, links, files, symbols, directories, defines, imports, calls, parent }`, or `null` before load.                                                                                               |
 | `hovered`                  | The hovered point's identity (`domain:localId`, e.g. `file:2`), or `null`.                                                                                                                              |
 | `hoveredIndex`             | The hovered point's row index, or `null`.                                                                                                                                                               |
@@ -295,6 +323,7 @@ session boots and populated through `app/src/diagnostics.ts`.
 | `pointWithIncidentLinks()` | A point index with at least one incident link, or `null` if none. Used to pick a hover target deterministically.                                                                                        |
 | `pointIdOf(index)`         | The identity (`domain:localId`) of the point at a renderer index, or `null`.                                                                                                                            |
 | `pointCount()`             | The number of points in the loaded graph (`0` before load).                                                                                                                                             |
+| `familyOfPoint(index)`     | The point's family membership (`ordinal`, `familyId`, `name`, `members`, `singleton`, `fallback`), or `null` when the world or the point has none.                                                      |
 
 ## Structural layout
 

@@ -16,6 +16,8 @@ export interface GraphHandlers {
   enter(index: number): void;
   leave(): void;
   click(index: number, additive: boolean): void;
+  /** A link row was clicked (an exact link or an appended family edge row). */
+  linkClick(linkIndex: number): void;
   background(): void;
   rebuilt(stats: { readonly pointsCount: number; readonly linksCount: number }): void;
   zoom(): void;
@@ -57,6 +59,15 @@ export function onPointClick(index: number, _pointPosition: readonly number[], e
 /** An empty-canvas click clears the pinned selection. */
 export function onBackgroundClick(): void {
   handlers?.background();
+}
+
+/**
+ * A link click drills into a family edge (the session resolves whether the row
+ * is a family edge). The renderer's own link selection is disabled, so this
+ * handler is the only drill-down writer.
+ */
+export function onLinkClick(linkIndex: number): void {
+  handlers?.linkClick(linkIndex);
 }
 
 export function onGraphRebuilt(stats: { readonly pointsCount: number; readonly linksCount: number }): void {

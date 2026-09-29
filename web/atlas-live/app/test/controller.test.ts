@@ -78,6 +78,7 @@ function loaded(manifestEntry: WorldManifestEntry): LoadedWorld {
     graph,
     tables: buildViewerArrow(graph, { xy: layout.xy }),
     layout,
+    families: null,
     layoutMs: 0,
   };
 }
@@ -192,6 +193,8 @@ describe("SessionController lifecycle", () => {
     const identity = structuralLayout(fixtureGraph()).identity;
     expect(read("layoutIdentity")).toBe(identity);
     expect(read("layoutRevision")).toBe(1);
+    // A world without families data publishes no families summary.
+    expect(read("families")).toBeNull();
     expect(keys(read("perf"))).toEqual(["duckDbMs", "insertMs", "layoutMs", "loadMs", "manifestMs"]);
     await h.controller.select(worlds[1]?.snapshotId ?? "");
     expect(read("layoutRevision")).toBe(2);

@@ -6,8 +6,18 @@
  * inferred; provenance comes from the shipped manifest entry.
  */
 import { buildViewerArrow, type ViewerArrowTables } from "../../projection/src/arrow.ts";
+import {
+  decodeFamiliesFiles,
+  projectFamilies,
+  type FamiliesFiles,
+  type WorldFamilies,
+} from "../../projection/src/families.ts";
 import { projectTables, type ViewerGraph } from "../../projection/src/graph.ts";
-import type { WorldManifest, WorldManifestEntry } from "../../projection/src/manifest.ts";
+import {
+  FAMILY_TABLE_NAMES,
+  type WorldManifest,
+  type WorldManifestEntry,
+} from "../../projection/src/manifest.ts";
 import { decodeWorldFiles, toArrayBuffer, type WorldFiles } from "../../projection/src/tables.ts";
 import { structuralLayout, type StructuralLayout } from "./structure.ts";
 
@@ -26,6 +36,11 @@ export interface LoadedWorld {
   readonly tables: ViewerArrowTables;
   /** The world's structural layout (every point's coordinates, computed once). */
   readonly layout: StructuralLayout;
+  /**
+   * The world's families layer when the manifest ships one (Atlas Families
+   * export), or null — a world without families renders exactly as before.
+   */
+  readonly families: WorldFamilies | null;
   /** Milliseconds spent computing the structural layout. */
   readonly layoutMs: number;
 }
@@ -85,13 +100,43 @@ async function fetchWorldFiles(
     : { metadata, entities, relations, locations };
 }
 
+/**
+ * The five families tables of a world that ships them, or undefined. The bytes
+ * are the Flix-built export; the web side only decodes and validates them
+ * against the exact graph (see projection/src/families.ts).
+ */
+async function fetchFamiliesFiles(
+  entry: WorldManifestEntry,
+  signal: AbortSignal | undefined,
+): Promise<FamiliesFiles | undefined> {
+  const assets = entry.assets.families;
+  if (assets === undefined) return undefined;
+  const buffers = await Promise.all(FAMILY_TABLE_NAMES.map((table) => fetchBytes(assets[table], signal)));
+  const [families, members, rollups, edges, contributions] = buffers;
+  if (
+    families === undefined ||
+    members === undefined ||
+    rollups === undefined ||
+    edges === undefined ||
+    contributions === undefined
+  ) {
+    throw new Error("incomplete families assets");
+  }
+  return { families, members, rollups, edges, contributions };
+}
+
 export async function loadWorld(entry: WorldManifestEntry, signal?: AbortSignal): Promise<LoadedWorld> {
-  const files = await fetchWorldFiles(entry, signal);
+  const [files, familiesFiles] = await Promise.all([
+    fetchWorldFiles(entry, signal),
+    fetchFamiliesFiles(entry, signal),
+  ]);
   const decoded = await decodeWorldFiles(files);
   const graph = projectTables(decoded, entry.sha256);
+  const familyTables = familiesFiles === undefined ? undefined : await decodeFamiliesFiles(familiesFiles);
+  const families = familyTables === undefined ? null : projectFamilies(familyTables, graph);
   const beforeLayout = performance.now();
   const layout = structuralLayout(graph);
   const layoutMs = Math.round(performance.now() - beforeLayout);
-  const tables = buildViewerArrow(graph, { xy: layout.xy });
-  return { entry, graph, tables, layout, layoutMs };
+  const tables = buildViewerArrow(graph, families === null ? { xy: layout.xy } : { xy: layout.xy, families });
+  return { entry, graph, tables, layout, families, layoutMs };
 }
