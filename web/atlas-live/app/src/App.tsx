@@ -9,7 +9,7 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useSyncExternalStore } from "react";
 
 import type { SessionController } from "./controller.ts";
-import { landscapeModeAtom, landscapeOriginsAtom, measurementModeAtom, setMeasurementModeAtom } from "./atoms.ts";
+import { landscapeModeAtom, landscapeOriginsAtom, measurementModeAtom, setMeasurementModeAtom, setRelationMaskAtom } from "./atoms.ts";
 import { datasetLabel } from "./datasets.ts";
 import { Details } from "./Details.tsx";
 import { DepthControl } from "./DepthControl.tsx";
@@ -20,6 +20,7 @@ import { metricShadeRange } from "./metricShade.ts";
 import { ParallelismPanel } from "./ParallelismPanel.tsx";
 import { reuseShadeRange, shadeOklab } from "./physical.ts";
 import { RelationFilter } from "./RelationFilter.tsx";
+import { relationMask } from "./selection.ts";
 import { WorldComparison } from "./WorldComparison.tsx";
 
 const REUSE_GRADIENT = `linear-gradient(to right, ${shadeOklab("#a78bfa", 0)}, ${shadeOklab("#a78bfa", 0.5)}, ${shadeOklab("#a78bfa", 1)})`;
@@ -177,6 +178,7 @@ export function App({ controller }: { controller: SessionController }) {
   const landscapeMode = useAtomValue(landscapeModeAtom);
   const setLandscapeMode = useSetAtom(landscapeModeAtom);
   const setLandscapeOrigins = useSetAtom(landscapeOriginsAtom);
+  const setRelationMask = useSetAtom(setRelationMaskAtom);
   const measurementMode = useAtomValue(measurementModeAtom);
   const setMeasurementMode = useSetAtom(setMeasurementModeAtom);
   const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot, controller.getSnapshot);
@@ -184,8 +186,35 @@ export function App({ controller }: { controller: SessionController }) {
   const loading = state.status === "loading" || state.status === "booting";
   const selected = state.options.find((option) => option.value === state.selectedValue);
   useEffect(() => {
-    if (session !== null) setLandscapeOrigins({ a: null, b: null });
-  }, [session, setLandscapeOrigins]);
+    let active = true;
+    if (session !== null) {
+      const params = new URL(window.location.href).searchParams;
+      const linked = params.get("snapshot") === session.entry.snapshotDigest
+        || params.get("snapshot") === session.entry.snapshotId;
+      if (linked && params.get("mode") === "parallelism") {
+        setLandscapeMode("parallelism");
+        if (params.has("relations")) {
+          const relations = (params.get("relations") ?? "").split(",")
+            .filter((relation): relation is "imports" | "calls" => relation === "imports" || relation === "calls");
+          setRelationMask(relationMask([...relations, "defines", "parent"]));
+        }
+        void (async () => {
+          for (const id of params.getAll("expand").slice(0, 64)) {
+            if (!active) return;
+            await session.changeFrontier(id, "expand");
+          }
+          if (!active) return;
+          const visible = new Set(session.getViewSnapshot().projection.nodes.map((node) => node.id));
+          const a = params.get("a");
+          const b = params.get("b");
+          setLandscapeOrigins({ a: a !== null && visible.has(a) ? a : null, b: b !== null && visible.has(b) ? b : null });
+        })().catch(() => { if (active) setLandscapeOrigins({ a: null, b: null }); });
+      } else {
+        setLandscapeOrigins({ a: null, b: null });
+      }
+    }
+    return () => { active = false; };
+  }, [session, setLandscapeMode, setLandscapeOrigins, setRelationMask]);
   useEffect(() => {
     if (session !== null && session.physical === null && measurementMode === "physical") {
       setMeasurementMode("structure");

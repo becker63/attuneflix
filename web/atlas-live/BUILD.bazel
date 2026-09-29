@@ -1,5 +1,5 @@
 load("@aspect_rules_js//js:defs.bzl", "js_binary", "js_library", "js_test")
-load("@aspect_rules_ts//ts:defs.bzl", "ts_config")
+load("@aspect_rules_ts//ts:defs.bzl", "ts_config", "ts_project")
 load("@bazel_lib//lib:copy_to_directory.bzl", "copy_to_directory")
 load("@npm//:defs.bzl", "npm_link_all_packages")
 load("@npm//web/atlas-live:oxfmt/package_json.bzl", oxfmt_bin = "bin")
@@ -36,7 +36,29 @@ TS_PACKAGES = [
     "protocol",
     "app",
     "e2e",
+    "mcp",
 ]
+
+# The MCP imports browser-owned pure topology modules. Typecheck the shared
+# source graph at the workspace root, so every imported source is under rootDir.
+ts_project(
+    name = "mcp_ts",
+    srcs = [
+        "//web/atlas-live/mcp:srcs",
+        "//web/atlas-live/mcp:test_srcs",
+        "//web/atlas-live/app:frontier_srcs",
+    ],
+    no_emit = True,
+    tsconfig = "//web/atlas-live/mcp:tsconfig",
+    deps = [
+        "//web/atlas-live/projection:ts",
+        ":node_modules/hyparquet",
+        ":node_modules/vitest",
+    ],
+    visibility = ["//web/atlas-live:__subpackages__"],
+)
+
+test_suite(name = "mcp_typecheck_test", tests = [":mcp_ts_typecheck_test"])
 
 # Each TS package exposes its checked sources (bin copies owned by that package)
 # plus its tsconfig and tool configs as `:lint_files`.
@@ -123,6 +145,8 @@ test_suite(
         "//web/atlas-live/projection:unit_test",
         "//web/atlas-live/protocol:typecheck_test",
         "//web/atlas-live/protocol:unit_test",
+        ":mcp_ts_typecheck_test",
+        "//web/atlas-live/mcp:unit_test",
     ],
     visibility = ["//visibility:public"],
 )
@@ -173,12 +197,14 @@ copy_to_directory(
     srcs = [
         "vercel/config.json",
         ":static",
+        "//web/atlas-live/mcp:vercel_function",
     ],
     out = "vercel_output",
     # `:static` keeps its `static/` segment; the config file drops its `vercel/`.
     root_paths = [
         "web/atlas-live",
         "web/atlas-live/vercel",
+        "web/atlas-live/mcp",
     ],
     visibility = ["//visibility:public"],
 )
@@ -212,6 +238,7 @@ js_test(
         "//web/atlas-live/app:scan_files",
         "//web/atlas-live/projection:scan_files",
         "//web/atlas-live/protocol:scan_files",
+        "//web/atlas-live/mcp:scan_files",
     ],
     entry_point = "deploy/secret_scan.mjs",
 )

@@ -105,7 +105,10 @@ export class SessionController {
       const manifestMs = Math.round(performance.now() - beforeManifest);
       this.#publish({ manifest, options: datasetOptions(manifest) });
       publishPerf({ duckDbMs, manifestMs });
-      await this.#load(this.#deps.chooseDefaultWorld(manifest));
+      const requested = typeof window === "undefined" ? null : new URL(window.location.href).searchParams.get("snapshot");
+      const linked = requested === null ? undefined : manifest.worlds.find((entry) =>
+        entry.snapshotId === requested || entry.snapshotDigest === requested);
+      await this.#load(linked ?? this.#deps.chooseDefaultWorld(manifest));
     } catch (cause) {
       const error = `Could not load the world list: ${messageOf(cause)}`;
       this.#publish({ status: "error", error });

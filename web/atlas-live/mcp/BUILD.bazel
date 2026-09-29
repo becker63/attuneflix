@@ -1,0 +1,74 @@
+load("@aspect_rules_js//js:defs.bzl", "js_library")
+load("@aspect_rules_ts//ts:defs.bzl", "ts_config")
+load("@bazel_lib//lib:copy_to_directory.bzl", "copy_to_directory")
+load("@npm//web/atlas-live:vite/package_json.bzl", vite_bin = "bin")
+load("@npm//web/atlas-live:vitest/package_json.bzl", vitest_bin = "bin")
+load("//web/atlas-live:defs.bzl", "LAUNCHER_ENV")
+
+js_library(
+    name = "srcs",
+    srcs = glob(["src/**/*.ts"]),
+    deps = [
+        "//web/atlas-live/app:frontier_srcs",
+        "//web/atlas-live/projection:srcs",
+        "//web/atlas-live:node_modules/hyparquet",
+    ],
+    visibility = ["//web/atlas-live:__subpackages__"],
+)
+
+js_library(
+    name = "test_srcs",
+    srcs = glob(["test/**/*.ts"]),
+    deps = [":srcs"],
+    visibility = ["//web/atlas-live:__pkg__"],
+)
+
+ts_config(
+    name = "tsconfig",
+    src = "tsconfig.json",
+    deps = ["//web/atlas-live:tsconfig_base"],
+    visibility = ["//web/atlas-live:__pkg__"],
+)
+
+alias(name = "typecheck_test", actual = "//web/atlas-live:mcp_typecheck_test")
+
+js_library(
+    name = "lint_files",
+    srcs = ["tsconfig.json", "vitest.config.mjs"],
+    deps = [":scan_files", ":test_srcs"],
+    visibility = ["//web/atlas-live:__pkg__"],
+)
+
+js_library(
+    name = "scan_files",
+    srcs = ["vite.config.mjs", "function/.vc-config.json"],
+    deps = [":srcs"],
+    visibility = ["//web/atlas-live:__pkg__"],
+)
+
+vitest_bin.vitest_test(
+    name = "unit_test",
+    size = "small",
+    args = ["run", "--config", "vitest.config.mjs"],
+    chdir = package_name(),
+    data = [":test_srcs", "vitest.config.mjs", "//web/atlas-live:node_modules/vitest", "//web/atlas-live/app:frontier_srcs", "//web/atlas-live/projection:srcs"],
+    env = LAUNCHER_ENV,
+)
+
+vite_bin.vite(
+    name = "bundle",
+    srcs = [":scan_files"],
+    args = ["build", "--configLoader", "native"],
+    chdir = package_name(),
+    env = LAUNCHER_ENV,
+    out_dirs = ["dist"],
+    tags = ["no-sandbox"],
+)
+
+copy_to_directory(
+    name = "vercel_function",
+    srcs = [":bundle", "function/.vc-config.json"],
+    out = "functions/mcp.func",
+    root_paths = ["web/atlas-live/mcp/dist", "web/atlas-live/mcp/function"],
+    visibility = ["//web/atlas-live:__pkg__"],
+)

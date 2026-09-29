@@ -22,6 +22,7 @@ Oxlint, Oxfmt and Vitest. No action uses a host `node`, `npm`, `npx` or `pnpm`, 
 | `app/`                                                  | React 19 application.                                                               |
 | `e2e/`                                                  | Playwright specs and helpers.                                                       |
 | `deploy/`                                               | `//web/atlas-live:deploy` (copy, stamp, link, publish) and its Bazel tests.         |
+| `mcp/`                                                  | Public read-only `/mcp` Edge function, built and checked by Bazel.                  |
 | `vercel/config.json`                                    | The Build Output API v3 routes `:vercel_output` ships.                              |
 
 `projection/` and `protocol/` must not import `react`, `react-dom`, `jotai`, `@base-ui/*`,
@@ -32,6 +33,27 @@ Packages import each other through relative paths (for example
 `../../protocol/src/status.ts`). A package that is imported sets `declarations = True` in
 its `BUILD.bazel`, and the importer lists it in `packages`; its typecheck then reads the
 emitted `.d.ts` files, and its Vitest test gets the sources at runtime.
+The MCP imports a small set of pure app modules directly; the root
+`:mcp_ts_typecheck_test` checks that shared source graph.
+
+## Public MCP
+
+The Vercel deployment serves a stateless, read-only Streamable HTTP MCP at
+`https://atlas-live-five.vercel.app/mcp`. Its six tools list worlds, inspect a
+snapshot, list visible origins, inspect one region, compare two origins, and
+compute the aggregate structural landscape. Results use the same published
+manifest and typed Parquet files as the viewer, and reuse its pure frontier,
+physical-region, and parallelism functions. Tool results include links back to
+the corresponding world and selection in the browser. `get_world` also exposes
+asset URLs and measured census/physical summaries.
+
+The endpoint accepts JSON-RPC POST requests for MCP 2025-06-18, 2025-11-25,
+and 2026-07-28.
+It has no write tools, credentials, provider calls, Git-history inputs, or
+task telemetry. Physical reuse is depth-seven measured evidence; interactive
+depth-one-to-three overlap is static structural potential. Both remain separate.
+The Bazel `:vercel_output` and `:layout_test` targets own the Edge function
+bundle and Vercel Build Output API layout; no server build runs on Vercel.
 
 ## Tests
 
@@ -429,9 +451,10 @@ stylesheet supplies.
 `//web/atlas-live:vercel_output` wraps `//web/atlas-live:static` in the
 [Build Output API](https://vercel.com/docs/build-output-api/v3) v3 layout: `config.json`
 at the root (`version: 3`, then `{ "handle": "filesystem" }` and the SPA fallback
-`{ "src": "/(.*)", "dest": "/index.html" }`, from `vercel/config.json`) and everything the
-static tree ships under `static/`. There is no `functions/` directory: the app is static,
-and Vercel never builds from source.
+`{ "src": "/(.*)", "dest": "/index.html" }`, from `vercel/config.json`), everything the
+static viewer ships under `static/`, and the public MCP Edge function under
+`functions/mcp.func/`. Bazel bundles the function and the site; Vercel never
+builds from source.
 
 `//web/atlas-live:deploy` publishes that tree to Vercel project `atlas-live` in team
 `becker63s-projects` and prints the production URL:

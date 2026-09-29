@@ -29,6 +29,7 @@ const ROOTS = [
   "app/src",
   "projection/src",
   "protocol/src",
+  "mcp/src",
 ];
 
 /** Token shapes. Each is matched with the global flag so a count is available. */

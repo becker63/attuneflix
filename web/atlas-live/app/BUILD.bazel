@@ -44,6 +44,18 @@ atlas_ts_package(
     ],
 )
 
+# Pure topology and measurement modules shared by the browser and public MCP.
+js_library(
+    name = "frontier_srcs",
+    srcs = glob(["src/frontier/*.ts"]) + [
+        "src/geometry.ts",
+        "src/physicalRegion.ts",
+        "src/structure.ts",
+    ],
+    deps = ["//web/atlas-live/projection:srcs"],
+    visibility = ["//web/atlas-live:__subpackages__"],
+)
+
 # Pure frontier/inspector checks have no Parquet world data dependency. Keep
 # this fast loop separate from :unit_test, which intentionally stages every
 # acquired Families world for its real-data laws.

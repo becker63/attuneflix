@@ -69,10 +69,13 @@ function namedAsset(assetsDir, pattern, what) {
 function checkTopLevel() {
   const entries = fs.readdirSync(ROOT).toSorted((a, b) => (a < b ? -1 : 1));
   check(
-    entries.join(",") === "config.json,static",
-    `expected the output root to hold exactly config.json and static/, found ${entries.join(", ")}`,
+    entries.join(",") === "config.json,functions,static",
+    `expected config.json, functions/, and static/, found ${entries.join(", ")}`,
   );
-  check(!fs.existsSync(path.join(ROOT, "functions")), "a functions/ directory must not exist");
+  const functionDir = path.join(ROOT, "functions", "mcp.func");
+  requireFile(path.join(functionDir, "index.js"), "MCP Edge function");
+  const functionConfig = readJson(path.join(functionDir, ".vc-config.json"));
+  check(functionConfig.runtime === "edge" && functionConfig.entrypoint === "index.js", "MCP function must be an Edge entry point");
 }
 
 function checkConfig() {
