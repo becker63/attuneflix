@@ -32,6 +32,7 @@ const ANCHOR_TARGETS = new Map([
   ["6bae5cbc218b494824fd4dbdd23e62cdad23301dc9243ee7040a32728daef59a", "src"],
   ["c09c5aceb7270db20383531fa1c5f16b9e592b3592cabb62da376e8a9a41a872", "src"],
   ["e5bfbed1587a474108acc0a043858b1b6c6f118463bcafd6344a0d6e47e4af70", "src/components"],
+  ["f0d3c13774ad53f40a97c6e74c61e2705718cdd2b215560b9ede898df79c22da", "src/predicates"],
   ["6e2bef41bf19f638be084df8cb82127e4832d4abbafa8ca20ebd5db9be3ac8a9", "hooks"],
 ]);
 
