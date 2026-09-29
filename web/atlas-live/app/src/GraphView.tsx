@@ -356,11 +356,11 @@ export function GraphView({ session }: { session: GraphSession }) {
       records.push({ id, x: screen[0], y: screen[1], color, radius });
     };
     // Selected origins and shared territory have priority when the budget binds.
-    add(landscapeA, "#86c7ed", 12);
-    if (landscapeB !== null) add(landscapeB, "#dda5df", 12);
-    for (const id of shared) add(id, "#f4c783", 8);
-    for (const id of aOnly) add(id, "#86c7ed", 6);
-    for (const id of bOnly) add(id, "#dda5df", 6);
+    add(landscapeA, "#86c7ed", 16);
+    if (landscapeB !== null) add(landscapeB, "#dda5df", 16);
+    for (const id of shared) add(id, "#f4c783", 12);
+    for (const id of aOnly) add(id, "#86c7ed", 9);
+    for (const id of bOnly) add(id, "#dda5df", 9);
     return records;
   }, [landscapeIndex, landscapeA, landscapeB, aIds, bIds, regionLayer.regions, session]);
   const projectionMetrics = session.projectionMetrics();
@@ -762,37 +762,53 @@ export function GraphView({ session }: { session: GraphSession }) {
         style={regionStyle}
         viewBox={`0 0 ${regionLayer.width} ${regionLayer.height}`}
       >
-        {regionLayer.regions.map((region) => (
-          <g key={region.ordinal}>
+        {regionLayer.regions.map((region) => {
+          const id = session.graph.pointIds[
+            session.graph.fileCount + session.graph.symbolCount + region.ordinal
+          ] ?? "";
+          const role = id === landscapeA ? "origin-a"
+            : id === landscapeB ? "origin-b"
+            : aIds.has(id) && bIds.has(id) ? "shared"
+            : aIds.has(id) ? "a-only"
+            : bIds.has(id) ? "b-only"
+            : convergingRegions.has(id) ? "converging" : "none";
+          const accent = role === "origin-a" || role === "a-only" ? "#86c7ed"
+            : role === "origin-b" || role === "b-only" ? "#dda5df"
+            : role === "shared" ? "#f4c783"
+            : role === "converging" ? "#c5d5a3" : region.color;
+          const highlighted = role !== "none" && role !== "converging";
+          return <g key={region.ordinal}>
             <rect
               data-testid="topology-region"
+              data-landscape-role={role}
               x={region.x}
               y={region.y}
               width={region.width}
               height={region.height}
               rx={3}
               fill={region.color}
-              data-converging={convergingRegions.has(session.graph.pointIds[session.graph.fileCount + session.graph.symbolCount + region.ordinal] ?? "")}
+              data-converging={convergingRegions.has(id)}
               fillOpacity={
                 measurementMode !== "structure" &&
                 (measurementMode !== "physical" || session.physical !== null)
                   ? 0.26
                   : 0.065
               }
-              stroke={(() => {
-                const id = session.graph.pointIds[session.graph.fileCount + session.graph.symbolCount + region.ordinal] ?? "";
-                if (id === landscapeA) return "#86c7ed";
-                if (id === landscapeB) return "#dda5df";
-                if (aIds.has(id) && bIds.has(id)) return "#f4c783";
-                if (aIds.has(id)) return "#86c7ed";
-                if (bIds.has(id)) return "#dda5df";
-                if (convergingRegions.has(id)) return "#c5d5a3";
-                return region.color;
-              })()}
-              strokeDasharray={convergingRegions.has(session.graph.pointIds[session.graph.fileCount + session.graph.symbolCount + region.ordinal] ?? "") ? "5 3" : undefined}
-              strokeOpacity={0.85}
-              strokeWidth={landscapeMode === "parallelism" ? 3 : 2}
+              stroke={accent}
+              strokeDasharray={role === "converging" ? "5 4" : undefined}
+              strokeOpacity={role === "converging" ? 0.6 : 0.9}
+              strokeWidth={highlighted ? 4.5 : role === "converging" ? 2.5 : 2}
             />
+            {highlighted && <rect
+              data-testid="structural-region-wash"
+              x={region.x}
+              y={region.y}
+              width={region.width}
+              height={region.height}
+              rx={3}
+              fill={accent}
+              fillOpacity={role === "shared" ? 0.31 : role.startsWith("origin") ? 0.26 : 0.22}
+            />}
             {region.width > 34 && region.height > 24 && (
               <text
                 data-testid="topology-region-label"
@@ -822,14 +838,14 @@ export function GraphView({ session }: { session: GraphSession }) {
                   : region.label}
               </text>
             )}
-          </g>
-        ))}
+          </g>;
+        })}
         <g aria-hidden="true" pointerEvents="none">
           {landscapeMarkers.map((marker) => <circle key={marker.id}
             data-testid="structural-neighborhood-marker"
             cx={marker.x} cy={marker.y} r={marker.radius}
-            fill={marker.color} fillOpacity={0.16}
-            stroke={marker.color} strokeOpacity={0.92} strokeWidth={2} />)}
+            fill={marker.color} fillOpacity={0.3}
+            stroke={marker.color} strokeOpacity={0.96} strokeWidth={2.5} />)}
         </g>
       </svg>
     </div>

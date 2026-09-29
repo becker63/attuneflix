@@ -100,6 +100,12 @@ test("structural separation compares two origins on the same relation-filtered g
   await expect(panel.getByText("Shared structural neighborhood")).toBeVisible();
   await expect(panel.getByText("Convergence depth")).toBeVisible();
   await expect(panel.locator("tbody tr")).toHaveCount(3);
+  await expect(page.locator('[data-landscape-role="origin-a"]')).toHaveCount(1);
+  await expect(page.locator('[data-landscape-role="origin-b"]')).toHaveCount(1);
+  const sharedRegion = page.locator('[data-landscape-role="shared"]').first();
+  await expect(sharedRegion).toBeVisible();
+  expect(await sharedRegion.getAttribute("stroke-dasharray")).toBeNull();
+  await expect(page.getByTestId("structural-region-wash").first()).toBeVisible();
   const outputs = process.env.TEST_UNDECLARED_OUTPUTS_DIR;
   if (outputs !== undefined) {
     fs.writeFileSync(path.join(outputs, "structural-separation.png"), await page.screenshot());
